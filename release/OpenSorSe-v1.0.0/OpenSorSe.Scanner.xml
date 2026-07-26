@@ -50,12 +50,13 @@
             Reads operating-system filesystem metadata without opening or modifying file contents.
             </summary>
         </member>
-        <member name="M:OpenSorSe.Scanner.FileMetadataReader.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+        <member name="M:OpenSorSe.Scanner.FileMetadataReader.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler,OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
             <summary>
             Initializes a metadata reader that records diagnostics through Core infrastructure.
             </summary>
             <param name="loggingService">The centralized logging service.</param>
             <param name="errorHandler">The handler used for unexpected operation-level failures.</param>
+            <param name="diagnostics">The optional failure-isolated detailed diagnostics sink.</param>
         </member>
         <member name="M:OpenSorSe.Scanner.FileMetadataReader.ReadAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
             <inheritdoc />
@@ -65,12 +66,13 @@
             Performs a read-only recursive traversal of selected filesystem directories.
             </summary>
         </member>
-        <member name="M:OpenSorSe.Scanner.FileScanner.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+        <member name="M:OpenSorSe.Scanner.FileScanner.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler,OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
             <summary>
             Initializes a file scanner that records diagnostics through shared Core infrastructure.
             </summary>
             <param name="loggingService">The centralized logging service.</param>
             <param name="errorHandler">The handler used for unexpected operation-level failures.</param>
+            <param name="diagnostics">The optional failure-isolated detailed diagnostics sink.</param>
         </member>
         <member name="M:OpenSorSe.Scanner.FileScanner.ScanAsync(OpenSorSe.Scanner.Models.ScanRequest,System.IProgress{OpenSorSe.Scanner.Models.ScanProgress},System.Threading.CancellationToken)">
             <inheritdoc />
@@ -425,6 +427,9 @@
             Represents a file discovered during a scan.
             </summary>
         </member>
+        <member name="P:OpenSorSe.Scanner.Models.FileEntry.ScanDiagnosticSessionId">
+            <summary>Gets the process-session scan diagnostic that discovered this file.</summary>
+        </member>
         <member name="T:OpenSorSe.Scanner.Models.FileHash">
             <summary>Contains a normalized file fingerprint.</summary>
         </member>
@@ -601,6 +606,9 @@
             <summary>
             Contains all entries and recoverable issues produced by one scan operation.
             </summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.ScanResult.DiagnosticSessionId">
+            <summary>Gets the process-session diagnostic identity for this scan, when collection was enabled.</summary>
         </member>
         <member name="T:OpenSorSe.Scanner.Models.ScanStatistics">
             <summary>

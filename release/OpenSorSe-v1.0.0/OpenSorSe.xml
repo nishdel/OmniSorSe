@@ -36,6 +36,33 @@
             </summary>
             <returns>A configured Avalonia application builder.</returns>
         </member>
+        <member name="T:OpenSorSe.Desktop.Services.IAdvancedDiagnosticsWindowService">
+            <summary>Opens or activates the shared non-modal advanced-diagnostics viewer.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Services.IAdvancedDiagnosticsWindowService.Show">
+            <summary>Shows the shared viewer without affecting any feature cancellation token.</summary>
+        </member>
+        <member name="T:OpenSorSe.Desktop.Services.AdvancedDiagnosticsWindowCoordinator">
+            <summary>Observes common immutable sessions and updates the viewer on the Avalonia UI thread.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Services.AdvancedDiagnosticsWindowCoordinator.#ctor(OpenSorSe.Core.Diagnostics.IDiagnosticsCollector,OpenSorSe.Core.Diagnostics.IDiagnosticsExportService,OpenSorSe.Desktop.Services.IClipboardService)">
+            <summary>Subscribes to the process-local common diagnostic stream.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Services.AdvancedDiagnosticsWindowCoordinator.Show">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Desktop.Services.AdvancedDiagnosticsWindowCoordinator.Dispose">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Desktop.Services.AiDiagnosticsWindowCoordinator">
+            <summary>Observes application diagnostics and owns the optional non-modal window lifecycle.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Services.AiDiagnosticsWindowCoordinator.#ctor(OpenSorSe.Application.AI.IAiDiagnosticsCollector,OpenSorSe.Desktop.Services.IClipboardService)">
+            <summary>Subscribes to the process-local diagnostics stream.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Services.AiDiagnosticsWindowCoordinator.Dispose">
+            <inheritdoc />
+        </member>
         <member name="T:OpenSorSe.Desktop.Services.AvaloniaClipboardService">
             <summary>Uses the active Avalonia desktop window clipboard for explicit copy actions.</summary>
         </member>
@@ -117,6 +144,212 @@
             Gets the copyable public project documentation address.
             </summary>
         </member>
+        <member name="T:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter">
+            <summary>Defines status filters for the unified advanced-diagnostics viewer.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.All">
+            <summary>Shows every retained status.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.Active">
+            <summary>Shows active sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.Succeeded">
+            <summary>Shows successful sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.PartiallySucceeded">
+            <summary>Shows partial-success sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.Skipped">
+            <summary>Shows deliberately skipped sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.Rejected">
+            <summary>Shows safely rejected sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.Cancelled">
+            <summary>Shows cancelled sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticStatusFilter.Failed">
+            <summary>Shows failed sessions.</summary>
+        </member>
+        <member name="T:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticCategoryFilter">
+            <summary>Describes one category-filter choice and its instrumentation state.</summary>
+            <param name="DisplayName">The user-facing filter label.</param>
+            <param name="Category">The category, or null for all categories.</param>
+            <param name="IsInstrumented">Whether detailed events are implemented in this release.</param>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticCategoryFilter.#ctor(System.String,System.Nullable{OpenSorSe.Core.Diagnostics.DiagnosticCategory},System.Boolean)">
+            <summary>Describes one category-filter choice and its instrumentation state.</summary>
+            <param name="DisplayName">The user-facing filter label.</param>
+            <param name="Category">The category, or null for all categories.</param>
+            <param name="IsInstrumented">Whether detailed events are implemented in this release.</param>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticCategoryFilter.DisplayName">
+            <summary>The user-facing filter label.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticCategoryFilter.Category">
+            <summary>The category, or null for all categories.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticCategoryFilter.IsInstrumented">
+            <summary>Whether detailed events are implemented in this release.</summary>
+        </member>
+        <member name="T:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow">
+            <summary>Projects one immutable diagnostic session into a concise list row.</summary>
+            <param name="Session">The immutable common session snapshot.</param>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.#ctor(OpenSorSe.Core.Diagnostics.DiagnosticSession)">
+            <summary>Projects one immutable diagnostic session into a concise list row.</summary>
+            <param name="Session">The immutable common session snapshot.</param>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.Session">
+            <summary>The immutable common session snapshot.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.SessionId">
+            <summary>Gets the request or session identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.Category">
+            <summary>Gets the user-facing category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.Operation">
+            <summary>Gets the concrete operation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.Status">
+            <summary>Gets the current or final status.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.Started">
+            <summary>Gets a concise local start time.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.Elapsed">
+            <summary>Gets the latest elapsed duration.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticSessionRow.WarningAndErrorCount">
+            <summary>Gets the retained warning and error count.</summary>
+        </member>
+        <member name="T:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel">
+            <summary>Presents every supported category through one live, filterable, exportable viewer.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.#ctor(OpenSorSe.Core.Diagnostics.IDiagnosticsCollector,OpenSorSe.Core.Diagnostics.IDiagnosticsExportService,OpenSorSe.Desktop.Services.IClipboardService)">
+            <summary>Initializes the unified process-session diagnostics presentation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Sessions">
+            <summary>Gets every retained session in reverse chronological order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.VisibleSessions">
+            <summary>Gets sessions matching current category and status filters.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.CategoryFilters">
+            <summary>Gets stable category-filter choices, including truthful planned placeholders.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.StatusFilters">
+            <summary>Gets supported status-filter choices.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.SelectedCategoryFilter">
+            <summary>Gets or sets the active category filter.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.SelectedStatusFilter">
+            <summary>Gets or sets the active status filter.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.SelectedSession">
+            <summary>Gets or sets the selected retained session.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.AutoScroll">
+            <summary>Gets or sets whether live text surfaces should follow new content.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.WordWrap">
+            <summary>Gets or sets whether large text surfaces wrap long lines.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.SelectedTabIndex">
+            <summary>Gets or sets the active shared tab index.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.StatusText">
+            <summary>Gets the latest plain status message.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.PrivacyNotice">
+            <summary>Gets a privacy reminder for every category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.HasNoVisibleSessions">
+            <summary>Gets whether no sessions match current filters.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.SessionId">
+            <summary>Gets the request or session identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Category">
+            <summary>Gets the selected category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Operation">
+            <summary>Gets the selected operation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Started">
+            <summary>Gets the selected start time.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Elapsed">
+            <summary>Gets the selected elapsed time.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.FinalStatus">
+            <summary>Gets the current or final status.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.RelatedSessions">
+            <summary>Gets related parent and downstream session identities.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.OverviewText">
+            <summary>Gets high-level context and terminal facts.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.TimelineText">
+            <summary>Gets every event in stable sequence order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.InputsText">
+            <summary>Gets captured inputs.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.IntermediateResultsText">
+            <summary>Gets intermediate extraction, transport, and per-entry results.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.OutputsText">
+            <summary>Gets final and downstream outputs.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.WarningsAndErrorsText">
+            <summary>Gets warnings, controlled errors, and validation failures.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.PerformanceText">
+            <summary>Gets timing, size, count, and memory facts.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.CurrentSectionText">
+            <summary>Gets the text for the active shared tab.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.ClearSelectedCommand">
+            <summary>Clears one retained session.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.ClearAllCommand">
+            <summary>Clears all retained detailed sessions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.CopyCurrentSectionCommand">
+            <summary>Copies the active shared tab.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.CopyCompleteDiagnosticCommand">
+            <summary>Copies the complete selected diagnostic.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Upsert(OpenSorSe.Core.Diagnostics.DiagnosticSession,System.Boolean)">
+            <summary>Updates or inserts one immutable session snapshot.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.Reload">
+            <summary>Reloads the viewer after the common store was cleared or reconfigured.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.BuildSelectedJson">
+            <summary>Builds the selected retained session as JSON.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.BuildSelectedText">
+            <summary>Builds the selected retained session as plain text.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.BuildAllJson">
+            <summary>Builds all retained sessions as JSON.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.BuildAllText">
+            <summary>Builds all retained sessions as plain text.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel.ReportExportResult(System.Boolean)">
+            <summary>Reports the result of an explicitly initiated file export.</summary>
+        </member>
+        <member name="T:OpenSorSe.Desktop.ViewModels.AiDiagnosticsViewModel">
+            <summary>Presents immutable live diagnostic snapshots without owning transport behavior.</summary>
+        </member>
         <member name="T:OpenSorSe.Desktop.ViewModels.AiReadinessState">
             <summary>
             Describes the concise, user-facing readiness of the optional local AI service.
@@ -171,6 +404,12 @@
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.AiSuggestionsViewModel.IsDocumentInterpretationVisible">
             <summary>Gets whether explicit bounded extracted-text interpretation is enabled.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AiSuggestionsViewModel.FolderStructureContextText">
+            <summary>Explains exactly how the bounded folder request treats the current result-page files.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.AiSuggestionsViewModel.AiRequestContextText">
+            <summary>Provides a concise review-before-send summary for the currently available AI tasks.</summary>
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.AiSuggestionsViewModel.ReadinessState">
             <summary>Gets the current concise readiness of the optional local AI service.</summary>
@@ -1173,7 +1412,7 @@
             Presents logging health plus a bounded, filterable master-detail view of session events.
             </summary>
         </member>
-        <member name="M:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Desktop.Services.IClipboardService,OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore)">
+        <member name="M:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Desktop.Services.IClipboardService,OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Core.Diagnostics.IDiagnosticsCollector,OpenSorSe.Desktop.Services.IAdvancedDiagnosticsWindowService)">
             <summary>Initializes inspectable session diagnostics.</summary>
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.Events">
@@ -1196,6 +1435,12 @@
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.AiDiagnosticsPrivacyNotice">
             <summary>Gets the explicit filename privacy notice.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.AdvancedDiagnosticsRetainedCount">
+            <summary>Gets the retained common advanced-diagnostic session count.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.AdvancedDiagnosticsSummary">
+            <summary>Gets a truthful instrumentation summary for System Check.</summary>
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.SelectedAiRequest">
             <summary>Gets or sets the AI request selected for prompt/response inspection.</summary>
@@ -1266,6 +1511,9 @@
         <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.ClearAiDiagnosticsCommand">
             <summary>Clears only session AI request diagnostics.</summary>
         </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.OpenAdvancedDiagnosticsCommand">
+            <summary>Opens the shared non-modal advanced-diagnostics viewer.</summary>
+        </member>
         <member name="M:OpenSorSe.Desktop.ViewModels.LogViewerViewModel.Refresh">
             <summary>Refreshes the bounded process-session projection without reading log files.</summary>
         </member>
@@ -1328,7 +1576,7 @@
             Initializes the production shell with catalog persistence, named queries, and historical comparison.
             </summary>
         </member>
-        <member name="M:OpenSorSe.Desktop.ViewModels.MainViewModel.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Application.IApplicationController,OpenSorSe.Application.IResultsSnapshotProjector,OpenSorSe.Application.AI.IAiSuggestionService,OpenSorSe.Application.Catalog.IResultsCatalogStore,OpenSorSe.Application.CatalogSearch.ISavedCatalogSearchStore,OpenSorSe.Application.CatalogComparison.ICatalogComparisonService,OpenSorSe.Desktop.Services.IClipboardService,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Desktop.Services.IExternalFileLauncher,OpenSorSe.Application.Content.IContentStore,OpenSorSe.Application.Content.IOcrService,OpenSorSe.Application.Semantic.ISemanticIndexer,OpenSorSe.Application.Semantic.ISemanticSearchService,OpenSorSe.Application.Semantic.ISemanticIndexStore,OpenSorSe.Application.Structure.IStructureHistoryStore,OpenSorSe.Application.Structure.IFolderRestructuringService,OpenSorSe.Application.Structure.IFolderStructureSnapshotService,OpenSorSe.Application.Structure.IStructureComparisonService)">
+        <member name="M:OpenSorSe.Desktop.ViewModels.MainViewModel.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Application.IApplicationController,OpenSorSe.Application.IResultsSnapshotProjector,OpenSorSe.Application.AI.IAiSuggestionService,OpenSorSe.Application.Catalog.IResultsCatalogStore,OpenSorSe.Application.CatalogSearch.ISavedCatalogSearchStore,OpenSorSe.Application.CatalogComparison.ICatalogComparisonService,OpenSorSe.Desktop.Services.IClipboardService,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Desktop.Services.IExternalFileLauncher,OpenSorSe.Application.Content.IContentStore,OpenSorSe.Application.Content.IOcrService,OpenSorSe.Application.Semantic.ISemanticIndexer,OpenSorSe.Application.Semantic.ISemanticSearchService,OpenSorSe.Application.Semantic.ISemanticIndexStore,OpenSorSe.Application.Structure.IStructureHistoryStore,OpenSorSe.Application.Structure.IFolderRestructuringService,OpenSorSe.Application.Structure.IFolderStructureSnapshotService,OpenSorSe.Application.Structure.IStructureComparisonService,OpenSorSe.Application.AI.IAiDiagnosticsCollector,OpenSorSe.Core.Diagnostics.IDiagnosticsCollector,OpenSorSe.Desktop.Services.IAdvancedDiagnosticsWindowService)">
             <summary>
             Initializes the production shell with diagnostics inspection and clipboard support.
             </summary>
@@ -2737,6 +2985,36 @@
         <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.ShowAdvancedFeatures">
             <summary>Gets or sets whether specialist and troubleshooting interface features are shown.</summary>
         </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.DiagnosticsEnabled">
+            <summary>Gets or sets the master detailed-diagnostics switch.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.AiDiagnosticsEnabled">
+            <summary>Gets or sets whether detailed AI sessions are collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.OcrAndTextExtractionDiagnosticsEnabled">
+            <summary>Gets or sets whether detailed OCR and text-extraction sessions are collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.ScanningDiagnosticsEnabled">
+            <summary>Gets or sets whether detailed scan sessions are collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.DuplicateDetectionDiagnosticsEnabled">
+            <summary>Gets or sets the planned duplicate-detection diagnostic preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.SearchAndIndexingDiagnosticsEnabled">
+            <summary>Gets or sets the planned search-and-indexing diagnostic preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.RulesAndOrganisationDiagnosticsEnabled">
+            <summary>Gets or sets the planned rules-and-organisation diagnostic preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.FileOperationDiagnosticsEnabled">
+            <summary>Gets or sets the planned file-operation diagnostic preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.PerformanceDiagnosticsEnabled">
+            <summary>Gets or sets the planned performance diagnostic preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.ShowUnredactedDiagnosticContent">
+            <summary>Gets or sets whether classified diagnostic content is retained without ordinary redaction.</summary>
+        </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.FilesPageDetailsPanelWidthRatio">
             <summary>Gets or sets the persisted Files-page details-panel proportion.</summary>
         </member>
@@ -2771,6 +3049,9 @@
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.AiRequestDiagnosticsEnabled">
             <summary>Gets or sets whether bounded raw AI request diagnostics are retained for this session.</summary>
+        </member>
+        <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.ShowUnredactedAiDiagnosticContent">
+            <summary>Gets or sets whether the live diagnostics window may retain exact prompt and response text.</summary>
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.SettingsDraft.AiEndpoint">
             <summary>Gets or sets the user-configured Ollama-compatible endpoint.</summary>
@@ -2859,7 +3140,7 @@
             Edits the supported application settings and persists only through the configuration service.
             </summary>
         </member>
-        <member name="M:OpenSorSe.Desktop.ViewModels.SettingsViewModel.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.AI.IAiSuggestionService,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Application.Content.IContentStore,OpenSorSe.Application.Content.IOcrService)">
+        <member name="M:OpenSorSe.Desktop.ViewModels.SettingsViewModel.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.AI.IAiSuggestionService,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Application.Content.IContentStore,OpenSorSe.Application.Content.IOcrService,OpenSorSe.Application.AI.IAiDiagnosticsCollector,OpenSorSe.Core.Diagnostics.IDiagnosticsCollector)">
             <summary>
             Initializes a settings editor over the already initialized configuration service.
             </summary>
@@ -2868,6 +3149,8 @@
             <param name="aiRequestDiagnosticsStore">The optional bounded session diagnostics store.</param>
             <param name="contentStore">The optional application-owned local content cache.</param>
             <param name="ocrService">The optional local OCR capability service.</param>
+            <param name="aiDiagnosticsCollector">The optional live process-session diagnostics collector.</param>
+            <param name="diagnosticsCollector">The shared process-session advanced-diagnostics collector.</param>
         </member>
         <member name="P:OpenSorSe.Desktop.ViewModels.SettingsViewModel.Draft">
             <summary>
@@ -3412,6 +3695,36 @@
             </summary>
             <param name="loadXaml">Should the XAML be loaded into the component.</param>
         </member>
+        <member name="T:OpenSorSe.Desktop.Views.AdvancedDiagnosticsWindow">
+            <summary>Hosts the shared non-modal advanced-diagnostics viewer.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.AdvancedDiagnosticsWindow.#ctor">
+            <summary>Initializes the XAML window.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.AdvancedDiagnosticsWindow.#ctor(OpenSorSe.Desktop.ViewModels.AdvancedDiagnosticsViewModel)">
+            <summary>Initializes the window with its unified observable presentation model.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.AdvancedDiagnosticsWindow.InitializeComponent(System.Boolean)">
+            <summary>
+            Wires up the controls and optionally loads XAML markup and attaches dev tools (if Avalonia.Diagnostics package is referenced).
+            </summary>
+            <param name="loadXaml">Should the XAML be loaded into the component.</param>
+        </member>
+        <member name="T:OpenSorSe.Desktop.Views.AiRequestDiagnosticsWindow">
+            <summary>Hosts live, process-memory-only AI request diagnostics.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.AiRequestDiagnosticsWindow.#ctor">
+            <summary>Initializes the XAML window.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.AiRequestDiagnosticsWindow.#ctor(OpenSorSe.Desktop.ViewModels.AiDiagnosticsViewModel)">
+            <summary>Initializes the window with its observable presentation model.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.AiRequestDiagnosticsWindow.InitializeComponent(System.Boolean)">
+            <summary>
+            Wires up the controls and optionally loads XAML markup and attaches dev tools (if Avalonia.Diagnostics package is referenced).
+            </summary>
+            <param name="loadXaml">Should the XAML be loaded into the component.</param>
+        </member>
         <member name="T:OpenSorSe.Desktop.Views.CatalogComparisonView">
             <summary>Hosts deterministic historical catalog snapshot comparison.</summary>
         </member>
@@ -3467,6 +3780,12 @@
             Wires up the controls and optionally loads XAML markup and attaches dev tools (if Avalonia.Diagnostics package is referenced).
             </summary>
             <param name="loadXaml">Should the XAML be loaded into the component.</param>
+        </member>
+        <member name="T:OpenSorSe.Desktop.Views.DiagnosticTextBox">
+            <summary>Provides a reusable selectable monospaced diagnostic text surface.</summary>
+        </member>
+        <member name="M:OpenSorSe.Desktop.Views.DiagnosticTextBox.#ctor">
+            <summary>Initializes a read-only monospaced text surface.</summary>
         </member>
         <member name="T:OpenSorSe.Desktop.Views.FolderSelectionView">
             <summary>

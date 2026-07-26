@@ -34,13 +34,19 @@
         <member name="T:OpenSorSe.AI.OllamaSuggestionProvider">
             <summary>Implements the provider-neutral suggestion boundary against Ollama.</summary>
         </member>
-        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.#ctor(System.Net.Http.HttpClient,OpenSorSe.Core.Logging.ILoggingService)">
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.#ctor(System.Net.Http.HttpClient,OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Application.AI.IAiDiagnosticsCollector)">
             <summary>Initializes the transport with one caller-owned reusable HTTP client.</summary>
         </member>
         <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.CheckConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.Threading.CancellationToken)">
             <inheritdoc />
         </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.CheckConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
         <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.GetConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.GetConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.String,System.Threading.CancellationToken)">
             <inheritdoc />
         </member>
         <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.GenerateAsync(OpenSorSe.Application.AI.AiProviderGenerationRequest,System.Threading.CancellationToken)">

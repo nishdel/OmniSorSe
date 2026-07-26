@@ -53,6 +53,12 @@
             Identifies the bounded suggestion workflow requested from an optional provider.
             </summary>
         </member>
+        <member name="F:OpenSorSe.Application.AI.AiSuggestionKind.ConnectionTest">
+            <summary>Tests the configured Ollama endpoint without generation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiSuggestionKind.ModelDiscovery">
+            <summary>Discovers installed Ollama models without generation.</summary>
+        </member>
         <member name="F:OpenSorSe.Application.AI.AiSuggestionKind.FileRename">
             <summary>Suggests a safe replacement filename for one known file.</summary>
         </member>
@@ -215,6 +221,9 @@
         <member name="M:OpenSorSe.Application.AI.AiDocumentTextRequest.#ctor(System.String,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.Content.OcrPageResult})">
             <summary>Describes bounded extracted text for one explicit review-only interpretation request.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentTextRequest.RelatedDiagnosticSessionId">
+            <summary>Gets the related OCR or extraction diagnostic session, when known.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.AI.SuggestedTag">
             <summary>Represents an application-normalized tag retained for existing deterministic and historical workflows.</summary>
         </member>
@@ -293,6 +302,15 @@
         <member name="M:OpenSorSe.Application.AI.AiProviderGenerationRequest.#ctor(OpenSorSe.Application.AI.AiSuggestionKind,System.String,System.String,System.String,System.TimeSpan)">
             <summary>Contains a provider-neutral generation request. Prompt text is never logged in full.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderGenerationRequest.SystemPrompt">
+            <summary>Gets the exact system prompt sent to the provider.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderGenerationRequest.UserPrompt">
+            <summary>Gets the exact user prompt sent to the provider.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderGenerationRequest.DiagnosticRequestId">
+            <summary>Gets the optional live diagnostic request identity.</summary>
+        </member>
         <member name="P:OpenSorSe.Application.AI.AiProviderGenerationRequest.Progress">
             <summary>Gets optional typed progress reporting owned by the current explicit request.</summary>
         </member>
@@ -301,6 +319,18 @@
         </member>
         <member name="M:OpenSorSe.Application.AI.AiProviderRequestDiagnostics.#ctor(System.String,System.Nullable{System.Int32},System.TimeSpan,System.Int32,System.Int32,System.String)">
             <summary>Contains concrete provider transport facts for opt-in diagnostics.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderRequestDiagnostics.RawHttpResponse">
+            <summary>Gets the complete raw HTTP envelope body before parsing.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderRequestDiagnostics.ExtractedAssistantResponse">
+            <summary>Gets the assistant content extracted from the envelope.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderRequestDiagnostics.RequestJson">
+            <summary>Gets the exact serialized request JSON.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiProviderRequestDiagnostics.ContentType">
+            <summary>Gets the safe response content type.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.AiProviderGenerationResult">
             <summary>Contains a provider-neutral generation response before application-owned validation.</summary>
@@ -320,8 +350,14 @@
         <member name="M:OpenSorSe.Application.AI.IAiSuggestionProvider.CheckConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.Threading.CancellationToken)">
             <summary>Checks endpoint reachability without discovering or selecting models.</summary>
         </member>
+        <member name="M:OpenSorSe.Application.AI.IAiSuggestionProvider.CheckConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.String,System.Threading.CancellationToken)">
+            <summary>Checks endpoint reachability while optionally publishing into an existing diagnostic session.</summary>
+        </member>
         <member name="M:OpenSorSe.Application.AI.IAiSuggestionProvider.GetConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.Threading.CancellationToken)">
             <summary>Checks provider availability and lists installed models.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiSuggestionProvider.GetConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.String,System.Threading.CancellationToken)">
+            <summary>Discovers models while optionally publishing into an existing diagnostic session.</summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.IAiSuggestionProvider.GenerateAsync(OpenSorSe.Application.AI.AiProviderGenerationRequest,System.Threading.CancellationToken)">
             <summary>Requests one structured provider response without parsing it into application models.</summary>
@@ -388,6 +424,195 @@
         <member name="F:OpenSorSe.Application.AI.AiDecisionHistoryLimits.MaximumHistoryFileBytes">
             <summary>Gets the maximum encoded size of the complete decision-history file.</summary>
         </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticState">
+            <summary>Identifies the lifecycle state of one diagnostic stage or request.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticState.Pending">
+            <summary>Stage has not started.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticState.Active">
+            <summary>Stage is running.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticState.Succeeded">
+            <summary>Stage or request completed successfully.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticState.Rejected">
+            <summary>Response was safely rejected.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticState.Cancelled">
+            <summary>Request was cancelled.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticState.Failed">
+            <summary>Stage or request failed.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticContentKind">
+            <summary>Identifies captured text without coupling the collector to a UI.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticContentKind.SystemPrompt">
+            <summary>Final system prompt.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticContentKind.UserPrompt">
+            <summary>Final user prompt.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticContentKind.RequestJson">
+            <summary>Serialized HTTP request body.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticContentKind.RawHttpResponse">
+            <summary>Complete HTTP response body.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticContentKind.ExtractedAssistantResponse">
+            <summary>Assistant text extracted from the provider envelope.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiDiagnosticContentKind.ParsedStructuredResponse">
+            <summary>Pretty-printed structured response.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticStage">
+            <summary>Describes one live processing stage.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticStage.#ctor(System.String,OpenSorSe.Application.AI.AiDiagnosticState,System.DateTimeOffset,System.TimeSpan,System.String)">
+            <summary>Describes one live processing stage.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticValidation">
+            <summary>Describes one explicit structured-response validation check.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticValidation.#ctor(System.String,System.Boolean,System.String,System.String,System.String,System.String,System.Boolean,System.String)">
+            <summary>Describes one explicit structured-response validation check.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticSession">
+            <summary>Immutable view of one live request retained only for this process session.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticSession.#ctor(System.String,OpenSorSe.Application.AI.AiSuggestionKind,System.String,System.String,System.DateTimeOffset,System.TimeSpan,OpenSorSe.Application.AI.AiDiagnosticState,System.Nullable{System.Int32},System.Boolean,System.Int32,System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Int32,System.Boolean,System.Boolean,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiDiagnosticStage},System.String,System.String,System.String,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiDiagnosticValidation},System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>Immutable view of one live request retained only for this process session.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticSessionChangedEventArgs">
+            <summary>Raised whenever a live diagnostic session is created or updated.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticSessionChangedEventArgs.#ctor(OpenSorSe.Application.AI.AiDiagnosticSession,System.Boolean)">
+            <summary>Raised whenever a live diagnostic session is created or updated.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDiagnosticSessionChangedEventArgs.Session">
+            <summary>Gets the latest immutable session snapshot.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDiagnosticSessionChangedEventArgs.IsNew">
+            <summary>Gets whether the session was just created.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.IAiDiagnosticsCollector">
+            <summary>Collects observable, bounded, process-memory-only Ollama diagnostics.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.IAiDiagnosticsCollector.IsEnabled">
+            <summary>Gets whether collection is enabled.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.IAiDiagnosticsCollector.ShowUnredactedContent">
+            <summary>Gets whether retained display content is exact rather than redacted.</summary>
+        </member>
+        <member name="E:OpenSorSe.Application.AI.IAiDiagnosticsCollector.SessionChanged">
+            <summary>Occurs after a session is created or updated.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Configure(System.Boolean,System.Boolean)">
+            <summary>Applies privacy settings and clears history when disabled.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Begin(OpenSorSe.Application.AI.AiSuggestionKind,System.String,System.String,System.Int32)">
+            <summary>Begins one session and returns its identity, or null when disabled.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.ReportStage(System.String,System.String,OpenSorSe.Application.AI.AiDiagnosticState,System.TimeSpan,System.String)">
+            <summary>Publishes one stage transition.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Capture(System.String,OpenSorSe.Application.AI.AiDiagnosticContentKind,System.String)">
+            <summary>Captures one diagnostic artifact.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.SetContract(System.String,System.String,System.String,System.String)">
+            <summary>Captures safe version identities for the exact prompt and schema contract.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.SetTransport(System.String,System.Nullable{System.Int32},System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Int32,System.Boolean,System.Boolean)">
+            <summary>Captures safe HTTP transport facts.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.SetValidation(System.String,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiDiagnosticValidation},System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>Captures parsed content and validation checks.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Complete(System.String,OpenSorSe.Application.AI.AiDiagnosticState,System.Boolean,System.TimeSpan,System.String)">
+            <summary>Completes a session.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Relate(System.String,System.String)">
+            <summary>Adds a related OCR, scan, or downstream diagnostic session.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.GetRecent">
+            <summary>Gets newest-first session snapshots.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Clear(System.String)">
+            <summary>Clears one retained request.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.IAiDiagnosticsCollector.Clear">
+            <summary>Clears all retained requests.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticsIsolation">
+            <summary>Creates a failure-isolating publisher facade for optional diagnostics.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsIsolation.Protect(OpenSorSe.Application.AI.IAiDiagnosticsCollector)">
+            <summary>Returns a collector facade whose failures cannot escape into an AI operation.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticsCollector">
+            <summary>
+            AI compatibility facade over the common diagnostics store; it retains no independent history.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.#ctor">
+            <summary>Initializes a standalone compatibility collector for tests and non-DI callers.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.#ctor(OpenSorSe.Core.Diagnostics.IDiagnosticsCollector)">
+            <summary>Initializes the AI facade over the application-wide diagnostics collector.</summary>
+            <param name="collector">The shared process-session collector.</param>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDiagnosticsCollector.IsEnabled">
+            <inheritdoc />
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDiagnosticsCollector.ShowUnredactedContent">
+            <inheritdoc />
+        </member>
+        <member name="E:OpenSorSe.Application.AI.AiDiagnosticsCollector.SessionChanged">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Configure(System.Boolean,System.Boolean)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Begin(OpenSorSe.Application.AI.AiSuggestionKind,System.String,System.String,System.Int32)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.ReportStage(System.String,System.String,OpenSorSe.Application.AI.AiDiagnosticState,System.TimeSpan,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Capture(System.String,OpenSorSe.Application.AI.AiDiagnosticContentKind,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.SetContract(System.String,System.String,System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.SetTransport(System.String,System.Nullable{System.Int32},System.String,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Int32,System.Boolean,System.Boolean)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.SetValidation(System.String,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiDiagnosticValidation},System.Collections.Generic.IReadOnlyList{System.String})">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Complete(System.String,OpenSorSe.Application.AI.AiDiagnosticState,System.Boolean,System.TimeSpan,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Relate(System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.GetRecent">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Clear(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticsCollector.Clear">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDiagnosticValidationInspector">
+            <summary>Creates validation diagnostics without changing the authoritative parser result.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiDiagnosticValidationInspector.Inspect(System.String,System.String)">
+            <summary>Inspects common contract fields and preserves the parsed JSON for diagnostics.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.AI.AiPreferenceAggregator">
             <summary>
             Produces small, deterministic, inspectable preference signals from local user-review decisions.
@@ -401,19 +626,25 @@
             <returns>Bounded preference signals suitable for ranking and concise provider context.</returns>
         </member>
         <member name="T:OpenSorSe.Application.AI.AiPromptLimits">
-            <summary>Defines deterministic limits for metadata-only AI prompts.</summary>
+            <summary>Defines deterministic limits for small-model AI prompts.</summary>
         </member>
         <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumFolderStructureFiles">
             <summary>Maximum file records included in a folder-structure prompt.</summary>
         </member>
         <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumSiblingFileNames">
-            <summary>Maximum sibling filenames included in a rename prompt.</summary>
+            <summary>Maximum nearby filename stems included in a rename prompt.</summary>
         </member>
         <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumExistingFolderNames">
-            <summary>Maximum existing folder names included in a structure prompt.</summary>
+            <summary>Maximum existing folder values considered while building allowed names.</summary>
         </member>
         <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumPreferenceValues">
-            <summary>Maximum preference values included per supported preference category.</summary>
+            <summary>Maximum preference values considered per supported preference category.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumAllowedFolderNames">
+            <summary>Maximum safe folder-name choices sent to the model.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumRepairResponseCharacters">
+            <summary>Maximum UTF-16 characters from a prior response supplied to repair.</summary>
         </member>
         <member name="F:OpenSorSe.Application.AI.AiPromptLimits.MaximumDocumentTextPages">
             <summary>Maximum PDF pages included in one explicit document-text request.</summary>
@@ -422,17 +653,25 @@
             <summary>Maximum extracted characters included in one explicit document-text request.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.AiPromptPackage">
-            <summary>
-            Contains one deterministic provider prompt and the exact known identities included in it.
-            </summary>
+            <summary>Contains one deterministic provider prompt and exact included identities.</summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.AiPromptPackage.#ctor(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String},System.Boolean)">
-            <summary>
-            Contains one deterministic provider prompt and the exact known identities included in it.
-            </summary>
+            <summary>Contains one deterministic provider prompt and exact included identities.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptPackage.Kind">
+            <summary>Gets the concrete task kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptPackage.SystemPrompt">
+            <summary>Gets the exact short system prompt paired with the user prompt.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptPackage.PromptVersion">
+            <summary>Gets the reviewable prompt-template version.</summary>
         </member>
         <member name="P:OpenSorSe.Application.AI.AiPromptPackage.SourceMappings">
-            <summary>Gets request-local identities mapped to known application source identities.</summary>
+            <summary>Gets request-local identities mapped to known application identities.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptPackage.AllowedFolderNames">
+            <summary>Gets folder components the folder response is allowed to declare.</summary>
         </member>
         <member name="P:OpenSorSe.Application.AI.AiPromptPackage.TotalInputCount">
             <summary>Gets the total eligible source count before deterministic bounding.</summary>
@@ -450,7 +689,7 @@
             <summary>Maps one short request-local identity back to a known result without exposing its path.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.IAiPromptBuilder">
-            <summary>Builds capability-specific, bounded, metadata-only prompts.</summary>
+            <summary>Builds capability-specific, bounded prompts and one optional repair prompt.</summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.IAiPromptBuilder.BuildFileRenamePrompt(OpenSorSe.Application.AI.AiFileRenameRequest,OpenSorSe.Application.AI.AiPreferenceSummary)">
             <summary>Builds the file-rename prompt.</summary>
@@ -461,10 +700,11 @@
         <member name="M:OpenSorSe.Application.AI.IAiPromptBuilder.BuildDocumentInterpretationPrompt(OpenSorSe.Application.AI.AiDocumentTextRequest)">
             <summary>Builds a bounded extracted-document-text interpretation prompt.</summary>
         </member>
+        <member name="M:OpenSorSe.Application.AI.IAiPromptBuilder.BuildRepairPrompt(OpenSorSe.Application.AI.AiPromptPackage,System.String,System.String)">
+            <summary>Builds the only permitted structured-output repair attempt.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.AI.AiPromptBuilder">
-            <summary>
-            Builds deterministic English v1 prompts without including file content or absolute paths.
-            </summary>
+            <summary>Builds deterministic, labelled prompts intended for approximately 2B–8B local models.</summary>
         </member>
         <member name="F:OpenSorSe.Application.AI.AiPromptBuilder.FileRenameTaskId">
             <summary>Gets the versioned file-rename task identifier.</summary>
@@ -483,6 +723,39 @@
         </member>
         <member name="M:OpenSorSe.Application.AI.AiPromptBuilder.BuildDocumentInterpretationPrompt(OpenSorSe.Application.AI.AiDocumentTextRequest)">
             <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiPromptBuilder.BuildRepairPrompt(OpenSorSe.Application.AI.AiPromptPackage,System.String,System.String)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiPromptTemplates">
+            <summary>Contains reviewable, versioned small-model prompt instructions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptTemplates.FileRenamePromptVersion">
+            <summary>Gets the file-rename prompt-template version.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptTemplates.FolderStructurePromptVersion">
+            <summary>Gets the folder-structure prompt-template version.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptTemplates.DocumentInterpretationPromptVersion">
+            <summary>Gets the document-text interpretation prompt-template version.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptTemplates.RepairPromptVersion">
+            <summary>Gets the structured-repair prompt-template version.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiPromptTemplates.IntendedModelSizeRange">
+            <summary>Gets the intended lower and upper local-model size range.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptTemplates.FileRenameRules">
+            <summary>Gets the numbered file-rename rules in stable order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptTemplates.FolderStructureRules">
+            <summary>Gets the numbered folder-structure rules in stable order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptTemplates.DocumentInterpretationRules">
+            <summary>Gets the numbered document-text interpretation rules in stable order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiPromptTemplates.RepairRules">
+            <summary>Gets the numbered one-pass structured-repair rules in stable order.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.AiRequestDiagnosticLimits">
             <summary>Defines session-only raw AI diagnostic retention bounds.</summary>
@@ -512,7 +785,7 @@
         <member name="P:OpenSorSe.Application.AI.IAiRequestDiagnosticsStore.IsEnabled">
             <summary>Gets whether raw capture is currently enabled.</summary>
         </member>
-        <member name="M:OpenSorSe.Application.AI.IAiRequestDiagnosticsStore.SetEnabled(System.Boolean)">
+        <member name="M:OpenSorSe.Application.AI.IAiRequestDiagnosticsStore.SetEnabled(System.Boolean,System.Boolean)">
             <summary>Applies the active setting and clears raw history when disabled.</summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.IAiRequestDiagnosticsStore.Record(OpenSorSe.Application.AI.AiRequestDiagnostic)">
@@ -532,7 +805,7 @@
         <member name="P:OpenSorSe.Application.AI.AiRequestDiagnosticsStore.IsEnabled">
             <inheritdoc />
         </member>
-        <member name="M:OpenSorSe.Application.AI.AiRequestDiagnosticsStore.SetEnabled(System.Boolean)">
+        <member name="M:OpenSorSe.Application.AI.AiRequestDiagnosticsStore.SetEnabled(System.Boolean,System.Boolean)">
             <inheritdoc />
         </member>
         <member name="M:OpenSorSe.Application.AI.AiRequestDiagnosticsStore.Record(OpenSorSe.Application.AI.AiRequestDiagnostic)">
@@ -641,6 +914,173 @@
             </code>
             </remarks>
         </member>
+        <member name="M:OpenSorSe.Application.AI.AiRequestDiagnosticsStore.DiagnosticContentRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(\\"(?:fileName|currentFileName|suggestedFileName|currentStem|suggestedStem|displayFileName|relativePath|path|text|metadata|documentType|title|issuer|reason)\\"\\s*:\\s*\\")([^\\"]*)(\\")</code><br/>
+            Options:<br/>
+            <code>RegexOptions.IgnoreCase</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ 1st capture group.<br/>
+                ○ Match '"'.<br/>
+                ○ Match with 14 alternative expressions.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ff].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Rr] exactly 2 times.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ff].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Gg] exactly 2 times.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                        ○ Match a character in the set [Ff].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Rr] exactly 2 times.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Gg] exactly 2 times.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Yy].<br/>
+                        ○ Match a character in the set [Ff].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Vv].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Xx].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Mm].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Tt] exactly 2 times.<br/>
+                        ○ Match a character in the set [Yy].<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ll].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                ○ Match '"'.<br/>
+                ○ Match a whitespace character atomically any number of times.<br/>
+                ○ Match ':'.<br/>
+                ○ Match a whitespace character atomically any number of times.<br/>
+                ○ Match '"'.<br/>
+            ○ 2nd capture group.<br/>
+                ○ Match a character other than '"' atomically any number of times.<br/>
+            ○ 3rd capture group.<br/>
+                ○ Match '"'.<br/>
+            </code>
+            </remarks>
+        </member>
         <member name="T:OpenSorSe.Application.AI.AiResponseLimits">
             <summary>Defines fixed bounds for structured AI response validation.</summary>
         </member>
@@ -656,10 +1096,13 @@
         <member name="F:OpenSorSe.Application.AI.AiResponseLimits.MaximumReasonLength">
             <summary>Maximum provider reason length.</summary>
         </member>
+        <member name="F:OpenSorSe.Application.AI.AiResponseLimits.MaximumFolderDepth">
+            <summary>Maximum parent depth in one proposed logical hierarchy.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.AI.AiParsedFileRename">
             <summary>Contains validated rename response values before provider attribution.</summary>
         </member>
-        <member name="M:OpenSorSe.Application.AI.AiParsedFileRename.#ctor(System.String,System.String,System.String,System.Nullable{System.Double})">
+        <member name="M:OpenSorSe.Application.AI.AiParsedFileRename.#ctor(System.String,System.String,System.String,System.String,System.Nullable{System.Double})">
             <summary>Contains validated rename response values before provider attribution.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.AiParsedFolderStructure">
@@ -674,14 +1117,38 @@
         <member name="M:OpenSorSe.Application.AI.AiParsedDocumentInterpretation.#ctor(System.String,System.String,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.SuggestedTag},System.Collections.Generic.IReadOnlyList{System.String},System.String,System.String,System.String,System.Nullable{System.Double})">
             <summary>Contains validated document interpretation values before provider attribution.</summary>
         </member>
-        <member name="T:OpenSorSe.Application.AI.AiResponseParseResult`1">
+        <member name="T:OpenSorSe.Application.AI.AiResponseFailureKind">
             <summary>Contains either one fully valid response, a valid no-suggestion response, or one safe error.</summary>
         </member>
-        <member name="M:OpenSorSe.Application.AI.AiResponseParseResult`1.#ctor(`0,System.Boolean,System.String)">
-            <summary>Contains either one fully valid response, a valid no-suggestion response, or one safe error.</summary>
+        <member name="F:OpenSorSe.Application.AI.AiResponseFailureKind.None">
+            <summary>The response is valid.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiResponseFailureKind.RepairableFormatOrSchema">
+            <summary>JSON or the exact schema shape may be corrected once.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiResponseFailureKind.UnsafeIdentity">
+            <summary>An opaque identity was unknown or unsafe and must not be retried.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiResponseFailureKind.UnsafePath">
+            <summary>A path, traversal, reserved location, or filesystem value must not be retried.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiResponseFailureKind.ModelMisuse">
+            <summary>The model invented evidence or otherwise departed from the requested task.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiResponseFailureKind.HardBound">
+            <summary>The response was empty or exceeded a hard bound.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiResponseParseResult`1">
+            <summary>Contains either one fully valid response, a valid no-suggestion response, or one classified error.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiResponseParseResult`1.#ctor(`0,System.Boolean,System.String,OpenSorSe.Application.AI.AiResponseFailureKind)">
+            <summary>Contains either one fully valid response, a valid no-suggestion response, or one classified error.</summary>
         </member>
         <member name="P:OpenSorSe.Application.AI.AiResponseParseResult`1.IsValid">
             <summary>Gets whether the complete structured response passed validation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiResponseParseResult`1.CanRepair">
+            <summary>Gets whether exactly one structured-output repair attempt may be made.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.IAiResponseParser">
             <summary>Parses and validates capability-specific untrusted JSON.</summary>
@@ -698,12 +1165,15 @@
         <member name="M:OpenSorSe.Application.AI.IAiResponseParser.ParseFolderStructure(System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.Models.ResultFile},System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiPromptSourceMapping})">
             <summary>Parses one folder response using request-local identity mapping.</summary>
         </member>
+        <member name="M:OpenSorSe.Application.AI.IAiResponseParser.ParseFolderStructure(System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.Models.ResultFile},System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiPromptSourceMapping},System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>Parses one folder response against exact mappings and declared folder-name choices.</summary>
+        </member>
         <member name="M:OpenSorSe.Application.AI.IAiResponseParser.ParseDocumentInterpretation(System.String,OpenSorSe.Application.AI.AiDocumentTextRequest,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiPromptSourceMapping})">
             <summary>Parses a document interpretation against the exact request-local identity.</summary>
         </member>
         <member name="T:OpenSorSe.Application.AI.AiResponseParser">
             <summary>
-            Implements strict required-field validation while ignoring unknown JSON properties for forward compatibility.
+            Implements exact, case-sensitive response-shape and deterministic safety validation.
             </summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.AiResponseParser.ParseFileRename(System.String,OpenSorSe.Application.AI.AiFileRenameRequest)">
@@ -721,15 +1191,132 @@
         <member name="M:OpenSorSe.Application.AI.AiResponseParser.ParseFolderStructure(System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.Models.ResultFile},System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiPromptSourceMapping})">
             <inheritdoc />
         </member>
+        <member name="M:OpenSorSe.Application.AI.AiResponseParser.ParseFolderStructure(System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.Models.ResultFile},System.Collections.Generic.IReadOnlyList{OpenSorSe.Application.AI.AiPromptSourceMapping},System.Collections.Generic.IReadOnlyList{System.String})">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiStructuredOutputContracts">
+            <summary>Keeps exact Ollama JSON Schemas and matching wire DTOs beside prompt contracts.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiStructuredOutputContracts.GetSystemPrompt(OpenSorSe.Application.AI.AiSuggestionKind)">
+            <summary>Gets the short deterministic system prompt for one task.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiStructuredOutputContracts.RepairSystemPrompt">
+            <summary>Gets the short deterministic system prompt for the single optional repair attempt.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiStructuredOutputContracts.GetSchemaJson(OpenSorSe.Application.AI.AiSuggestionKind)">
+            <summary>Gets the exact stable schema JSON supplied to Ollama.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiStructuredOutputContracts.GetSchema(OpenSorSe.Application.AI.AiSuggestionKind)">
+            <summary>Gets the exact provider JSON Schema for one generation capability.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiStructuredOutputContracts.GetSchemaSha256(OpenSorSe.Application.AI.AiSuggestionKind)">
+            <summary>Gets a stable lowercase SHA-256 identity for the exact schema supplied to Ollama.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiFileRenameResponseContract">
+            <summary>Defines the exact case-sensitive file-rename response DTO.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFileRenameResponseContract.TaskId">
+            <summary>Gets the exact versioned task identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFileRenameResponseContract.Status">
+            <summary>Gets suggestion or no_suggestion.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFileRenameResponseContract.SourceFileId">
+            <summary>Gets the copied request-local opaque file identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFileRenameResponseContract.SuggestedStem">
+            <summary>Gets the extension-free suggested filename stem.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFileRenameResponseContract.Reason">
+            <summary>Gets the bounded user-facing explanation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFileRenameResponseContract.Confidence">
+            <summary>Gets an optional bounded confidence value.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiFolderStructureResponseContract">
+            <summary>Defines the exact case-sensitive folder-structure response DTO.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderStructureResponseContract.TaskId">
+            <summary>Gets the exact versioned task identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderStructureResponseContract.Status">
+            <summary>Gets suggestion or no_suggestion.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderStructureResponseContract.Folders">
+            <summary>Gets the declared bounded folder records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderStructureResponseContract.Assignments">
+            <summary>Gets the exact opaque file assignments.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderStructureResponseContract.Reason">
+            <summary>Gets the bounded user-facing explanation.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiFolderContract">
+            <summary>Defines one exact declared folder in the wire contract.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderContract.FolderId">
+            <summary>Gets the request-local folder identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderContract.Name">
+            <summary>Gets one declared safe folder component.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderContract.ParentFolderId">
+            <summary>Gets the optional parent identity.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiFolderAssignmentContract">
+            <summary>Defines one exact opaque source-to-folder assignment in the wire contract.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderAssignmentContract.SourceFileId">
+            <summary>Gets one copied request-local file identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiFolderAssignmentContract.FolderId">
+            <summary>Gets one declared folder identity.</summary>
+        </member>
+        <member name="T:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract">
+            <summary>Defines the exact case-sensitive extracted-text interpretation response DTO.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.TaskId">
+            <summary>Gets the exact versioned task identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Status">
+            <summary>Gets suggestion or no_suggestion.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.SourceFileId">
+            <summary>Gets the copied request-local opaque file identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.DocumentType">
+            <summary>Gets a bounded document type supported by explicit text.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Title">
+            <summary>Gets a bounded title supported by explicit text.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Tags">
+            <summary>Gets bounded tags supported by explicit text.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Dates">
+            <summary>Gets explicit ISO dates supported by text.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Issuer">
+            <summary>Gets a bounded issuer supported by explicit text.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.SuggestedFolder">
+            <summary>Gets one optional safe relative folder component.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Reason">
+            <summary>Gets the bounded user-facing explanation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.AI.AiDocumentInterpretationResponseContract.Confidence">
+            <summary>Gets an optional bounded confidence value.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.AI.AiSuggestionService">
             <summary>
             Coordinates capability gates, bounded prompts, optional provider requests, complete response validation, and local review history.
             </summary>
         </member>
-        <member name="M:OpenSorSe.Application.AI.AiSuggestionService.#ctor(OpenSorSe.Application.AI.IAiSuggestionProvider,OpenSorSe.Application.AI.IDecisionHistoryStore,OpenSorSe.Core.Logging.ILoggingService,System.TimeProvider,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore)">
+        <member name="M:OpenSorSe.Application.AI.AiSuggestionService.#ctor(OpenSorSe.Application.AI.IAiSuggestionProvider,OpenSorSe.Application.AI.IDecisionHistoryStore,OpenSorSe.Core.Logging.ILoggingService,System.TimeProvider,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Application.AI.IAiDiagnosticsCollector)">
             <summary>Initializes the coordinator with default application-owned prompt and response components.</summary>
         </member>
-        <member name="M:OpenSorSe.Application.AI.AiSuggestionService.#ctor(OpenSorSe.Application.AI.IAiSuggestionProvider,OpenSorSe.Application.AI.IDecisionHistoryStore,OpenSorSe.Application.AI.IAiPromptBuilder,OpenSorSe.Application.AI.IAiResponseParser,OpenSorSe.Core.Logging.ILoggingService,System.TimeProvider,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore)">
+        <member name="M:OpenSorSe.Application.AI.AiSuggestionService.#ctor(OpenSorSe.Application.AI.IAiSuggestionProvider,OpenSorSe.Application.AI.IDecisionHistoryStore,OpenSorSe.Application.AI.IAiPromptBuilder,OpenSorSe.Application.AI.IAiResponseParser,OpenSorSe.Core.Logging.ILoggingService,System.TimeProvider,OpenSorSe.Application.AI.IAiRequestDiagnosticsStore,OpenSorSe.Application.AI.IAiDiagnosticsCollector)">
             <summary>Initializes the coordinator with explicit testable prompt and response components.</summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.AiSuggestionService.TestConnectionAsync(OpenSorSe.Core.Configuration.ApplicationSettings,System.Threading.CancellationToken)">
@@ -764,6 +1351,12 @@
             Centralizes normalization and safety validation for all untrusted provider suggestion values.
             </summary>
         </member>
+        <member name="F:OpenSorSe.Application.AI.AiSuggestionValidator.MaximumFileStemLength">
+            <summary>Maximum model-supplied filename-stem length.</summary>
+        </member>
+        <member name="F:OpenSorSe.Application.AI.AiSuggestionValidator.MaximumFolderComponentLength">
+            <summary>Maximum model-supplied folder-component length.</summary>
+        </member>
         <member name="M:OpenSorSe.Application.AI.AiSuggestionValidator.TryNormalizeFileName(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String},System.String@,System.String@)">
             <summary>
             Validates and normalizes a proposed file name while preserving the existing file extension.
@@ -774,6 +1367,15 @@
             <param name="normalizedFileName">The safe proposed name when validation succeeds.</param>
             <param name="error">A user-safe validation explanation when validation fails.</param>
             <returns><see langword="true"/> when the name is safe to present for review.</returns>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiSuggestionValidator.TryNormalizeFileStem(System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String},System.String@,System.String@)">
+            <summary>Validates one model-supplied stem and appends the application-owned extension.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiSuggestionValidator.IsFileStemGrounded(System.String,System.String,System.String)">
+            <summary>Checks that every suggested stem token is grounded in supplied deterministic evidence.</summary>
+        </member>
+        <member name="M:OpenSorSe.Application.AI.AiSuggestionValidator.AreDocumentInterpretationValuesGrounded(OpenSorSe.Application.AI.AiDocumentTextRequest,System.String,System.String,System.Collections.Generic.IReadOnlyList{System.String},System.Collections.Generic.IReadOnlyList{System.String},System.String,System.String)">
+            <summary>Checks that every model-produced interpretation value is grounded in supplied filename or text evidence.</summary>
         </member>
         <member name="M:OpenSorSe.Application.AI.AiSuggestionValidator.TryNormalizeFolderName(System.String,System.String@,System.String@)">
             <summary>
@@ -1221,6 +1823,9 @@
         <member name="M:OpenSorSe.Application.Content.PdfPageText.#ctor(System.Int32,System.String,System.Boolean)">
             <summary>Contains native text and its deterministic quality decision for one PDF page.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.Content.PdfPageText.RawNativeText">
+            <summary>Gets bounded embedded text before normalization, when the extractor exposes it.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.Content.OcrPageTextSource">
             <summary>Identifies the source retained for one page in a document OCR result.</summary>
         </member>
@@ -1248,6 +1853,27 @@
         <member name="M:OpenSorSe.Application.Content.OcrPageResult.#ctor(System.Int32,OpenSorSe.Application.Content.OcrPageTextSource,OpenSorSe.Application.Content.OcrStatus,System.String,System.Nullable{System.Double},System.String)">
             <summary>Contains the bounded provenance and outcome for one document page.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.RawText">
+            <summary>Gets bounded engine output before normalization.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.NormalizedText">
+            <summary>Gets the normalized page text retained downstream.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.RenderDpi">
+            <summary>Gets the configured render DPI for an OCR-rendered PDF page.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.RenderedWidth">
+            <summary>Gets the rendered page width when available.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.RenderedHeight">
+            <summary>Gets the rendered page height when available.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.PreprocessingSteps">
+            <summary>Gets truthful preprocessing steps applied before recognition.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrPageResult.ProcessingDuration">
+            <summary>Gets the bounded page processing duration when measured.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.Content.OcrRequest">
             <summary>Contains the bounded context for one local OCR request.</summary>
         </member>
@@ -1272,6 +1898,9 @@
         <member name="P:OpenSorSe.Application.Content.OcrRequest.ForceReprocessAllPages">
             <summary>Gets whether all PDF pages should be OCRed instead of preferring reliable native text.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.Content.OcrRequest.DiagnosticSessionId">
+            <summary>Gets an existing extraction diagnostic session that OCR should enrich.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.Content.OcrResult">
             <summary>Contains one controlled OCR outcome.</summary>
         </member>
@@ -1287,6 +1916,18 @@
         <member name="P:OpenSorSe.Application.Content.OcrResult.RasterizerIdentifier">
             <summary>Gets the rasterizer used for PDF pages, when applicable.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.Content.OcrResult.RawExtractedText">
+            <summary>Gets bounded OCR engine output before normalization.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrResult.NormalizedText">
+            <summary>Gets the distinct normalized OCR value.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrResult.DownstreamText">
+            <summary>Gets the exact bounded value supplied to downstream indexing.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.OcrResult.WasTruncated">
+            <summary>Gets whether page, text, output, or storage bounds truncated the attempt.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.Content.ExtractedMetadataField">
             <summary>Represents one normalized metadata value and its provenance.</summary>
         </member>
@@ -1301,6 +1942,15 @@
         </member>
         <member name="P:OpenSorSe.Application.Content.MetadataExtractionResult.PdfPages">
             <summary>Gets bounded PDF-native text and quality state per page.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.MetadataExtractionResult.RawNativeText">
+            <summary>Gets bounded embedded text before pipeline normalization, when exposed by an extractor.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.MetadataExtractionResult.ExtractionStrategies">
+            <summary>Gets the concrete extractor strategy names that contributed to the result.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.MetadataExtractionResult.WasTruncated">
+            <summary>Gets whether any native text, page, field, or warning retention bound was reached.</summary>
         </member>
         <member name="T:OpenSorSe.Application.Content.ContentRecord">
             <summary>Contains one bounded, reusable local content record.</summary>
@@ -1320,6 +1970,9 @@
         <member name="P:OpenSorSe.Application.Content.ContentRecord.OcrPages">
             <summary>Gets bounded page-level OCR/native provenance for PDF content.</summary>
         </member>
+        <member name="P:OpenSorSe.Application.Content.ContentRecord.DiagnosticSessionId">
+            <summary>Gets the session-only extraction diagnostic identity; it is never persisted.</summary>
+        </member>
         <member name="T:OpenSorSe.Application.Content.PdfRasterizerCapability">
             <summary>Describes the local PDF rendering capability.</summary>
         </member>
@@ -1331,6 +1984,12 @@
         </member>
         <member name="M:OpenSorSe.Application.Content.RenderedPdfPage.#ctor(System.Int32,System.String,System.Int64)">
             <summary>Contains one temporary, application-owned rendered PDF page.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.RenderedPdfPage.Width">
+            <summary>Gets the rendered pixel width when reported by the rasterizer.</summary>
+        </member>
+        <member name="P:OpenSorSe.Application.Content.RenderedPdfPage.Height">
+            <summary>Gets the rendered pixel height when reported by the rasterizer.</summary>
         </member>
         <member name="T:OpenSorSe.Application.Content.IPdfPageRasterizer">
             <summary>Renders bounded individual PDF pages without modifying the source document.</summary>
@@ -1422,7 +2081,7 @@
         <member name="T:OpenSorSe.Application.Content.ContentIndexingService">
             <summary>Indexes bounded metadata and OCR text with cache reuse and per-file failure isolation.</summary>
         </member>
-        <member name="M:OpenSorSe.Application.Content.ContentIndexingService.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.Content.IMetadataExtractionPipeline,OpenSorSe.Application.Content.IOcrService,OpenSorSe.Application.Content.IContentStore,OpenSorSe.Core.Logging.ILoggingService)">
+        <member name="M:OpenSorSe.Application.Content.ContentIndexingService.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.Content.IMetadataExtractionPipeline,OpenSorSe.Application.Content.IOcrService,OpenSorSe.Application.Content.IContentStore,OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
             <summary>Initializes the local scan-content indexing stage.</summary>
         </member>
         <member name="M:OpenSorSe.Application.Content.ContentIndexingService.IndexAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
@@ -1491,6 +2150,9 @@
         <member name="F:OpenSorSe.Application.Content.ContentText.MaximumTextCharacters">
             <summary>Gets the maximum text retained per native or OCR source.</summary>
         </member>
+        <member name="F:OpenSorSe.Application.Content.ContentText.MaximumPageRecords">
+            <summary>Gets the maximum bounded page records retained by the extraction feature itself.</summary>
+        </member>
         <member name="M:OpenSorSe.Application.Content.ContentText.Normalize(System.String)">
             <summary>Normalizes whitespace and removes unsupported controls within the content bound.</summary>
         </member>
@@ -1500,7 +2162,7 @@
         <member name="T:OpenSorSe.Application.Content.OcrService">
             <summary>Enforces local OCR settings and input bounds before invoking a concrete engine.</summary>
         </member>
-        <member name="M:OpenSorSe.Application.Content.OcrService.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.Content.IOcrEngine)">
+        <member name="M:OpenSorSe.Application.Content.OcrService.#ctor(OpenSorSe.Core.Configuration.IConfigurationService,OpenSorSe.Application.Content.IOcrEngine,OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
             <summary>Initializes the bounded local OCR service.</summary>
         </member>
         <member name="M:OpenSorSe.Application.Content.OcrService.GetCapabilityAsync(System.Threading.CancellationToken)">
@@ -2548,6 +3210,38 @@
             <returns>true if a possible match was found; false if no more matches are possible.</returns>
         </member>
         <member name="M:System.Text.RegularExpressions.Generated.SecretPropertyRegex_1.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the DiagnosticContentRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.DiagnosticContentRegex_2.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
             <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
             <param name="inputSpan">The text being scanned by the regular expression.</param>
             <returns>true if the regular expression matches at the current position; otherwise, false.</returns>

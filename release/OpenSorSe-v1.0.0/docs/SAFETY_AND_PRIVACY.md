@@ -21,7 +21,17 @@ The AI capabilities are separately enabled file-rename, logical folder-structure
 
 Document-text interpretation has its own default-off switch. It requires global AI, the capability, a valid endpoint/model, one explicitly selected known content record, and a direct **Generate** command. Its prompt contains bounded normalized extracted text with page/native/OCR provenance, never file bytes or an absolute path. A custom endpoint may be remote, so Settings warns before this switch is enabled. The prompt forbids exact/legal/financial transcription claims and any filesystem action.
 
-AI output is untrusted strict JSON. Whole-response validation checks identities, counts, schema, filenames, path components, confidence, and hierarchy safety. Accept/edit/reject records a local review decision only. No AI output can invoke restructuring, the historical Executor library, or another file operation.
+AI output is untrusted strict JSON. Rename models return only an extension-free stem; OpenSorSe preserves and appends the known extension. Folder models receive only opaque request-local IDs and prevalidated folder-name choices. Whole-response validation independently checks exact schema/casing, evidence grounding, identities, counts, assignments, filenames, path components, confidence, parent relationships, cycles, and hierarchy safety. Any safety or identity failure rejects the complete suggestion.
+
+At most one structured-output repair request may follow malformed JSON or a schema-shape failure. It uses the same task/schema, the bounded prior response, and one concise validation error. Timeouts, cancellations, unsafe or unknown identities, path/traversal attempts, hard bounds, provider failures, and model misuse are never retried. Original and repair attempts remain separate related in-memory diagnostics sessions. Accept/edit/reject records a local review decision only. No AI output can invoke restructuring, the historical Executor library, or another file operation.
+
+## Advanced diagnostics
+
+Advanced Diagnostics is independent of ordinary logging and disabled by default. Its master switch controls all detailed collection; separate category switches currently instrument AI, OCR/text extraction, and scanning. Duplicate detection, search/indexing, rules/organisation, file operations, and standalone performance diagnostics are clearly marked not yet instrumented.
+
+Redacted mode is the default. The separate unredacted opt-in may retain filenames, complete paths, document/OCR text, metadata, tags, search terms, prompts, and responses in process memory. Secrets, credentials, authorization headers, passwords, and API keys are removed in every mode. Detailed diagnostic content is never written to normal logs.
+
+The common store retains at most 50 sessions overall, 20 per category, 750 events per session, 100 OCR page records, 500 scan-entry records, 1,048,576 characters per field/event field set, approximately 8 MiB per session, and approximately 32 MiB total. Rendered OCR images are not retained. History is cleared when diagnostics are disabled and saved, when unredacted retention is turned back off, when explicitly cleared, or when OpenSorSe exits. Data leaves memory only through an explicit JSON or text export chosen by the user.
 
 ## OCR, metadata, tags, and semantic search
 
@@ -51,7 +61,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
 
-Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, and credentials are never written to ordinary logs. Session diagnostic events are bounded; raw AI request diagnostics require AI, Advanced mode, and a separate explicit setting.
+Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
 
 Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
 

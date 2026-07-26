@@ -208,13 +208,92 @@ Use only disposable files for the apply test.
 142. Enable AI and rename suggestions, leave the model empty, and confirm the action explains that a model must be selected.
 143. Stop Ollama, select a file, choose **Retry connection**, and confirm the concise unavailable state.
 144. Start Ollama, retry, and confirm server/model readiness refreshes without restarting OpenSorSe.
-145. Select an unavailable model and confirm the distinct model-missing state.
-146. Select an installed model, save, retry, and generate a rename suggestion.
-147. Confirm the actual model used matches the newly selected model.
-148. Cancel a running rename request, then retry it and confirm the command is usable.
-149. Repeat after timeout, connection failure, and malformed response; confirm each next request can run.
-150. Switch files after cancellation and confirm a later proposal belongs only to the new selected file.
-151. Confirm rename, folder, and document proposals remain labelled unverified and never change a file automatically.
+
+### Unified Advanced Diagnostics
+
+145. Enable AI, Advanced mode, **Enable diagnostics**, **AI diagnostics**, and **Show unredacted diagnostic content**; save.
+146. Start a rename suggestion and confirm the unified non-modal diagnostics window opens immediately and stays usable.
+147. Observe stages update through request serialization, connection, response receipt, extraction, parsing, validation, and completion.
+148. Copy the exact system prompt, user prompt, and request JSON; confirm request JSON names the selected model, uses `stream: false`, includes the capability JSON Schema in `format`, temperature `0.0`, and `keep_alive: 5m`.
+149. Compare the raw Ollama envelope, extracted assistant `response`, and pretty-printed parsed JSON in their shared sections.
+150. Trigger or reproduce a validation failure and confirm the Validation tab reports the property, required status, expected/actual type and value, and a precise failure—for example, an object-valued `reason` is identified as an object.
+151. Exercise category/status filters, section copy, complete-report copy, selected JSON/text export, all-session export, word-wrap, auto-scroll, selected clear, and clear-all.
+152. Close the diagnostics window during a request and confirm the AI operation continues.
+153. Disable diagnostics and save; confirm retained records are cleared, then start another request and confirm no diagnostics window opens.
+154. Repeat with Ollama unavailable, a missing model, timeout, cancellation, malformed JSON, Markdown-fenced JSON, and a non-success HTTP response.
+155. Confirm no prompt or response body appears in ordinary application log files and no file or folder is changed by any suggestion.
+
+#### AI diagnostic flow
+
+- Run a successful rename request and confirm exact system prompt, user prompt, serialized Ollama request, endpoint/model, raw HTTP response, extracted assistant content, parsed response, validation detail, and timing remain separate.
+- Exercise invalid structured output, Ollama unavailable, timeout, and cancellation. Confirm terminal states and warnings/errors are accurate and each later request remains usable.
+- Run connection test and model discovery and confirm each has its own bounded session.
+- Generate AI interpretation from indexed document text and confirm its AI session shows the related OCR/extraction session ID.
+- Return one repairable malformed/schema-invalid response and then valid corrected JSON. Confirm exactly two related AI sessions retain the original and repair prompts/responses separately.
+- Repeat with timeout, cancellation, unknown source ID, absolute/traversal path, invented metadata, oversized response, and a second invalid repair. Confirm timeout/cancellation/safety failures are not repaired and no operation makes more than two generation requests.
+
+#### OCR and text-extraction diagnostic flow
+
+- Test a native-text PDF, scanned PDF, mixed native/scanned PDF, image containing text, blank page, low-quality or rotated scan, and corrupt file.
+- Confirm the native-text quality decision and OCR fallback reason are explicit; mixed PDFs preserve separate per-page native and OCR sources.
+- Confirm raw native text, raw OCR text, normalized text, and text supplied downstream remain distinct and include character counts/truncation.
+- Confirm engine/version/language, page count/status, render DPI/dimensions, preprocessing, duration, cancellation, warnings, errors, and partial success are accurate. Do not expect invented confidence.
+- Confirm rendered-page previews state that they were not retained and temporary OCR images are removed.
+
+#### Scanning diagnostic flow
+
+- Test a normal folder, ordinary files unsupported by downstream extraction, an inaccessible folder, cancellation, a missing/changed file, a metadata failure, a reparse-point/junction, and a folder exceeding 500 discovered entries.
+- Confirm accepted files remain accepted regardless of downstream extraction support; skipped entries state their actual reason.
+- Confirm root/options, start/end, discovery, progress, counts, elapsed time, access/reparse decisions, cancellation, and metadata issues are visible.
+- Confirm a large scan aggregates and reports omitted detail rather than growing without bound.
+
+#### Privacy, settings, and lifecycle
+
+- Repeat AI, OCR, and scanning in redacted mode and verify paths, filenames, document/OCR text, metadata, tags, terms, prompts, and responses are not exposed.
+- Explicitly enable unredacted content, repeat with disposable data, and confirm exact content is visible while credentials, secrets, and authorization headers remain absent.
+- Toggle each category independently and confirm only enabled, instrumented categories create detailed sessions. Confirm planned categories say **not yet instrumented** and do not claim collection.
+- Turn the master switch off and confirm subordinate controls are inactive; save and confirm retained sessions are cleared and new operations produce no detailed sessions.
+- Close the diagnostics window during AI, OCR, and scanning operations and confirm no operation is cancelled.
+- Verify all seven shared tabs, reverse chronology, live updates, filters, correlation IDs, clear actions, JSON/text exports, auto-scroll, and word wrap.
+- Exit and restart OpenSorSe and confirm retained diagnostic history is gone. Inspect normal logs and confirm no sensitive detailed content appears.
+156. Select an unavailable model and confirm the distinct model-missing state.
+157. Select an installed model, save, retry, and generate a rename suggestion.
+158. Confirm the actual model used matches the newly selected model.
+159. Cancel a running rename request, then retry it and confirm the command is usable.
+160. Repeat after timeout, connection failure, and malformed response; confirm each next request can run.
+161. Switch files after cancellation and confirm a later proposal belongs only to the new selected file.
+162. Confirm rename, folder, and document proposals remain labelled unverified and never change a file automatically.
+163. Select 13 files for a folder suggestion. Confirm the UI reports all 13, states that none were sent, creates no partial plan, and makes no Ollama discovery or generation request.
+
+## Small-model manual matrix
+
+Do not claim model compatibility until every row below is run against disposable data, the exact Ollama model ID/tag and quantization/build are recorded, and failures are retained with diagnostics exports. Use one installed model in each size band; a blank exact ID means the row is not run.
+
+| Model band | Exact Ollama model ID / build | Case | Expected safety result | Status | Diagnostic/export reference |
+| --- | --- | --- | --- | --- | --- |
+| Approximately 2B |  | Clear filename | One grounded extension-free stem; original extension appended by OpenSorSe | Not run |  |
+| Approximately 2B |  | Ambiguous filename | `no_suggestion` | Not run |  |
+| Approximately 2B |  | Scanned document with OCR noise | Supported values only or `no_suggestion`; no invented facts | Not run |  |
+| Approximately 2B |  | Multilingual metadata | Valid Unicode grounded output or `no_suggestion` | Not run |  |
+| Approximately 2B |  | Obvious folder categories | Every opaque ID assigned exactly once | Not run |  |
+| Approximately 2B |  | Ambiguous folder files | Uncertain IDs assigned to `Other` | Not run |  |
+| Approximately 2B |  | Malformed-response recovery | At most one related repair; corrected JSON or controlled rejection | Not run |  |
+| Approximately 4B |  | Clear filename | One grounded extension-free stem; original extension appended by OpenSorSe | Not run |  |
+| Approximately 4B |  | Ambiguous filename | `no_suggestion` | Not run |  |
+| Approximately 4B |  | Scanned document with OCR noise | Supported values only or `no_suggestion`; no invented facts | Not run |  |
+| Approximately 4B |  | Multilingual metadata | Valid Unicode grounded output or `no_suggestion` | Not run |  |
+| Approximately 4B |  | Obvious folder categories | Every opaque ID assigned exactly once | Not run |  |
+| Approximately 4B |  | Ambiguous folder files | Uncertain IDs assigned to `Other` | Not run |  |
+| Approximately 4B |  | Malformed-response recovery | At most one related repair; corrected JSON or controlled rejection | Not run |  |
+| Approximately 7B or 8B |  | Clear filename | One grounded extension-free stem; original extension appended by OpenSorSe | Not run |  |
+| Approximately 7B or 8B |  | Ambiguous filename | `no_suggestion` | Not run |  |
+| Approximately 7B or 8B |  | Scanned document with OCR noise | Supported values only or `no_suggestion`; no invented facts | Not run |  |
+| Approximately 7B or 8B |  | Multilingual metadata | Valid Unicode grounded output or `no_suggestion` | Not run |  |
+| Approximately 7B or 8B |  | Obvious folder categories | Every opaque ID assigned exactly once | Not run |  |
+| Approximately 7B or 8B |  | Ambiguous folder files | Uncertain IDs assigned to `Other` | Not run |  |
+| Approximately 7B or 8B |  | Malformed-response recovery | At most one related repair; corrected JSON or controlled rejection | Not run |  |
+
+For each row, verify redacted and explicitly unredacted diagnostics, exact schema transport, property ordering, validation message clarity, normal-log privacy, and unchanged source files. Record model-specific limitations rather than treating a repairable response as proof of compatibility.
 
 ## Completion record
 

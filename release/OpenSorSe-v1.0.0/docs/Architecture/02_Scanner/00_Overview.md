@@ -16,7 +16,7 @@ The Scanner analyzes a user-selected folder without changing its contents. It tr
 * Traverse accessible directories recursively while respecting the configured link/reparse-point policy.
 * Discover files and collect filesystem metadata.
 * Calculate SHA-256 hashes for analysis and exact-duplicate detection.
-* Isolate inaccessible paths and other recoverable failures as diagnostics.
+* Isolate inaccessible paths and other recoverable failures as structured scan issues.
 * Report progress and honour cancellation.
 * Produce data consumed by deterministic rules and the in-memory results snapshot.
 
@@ -40,6 +40,16 @@ flowchart LR
     Rules --> Snapshot["In-memory results snapshot"]
     Traverse -. "warnings / cancellation" .-> Diagnostics["Diagnostics and status"]
 ```
+
+---
+
+## Advanced diagnostics
+
+When both the master and Scanning diagnostics switches are enabled, the scanner creates a process-local session containing the selected root, traversal options, start/end, accepted files and directories, skipped entries and reasons, access/missing/reparse decisions, progress, counts, cancellation, and elapsed time. The scanner continues to accept every ordinary non-reparse file; a format that is unsupported by downstream extraction is reported without changing scan behavior.
+
+Detailed entry records are limited to 500 per scan. Larger scans aggregate omitted entries and explicitly report sampling. Metadata reading has a related scanning session for missing/changed files, access failures, reparse decisions, and recoverable metadata errors. Paths are redacted before retention unless the separate unredacted setting is enabled. Collection failures never alter the read-only scan.
+
+See [Unified Advanced Diagnostics](../01_Core/10_Advanced_Diagnostics.md).
 
 ---
 

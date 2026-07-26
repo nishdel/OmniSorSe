@@ -19,6 +19,9 @@
             Gets or initializes the logging settings.
             </summary>
         </member>
+        <member name="P:OpenSorSe.Core.Configuration.ApplicationSettings.Diagnostics">
+            <summary>Gets or initializes the process-session advanced-diagnostics settings.</summary>
+        </member>
         <member name="P:OpenSorSe.Core.Configuration.ApplicationSettings.Ai">
             <summary>
             Gets or initializes the optional local AI-provider settings.
@@ -55,6 +58,47 @@
             <exception cref="T:OpenSorSe.Core.Configuration.ConfigurationValidationException">
             Thrown when a required settings group is missing.
             </exception>
+        </member>
+        <member name="T:OpenSorSe.Core.Configuration.DiagnosticsSettings">
+            <summary>Defines the master and per-category controls for process-session advanced diagnostics.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.EnableDiagnostics">
+            <summary>Gets or initializes whether any detailed diagnostic session may be collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.AiDiagnostics">
+            <summary>Gets or initializes whether detailed AI sessions may be collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.OcrAndTextExtractionDiagnostics">
+            <summary>Gets or initializes whether detailed OCR and extraction sessions may be collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.ScanningDiagnostics">
+            <summary>Gets or initializes whether detailed scanning sessions may be collected.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.DuplicateDetectionDiagnostics">
+            <summary>Gets or initializes the planned duplicate-detection category preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.SearchAndIndexingDiagnostics">
+            <summary>Gets or initializes the planned search and indexing category preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.RulesAndOrganisationDiagnostics">
+            <summary>Gets or initializes the planned rules and organisation category preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.FileOperationDiagnostics">
+            <summary>Gets or initializes the planned file-operation category preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.PerformanceDiagnostics">
+            <summary>Gets or initializes the planned performance category preference.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.DiagnosticsSettings.ShowUnredactedDiagnosticContent">
+            <summary>Gets or initializes whether classified content may be retained without ordinary redaction.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Configuration.DiagnosticsSettings.IsCategoryEnabled(OpenSorSe.Core.Diagnostics.DiagnosticCategory)">
+            <summary>Gets whether both the master switch and one category switch are enabled.</summary>
+            <param name="category">The category to evaluate.</param>
+            <returns>True only when detailed collection is authorized for the category.</returns>
+        </member>
+        <member name="M:OpenSorSe.Core.Configuration.DiagnosticsSettings.Validate">
+            <summary>Validates future-compatible settings.</summary>
         </member>
         <member name="T:OpenSorSe.Core.Configuration.SemanticSearchSettings">
             <summary>Defines bounded local deterministic Semantic Search Beta behavior.</summary>
@@ -197,6 +241,9 @@
         </member>
         <member name="P:OpenSorSe.Core.Configuration.AiSettings.RequestDiagnosticsEnabled">
             <summary>Gets or initializes opt-in, session-only raw AI request diagnostics.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Configuration.AiSettings.ShowUnredactedDiagnosticContent">
+            <summary>Gets or initializes whether opt-in diagnostics retain exact prompt and response display content.</summary>
         </member>
         <member name="P:OpenSorSe.Core.Configuration.AiSettings.Endpoint">
             <summary>
@@ -414,6 +461,974 @@
         <member name="M:OpenSorSe.Core.DependencyInjection.ServiceRegistry.IsRegistered``1">
             <inheritdoc />
         </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticCategory">
+            <summary>Identifies one independently configurable advanced-diagnostic feature area.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.Ai">
+            <summary>Optional AI provider requests and validation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.OcrAndTextExtraction">
+            <summary>Native text extraction, OCR decisions, rendering, and recognized text.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.Scanning">
+            <summary>Filesystem discovery and metadata-read decisions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.DuplicateDetection">
+            <summary>Exact and future duplicate-detection diagnostics.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.SearchAndIndexing">
+            <summary>Search, saved-query, and index diagnostics.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.RulesAndOrganisation">
+            <summary>Rule evaluation and organization-planning diagnostics.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.FileOperations">
+            <summary>File execution and undo diagnostics.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticCategory.Performance">
+            <summary>Cross-feature timing and resource diagnostics.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticStatus">
+            <summary>Identifies the lifecycle state of a diagnostic session or event.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.Active">
+            <summary>The operation is still running.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.Succeeded">
+            <summary>The operation completed successfully.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.PartiallySucceeded">
+            <summary>The operation completed with usable partial output.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.Skipped">
+            <summary>The operation deliberately did not run.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.Rejected">
+            <summary>The operation produced data that was safely rejected.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.Cancelled">
+            <summary>The caller cancelled the operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticStatus.Failed">
+            <summary>The operation failed safely.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticSeverity">
+            <summary>Identifies the user-visible importance of one diagnostic event.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSeverity.Information">
+            <summary>Ordinary lifecycle or data-flow information.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSeverity.Warning">
+            <summary>A recoverable warning, bound, sample, or partial result.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSeverity.Error">
+            <summary>A failed stage or controlled error.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticSection">
+            <summary>Maps captured data into the shared diagnostics-viewer tabs.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSection.Overview">
+            <summary>High-level request and result facts.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSection.Inputs">
+            <summary>Inputs supplied to the operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSection.IntermediateResults">
+            <summary>Values produced between input and final output.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSection.Outputs">
+            <summary>Final values supplied downstream or returned.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSection.WarningsAndErrors">
+            <summary>Warnings, validation failures, and controlled errors.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticSection.Performance">
+            <summary>Timing, sizes, counts, and resource facts.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticDataClassification">
+            <summary>Classifies a captured value for category-aware retention redaction.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticDataClassification.Safe">
+            <summary>Safe bounded metadata such as counts, statuses, and non-secret identifiers.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticDataClassification.Path">
+            <summary>A local path, file name, or folder name.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticDataClassification.Content">
+            <summary>Document, OCR, prompt, response, or search content.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticDataClassification.Metadata">
+            <summary>Potentially identifying file metadata, tags, or query terms.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticDataClassification.Secret">
+            <summary>A credential or secret that is never retained.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticContentRetentionMode">
+            <summary>Identifies the privacy mode applied before a diagnostic session was retained.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticContentRetentionMode.Redacted">
+            <summary>Paths, content, and metadata were redacted before retention.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticContentRetentionMode.UnredactedSecretsRemoved">
+            <summary>Classified content was retained exactly, while credentials and secrets were still removed.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticField">
+            <summary>Contains one named, classified diagnostic value.</summary>
+            <param name="Name">The stable display name.</param>
+            <param name="Value">The captured value before the store applies bounds and redaction.</param>
+            <param name="Classification">The privacy classification used before retention.</param>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticField.#ctor(System.String,System.String,OpenSorSe.Core.Diagnostics.DiagnosticDataClassification)">
+            <summary>Contains one named, classified diagnostic value.</summary>
+            <param name="Name">The stable display name.</param>
+            <param name="Value">The captured value before the store applies bounds and redaction.</param>
+            <param name="Classification">The privacy classification used before retention.</param>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticField.Name">
+            <summary>The stable display name.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticField.Value">
+            <summary>The captured value before the store applies bounds and redaction.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticField.Classification">
+            <summary>The privacy classification used before retention.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticEvent">
+            <summary>Contains one immutable, ordered event in a diagnostic session.</summary>
+            <param name="Sequence">The monotonically increasing process-local event sequence.</param>
+            <param name="SessionId">The owning diagnostic session.</param>
+            <param name="TimestampUtc">The UTC capture time.</param>
+            <param name="Stage">The stable feature stage.</param>
+            <param name="Status">The stage state after this event.</param>
+            <param name="Severity">The user-visible event severity.</param>
+            <param name="Section">The shared viewer section that owns the event details.</param>
+            <param name="Message">A concise bounded summary.</param>
+            <param name="Fields">The immutable bounded and redacted values.</param>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticEvent.#ctor(System.Int64,System.String,System.DateTimeOffset,System.String,OpenSorSe.Core.Diagnostics.DiagnosticStatus,OpenSorSe.Core.Diagnostics.DiagnosticSeverity,OpenSorSe.Core.Diagnostics.DiagnosticSection,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField})">
+            <summary>Contains one immutable, ordered event in a diagnostic session.</summary>
+            <param name="Sequence">The monotonically increasing process-local event sequence.</param>
+            <param name="SessionId">The owning diagnostic session.</param>
+            <param name="TimestampUtc">The UTC capture time.</param>
+            <param name="Stage">The stable feature stage.</param>
+            <param name="Status">The stage state after this event.</param>
+            <param name="Severity">The user-visible event severity.</param>
+            <param name="Section">The shared viewer section that owns the event details.</param>
+            <param name="Message">A concise bounded summary.</param>
+            <param name="Fields">The immutable bounded and redacted values.</param>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Sequence">
+            <summary>The monotonically increasing process-local event sequence.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.SessionId">
+            <summary>The owning diagnostic session.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.TimestampUtc">
+            <summary>The UTC capture time.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Stage">
+            <summary>The stable feature stage.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Status">
+            <summary>The stage state after this event.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Severity">
+            <summary>The user-visible event severity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Section">
+            <summary>The shared viewer section that owns the event details.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Message">
+            <summary>A concise bounded summary.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticEvent.Fields">
+            <summary>The immutable bounded and redacted values.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticSession">
+            <summary>Contains one immutable, bounded process-session diagnostic snapshot.</summary>
+            <param name="SessionId">The stable process-local request identity.</param>
+            <param name="Category">The feature category.</param>
+            <param name="Operation">The concrete feature operation.</param>
+            <param name="StartedAtUtc">The UTC start time.</param>
+            <param name="CompletedAtUtc">The UTC completion time, when terminal.</param>
+            <param name="Elapsed">The latest elapsed duration.</param>
+            <param name="Status">The current or final status.</param>
+            <param name="ContentRetentionMode">The privacy mode applied before this immutable snapshot was retained.</param>
+            <param name="RelatedSessionIds">Bounded parent and downstream correlation identities.</param>
+            <param name="Context">Bounded session-level inputs and identifiers.</param>
+            <param name="Events">Ordered immutable event snapshots.</param>
+            <param name="DroppedEventCount">The number of events omitted after a bound was reached.</param>
+            <param name="ApproximateRetainedBytes">The store's conservative memory estimate for this snapshot.</param>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticSession.#ctor(System.String,OpenSorSe.Core.Diagnostics.DiagnosticCategory,System.String,System.DateTimeOffset,System.Nullable{System.DateTimeOffset},System.TimeSpan,OpenSorSe.Core.Diagnostics.DiagnosticStatus,OpenSorSe.Core.Diagnostics.DiagnosticContentRetentionMode,System.Collections.Generic.IReadOnlyList{System.String},System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField},System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticEvent},System.Int32,System.Int64)">
+            <summary>Contains one immutable, bounded process-session diagnostic snapshot.</summary>
+            <param name="SessionId">The stable process-local request identity.</param>
+            <param name="Category">The feature category.</param>
+            <param name="Operation">The concrete feature operation.</param>
+            <param name="StartedAtUtc">The UTC start time.</param>
+            <param name="CompletedAtUtc">The UTC completion time, when terminal.</param>
+            <param name="Elapsed">The latest elapsed duration.</param>
+            <param name="Status">The current or final status.</param>
+            <param name="ContentRetentionMode">The privacy mode applied before this immutable snapshot was retained.</param>
+            <param name="RelatedSessionIds">Bounded parent and downstream correlation identities.</param>
+            <param name="Context">Bounded session-level inputs and identifiers.</param>
+            <param name="Events">Ordered immutable event snapshots.</param>
+            <param name="DroppedEventCount">The number of events omitted after a bound was reached.</param>
+            <param name="ApproximateRetainedBytes">The store's conservative memory estimate for this snapshot.</param>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.SessionId">
+            <summary>The stable process-local request identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.Category">
+            <summary>The feature category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.Operation">
+            <summary>The concrete feature operation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.StartedAtUtc">
+            <summary>The UTC start time.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.CompletedAtUtc">
+            <summary>The UTC completion time, when terminal.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.Elapsed">
+            <summary>The latest elapsed duration.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.Status">
+            <summary>The current or final status.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.ContentRetentionMode">
+            <summary>The privacy mode applied before this immutable snapshot was retained.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.RelatedSessionIds">
+            <summary>Bounded parent and downstream correlation identities.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.Context">
+            <summary>Bounded session-level inputs and identifiers.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.Events">
+            <summary>Ordered immutable event snapshots.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.DroppedEventCount">
+            <summary>The number of events omitted after a bound was reached.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.ApproximateRetainedBytes">
+            <summary>The store's conservative memory estimate for this snapshot.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSession.WasTruncated">
+            <summary>Gets whether one or more detailed events were sampled or truncated.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticCategoryDescriptor">
+            <summary>Describes one category shown in Settings and the unified viewer.</summary>
+            <param name="Category">The category identity.</param>
+            <param name="DisplayName">The concise user-facing label.</param>
+            <param name="Description">The instrumentation scope or planned placeholder description.</param>
+            <param name="IsInstrumented">Whether this release publishes detailed sessions for the category.</param>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticCategoryDescriptor.#ctor(OpenSorSe.Core.Diagnostics.DiagnosticCategory,System.String,System.String,System.Boolean)">
+            <summary>Describes one category shown in Settings and the unified viewer.</summary>
+            <param name="Category">The category identity.</param>
+            <param name="DisplayName">The concise user-facing label.</param>
+            <param name="Description">The instrumentation scope or planned placeholder description.</param>
+            <param name="IsInstrumented">Whether this release publishes detailed sessions for the category.</param>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticCategoryDescriptor.Category">
+            <summary>The category identity.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticCategoryDescriptor.DisplayName">
+            <summary>The concise user-facing label.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticCategoryDescriptor.Description">
+            <summary>The instrumentation scope or planned placeholder description.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticCategoryDescriptor.IsInstrumented">
+            <summary>Whether this release publishes detailed sessions for the category.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticSessionChangedEventArgs">
+            <summary>Publishes immutable session snapshots after a session changes.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticSessionChangedEventArgs.#ctor(OpenSorSe.Core.Diagnostics.DiagnosticSession,System.Boolean)">
+            <summary>Initializes one observer notification.</summary>
+            <param name="session">The latest immutable session snapshot.</param>
+            <param name="isNew">Whether this notification created the session.</param>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSessionChangedEventArgs.Session">
+            <summary>Gets the latest immutable session snapshot.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticSessionChangedEventArgs.IsNew">
+            <summary>Gets whether the session was just created.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticLimits">
+            <summary>Defines explicit process-memory and presentation bounds for advanced diagnostics.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumRetainedSessions">
+            <summary>Maximum retained sessions across all categories.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumRetainedSessionsPerCategory">
+            <summary>Maximum retained sessions in one category.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumEventsPerSession">
+            <summary>Maximum detailed events retained in one session.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumTextCharacters">
+            <summary>Maximum characters retained in one diagnostic value.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumTextCharactersPerEvent">
+            <summary>Maximum aggregate field characters retained in one context or event.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumApproximateRetainedBytesPerSession">
+            <summary>Approximate maximum retained memory for one diagnostic session.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumPageRecords">
+            <summary>Maximum OCR page records retained in one extraction session.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumScanEntryRecords">
+            <summary>Maximum detailed file or directory records retained in one scan session.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumImagePreviewsPerSession">
+            <summary>Maximum rendered-image previews retained in one session.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumImagePreviewBytes">
+            <summary>Maximum retained bytes for one future image preview.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.MaximumApproximateRetainedBytes">
+            <summary>Approximate maximum retained process memory for all detailed sessions.</summary>
+        </member>
+        <member name="F:OpenSorSe.Core.Diagnostics.DiagnosticLimits.TruncationMarker">
+            <summary>Marker appended to a bounded value.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticCategoryRegistry">
+            <summary>Provides the supported category registry and truthful instrumentation state.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.DiagnosticCategoryRegistry.All">
+            <summary>Gets all categories in stable Settings order.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticCategoryRegistry.Get(OpenSorSe.Core.Diagnostics.DiagnosticCategory)">
+            <summary>Gets the descriptor for one category.</summary>
+            <param name="category">The category to resolve.</param>
+            <returns>The matching stable descriptor.</returns>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.IDiagnosticsStore">
+            <summary>Retains immutable advanced-diagnostic sessions only for the current process.</summary>
+        </member>
+        <member name="E:OpenSorSe.Core.Diagnostics.IDiagnosticsStore.SessionChanged">
+            <summary>Occurs after one retained session is created or updated.</summary>
+        </member>
+        <member name="E:OpenSorSe.Core.Diagnostics.IDiagnosticsStore.SessionsCleared">
+            <summary>Occurs after retained sessions are explicitly cleared.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsStore.GetRecent">
+            <summary>Gets retained sessions in reverse chronological order.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsStore.Get(System.String)">
+            <summary>Gets one retained session by identity.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsStore.Clear(System.String)">
+            <summary>Clears one retained session and releases its content.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsStore.ClearAll">
+            <summary>Clears every retained session and releases detailed content.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink">
+            <summary>Publishes typed, UI-independent events into advanced-diagnostic sessions.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink.IsCategoryEnabled(OpenSorSe.Core.Diagnostics.DiagnosticCategory)">
+            <summary>Gets whether the category is currently authorized to collect detailed data.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink.BeginSession(OpenSorSe.Core.Diagnostics.DiagnosticCategory,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField},System.Collections.Generic.IReadOnlyCollection{System.String})">
+            <summary>Begins one detailed session, or returns null when collection is disabled.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink.Publish(System.String,System.String,OpenSorSe.Core.Diagnostics.DiagnosticStatus,OpenSorSe.Core.Diagnostics.DiagnosticSeverity,OpenSorSe.Core.Diagnostics.DiagnosticSection,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField})">
+            <summary>Publishes one typed event into an existing session.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink.Relate(System.String,System.String[])">
+            <summary>Adds bounded parent or downstream correlation identities.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink.Complete(System.String,OpenSorSe.Core.Diagnostics.DiagnosticStatus,System.TimeSpan,System.String,OpenSorSe.Core.Diagnostics.DiagnosticSeverity,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField})">
+            <summary>Marks a session terminal and publishes its final summary.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.IDiagnosticsCollector">
+            <summary>Owns active diagnostics settings, collection, retention, and observation.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.IDiagnosticsCollector.IsEnabled">
+            <summary>Gets whether the master detailed-diagnostics switch is enabled.</summary>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.IDiagnosticsCollector.ShowUnredactedContent">
+            <summary>Gets whether explicitly sensitive content may be retained unredacted.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsCollector.Configure(OpenSorSe.Core.Configuration.DiagnosticsSettings)">
+            <summary>Applies current settings and clears history when the master switch is disabled.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.IDiagnosticsRedactor">
+            <summary>Redacts classified values before any detailed content is retained.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsRedactor.Redact(OpenSorSe.Core.Diagnostics.DiagnosticCategory,OpenSorSe.Core.Diagnostics.DiagnosticField,System.Boolean)">
+            <summary>Returns a bounded value safe for process-memory retention.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.IDiagnosticsExportService">
+            <summary>Builds explicit manual exports without persisting automatically.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsExportService.ExportJson(OpenSorSe.Core.Diagnostics.DiagnosticSession)">
+            <summary>Serializes one selected session as JSON.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsExportService.ExportText(OpenSorSe.Core.Diagnostics.DiagnosticSession)">
+            <summary>Formats one selected session as plain text.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsExportService.ExportAllJson(System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticSession})">
+            <summary>Serializes all supplied retained sessions as JSON.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.IDiagnosticsExportService.ExportAllText(System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticSession})">
+            <summary>Formats all supplied retained sessions as plain text.</summary>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticsIsolation">
+            <summary>Creates a failure-isolating event-sink facade for feature services.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsIsolation.Protect(OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
+            <summary>Returns a facade whose failures never escape into a feature operation.</summary>
+            <param name="sink">The optional process-local diagnostics sink.</param>
+            <returns>A protected sink, or null when no sink was supplied.</returns>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor">
+            <summary>Applies classification-aware redaction and unconditional secret removal.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.Redact(OpenSorSe.Core.Diagnostics.DiagnosticCategory,OpenSorSe.Core.Diagnostics.DiagnosticField,System.Boolean)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.RedactSecrets(System.String)">
+            <summary>Removes credential-like values even when unredacted content was explicitly enabled.</summary>
+            <param name="value">The candidate diagnostic text.</param>
+            <returns>Text with supported credential patterns removed.</returns>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.AuthorizationRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(?i)(\\"?authorization\\"?\\s*[:=]\\s*\\"?)(?:bearer\\s+)?[^\\r\\n,;\\"]+</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ 1st capture group.<br/>
+                ○ Match '"' atomically, optionally.<br/>
+                ○ Match a character in the set [Aa].<br/>
+                ○ Match a character in the set [Uu].<br/>
+                ○ Match a character in the set [Tt].<br/>
+                ○ Match a character in the set [Hh].<br/>
+                ○ Match a character in the set [Oo].<br/>
+                ○ Match a character in the set [Rr].<br/>
+                ○ Match a character in the set [Ii].<br/>
+                ○ Match a character in the set [Zz].<br/>
+                ○ Match a character in the set [Aa].<br/>
+                ○ Match a character in the set [Tt].<br/>
+                ○ Match a character in the set [Ii].<br/>
+                ○ Match a character in the set [Oo].<br/>
+                ○ Match a character in the set [Nn].<br/>
+                ○ Match '"' atomically, optionally.<br/>
+                ○ Match a whitespace character atomically any number of times.<br/>
+                ○ Match a character in the set [:=].<br/>
+                ○ Match a whitespace character greedily any number of times.<br/>
+                ○ Match '"' greedily, optionally.<br/>
+            ○ Optional (greedy).<br/>
+                ○ Match a character in the set [Bb].<br/>
+                ○ Match a character in the set [Ee].<br/>
+                ○ Match a character in the set [Aa].<br/>
+                ○ Match a character in the set [Rr].<br/>
+                ○ Match a character in the set [Ee].<br/>
+                ○ Match a character in the set [Rr].<br/>
+                ○ Match a whitespace character greedily at least once.<br/>
+            ○ Match a character in the set [^\n\r",;] atomically at least once.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.AuthorizationValueRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(?i)\\b((?:bearer|basic)\\s+)[a-z0-9._~+/=-]{8,}</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match if at a word boundary.<br/>
+            ○ 1st capture group.<br/>
+                ○ Match a character in the set [Bb].<br/>
+                ○ Match with 2 alternative expressions.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                ○ Match a whitespace character atomically at least once.<br/>
+            ○ Match a character in the set [+--9=A-Z_a-z~\u212A] atomically at least 8 times.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.SecretLiteralRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(?i)\\b(?:gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|sk-[a-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|eyJ[a-z0-9_-]{8,}\\.[a-z0-9_-]{8,}\\.[a-z0-9_-]{8,})\\b</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match if at a word boundary.<br/>
+            ○ Match with 4 alternative expressions.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Gg].<br/>
+                    ○ Match with 2 alternative expressions.<br/>
+                        ○ Match a sequence of expressions.<br/>
+                            ○ Match a character in the set [Hh].<br/>
+                            ○ Match a character in the set [OPRSUoprsu].<br/>
+                            ○ Match '_'.<br/>
+                            ○ Match a character in the set [0-9A-Za-z\u212A] greedily at least 20 times.<br/>
+                        ○ Match a sequence of expressions.<br/>
+                            ○ Match a character in the set [Ii].<br/>
+                            ○ Match a character in the set [Tt].<br/>
+                            ○ Match a character in the set [Hh].<br/>
+                            ○ Match a character in the set [Uu].<br/>
+                            ○ Match a character in the set [Bb].<br/>
+                            ○ Match '_'.<br/>
+                            ○ Match a character in the set [Pp].<br/>
+                            ○ Match a character in the set [Aa].<br/>
+                            ○ Match a character in the set [Tt].<br/>
+                            ○ Match '_'.<br/>
+                            ○ Match a character in the set [0-9A-Z_a-z\u212A] greedily at least 20 times.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Ss].<br/>
+                    ○ Match a character in the set [Kk\u212A].<br/>
+                    ○ Match '-'.<br/>
+                    ○ Match a character in the set [-0-9A-Z_a-z\u212A] greedily at least 20 times.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Aa].<br/>
+                    ○ Match a character in the set [Kk\u212A].<br/>
+                    ○ Match a character in the set [Ii].<br/>
+                    ○ Match a character in the set [Aa].<br/>
+                    ○ Match a character in the set [0-9A-Za-z\u212A] exactly 16 times.<br/>
+                ○ Match a sequence of expressions.<br/>
+                    ○ Match a character in the set [Ee].<br/>
+                    ○ Match a character in the set [Yy].<br/>
+                    ○ Match a character in the set [Jj].<br/>
+                    ○ Match a character in the set [-0-9A-Z_a-z\u212A] atomically at least 8 times.<br/>
+                    ○ Match '.'.<br/>
+                    ○ Match a character in the set [-0-9A-Z_a-z\u212A] atomically at least 8 times.<br/>
+                    ○ Match '.'.<br/>
+                    ○ Match a character in the set [-0-9A-Z_a-z\u212A] greedily at least 8 times.<br/>
+            ○ Match if at a word boundary.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.PrivateKeyRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(?is)-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match the string "-----".<br/>
+            ○ Match a character in the set [Bb].<br/>
+            ○ Match a character in the set [Ee].<br/>
+            ○ Match a character in the set [Gg].<br/>
+            ○ Match a character in the set [Ii].<br/>
+            ○ Match a character in the set [Nn].<br/>
+            ○ Match ' '.<br/>
+            ○ Optional (greedy).<br/>
+                ○ Match with 3 alternative expressions.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match ' '.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match ' '.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                        ○ Match ' '.<br/>
+            ○ Match a character in the set [Pp].<br/>
+            ○ Match a character in the set [Rr].<br/>
+            ○ Match a character in the set [Ii].<br/>
+            ○ Match a character in the set [Vv].<br/>
+            ○ Match a character in the set [Aa].<br/>
+            ○ Match a character in the set [Tt].<br/>
+            ○ Match a character in the set [Ee].<br/>
+            ○ Match ' '.<br/>
+            ○ Match a character in the set [Kk\u212A].<br/>
+            ○ Match a character in the set [Ee].<br/>
+            ○ Match a character in the set [Yy].<br/>
+            ○ Match the string "-----".<br/>
+            ○ Match any character lazily any number of times.<br/>
+            ○ Match the string "-----".<br/>
+            ○ Match a character in the set [Ee].<br/>
+            ○ Match a character in the set [Nn].<br/>
+            ○ Match a character in the set [Dd].<br/>
+            ○ Match ' '.<br/>
+            ○ Optional (greedy).<br/>
+                ○ Match with 3 alternative expressions.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match ' '.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match ' '.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                        ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                        ○ Match ' '.<br/>
+            ○ Match a character in the set [Pp].<br/>
+            ○ Match a character in the set [Rr].<br/>
+            ○ Match a character in the set [Ii].<br/>
+            ○ Match a character in the set [Vv].<br/>
+            ○ Match a character in the set [Aa].<br/>
+            ○ Match a character in the set [Tt].<br/>
+            ○ Match a character in the set [Ee].<br/>
+            ○ Match ' '.<br/>
+            ○ Match a character in the set [Kk\u212A].<br/>
+            ○ Match a character in the set [Ee].<br/>
+            ○ Match a character in the set [Yy].<br/>
+            ○ Match the string "-----".<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.SecretPropertyRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(?i)(\\"?(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret|client[_-]?secret|credential|cookie|set-cookie)\\"?\\s*[:=]\\s*\\"?)([^\\",\\r\\n;}]+)(\\"?)</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ 1st capture group.<br/>
+                ○ Match '"' atomically, optionally.<br/>
+                ○ Match with 7 alternative expressions.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match with 2 alternative expressions.<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Pp].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [-_] atomically, optionally.<br/>
+                                ○ Match a character in the set [Kk\u212A].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Yy].<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Cc] exactly 2 times.<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                                ○ Match a character in the set [-_] atomically, optionally.<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                                ○ Match a character in the set [Oo].<br/>
+                                ○ Match a character in the set [Kk\u212A].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ff].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                        ○ Match a character in the set [-_] atomically, optionally.<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Kk\u212A].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Kk\u212A].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                        ○ Match a character in the set [Ww].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match with 3 alternative expressions.<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Ll].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Nn].<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                                ○ Match a character in the set [-_] atomically, optionally.<br/>
+                                ○ Match a character in the set [Ss].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Cc].<br/>
+                                ○ Match a character in the set [Rr].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Rr].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Dd].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Nn].<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [Aa].<br/>
+                                ○ Match a character in the set [Ll].<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Oo] exactly 2 times.<br/>
+                                ○ Match a character in the set [Kk\u212A].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match '-'.<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Oo] exactly 2 times.<br/>
+                        ○ Match a character in the set [Kk\u212A].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                ○ Match '"' atomically, optionally.<br/>
+                ○ Match a whitespace character atomically any number of times.<br/>
+                ○ Match a character in the set [:=].<br/>
+                ○ Match a whitespace character greedily any number of times.<br/>
+                ○ Match '"' atomically, optionally.<br/>
+            ○ 2nd capture group.<br/>
+                ○ Match a character in the set [^\n\r",;}] atomically at least once.<br/>
+            ○ 3rd capture group.<br/>
+                ○ Match '"' atomically, optionally.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsRedactor.SecretNameRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>(?i)(^|[\\s_-])(authorization|proxy[_-]?authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret|client[_-]?secret|credential|cookie|set-cookie)([\\s_-]|$)</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ 1st capture group.<br/>
+                ○ Match with 2 alternative expressions.<br/>
+                    ○ Match if at the beginning of the string.<br/>
+                    ○ Match a character in the set [-_\s].<br/>
+            ○ 2nd capture group.<br/>
+                ○ Match with 9 alternative expressions.<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Zz].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Xx].<br/>
+                        ○ Match a character in the set [Yy].<br/>
+                        ○ Match a character in the set [-_] atomically, optionally.<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Uu].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Zz].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match with 2 alternative expressions.<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Pp].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [-_] atomically, optionally.<br/>
+                                ○ Match a character in the set [Kk\u212A].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Yy].<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Cc] exactly 2 times.<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                                ○ Match a character in the set [-_] atomically, optionally.<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                                ○ Match a character in the set [Oo].<br/>
+                                ○ Match a character in the set [Kk\u212A].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ff].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Hh].<br/>
+                        ○ Match a character in the set [-_] atomically, optionally.<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Kk\u212A].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Kk\u212A].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Nn].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Pp].<br/>
+                        ○ Match a character in the set [Aa].<br/>
+                        ○ Match a character in the set [Ss] exactly 2 times.<br/>
+                        ○ Match a character in the set [Ww].<br/>
+                        ○ Match a character in the set [Oo].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Dd].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Rr].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match with 3 alternative expressions.<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Ll].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Nn].<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                                ○ Match a character in the set [-_] atomically, optionally.<br/>
+                                ○ Match a character in the set [Ss].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Cc].<br/>
+                                ○ Match a character in the set [Rr].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Rr].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Dd].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                                ○ Match a character in the set [Nn].<br/>
+                                ○ Match a character in the set [Tt].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [Aa].<br/>
+                                ○ Match a character in the set [Ll].<br/>
+                            ○ Match a sequence of expressions.<br/>
+                                ○ Match a character in the set [Oo] exactly 2 times.<br/>
+                                ○ Match a character in the set [Kk\u212A].<br/>
+                                ○ Match a character in the set [Ii].<br/>
+                                ○ Match a character in the set [Ee].<br/>
+                    ○ Match a sequence of expressions.<br/>
+                        ○ Match a character in the set [Ss].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+                        ○ Match a character in the set [Tt].<br/>
+                        ○ Match '-'.<br/>
+                        ○ Match a character in the set [Cc].<br/>
+                        ○ Match a character in the set [Oo] exactly 2 times.<br/>
+                        ○ Match a character in the set [Kk\u212A].<br/>
+                        ○ Match a character in the set [Ii].<br/>
+                        ○ Match a character in the set [Ee].<br/>
+            ○ 3rd capture group.<br/>
+                ○ Match with 2 alternative expressions, atomically.<br/>
+                    ○ Match a character in the set [-_\s].<br/>
+                    ○ Match if at the end of the string or if before an ending newline.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector">
+            <summary>Thread-safe, bounded, observer-safe implementation of the common diagnostics contracts.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.#ctor(OpenSorSe.Core.Diagnostics.IDiagnosticsRedactor)">
+            <summary>Initializes an empty process-session diagnostics store.</summary>
+            <param name="redactor">The optional classification-aware retention redactor.</param>
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.IsEnabled">
+            <inheritdoc />
+        </member>
+        <member name="P:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.ShowUnredactedContent">
+            <inheritdoc />
+        </member>
+        <member name="E:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.SessionChanged">
+            <inheritdoc />
+        </member>
+        <member name="E:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.SessionsCleared">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.Configure(OpenSorSe.Core.Configuration.DiagnosticsSettings)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.IsCategoryEnabled(OpenSorSe.Core.Diagnostics.DiagnosticCategory)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.BeginSession(OpenSorSe.Core.Diagnostics.DiagnosticCategory,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField},System.Collections.Generic.IReadOnlyCollection{System.String})">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.Publish(System.String,System.String,OpenSorSe.Core.Diagnostics.DiagnosticStatus,OpenSorSe.Core.Diagnostics.DiagnosticSeverity,OpenSorSe.Core.Diagnostics.DiagnosticSection,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField})">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.Relate(System.String,System.String[])">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.Complete(System.String,OpenSorSe.Core.Diagnostics.DiagnosticStatus,System.TimeSpan,System.String,OpenSorSe.Core.Diagnostics.DiagnosticSeverity,System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticField})">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.GetRecent">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.Get(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.Clear(System.String)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector.ClearAll">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Core.Diagnostics.DiagnosticsExportService">
+            <summary>Formats already-redacted retained sessions for explicit manual export.</summary>
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsExportService.ExportJson(OpenSorSe.Core.Diagnostics.DiagnosticSession)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsExportService.ExportText(OpenSorSe.Core.Diagnostics.DiagnosticSession)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsExportService.ExportAllJson(System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticSession})">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.Core.Diagnostics.DiagnosticsExportService.ExportAllText(System.Collections.Generic.IReadOnlyList{OpenSorSe.Core.Diagnostics.DiagnosticSession})">
+            <inheritdoc />
+        </member>
         <member name="T:OpenSorSe.Core.Errors.ApplicationError">
             <summary>
             Contains diagnostics for an error reported through the shared error handler.
@@ -590,9 +1605,6 @@
         </member>
         <member name="F:OpenSorSe.Core.Logging.DiagnosticEventLimits.MaximumSummaryLength">
             <summary>Maximum user-facing event summary length.</summary>
-        </member>
-        <member name="F:OpenSorSe.Core.Logging.DiagnosticEventLimits.MaximumExceptionSummaryLength">
-            <summary>Maximum safe exception-summary length.</summary>
         </member>
         <member name="T:OpenSorSe.Core.Logging.ILoggingService">
             <summary>
@@ -934,6 +1946,243 @@
         </member>
         <member name="M:OpenSorSe.Core.Tasks.TaskManager.TryCancel(System.Guid)">
             <inheritdoc />
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.AuthorizationRegex_0">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the AuthorizationRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationRegex_0.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the AuthorizationValueRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.AuthorizationValueRegex_1.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the SecretLiteralRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretLiteralRegex_2.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the PrivateKeyRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.PrivateKeyRegex_3.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the SecretPropertyRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretPropertyRegex_4.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretNameRegex_5">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the SecretNameRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.SecretNameRegex_5.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretNameRegex_5.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretNameRegex_5.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretNameRegex_5.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.SecretNameRegex_5.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretNameRegex_5.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretNameRegex_5.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.SecretNameRegex_5.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.Utilities">
+            <summary>Helper methods used by generated <see cref="T:System.Text.RegularExpressions.Regex"/>-derived implementations.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout">
+            <summary>Default timeout value set in <see cref="T:System.AppContext"/>, or <see cref="F:System.Text.RegularExpressions.Regex.InfiniteMatchTimeout"/> if none was set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_hasTimeout">
+            <summary>Whether <see cref="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout"/> is non-infinite.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.IndexOfNonAsciiOrAny_3750BE5A441ED3C65A5D0FFEC80ADE7B32AD41E6C2F10263C631EA1DD4DE19F9(System.ReadOnlySpan{System.Char})">
+            <summary>Finds the next index of any character that matches a character in the set [-ACPR-T_acpr-t\s].</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.IsBoundary(System.ReadOnlySpan{System.Char},System.Int32)">
+            <summary>Determines whether the specified index is a boundary.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.IsWordChar(System.Char)">
+            <summary>Determines whether the character is part of the [\w] set.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.StackPop(System.Int32[],System.Int32@,System.Int32@,System.Int32@)">
+            <summary>Pops 2 values from the backtracking stack.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.StackPush(System.Int32[]@,System.Int32@,System.Int32)">
+            <summary>Pushes 1 value onto the backtracking stack.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.StackPush(System.Int32[]@,System.Int32@,System.Int32,System.Int32)">
+            <summary>Pushes 2 values onto the backtracking stack.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.Utilities.StackPush(System.Int32[]@,System.Int32@,System.Int32,System.Int32,System.Int32)">
+            <summary>Pushes 3 values onto the backtracking stack.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_240000041000080000000000000000">
+            <summary>Supports searching for characters in or not in "\n\r\",;".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_240000041000080000000000000020">
+            <summary>Supports searching for characters in or not in "\n\r\",;}".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_40000000A001D000A001D00">
+            <summary>Supports searching for characters in or not in "\"ACPRSTacprst".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_ascii_FFC1FFFFFEDFFFFFF5FFE27FF5FFE2FF">
+            <summary>Supports searching for characters in or not in "\0\u0001\u0002\u0003\u0004\u0005\u0006\a\b\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f!\"#$%&amp;'()*+,./0123456789:;&lt;=&gt;?@BDEFGHIJKLMNOQUVWXYZ[\\]^`bdefghijklmnoquvwxyz{|}~\u007f".</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_nonAscii_A9C8BE9F7E4D377909D6080908C888A3F2BB0060A4B16F8296BBB40DB2ADCF16">
+            <summary>Supports searching for characters in or not in "HIKYhikyK".</summary>
         </member>
     </members>
 </doc>
