@@ -141,7 +141,7 @@ public sealed class WatchedFolderConfigurationTests
     }
 
     [Fact]
-    public async Task ConfigurationStore_SchemaOne_LoadsAndWritesForwardToSchemaTwo()
+    public async Task ConfigurationStore_SchemaOne_LoadsAndWritesForwardToCurrentSchema()
     {
         var workspace = CreateWorkspace();
         var root = Directory.CreateDirectory(Path.Combine(workspace, "root")).FullName;
@@ -166,7 +166,7 @@ public sealed class WatchedFolderConfigurationTests
             Assert.Equal(schemaOneBytes, await File.ReadAllBytesAsync(path));
             await legacyStore.SaveAsync([loaded], CancellationToken.None);
             var upgraded = JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
-            Assert.Equal(2, upgraded["SchemaVersion"]!.GetValue<int>());
+            Assert.Equal(WatchedFolderLimits.CurrentConfigurationSchemaVersion, upgraded["SchemaVersion"]!.GetValue<int>());
         }
         finally
         {

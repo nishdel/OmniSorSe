@@ -1,3 +1,5 @@
+using OpenSorSe.Application.Workflows;
+
 namespace OpenSorSe.Application.Models;
 
 /// <summary>
@@ -13,4 +15,8 @@ public sealed record ResultsSnapshot(
     IReadOnlyList<ResultPlannedOperation> PlannedOperations,
     IReadOnlyList<ResultIssue> Issues,
     ResultsSnapshotStatistics Statistics,
-    bool IsDuplicateDataAvailable);
+    bool IsDuplicateDataAvailable)
+{
+    /// <summary>Gets the immutable workflow revision snapshot used by this historical scan.</summary>
+    public WorkflowConfigurationSnapshot? Workflow { get; init; }
+}

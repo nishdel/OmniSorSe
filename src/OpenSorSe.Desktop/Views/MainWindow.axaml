@@ -138,6 +138,9 @@
                 <Grid IsVisible="{Binding IsWatchedFoldersSelected}">
                     <views:WatchedFoldersView DataContext="{Binding WatchedFolders}" />
                 </Grid>
+                <Grid IsVisible="{Binding IsWorkflowsSelected}">
+                    <views:WorkflowsView DataContext="{Binding Workflows}" />
+                </Grid>
                 <Grid IsVisible="{Binding IsReviewChangesSelected}">
                     <views:ChangePlanReviewView DataContext="{Binding ReviewChanges}" />
                 </Grid>

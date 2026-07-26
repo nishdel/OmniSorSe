@@ -18,6 +18,7 @@ using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.AI;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Core.Diagnostics;
@@ -56,6 +57,10 @@ public partial class App : Avalonia.Application
                     .Current.Diagnostics);
             _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
                 .RecoverInterruptedAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            _serviceProvider.GetRequiredService<IWorkflowLibraryService>()
+                .InitializeAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
             _serviceProvider.GetRequiredService<IWatchedFolderCoordinator>()
@@ -194,13 +199,31 @@ public partial class App : Avalonia.Application
                 Path.Combine(settingsDirectory, "watched-activity.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
+        services.AddSingleton<IWorkflowTemplateEngine, WorkflowTemplateEngine>();
+        services.AddSingleton<IWorkflowValidator, WorkflowValidator>();
+        services.AddSingleton<IWorkflowLibraryStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonWorkflowLibraryStore(
+                Path.Combine(settingsDirectory, "workflow-library.json"),
+                serviceProvider.GetRequiredService<IWorkflowValidator>(),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IWorkflowUsageInspector, WatchedWorkflowUsageInspector>();
+        services.AddSingleton<IWorkflowLibraryService, WorkflowLibraryService>();
+        services.AddSingleton<IWorkflowConfigurationResolver, WorkflowConfigurationResolver>();
+        services.AddSingleton<IWorkflowImportExportService, WorkflowImportExportService>();
+        services.AddSingleton<IWorkflowRecipePlanService, WorkflowRecipePlanService>();
+        services.AddSingleton<WorkflowSortingRecipeResolver>();
         services.AddSingleton<IWatchedFolderManager, WatchedFolderManager>();
         services.AddSingleton<IWatchedFileSystem, PhysicalWatchedFileSystem>();
         services.AddSingleton<IFileStabilityChecker, FileStabilityChecker>();
         services.AddSingleton<IWatchedFolderEventSourceFactory, FileSystemWatcherEventSourceFactory>();
         services.AddSingleton<SessionWatchedSortingRecipeResolver>();
         services.AddSingleton<IWatchedSortingRecipeResolver>(serviceProvider =>
-            serviceProvider.GetRequiredService<SessionWatchedSortingRecipeResolver>());
+            serviceProvider.GetRequiredService<WorkflowSortingRecipeResolver>());
         services.AddSingleton<IWatchedSuggestionService, WatchedSuggestionService>();
         services.AddSingleton<IWatchedExecutionCorrelation, OperationJournalWatchedExecutionCorrelation>();
         services.AddSingleton<IWatchedFolderProcessor, WatchedFolderProcessor>();

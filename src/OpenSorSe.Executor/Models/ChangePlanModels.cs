@@ -126,6 +126,20 @@ public sealed record FileIdentitySnapshot(
     DateTimeOffset CreationTimeUtc,
     string? ContentHash);
 
+/// <summary>Captures immutable workflow and recipe provenance for one proposal.</summary>
+public sealed record ChangeWorkflowProvenance(
+    string ProfileId,
+    string ProfileName,
+    int ProfileRevision,
+    string RecipeId,
+    string RecipeName,
+    int RecipeRevision,
+    IReadOnlyDictionary<string, string> ValuesUsed,
+    IReadOnlyList<string> EvidenceSources,
+    bool IsAiAssisted,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> UnresolvedFields);
+
 /// <summary>Represents one immutable proposed action inside a Change Plan.</summary>
 public sealed record ProposedChangeAction(
     string ActionId,
@@ -145,7 +159,11 @@ public sealed record ProposedChangeAction(
     IReadOnlyList<ChangeConflict> Conflicts,
     bool WasUserEdited,
     string? AiModel,
-    string? AiRequestCorrelationId);
+    string? AiRequestCorrelationId)
+{
+    /// <summary>Gets the optional immutable v1.3 workflow provenance for this proposal.</summary>
+    public ChangeWorkflowProvenance? WorkflowProvenance { get; init; }
+}
 
 /// <summary>Represents a persisted, reviewable and non-mutating collection of proposed changes.</summary>
 public sealed record ChangePlan(
@@ -185,7 +203,11 @@ public sealed record ChangeActionProposal(
     DateTimeOffset? SourceLastWriteTimeUtc = null,
     string? ContentHash = null,
     string? AiModel = null,
-    string? AiRequestCorrelationId = null);
+    string? AiRequestCorrelationId = null)
+{
+    /// <summary>Gets the optional workflow provenance captured without executing the proposal.</summary>
+    public ChangeWorkflowProvenance? WorkflowProvenance { get; init; }
+}
 
 /// <summary>Describes a request to capture proposals as a non-mutating Change Plan.</summary>
 public sealed record ChangePlanCreationRequest(

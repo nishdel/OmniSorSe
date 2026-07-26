@@ -137,17 +137,27 @@
                             <TextBox Text="{Binding FolderPath}" IsReadOnly="True" />
                             <TextBlock Text="Display name" FontWeight="SemiBold" />
                             <TextBox Text="{Binding DisplayName}" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                <StackPanel>
-                                    <TextBlock Text="Scan profile" FontWeight="SemiBold" />
-                                    <TextBox Text="{Binding ScanProfileId}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Sorting recipe (optional)" FontWeight="SemiBold" />
-                                    <TextBox Text="{Binding SortingRecipeId}"
-                                             PlaceholderText="current" />
-                                </StackPanel>
-                            </Grid>
+                            <TextBlock Text="Workflow profile" FontWeight="SemiBold" />
+                            <ComboBox ItemsSource="{Binding WorkflowProfiles}"
+                                      SelectedItem="{Binding SelectedWorkflowProfile}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Text="Sorting recipes (zero or more)" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding WorkflowRecipes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                            <CheckBox IsChecked="{Binding IsSelected}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding StateText}" Opacity="0.7" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <CheckBox Content="Include subfolders"
                                       IsChecked="{Binding IncludeSubfolders}" />
                             <CheckBox Content="Run deterministic analysis"

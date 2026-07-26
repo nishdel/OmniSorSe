@@ -13,6 +13,7 @@ using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Diagnostics;
@@ -42,6 +43,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.Diagnostics, "System check", FeatureRequirement.Advanced, NavigationGroup.Advanced, "✓"),
         new(NavigationDestination.History, "Operation History", FeatureRequirement.Regular, NavigationGroup.Primary, "↶"),
         new(NavigationDestination.WatchedFolders, "Watched Folders", FeatureRequirement.Regular, NavigationGroup.Primary, "W"),
+        new(NavigationDestination.Workflows, "Workflows", FeatureRequirement.Regular, NavigationGroup.Primary, "P"),
         new(NavigationDestination.Help, "Help", FeatureRequirement.Regular, NavigationGroup.Footer, "?"),
         new(NavigationDestination.About, "About", FeatureRequirement.Regular, NavigationGroup.Footer, "i"),
     ]);
@@ -50,6 +52,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IResultsSnapshotProjector _resultsSnapshotProjector;
     private readonly IResultsCatalogStore? _catalogStore;
     private readonly SessionWatchedSortingRecipeResolver? _watchedSortingRecipeResolver;
+    private readonly IWorkflowConfigurationResolver? _workflowConfigurationResolver;
+    private readonly IWorkflowRecipePlanService? _workflowRecipePlanService;
+    private readonly IWatchedFolderManager? _watchedFolderManager;
+    private readonly IWatchedFolderCoordinator? _watchedFolderCoordinator;
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
@@ -256,7 +262,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IOperationReportExporter? operationReportExporter = null,
         IWatchedFolderManager? watchedFolderManager = null,
         IWatchedFolderCoordinator? watchedFolderCoordinator = null,
-        SessionWatchedSortingRecipeResolver? watchedSortingRecipeResolver = null)
+        SessionWatchedSortingRecipeResolver? watchedSortingRecipeResolver = null,
+        IWorkflowLibraryService? workflowLibrary = null,
+        IWorkflowConfigurationResolver? workflowConfigurationResolver = null,
+        IWorkflowRecipePlanService? workflowRecipePlanService = null,
+        IWorkflowImportExportService? workflowImportExportService = null,
+        IWorkflowTemplateEngine? workflowTemplateEngine = null)
         : this(
             configurationService,
             loggingService,
@@ -290,7 +301,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             operationReportExporter,
             watchedFolderManager,
             watchedFolderCoordinator,
-            watchedSortingRecipeResolver)
+            watchedSortingRecipeResolver,
+            workflowLibrary,
+            workflowConfigurationResolver,
+            workflowRecipePlanService,
+            workflowImportExportService,
+            workflowTemplateEngine)
     {
     }
 
@@ -327,7 +343,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IOperationReportExporter? operationReportExporter = null,
         IWatchedFolderManager? watchedFolderManager = null,
         IWatchedFolderCoordinator? watchedFolderCoordinator = null,
-        SessionWatchedSortingRecipeResolver? watchedSortingRecipeResolver = null)
+        SessionWatchedSortingRecipeResolver? watchedSortingRecipeResolver = null,
+        IWorkflowLibraryService? workflowLibrary = null,
+        IWorkflowConfigurationResolver? workflowConfigurationResolver = null,
+        IWorkflowRecipePlanService? workflowRecipePlanService = null,
+        IWorkflowImportExportService? workflowImportExportService = null,
+        IWorkflowTemplateEngine? workflowTemplateEngine = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -336,8 +357,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _resultsSnapshotProjector = resultsSnapshotProjector ?? throw new ArgumentNullException(nameof(resultsSnapshotProjector));
         _catalogStore = catalogStore;
         _watchedSortingRecipeResolver = watchedSortingRecipeResolver;
+        _workflowConfigurationResolver = workflowConfigurationResolver;
+        _workflowRecipePlanService = workflowRecipePlanService;
+        _watchedFolderManager = watchedFolderManager;
+        _watchedFolderCoordinator = watchedFolderCoordinator;
         Dashboard = new DashboardViewModel(Navigate);
-        FolderSelection = new FolderSelectionViewModel();
+        FolderSelection = new FolderSelectionViewModel(workflowLibrary);
         ScanProgress = new ScanProgressViewModel();
         Results = new ResultsViewModel(
             configurationService,
@@ -353,7 +378,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             watchedFolderManager,
             watchedFolderCoordinator,
             externalFileLauncher,
-            changePlanStore);
+            changePlanStore,
+            workflowLibrary);
+        Workflows = new WorkflowsViewModel(
+            workflowLibrary,
+            workflowImportExportService,
+            workflowTemplateEngine);
         Catalog = new CatalogViewModel(configurationService, catalogStore);
         CatalogSearch = new CatalogSearchViewModel(configurationService, catalogStore, savedSearchStore);
         SemanticSearch = new SemanticSearchViewModel(
@@ -414,6 +444,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.ChangePlanCreated += OnChangePlanCreated;
         WatchedFolders.ReviewPlanRequested += OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested += OnWatchedFolderNotificationRequested;
+        Workflows.RunScanRequested += OnWorkflowRunScanRequested;
+        Workflows.AssignToWatchedFolderRequested += OnWorkflowAssignRequested;
+        Workflows.LibraryChanged += OnWorkflowLibraryChanged;
         ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
@@ -454,6 +487,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets persistent watched-folder configuration and incremental-scan presentation state.</summary>
     public WatchedFoldersViewModel WatchedFolders { get; }
+
+    /// <summary>Gets persistent workflow-profile and sorting-recipe management state.</summary>
+    public WorkflowsViewModel Workflows { get; }
 
     /// <summary>
     /// Gets the opt-in, application-owned saved results catalog state.
@@ -713,6 +749,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsDashboardSelected));
                 OnPropertyChanged(nameof(IsScanSelected));
                 OnPropertyChanged(nameof(IsWatchedFoldersSelected));
+                OnPropertyChanged(nameof(IsWorkflowsSelected));
                 OnPropertyChanged(nameof(IsResultsSelected));
                 OnPropertyChanged(nameof(IsReviewChangesSelected));
                 OnPropertyChanged(nameof(IsDuplicatesSelected));
@@ -743,6 +780,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Dashboard => "Home",
         NavigationDestination.Scan => "Scan",
         NavigationDestination.WatchedFolders => "Watched Folders",
+        NavigationDestination.Workflows => "Workflows",
         NavigationDestination.Results => "Files",
         NavigationDestination.ReviewChanges => "Review Changes",
         NavigationDestination.Duplicates => "Duplicates",
@@ -808,6 +846,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether watched-folder management is selected.</summary>
     public bool IsWatchedFoldersSelected => SelectedDestination == NavigationDestination.WatchedFolders;
+
+    /// <summary>Gets whether workflow-profile and recipe management is selected.</summary>
+    public bool IsWorkflowsSelected => SelectedDestination == NavigationDestination.Workflows;
 
     /// <summary>
     /// Gets whether the results-review page is currently selected.
@@ -881,7 +922,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets whether a later feature-page destination is currently selected.
     /// </summary>
-    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
+    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
 
     /// <summary>
     /// Selects a documented application-shell destination.
@@ -912,6 +953,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (destination == NavigationDestination.History)
         {
             _ = UndoHistory.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.Workflows)
+        {
+            _ = Workflows.RefreshAsync();
         }
         else if (destination == NavigationDestination.WatchedFolders)
         {
@@ -993,6 +1038,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.ChangePlanCreated -= OnChangePlanCreated;
         WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested -= OnWatchedFolderNotificationRequested;
+        Workflows.RunScanRequested -= OnWorkflowRunScanRequested;
+        Workflows.AssignToWatchedFolderRequested -= OnWorkflowAssignRequested;
+        Workflows.LibraryChanged -= OnWorkflowLibraryChanged;
         ReviewChanges.ReturnRequested -= OnReviewChangesReturnRequested;
         ScanProgress.PropertyChanged -= OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged -= OnHostedOperationPropertyChanged;
@@ -1032,7 +1080,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _watchedSortingRecipeResolver?.SetCurrentRules(rules);
         StatusText = _watchedSortingRecipeResolver is null
             ? "Rules remain available for the current manual scan session."
-            : "The current-session sorting recipe is available to watched folders configured with recipe ID \"current\".";
+            : "Rules remain available for the current manual scan session. Persistent watched folders must use a saved workflow recipe.";
     }
 
     private void OnMeaningSearchRequested(object? sender, EventArgs eventArgs)
@@ -1084,6 +1132,55 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void OnWatchedFolderNotificationRequested(object? sender, NotificationRequest request) =>
         Notifications.Publish(request);
+
+    private void OnWorkflowRunScanRequested(object? sender, string profileId)
+    {
+        _ = FolderSelection.RefreshProfilesAsync();
+        if (FolderSelection.SelectProfile(profileId))
+        {
+            Navigate(NavigationDestination.Scan);
+            StatusText = "Select scan folders and review the workflow summary before starting.";
+        }
+    }
+
+    private void OnWorkflowAssignRequested(object? sender, string profileId)
+    {
+        WatchedFolders.SelectProfileForEditor(profileId);
+        Navigate(NavigationDestination.WatchedFolders);
+        StatusText = "Choose or add a watched folder, then save the selected persistent workflow profile.";
+    }
+
+    private async void OnWorkflowLibraryChanged(object? sender, string itemId)
+    {
+        try
+        {
+            await FolderSelection.RefreshProfilesAsync();
+            await WatchedFolders.RefreshWorkflowChoicesAsync();
+            if (_watchedFolderManager is null || _watchedFolderCoordinator is null)
+            {
+                return;
+            }
+
+            var configurations = await _watchedFolderManager.ListAsync(CancellationToken.None);
+            foreach (var configuration in configurations.Where(configuration =>
+                         string.Equals(
+                             WatchedWorkflowUsageInspector.NormalizeLegacyProfileId(configuration.ScanProfileId),
+                             itemId,
+                             StringComparison.Ordinal) ||
+                         configuration.SortingRecipeIds.Contains(itemId, StringComparer.Ordinal) ||
+                         string.Equals(configuration.SortingRecipeId, itemId, StringComparison.Ordinal)))
+            {
+                await _watchedFolderCoordinator.ReconcileNowAsync(
+                    configuration.Id,
+                    CancellationToken.None);
+            }
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"Workflow references could not be refreshed safely: {exception.Message}";
+        }
+    }
 
     private void OnReviewChangesReturnRequested(object? sender, EventArgs eventArgs) =>
         Navigate(NavigationDestination.Results);
@@ -1306,10 +1403,47 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         try
         {
+            ResolvedWorkflowConfiguration? workflow = null;
+            if (_workflowConfigurationResolver is not null)
+            {
+                var resolution = await _workflowConfigurationResolver.ResolveForManualScanAsync(
+                    request.ProfileId,
+                    request.OneTimeOverride,
+                    cancellation.Token);
+                if (!resolution.IsAvailable || resolution.Configuration is null)
+                {
+                    ScanProgress.Fail(resolution.Message);
+                    StatusText = resolution.Message;
+                    Notifications.Publish(new NotificationRequest(NotificationSeverity.Error, StatusText));
+                    return;
+                }
+
+                workflow = resolution.Configuration;
+                if (resolution.Warnings.Count > 0)
+                {
+                    Notifications.Publish(new NotificationRequest(
+                        NotificationSeverity.Warning,
+                        string.Join(" ", resolution.Warnings)));
+                }
+            }
+
             var progress = new Progress<ProcessingProgress>(ApplyProgress);
+            var rules = workflow is null
+                ? RuleEditor.Rules.ToArray()
+                : workflow.Recipes
+                    .SelectMany(recipe => recipe.Rules)
+                    .Concat(RuleEditor.Rules)
+                    .GroupBy(rule => rule.Id, StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.Last())
+                    .OrderByDescending(rule => rule.Priority)
+                    .ThenBy(rule => rule.Id, StringComparer.Ordinal)
+                    .ToArray();
             var processingRequest = new ProcessingRequest(
                 new OpenSorSe.Scanner.Models.ScanRequest(request.FolderPaths, ScanOptions.Default),
-                RuleEditor.Rules.ToArray());
+                rules)
+            {
+                WorkflowConfiguration = workflow,
+            };
             var result = await _applicationController.StartProcessingAsync(
                 processingRequest,
                 progress,
@@ -1331,6 +1465,58 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 StatusText = $"Scan completed: {processing.Scan.Statistics.FilesDiscovered} file(s) and {processing.Scan.Statistics.DirectoriesDiscovered} folder(s) discovered.";
                 Notifications.Publish(new NotificationRequest(NotificationSeverity.Success, StatusText));
                 Navigate(NavigationDestination.Results);
+                if (workflow is not null && _workflowRecipePlanService is not null)
+                {
+                    ChangePlan? firstPlan = null;
+                    var createdCount = 0;
+                    foreach (var root in request.FolderPaths)
+                    {
+                        var rootPath = Path.GetFullPath(root);
+                        var files = snapshot.Files
+                            .Where(file => IsWithinRoot(rootPath, file.FullPath))
+                            .ToArray();
+                        if (files.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        var recipePlan = await _workflowRecipePlanService.CreatePlanAsync(
+                            workflow,
+                            rootPath,
+                            snapshot.SessionId,
+                            Array.AsReadOnly(files),
+                            cancellation.Token);
+                        if (recipePlan.Warnings.Count > 0)
+                        {
+                            var displayedWarnings = recipePlan.Warnings.Take(5).ToArray();
+                            var remainder = recipePlan.Warnings.Count - displayedWarnings.Length;
+                            var warningMessage = string.Join(" ", displayedWarnings);
+                            if (remainder > 0)
+                            {
+                                warningMessage += $" {remainder} additional workflow warning(s) are available in recipe evaluation details.";
+                            }
+
+                            Notifications.Publish(new NotificationRequest(
+                                NotificationSeverity.Warning,
+                                warningMessage));
+                        }
+
+                        if (recipePlan.Plan is not null)
+                        {
+                            firstPlan ??= recipePlan.Plan;
+                            createdCount++;
+                        }
+                    }
+
+                    if (firstPlan is not null)
+                    {
+                        await ReviewChanges.LoadAsync(firstPlan);
+                        Navigate(NavigationDestination.ReviewChanges);
+                        StatusText = createdCount == 1
+                            ? "A workflow Change Plan is ready for review. No file has been changed."
+                            : $"{createdCount} workflow Change Plans are ready; the first is open for review. No file has been changed.";
+                    }
+                }
             }
             else if (result.Session.Status == ProcessingSessionStatus.Cancelled)
             {
@@ -1388,6 +1574,19 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             ScanProgress.ApplyProgress(progress.ScanProgress);
         }
+    }
+
+    private static bool IsWithinRoot(string root, string candidate)
+    {
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var canonicalRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        var canonicalCandidate = Path.GetFullPath(candidate);
+        return string.Equals(canonicalRoot, canonicalCandidate, comparison) ||
+               canonicalCandidate.StartsWith(
+                   canonicalRoot + Path.DirectorySeparatorChar,
+                   comparison);
     }
 
     private void OnScanCancellationRequested(object? sender, EventArgs eventArgs)

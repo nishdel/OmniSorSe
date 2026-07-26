@@ -4,6 +4,7 @@ using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Executor.Models;
 
@@ -24,6 +25,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<ResultFile> _pageFiles = Array.Empty<ResultFile>();
     private ResultFile? _selectedFile;
     private string? _sourceScanId;
+    private WorkflowConfigurationSnapshot? _workflow;
     private AiFileRenameSuggestion? _renameSuggestion;
     private AiFolderStructurePlan? _folderStructurePlan;
     private AiDocumentInterpretationSuggestion? _documentInterpretation;
@@ -81,16 +83,21 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the rename capability is enabled and available.</summary>
     public bool IsFileRenameVisible =>
-        _aiSuggestionService is not null && _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.FileRenameSuggestions);
+        _aiSuggestionService is not null &&
+        IsWorkflowFileAllowed(_selectedFile) &&
+        _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.FileRenameSuggestions);
 
     /// <summary>Gets whether the folder-structure capability is enabled and available.</summary>
     public bool IsFolderStructureVisible =>
-        _aiSuggestionService is not null && _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.FolderStructureSuggestions);
+        _aiSuggestionService is not null &&
+        (_workflow is null || _pageFiles.Count > 0) &&
+        _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.FolderStructureSuggestions);
 
     /// <summary>Gets whether explicit bounded extracted-text interpretation is enabled.</summary>
     public bool IsDocumentInterpretationVisible =>
         _aiSuggestionService is not null &&
         _contentStore is not null &&
+        IsWorkflowFileAllowed(_selectedFile) &&
         _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.DocumentTextInterpretation);
 
     /// <summary>Explains exactly how the bounded folder request treats the current result-page files.</summary>
@@ -114,7 +121,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
                 ? "No file selected."
                 : $"Filename: {_selectedFile.DisplayFileName}; extension: {_selectedFile.NormalizedExtension}; type: {_selectedFile.ClassificationDisplay}.";
             return
-                $"Model: {model}{Environment.NewLine}" +
+                $"Model: {model}; profile policy: {WorkflowPolicyText()}.{Environment.NewLine}" +
                 $"Rename: {AiPromptBuilder.FileRenameTaskId}, prompt {AiPromptTemplates.FileRenamePromptVersion}. {selectedMetadata}{Environment.NewLine}" +
                 $"Folder plan: {AiPromptBuilder.FolderStructureTaskId}, prompt {AiPromptTemplates.FolderStructurePromptVersion}. {FolderStructureContextText}{Environment.NewLine}" +
                 $"Document interpretation: {AiPromptBuilder.DocumentInterpretationTaskId}, prompt {AiPromptTemplates.DocumentInterpretationPromptVersion}; " +
@@ -447,11 +454,15 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
             CancelOperation();
         }
 
+        _workflow = snapshot?.Workflow;
         HasContext = snapshot is not null;
         _sourceScanId = snapshot?.SessionId;
-        var fileChanged = !string.Equals(_selectedFile?.Id, selectedFile?.Id, StringComparison.Ordinal);
-        _selectedFile = selectedFile;
-        _pageFiles = pageFiles is null ? Array.Empty<ResultFile>() : Array.AsReadOnly(pageFiles.ToArray());
+        var eligibleSelectedFile = IsWorkflowFileAllowed(selectedFile) ? selectedFile : null;
+        var fileChanged = !string.Equals(_selectedFile?.Id, eligibleSelectedFile?.Id, StringComparison.Ordinal);
+        _selectedFile = eligibleSelectedFile;
+        _pageFiles = pageFiles is null
+            ? Array.Empty<ResultFile>()
+            : Array.AsReadOnly(pageFiles.Where(IsWorkflowFileAllowed).ToArray());
         OnPropertyChanged(nameof(FolderStructureContextText));
         OnPropertyChanged(nameof(AiRequestContextText));
         _existingFolderNames = snapshot is null
@@ -480,7 +491,10 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
 
         StatusText = IsVisible
             ? "AI capabilities are ready for an explicit review-only request."
-            : "Enable an AI capability in Settings to request review-only suggestions.";
+            : _workflow?.Ai.Enabled == false ||
+              _workflow?.Ai.InvocationPolicy == WorkflowAiInvocationPolicy.Disabled
+                ? "The workflow profile disables AI for this scan."
+                : "No current file satisfies both the workflow AI policy and global AI settings.";
         Status = StatusPresentation.Information(StatusText);
         ProgressStage = null;
         ProgressText = "No AI request is active.";
@@ -882,13 +896,56 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     private bool CanGenerateFolderStructure() =>
         !IsBusy &&
         IsFolderStructureVisible &&
-        _pageFiles.Count is > 0 and <= AiPromptLimits.MaximumFolderStructureFiles;
+        _pageFiles.Count is > 0 and <= AiPromptLimits.MaximumFolderStructureFiles &&
+        !string.IsNullOrWhiteSpace(_configurationService.Current.Ai.SelectedModel);
 
     private bool CanReviewFolderStructure() =>
         !IsBusy && IsFolderStructureVisible && FolderStructurePlan is not null;
 
     private bool CanGenerateDocumentInterpretation() =>
-        !IsBusy && IsDocumentInterpretationVisible && _selectedFile is not null;
+        !IsBusy &&
+        IsDocumentInterpretationVisible &&
+        _selectedFile is not null &&
+        !string.IsNullOrWhiteSpace(_configurationService.Current.Ai.SelectedModel);
+
+    private bool IsWorkflowFileAllowed(ResultFile? file)
+    {
+        if (_workflow is null)
+        {
+            return file is not null;
+        }
+
+        if (file is null ||
+            !_workflow.Ai.Enabled ||
+            _workflow.Ai.InvocationPolicy == WorkflowAiInvocationPolicy.Disabled)
+        {
+            return false;
+        }
+
+        return _workflow.Ai.InvocationPolicy switch
+        {
+            WorkflowAiInvocationPolicy.MissingDeterministicClassificationOnly =>
+                file.Category is null or OpenSorSe.Scanner.Models.FileCategory.Unknown,
+            WorkflowAiInvocationPolicy.AfterTextExtraction =>
+                _workflow.Extraction.TextEnabled || _workflow.Extraction.OcrEnabled,
+            WorkflowAiInvocationPolicy.SelectedFileTypesOnly =>
+                _workflow.Ai.SelectedFileTypes.Contains(
+                    NormalizeExtension(file.NormalizedExtension),
+                    StringComparer.OrdinalIgnoreCase),
+            WorkflowAiInvocationPolicy.ExplicitRetryOnly => true,
+            _ => true,
+        };
+    }
+
+    private string WorkflowPolicyText() =>
+        _workflow is null
+            ? "legacy scan (global settings)"
+            : $"{_workflow.ProfileName} r{_workflow.ProfileRevision}, {_workflow.Ai.InvocationPolicy}";
+
+    private static string NormalizeExtension(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : $".{value.Trim().TrimStart('.').ToLowerInvariant()}";
 
     private void NotifyCommandStates()
     {
@@ -901,6 +958,10 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         GenerateDocumentInterpretationCommand.NotifyCanExecuteChanged();
         DismissDocumentInterpretationCommand.NotifyCanExecuteChanged();
         RetryConnectionCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(IsFileRenameVisible));
+        OnPropertyChanged(nameof(IsFolderStructureVisible));
+        OnPropertyChanged(nameof(IsDocumentInterpretationVisible));
+        OnPropertyChanged(nameof(IsVisible));
         OnPropertyChanged(nameof(IsRenameActionAvailable));
         OnPropertyChanged(nameof(RenameActionAvailabilityText));
     }

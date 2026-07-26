@@ -379,6 +379,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
         !file.NormalizedExtension.Any(char.IsControl) &&
         file.SizeInBytes is null or >= 0 &&
         (file.LastWriteTimeUtc is not { } lastWriteTimeUtc || lastWriteTimeUtc.Offset == TimeSpan.Zero) &&
+        (file.CreationTimeUtc is not { } creationTimeUtc || creationTimeUtc.Offset == TimeSpan.Zero) &&
         (file.Category is null || Enum.IsDefined(file.Category.Value)) &&
         IsBoundedText(file.ClassificationDisplay, CatalogLimits.MaximumDisplayTextLength) &&
         Enum.IsDefined(file.DuplicateStatus) &&
@@ -435,7 +436,10 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
         Array.AsReadOnly(snapshot.PlannedOperations.ToArray()),
         Array.AsReadOnly(snapshot.Issues.ToArray()),
         snapshot.Statistics,
-        snapshot.IsDuplicateDataAvailable);
+        snapshot.IsDuplicateDataAvailable)
+    {
+        Workflow = snapshot.Workflow,
+    };
 
     private static CatalogEntrySummary ToSummary(CatalogEntry entry) => new(
         entry.Id,

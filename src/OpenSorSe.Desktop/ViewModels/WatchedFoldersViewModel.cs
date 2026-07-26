@@ -3,6 +3,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Executor;
 using OpenSorSe.Executor.Models;
@@ -27,6 +28,7 @@ public sealed class WatchedFolderRow : ViewModelBase
     {
         WatchedFolderStatus.Unavailable => "Unavailable",
         WatchedFolderStatus.Inaccessible => "Access denied",
+        WatchedFolderStatus.ProfileUnavailable => "Profile unavailable — review configuration",
         _ => "Available",
     };
     public string QueueText => Configuration.QueuedChangeCount == 0
@@ -48,16 +50,42 @@ public sealed class WatchedFolderRow : ViewModelBase
         value is null ? fallback : value.Value.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture);
 }
 
+public sealed class WatchedRecipeChoice : ViewModelBase
+{
+    private bool _isSelected;
+
+    public WatchedRecipeChoice(SortingRecipe recipe, bool isSelected)
+    {
+        Recipe = recipe ?? throw new ArgumentNullException(nameof(recipe));
+        _isSelected = isSelected;
+    }
+
+    public SortingRecipe Recipe { get; }
+    public string Id => Recipe.Id;
+    public string Name => Recipe.Name;
+    public string StateText => Recipe.IsBuiltIn ? "Built-in" : $"Revision {Recipe.Revision}";
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
+}
+
 public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
 {
     private readonly IWatchedFolderManager? _manager;
     private readonly IWatchedFolderCoordinator? _coordinator;
     private readonly IExternalFileLauncher? _externalLauncher;
     private readonly IChangePlanStore? _changePlanStore;
+    private readonly IWorkflowLibraryService? _workflowLibrary;
     private readonly SynchronizationContext? _synchronizationContext;
     private readonly ObservableCollection<WatchedFolderRow> _folders = [];
     private readonly ObservableCollection<WatchedActivityEntry> _recentActivity = [];
+    private readonly ObservableCollection<WorkflowProfile> _workflowProfiles = [];
+    private readonly ObservableCollection<WatchedRecipeChoice> _workflowRecipes = [];
     private WatchedFolderRow? _selectedFolder;
+    private WorkflowProfile? _selectedWorkflowProfile;
     private bool _isBusy;
     private bool _isRemoveConfirmationPending;
     private string _statusText = "Add a folder to monitor changes without automatic file modification.";
@@ -82,15 +110,19 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
         IWatchedFolderManager? manager = null,
         IWatchedFolderCoordinator? coordinator = null,
         IExternalFileLauncher? externalLauncher = null,
-        IChangePlanStore? changePlanStore = null)
+        IChangePlanStore? changePlanStore = null,
+        IWorkflowLibraryService? workflowLibrary = null)
     {
         _manager = manager;
         _coordinator = coordinator;
         _externalLauncher = externalLauncher;
         _changePlanStore = changePlanStore;
+        _workflowLibrary = workflowLibrary;
         _synchronizationContext = SynchronizationContext.Current;
         Folders = new ReadOnlyObservableCollection<WatchedFolderRow>(_folders);
         RecentActivity = new ReadOnlyObservableCollection<WatchedActivityEntry>(_recentActivity);
+        WorkflowProfiles = new ReadOnlyObservableCollection<WorkflowProfile>(_workflowProfiles);
+        WorkflowRecipes = new ReadOnlyObservableCollection<WatchedRecipeChoice>(_workflowRecipes);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsBusy && _manager is not null);
         AddFolderCommand = new AsyncRelayCommand(AddFolderAsync, CanAdd);
         SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync, CanActOnSelection);
@@ -119,6 +151,8 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
     public event EventHandler<NotificationRequest>? NotificationRequested;
     public ReadOnlyObservableCollection<WatchedFolderRow> Folders { get; }
     public ReadOnlyObservableCollection<WatchedActivityEntry> RecentActivity { get; }
+    public ReadOnlyObservableCollection<WorkflowProfile> WorkflowProfiles { get; }
+    public ReadOnlyObservableCollection<WatchedRecipeChoice> WorkflowRecipes { get; }
     public IReadOnlyList<WatchedFolderNotificationLevel> NotificationLevels { get; } =
         Enum.GetValues<WatchedFolderNotificationLevel>();
     public IAsyncRelayCommand RefreshCommand { get; }
@@ -241,7 +275,30 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
     public string ScanProfileId
     {
         get => _scanProfileId;
-        set => SetProperty(ref _scanProfileId, value);
+        set
+        {
+            if (SetProperty(ref _scanProfileId, value))
+            {
+                _selectedWorkflowProfile = _workflowProfiles.FirstOrDefault(profile =>
+                    string.Equals(
+                        profile.Id,
+                        WatchedWorkflowUsageInspector.NormalizeLegacyProfileId(value),
+                        StringComparison.Ordinal));
+                OnPropertyChanged(nameof(SelectedWorkflowProfile));
+            }
+        }
+    }
+
+    public WorkflowProfile? SelectedWorkflowProfile
+    {
+        get => _selectedWorkflowProfile;
+        set
+        {
+            if (SetProperty(ref _selectedWorkflowProfile, value) && value is not null)
+            {
+                ScanProfileId = value.Id;
+            }
+        }
     }
 
     public string SortingRecipeId
@@ -290,6 +347,7 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
 
         await RunBusyAsync(async () =>
         {
+            await RefreshWorkflowChoicesCoreAsync();
             var selectedId = SelectedFolder?.Id;
             var configurations = await WithCurrentPlanCountsAsync(
                 await _manager.ListAsync(CancellationToken.None));
@@ -308,6 +366,24 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
                 ? "No watched folders are configured. Detection and analysis are automatic only after you add one."
                 : $"{configurations.Count} watched folder configuration(s) loaded.";
         });
+    }
+
+    public async Task RefreshWorkflowChoicesAsync()
+    {
+        if (_workflowLibrary is null)
+        {
+            return;
+        }
+
+        await RefreshWorkflowChoicesCoreAsync();
+    }
+
+    public void SelectProfileForEditor(string profileId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
+        ScanProfileId = profileId;
+        SelectedWorkflowProfile = _workflowProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, profileId, StringComparison.Ordinal));
     }
 
     public void Dispose()
@@ -342,6 +418,7 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
         await RunBusyAsync(async () =>
         {
             var quiet = TimeSpan.FromSeconds(QuietPeriodSeconds);
+            var selectedRecipes = SelectedRecipeIds();
             var created = await _manager.AddAsync(
                 new WatchedFolderCreateRequest(
                     FolderPath,
@@ -359,10 +436,17 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
                         NotifyWhenUnavailable),
                     quiet,
                     checked((long)(MaximumFileSizeMiB * 1024 * 1024)),
-                    IgnoreHiddenFiles),
+                    IgnoreHiddenFiles)
+                {
+                    SortingRecipeIds = selectedRecipes,
+                },
                 CancellationToken.None);
             await _coordinator.RefreshAsync(CancellationToken.None);
             await RefreshCoreWithoutBusyAsync(created.Id);
+            _workflowLibrary?.RecordDiagnostic(
+                WorkflowDiagnosticKind.Assignment,
+                $"Workflow profile assigned to watched-folder configuration {created.Id} with {selectedRecipes.Count} persistent recipe(s).",
+                created.ScanProfileId);
             StatusText = "Watched folder added. Startup reconciliation is queued; no file will be modified automatically.";
         });
     }
@@ -377,6 +461,7 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
         var id = SelectedFolder.Id;
         await RunBusyAsync(async () =>
         {
+            var selectedRecipes = SelectedRecipeIds();
             await _manager.UpdateAsync(
                 id,
                 new WatchedFolderUpdateRequest(
@@ -394,10 +479,17 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
                         NotifyWhenUnavailable),
                     TimeSpan.FromSeconds(QuietPeriodSeconds),
                     checked((long)(MaximumFileSizeMiB * 1024 * 1024)),
-                    IgnoreHiddenFiles),
+                    IgnoreHiddenFiles)
+                {
+                    SortingRecipeIds = selectedRecipes,
+                },
                 CancellationToken.None);
             await _coordinator.RefreshAsync(CancellationToken.None);
             await RefreshCoreWithoutBusyAsync(id);
+            _workflowLibrary?.RecordDiagnostic(
+                WorkflowDiagnosticKind.Assignment,
+                $"Workflow profile assignment updated for watched-folder configuration {id} with {selectedRecipes.Count} persistent recipe(s).",
+                string.IsNullOrWhiteSpace(ScanProfileId) ? "default" : ScanProfileId);
             StatusText = "Watched-folder settings saved. File modification remains review-only.";
         });
     }
@@ -583,7 +675,12 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
         QuietPeriodSeconds = configuration.QuietPeriod.TotalSeconds;
         MaximumFileSizeMiB = configuration.MaximumFileSizeBytes / 1024d / 1024d;
         ScanProfileId = configuration.ScanProfileId;
-        SortingRecipeId = configuration.SortingRecipeId ?? string.Empty;
+        SortingRecipeId = string.Join(", ", configuration.SortingRecipeIds.Count > 0
+            ? configuration.SortingRecipeIds
+            : configuration.SortingRecipeId is null
+                ? []
+                : [configuration.SortingRecipeId]);
+        ApplySelectedRecipes(ParseRecipeIds(SortingRecipeId));
         IgnoredPathsText = string.Join(Environment.NewLine, configuration.IgnoredPaths);
         IgnorePatternsText = string.Join(Environment.NewLine, configuration.IgnorePatterns);
         NotificationLevel = configuration.Notifications.Level;
@@ -625,7 +722,9 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(HasFolders));
             var preferences = snapshot.Configuration.Notifications;
             var unavailable = snapshot.Configuration.Status is
-                WatchedFolderStatus.Unavailable or WatchedFolderStatus.Inaccessible;
+                WatchedFolderStatus.Unavailable or
+                WatchedFolderStatus.Inaccessible or
+                WatchedFolderStatus.ProfileUnavailable;
             var hasError = !string.IsNullOrWhiteSpace(snapshot.Configuration.LastError);
             var planReady = snapshot.Configuration.PendingChangePlanCount > 0;
             var shouldNotify = preferences.Level switch
@@ -650,7 +749,9 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
                 NotificationRequested?.Invoke(
                     this,
                     new NotificationRequest(
-                        snapshot.Configuration.Status == WatchedFolderStatus.Unavailable
+                        snapshot.Configuration.Status is
+                            WatchedFolderStatus.Unavailable or
+                            WatchedFolderStatus.ProfileUnavailable
                             ? NotificationSeverity.Warning
                             : NotificationSeverity.Information,
                         summary));
@@ -706,6 +807,68 @@ public sealed class WatchedFoldersViewModel : ViewModelBase, IDisposable
             .Split(['\r', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray());
+
+    private async Task RefreshWorkflowChoicesCoreAsync()
+    {
+        if (_workflowLibrary is null)
+        {
+            return;
+        }
+
+        var selectedProfileId = WatchedWorkflowUsageInspector.NormalizeLegacyProfileId(ScanProfileId);
+        var selectedRecipeIds = SelectedRecipeIds();
+        var profiles = await _workflowLibrary.ListProfilesAsync(false, CancellationToken.None);
+        var recipes = await _workflowLibrary.ListRecipesAsync(false, CancellationToken.None);
+
+        _workflowProfiles.Clear();
+        foreach (var profile in profiles.Where(profile => profile.IsEnabled && !profile.IsArchived))
+        {
+            _workflowProfiles.Add(profile);
+        }
+
+        _workflowRecipes.Clear();
+        foreach (var recipe in recipes.Where(recipe => recipe.IsEnabled && !recipe.IsArchived))
+        {
+            _workflowRecipes.Add(new WatchedRecipeChoice(
+                recipe,
+                selectedRecipeIds.Contains(recipe.Id, StringComparer.Ordinal)));
+        }
+
+        SelectedWorkflowProfile = _workflowProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Id, selectedProfileId, StringComparison.Ordinal));
+        if (SelectedWorkflowProfile is null && _workflowProfiles.Count > 0)
+        {
+            SelectedWorkflowProfile = _workflowProfiles[0];
+        }
+
+        OnPropertyChanged(nameof(WorkflowProfiles));
+        OnPropertyChanged(nameof(WorkflowRecipes));
+    }
+
+    private IReadOnlyList<string> SelectedRecipeIds()
+    {
+        var checkedIds = _workflowRecipes
+            .Where(choice => choice.IsSelected)
+            .Select(choice => choice.Id);
+        return Array.AsReadOnly(checkedIds
+            .Concat(ParseRecipeIds(SortingRecipeId))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray());
+    }
+
+    private static IReadOnlyList<string> ParseRecipeIds(string value) =>
+        Array.AsReadOnly((value ?? string.Empty)
+            .Split([',', ';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray());
+
+    private void ApplySelectedRecipes(IReadOnlyList<string> selectedIds)
+    {
+        foreach (var choice in _workflowRecipes)
+        {
+            choice.IsSelected = selectedIds.Contains(choice.Id, StringComparer.Ordinal);
+        }
+    }
 
     private void RefreshCommandStates()
     {

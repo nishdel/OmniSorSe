@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.2 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, and AI generation non-mutating. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
+OpenSorSe 1.3 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, recipe preview, and AI generation non-mutating. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
 
 ## Completed releases
 
@@ -167,6 +167,27 @@ Implemented on branch `v1.2-watched-folders`; automated validation complete and 
 - Overlapping roots are rejected to avoid duplicate ownership.
 
 > Watched folders automate detection and analysis, not file modification.
+
+## v1.3 - Workflow Profiles and Recipe Library
+
+Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending.
+
+- Version: `v1.3`
+- Release name: **Workflow Profiles and Recipe Library**
+- Git branch: `v1.3-workflow-profiles`
+- Typed persistent profiles and recipes with immutable built-ins, lifecycle, revisions, dependency protection, atomic migration/recovery, and human-inspectable import/export.
+- Constrained deterministic templates with previews, sanitization/explanations, traversal/root/reserved-name/length/collision blocking, and no executable expressions.
+- Explicit global/profile/folder/manual precedence with immutable historical configuration snapshots.
+- Persistent watched assignments, multiple permitted recipes, clear unavailable state, manual-scan selection/one-time narrowing, and Workflows management UI.
+- Existing v1.1 Change Plan provenance/review/preflight/execution/journal/recovery/Undo reuse and conjunctive global/profile/item AI policy.
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
+
+Release branches follow `v<version>-<primary-feature>`, for example:
+
+- `v1.1-safe-file-operations`
+- `v1.2-watched-folders`
+- `v1.3-workflow-profiles`
 
 ## Future release ideas
 

@@ -1,10 +1,26 @@
-# OpenSorSe 1.2 Safety and Privacy
+# OpenSorSe 1.3 Safety and Privacy
 
 OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe 1.2 continues to authorize only rename file, move file, and create directory through the v1.1 Change Plan execution boundary. The workflow requires:
+OpenSorSe 1.3 continues to authorize only rename file, move file, and create directory through the v1.1 Change Plan execution boundary.
+
+## Workflow profiles and recipes
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
+
+Profiles and recipes are bounded local declarative data. Canonical built-ins are read-only; user items use an atomic versioned local JSON store. A corrupt original is preserved and a diagnostic copy is attempted before built-ins-only recovery.
+
+Templates accept only documented fields and date formatting. They do not execute code, commands, environment substitutions, or unrestricted expressions. Values are appended as data once, sanitized and normalized, and checked for traversal, rooted injection, root escape, reserved Windows names, length, unresolved requirements, and occupied destinations. Invalid previews cannot become proposals. Import additionally rejects excessive/deep data, unsupported policies, missing dependencies, destructive recipe rules, and absolute move-rule destinations. Organization moves come only from the root-confined destination template.
+
+Resolved settings are conjunctive: application safety/capability gates are ceilings; profile, watched-folder, and one-time manual settings can only narrow them. Missing/archived/disabled/incompatible assignments stop watched processing with an explicit state. Only the named legacy `default` mapping is migrated; no unrelated silent fallback exists.
+
+Recipe output is stored as a pending v1.1 Change Plan with profile/recipe revision, field values, evidence, deterministic/AI status, warnings, and unresolved fields. No workflow service approves or applies it. Existing preflight, explicit Apply, non-overwrite, journal, recovery, rollback, history, and Undo rules remain the sole mutation path.
+
+Workflow export excludes document contents, AI endpoint/model/provider configuration, credentials, and secrets. Diagnostic export contains library lifecycle/status data and may include the local path of a preserved corrupt workflow file; inspect it before sharing.
+
+The mutation workflow requires:
 
 1. An explicit absolute root.
 2. A proposal captured with stable action IDs and source identity/size/last-modified data.
@@ -27,7 +43,7 @@ Watched roots are explicit opt-in configurations. Operating-system watcher event
 
 Canonical ignore rules exclude configured paths/patterns, temporary and incomplete-download names, hidden or oversized files when configured, OpenSorSe internal data, and reparse points. Overlapping roots are rejected. New or content-changing files must be readable and stable across observations before content extraction, OCR cache checks, hashing, classification, rules, or AI. Deferred files retain an unresolved state and are retried by later reconciliation.
 
-Pause, disconnection, access failure, and removal from the watch list never delete user files, the dedicated watched catalogue, or grouped activity. Watched updates do not consume or evict entries from the separate opt-in Saved scans catalogue. A missing root remains unavailable until the exact path returns. v1.2 does not search other drives or guess that a root moved.
+Pause, disconnection, access failure, and removal from the watch list never delete user files, the dedicated watched catalogue, or grouped activity. Watched updates do not consume or evict entries from the separate opt-in Saved scans catalogue. A missing root remains unavailable until the exact path returns. v1.3 does not search other drives or guess that a root moved.
 
 Deterministic and optional AI suggestions become ordinary reviewable Change Plans. The watched-folder coordinator never invokes the execution service. Verified Operation Journal results correlate expected OpenSorSe-generated watcher events and suppress recursive suggestions without suspending observation for an arbitrary time.
 
@@ -106,7 +122,7 @@ Clearing Structure history changes no user file, but removes the local record us
 
 The Desktop registers `IChangePlanExecutionService` as the production user-file mutation boundary. `ChangePlanExecutionService` delegates low-level mutations only to `IFileSystemGateway`; ViewModels, watched-folder services, scanners, rules, and AI services perform no raw file operations. The v1.0 deterministic restructuring compatibility workflow converts its exact confirmed moves into a Change Plan and calls the same execution service.
 
-The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1/v1.2 suggestions or organization workflows.
+The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1/v1.2/v1.3 suggestions or organization workflows.
 
 ## Undo
 
@@ -116,7 +132,7 @@ Unsafe actions are marked blocked; they do not overwrite or destroy newer data. 
 
 ## Recovery
 
-Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal and v1.2 watched-folder stores are valid empty states. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
+Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, and v1.3 workflow-library stores are valid empty states. Corrupt workflow data preserves the original and attempts a diagnostic copy before built-ins-only recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
 
 At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 

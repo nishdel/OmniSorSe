@@ -15,10 +15,11 @@
 | v1.0 Integrated Local Understanding | Gold Candidate implementation and automated/package validation complete; manual GUI, OCR, Ollama, model-matrix, and workflow verification pending | Exact restore, Debug/Release builds, and 627 automated tests passed in both configurations with zero warnings/errors. NuGet vulnerability audit is clean. A fresh self-contained win-x64 publish was inspected and packaged locally; interactive GUI validation is not claimed. | Unified bounded Advanced Diagnostics, hardened structured local-AI contracts, official native branding, public README, self-contained portable ZIP, six-destination shell, Meaning Search, OCR/provenance, deterministic restructuring, and history. |
 | v1.1 Safe File Operations and Robustness | Stable source implementation and automated validation complete; manual UI/platform/package verification pending | Exact restore, Debug/Release builds, and 659 automated tests passed with zero warnings/errors. | Persisted Change Plans, Review Changes, immediate preflight, non-overwriting rename/move/create, durable Operation Journal, verification, rollback, interruption recovery, conflict-aware Undo, Operation History, and report export. |
 | v1.2 Watched Folders and Incremental Scanning | Source implementation and automated validation complete; manual GUI/filesystem/platform/package verification pending | Debug/Release builds and 724 automated tests passed with zero failures/skips; `git diff --check` clean. | Persistent watched roots, bounded debounced hint queue, stability deferral/retry, incremental catalogue updates, offline/full reconciliation, canonical ignores, per-item optional AI retry state, v1.1 Change Plan reuse, self-event correlation, grouped activity, and Watched Folders UI. |
+| v1.3 Workflow Profiles and Recipe Library | Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending | Debug/Release builds and 761 automated tests passed with zero failures/skips; formatting and diff validation clean. | Persistent typed profiles/recipes, safe templates/previews, immutable resolution snapshots, watched/manual integration, Change Plan provenance, profile-aware AI gates, import/export/recovery, Workflows UI, and documentation. |
 
 ## Current product boundary
 
-OpenSorSe 1.2 is a safe, local-first desktop application for understanding, monitoring, and organizing explicitly selected folders. AI and Advanced mode are independent and disabled by default. OCR and Semantic Search Beta are also separate local opt-ins and never activate AI.
+OpenSorSe 1.3 is a safe, local-first desktop application for understanding, monitoring, and organizing explicitly selected folders. Reusable workflows configure scanning and analysis but do not grant mutation authority. AI and Advanced mode are independent and disabled by default. OCR and Semantic Search Beta are also separate local opt-ins and never activate AI.
 
 The current Desktop workflow does not:
 
@@ -33,6 +34,8 @@ Scanning, duplicate review, extraction, OCR, tagging, indexing/search, compariso
 
 > Watched folders automate detection and analysis, not file modification.
 
+> Workflow profiles automate configuration and analysis, not approval or file modification.
+
 Watcher APIs are treated as fallible hints. Enabled roots are reconciled on startup, resume, reconnect, overflow, at least daily while running, and on demand. Missing storage retains configuration/catalogue/history; overlapping roots are rejected.
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
@@ -41,16 +44,25 @@ OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisio
 
 ## Validation baseline
 
-The exact standard in-place restore completed successfully. Current-source Debug and Release builds both succeeded with zero warnings and zero errors. The full suite passed 724 tests in each configuration with none skipped: Core 46, Scanner 61, Rules 68, Executor 60, Application 325, and Desktop 164. The inherited v1.1 coverage still validates isolated real filesystem plans, staleness/conflicts, collision refusal, Unicode/spaces, case-only rename, verification recovery, journal-write failure recovery, cancellation boundaries, permission failure, partial failure/rollback, whole/selected/partial/dependent Undo, directory inverse safety, durable persistence/migration/reporting, startup interruption inspection, Review Changes Apply gating, and Operation History. v1.2 coverage adds configuration/store/schema/corruption/overlap policy, canonical ignores, watcher lifecycle/debounce/overflow/uncertain events, availability/reconnect/pause races, incremental create/modify/rename/move/delete and real-state reconciliation, unchanged/metadata/content/duplicate decisions, stability deferral/retry, self-event execution/rollback correlation, AI gates/batching/bounded backlog/per-item retry/failure isolation, review-only plan routing, notification preferences, and Watched Folders presentation.
+The exact standard in-place restore completed successfully. Current-source Debug and Release builds both succeeded with zero warnings and zero errors. The full suite passed 761 tests in each configuration with none skipped: Core 46, Scanner 61, Rules 68, Executor 60, Application 354, and Desktop 172. Inherited v1.1/v1.2 coverage still validates the complete Change Plan/execution/journal/recovery/Undo boundary and watched-folder configuration, event, reconciliation, stability, AI, correlation, and presentation behavior. v1.3 adds lifecycle/migration/corruption/dependency tests, template traversal/root/reserved/collision/Unicode/AI-data safety, precedence and immutable history, review-only provenance, import hardening, profile-aware AI, manual selection, and management ViewModels.
 
-Source and compiled assembly metadata report product/informational version `1.2.0` and assembly/file version `1.2.0.0`. A v1.2 portable package, signature, installer, or interactive GUI validation is not claimed by this source implementation.
+Source and compiled assembly metadata report product/informational version `1.3.0` and assembly/file version `1.3.0.0`; About displays `1.3`. A v1.3 portable package, signature, installer, or interactive GUI validation is not claimed by this source implementation.
 
 Tesseract is not installed or discoverable in this development environment, so live recognition was not claimed. Automated tests cover version/language detection, argument construction, cancellation, timeout, empty/oversized output, missing languages, mixed-page coordination, cleanup, and provider isolation through fakes. The PDF renderer itself was exercised in process against a generated real PDF.
 
 ## Documentation status
 
-The architecture directory contains both current implementation documentation and longer-term design material. The 1.2 documents identify watched configuration/lifecycle, watcher hints/debounce/stability, incremental processing, reconciliation, ignore/backpressure/AI rules, self-event correlation, Change Plans, the Operation Journal, Review Changes, Operation History, safe execution/rollback/Undo/recovery, and the existing content/OCR/semantic/AI/structure components. Rich media/archive readers, relational database architecture, plugins, broad localization, cloud indexing, signed installers, and automated publishing remain design material unless a release specification explicitly marks them implemented.
+The architecture directory contains both current implementation documentation and longer-term design material. The 1.2/1.3 documents identify watched configuration/lifecycle, workflow profile/recipe persistence and resolution, template safety, immutable history, watcher hints/debounce/stability, incremental processing, reconciliation, ignore/backpressure/AI rules, self-event correlation, Change Plans, the Operation Journal, Review Changes, Operation History, safe execution/rollback/Undo/recovery, and the existing content/OCR/semantic/AI/structure components. Rich media/archive readers, relational database architecture, plugins, broad localization, cloud indexing, signed installers, and automated publishing remain design material unless a release specification explicitly marks them implemented.
 
 ## Current release
 
-OpenSorSe 1.2 source implementation and automated validation are complete on `v1.2-watched-folders`. Release branches follow `v<version>-<primary-feature>`. Do not publish a stable binary until the inherited GUI/OCR/Ollama/platform and v1.1 execution/recovery checks plus the new watcher/filesystem checklist pass on disposable data. See the [user guide](USER_GUIDE_v1.2.md), [safety documentation](SAFETY_AND_PRIVACY.md), [implementation specification](Implementation_Spec/v1.2/054_Watched_Folders_and_Incremental_Scanning.md), and [manual checklist](MANUAL_TESTING_v1.2.md).
+OpenSorSe 1.3 source implementation and automated validation are complete on `v1.3-workflow-profiles`. Release branches follow `v<version>-<primary-feature>`. Do not publish a stable binary until the inherited GUI/OCR/Ollama/platform, v1.1 execution/recovery, v1.2 watcher/filesystem, and v1.3 workflow/template/import checklists pass on disposable data. See the [user guide](USER_GUIDE_v1.3.md), [safety documentation](SAFETY_AND_PRIVACY.md), [implementation specification](Implementation_Spec/v1.3/055_Workflow_Profiles_and_Recipe_Library.md), and [manual checklist](MANUAL_TESTING_v1.3.md).
+
+## Release identity
+
+- Version: `v1.3`
+- Release name: **Workflow Profiles and Recipe Library**
+- Git branch: `v1.3-workflow-profiles`
+- Status: source implementation and automated validation complete; manual validation pending.
+
+The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, and `v1.3-workflow-profiles`.

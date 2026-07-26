@@ -1,5 +1,7 @@
 #pragma warning disable CS1591
 
+using OpenSorSe.Application.Workflows;
+
 namespace OpenSorSe.Application.Watching;
 
 public sealed class WatchedFolderManager : IWatchedFolderManager
@@ -46,6 +48,7 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
             request.IgnoredPaths ?? [],
             request.IgnorePatterns ?? [],
             request.ScanProfileId,
+            request.SortingRecipeIds,
             request.QuietPeriod ?? WatchedFolderLimits.DefaultQuietPeriod,
             request.MaximumFileSizeBytes);
 
@@ -90,6 +93,8 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
             {
                 MaximumFileSizeBytes = request.MaximumFileSizeBytes,
                 IgnoreHiddenFiles = request.IgnoreHiddenFiles,
+                SortingRecipeIds = Array.AsReadOnly(request.SortingRecipeIds.ToArray()),
+                ProfileOverride = request.ProfileOverride,
                 LatestSummary = Directory.Exists(root)
                     ? "Watching is starting."
                     : "The folder is currently unavailable; its configuration was retained.",
@@ -118,6 +123,7 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
             request.IgnoredPaths,
             request.IgnorePatterns,
             request.ScanProfileId,
+            request.SortingRecipeIds,
             request.QuietPeriod,
             request.MaximumFileSizeBytes);
 
@@ -133,6 +139,12 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
                 SortingRecipeId = string.IsNullOrWhiteSpace(request.SortingRecipeId)
                     ? null
                     : request.SortingRecipeId.Trim(),
+                SortingRecipeIds = Array.AsReadOnly(request.SortingRecipeIds
+                    .Select(value => value.Trim())
+                    .Where(value => value.Length > 0)
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray()),
+                ProfileOverride = request.ProfileOverride,
                 DeterministicAnalysisEnabled = request.DeterministicAnalysisEnabled,
                 AiAnalysisEnabled = request.AiAnalysisEnabled,
                 Notifications = request.Notifications,
@@ -305,11 +317,13 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
         IReadOnlyList<string> ignoredPaths,
         IReadOnlyList<string> ignorePatterns,
         string scanProfileId,
+        IReadOnlyList<string> sortingRecipeIds,
         TimeSpan quietPeriod,
         long maximumFileSizeBytes)
     {
         ArgumentNullException.ThrowIfNull(ignoredPaths);
         ArgumentNullException.ThrowIfNull(ignorePatterns);
+        ArgumentNullException.ThrowIfNull(sortingRecipeIds);
         if (string.IsNullOrWhiteSpace(displayName) ||
             displayName.Trim().Length > 256 ||
             string.IsNullOrWhiteSpace(scanProfileId) ||
@@ -320,6 +334,10 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
                 string.IsNullOrWhiteSpace(path) || path.Length > WatchedFolderLimits.MaximumPathLength) ||
             ignorePatterns.Any(pattern =>
                 string.IsNullOrWhiteSpace(pattern) || pattern.Length > WatchedFolderLimits.MaximumPatternLength) ||
+            sortingRecipeIds.Count > WorkflowLibraryLimits.MaximumRecipes ||
+            sortingRecipeIds.Any(id =>
+                string.IsNullOrWhiteSpace(id) ||
+                id.Length > WorkflowLibraryLimits.MaximumIdentifierLength) ||
             quietPeriod < WatchedFolderLimits.MinimumQuietPeriod ||
             quietPeriod > WatchedFolderLimits.MaximumQuietPeriod ||
             maximumFileSizeBytes <= 0)
@@ -334,5 +352,7 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
         {
             IgnoredPaths = Array.AsReadOnly(value.IgnoredPaths.ToArray()),
             IgnorePatterns = Array.AsReadOnly(value.IgnorePatterns.ToArray()),
+            SortingRecipeIds = Array.AsReadOnly(value.SortingRecipeIds.ToArray()),
+            EffectiveWorkflow = null,
         }).ToArray());
 }

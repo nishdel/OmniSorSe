@@ -12,6 +12,14 @@ Its purpose is to allow users to configure scan operations, observe real-time pr
 
 The Scanner Page presents and controls scanning operations but does not perform file scanning itself.
 
+## v1.3 workflow selection
+
+The implemented Scan page selects one active persistent workflow profile and shows its included file types, OCR, duplicate, AI, attached-recipe, and expected-intensity summary. Session-only overrides can narrow maximum size, OCR, duplicates, and AI without mutating the saved profile. A separate action duplicates and saves the adjusted configuration as a new validated user profile.
+
+The selected profile is resolved to an immutable effective configuration before the application controller starts. Missing, archived, disabled, or incompatible profiles stop the request. Completed results retain the profile/recipe revision snapshot. Recipe output may create a pending Change Plan after scanning; the Scan page never applies it.
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
+
 ---
 
 # Responsibilities

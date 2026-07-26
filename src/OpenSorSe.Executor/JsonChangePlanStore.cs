@@ -203,6 +203,7 @@ public sealed class JsonChangePlanStore : IChangePlanStore
                 action.Reason.Length > 1_024 ||
                 action.AiModel?.Length > 256 ||
                 action.AiRequestCorrelationId?.Length > 256 ||
+                !IsValidProvenance(action.WorkflowProvenance) ||
                 action.Warnings is null ||
                 action.Warnings.Count > 1_000 ||
                 action.Warnings.Any(warning => warning is null || warning.Length > 1_024) ||
@@ -217,6 +218,41 @@ public sealed class JsonChangePlanStore : IChangePlanStore
             throw new InvalidDataException("A Change Plan record is invalid.");
         }
     }
+
+    private static bool IsValidProvenance(ChangeWorkflowProvenance? provenance)
+    {
+        if (provenance is null)
+        {
+            return true;
+        }
+
+        return IsBounded(provenance.ProfileId, 256) &&
+               IsBounded(provenance.ProfileName, 128) &&
+               provenance.ProfileRevision >= 1 &&
+               IsBounded(provenance.RecipeId, 256) &&
+               IsBounded(provenance.RecipeName, 128) &&
+               provenance.RecipeRevision >= 1 &&
+               provenance.ValuesUsed is not null &&
+               provenance.ValuesUsed.Count <= 64 &&
+               provenance.ValuesUsed.All(pair =>
+                   IsBounded(pair.Key, 128) &&
+                   pair.Value is not null &&
+                   pair.Value.Length <= 512 &&
+                   !pair.Value.Any(char.IsControl)) &&
+               IsBoundedList(provenance.EvidenceSources, 128, 256) &&
+               IsBoundedList(provenance.Warnings, 128, 1_024) &&
+               IsBoundedList(provenance.UnresolvedFields, 64, 128);
+    }
+
+    private static bool IsBoundedList(IReadOnlyList<string>? values, int count, int length) =>
+        values is not null &&
+        values.Count <= count &&
+        values.All(value => IsBounded(value, length));
+
+    private static bool IsBounded(string? value, int maximumLength) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.Length <= maximumLength &&
+        !value.Any(char.IsControl);
 
     private sealed record Envelope(int SchemaVersion, IReadOnlyList<ChangePlan>? Plans);
 }

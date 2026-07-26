@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.3.0
+
+Workflow Profiles and Recipe Library.
+
+Release branch: `v1.3-workflow-profiles`.
+
+### Added
+
+- Typed, versioned workflow profiles and declarative sorting recipes with stable IDs, revisions, origins, capability/file/extraction/analysis/AI/plan/notification/scan policies, applicability, templates, fallbacks, normalization, collision/uncertainty policy, and preview examples.
+- Five immutable duplicable profile defaults and four immutable duplicable recipe defaults.
+- Bounded atomic `workflow-library.json` persistence with schema migration, corruption preservation/diagnostic copy, safe built-in recovery, lifecycle operations, dependency protection, usage inspection, and diagnostic export.
+- Constrained field/date template parser and deterministic evaluator with Unicode/case/whitespace policy, portable invalid-character sanitization, reserved-device/length/root/traversal/collision checks, and full preview explanations.
+- Immutable effective configuration resolution and historical workflow snapshots for manual scans, saved scans, watched cycles, and watched catalogues.
+- Persistent watched-folder profile resolution, multiple permitted recipe selection, constrained overrides, configuration-change reconciliation, and explicit profile-unavailable state.
+- Manual scan profile selection, capability/intensity summary, one-time narrowing, and save-adjusted-as-new-profile flow.
+- Workflow/recipe provenance on Change Plan actions, including inferred directories, with profile/recipe revisions, values, evidence, deterministic/AI state, warnings, and unresolved fields.
+- Versioned human-inspectable profile/recipe import/export with explicit conflict policy and size/depth/schema/dependency/template/capability validation.
+- Dedicated Workflows profile/recipe/editor/preview/import/export UI with search, file/origin/capability/archive filters, usage, lifecycle actions, scan/watch routing, and diagnostics export.
+- Comprehensive workflow persistence, migration, recovery, template safety, precedence, historical snapshot, Change Plan, AI-gate, transfer, and ViewModel tests.
+
+### Changed
+
+- Watched configuration/catalogue schemas advance to 3/2 for recipe lists, overrides, and workflow revision snapshots.
+- v1.2 `default` maps explicitly to General Documents; session-only `current` recipes require deliberate replacement.
+- Processing stages honor effective extraction, classification, duplicate, rule, AI, file-selection, and Change Plan settings.
+- Product/informational version is `1.3.0`; assembly/file/manifest version is `1.3.0.0`; About displays `1.3`.
+
+### Safety
+
+- Workflow profiles automate configuration and analysis, not approval or file modification.
+- Imported recipes cannot execute code, contain destructive recipe rules, escape an approved root, or overwrite a destination.
+- Profiles cannot bypass global OCR/AI gates; item-level AI policy is checked before provider requests.
+- All mutations continue through v1.1 review, approval, preflight, explicit Apply, journaling, verification, recovery, rollback, history, and Undo.
+
 ## v1.2.0
 
 Watched Folders and Incremental Scanning.

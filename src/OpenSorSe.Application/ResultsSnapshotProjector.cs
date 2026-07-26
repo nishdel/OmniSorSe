@@ -27,7 +27,11 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         ValidateCompletedSession(sessionResult);
 
         var processing = sessionResult.Processing!;
-        var sourceFiles = processing.Duplicates?.Files ?? processing.Scan.Files;
+        var sourceFiles = processing.Duplicates?.Files ??
+                          processing.Classification?.Files ??
+                          processing.Hashing?.Files ??
+                          processing.Metadata?.Files ??
+                          processing.Scan.Files;
         ValidateCollection(sourceFiles, "The completed result contains an invalid file collection.", nameof(sessionResult));
         ValidateCollection(processing.Scan.Directories, "The completed result contains an invalid directory collection.", nameof(sessionResult));
 
@@ -45,7 +49,11 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
             }
         }
 
-        var operations = MapOperations(processing.Conflicts, filesByPath, issues);
+        var operations = MapOperations(
+            processing.Conflicts,
+            filesByPath,
+            issues,
+            processing.Workflow?.Analysis.RuleEvaluationEnabled is not false);
         var plannedPaths = operations
             .Where(operation => operation.SourceFileId is not null)
             .Select(operation => operation.SourceFileId!)
@@ -64,7 +72,9 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         var duplicateDataAvailable = processing.Duplicates is not null;
         var groups = duplicateDataAvailable
             ? MapDuplicateGroups(processing.Duplicates!, filesByPath, filesById, issues)
-            : AddMissingDuplicateDataIssue(issues);
+            : processing.Workflow?.Analysis.DuplicateAnalysisEnabled == false
+                ? []
+                : AddMissingDuplicateDataIssue(issues);
 
         var immutableIssues = ToReadOnly(issues);
         var statistics = new ResultsSnapshotStatistics(
@@ -86,7 +96,10 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
             ToReadOnly(operations),
             immutableIssues,
             statistics,
-            duplicateDataAvailable);
+            duplicateDataAvailable)
+        {
+            Workflow = processing.Workflow,
+        };
     }
 
     private static void ValidateCompletedSession(ProcessingSessionResult sessionResult)
@@ -132,17 +145,25 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
             GetClassificationDisplay(classification),
             sourceFile.Duplicate?.Status ?? DuplicateStatus.Unknown,
             sourceFile.Duplicate?.Status == DuplicateStatus.Duplicate ? sourceFile.Duplicate.GroupId : null,
-            hasPlannedOperation);
+            hasPlannedOperation)
+        {
+            CreationTimeUtc = metadata?.CreationTimeUtc,
+        };
     }
 
     private static List<ResultPlannedOperation> MapOperations(
         ConflictResolutionResult? conflicts,
         IReadOnlyDictionary<string, ResultFile> filesByPath,
-        List<ResultIssue> issues)
+        List<ResultIssue> issues,
+        bool expected)
     {
         if (conflicts is null)
         {
-            AddIssue(issues, "Planned operations", ResultIssueSeverity.Warning, "Planned-operation review was unavailable for this completed scan.");
+            if (expected)
+            {
+                AddIssue(issues, "Planned operations", ResultIssueSeverity.Warning, "Planned-operation review was unavailable for this completed scan.");
+            }
+
             return [];
         }
 

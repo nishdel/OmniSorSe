@@ -1,6 +1,7 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Executor.Models;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
@@ -9,8 +10,8 @@ namespace OpenSorSe.Application.Watching;
 
 public static class WatchedFolderLimits
 {
-    public const int CurrentConfigurationSchemaVersion = 2;
-    public const int CurrentCatalogueSchemaVersion = 1;
+    public const int CurrentConfigurationSchemaVersion = 3;
+    public const int CurrentCatalogueSchemaVersion = 2;
     public const int CurrentActivitySchemaVersion = 1;
     public const int MaximumConfigurations = 64;
     public const int MaximumIgnoreRules = 256;
@@ -40,6 +41,7 @@ public enum WatchedFolderStatus
     Busy,
     Unavailable,
     Inaccessible,
+    ProfileUnavailable,
     ReconciliationRequired,
     Error,
 }
@@ -75,6 +77,7 @@ public enum WatchedScanReason
     ResumeReconciliation,
     OverflowRecovery,
     ReconnectReconciliation,
+    ConfigurationChangedReconciliation,
     OpenSorSeExecution,
     AiRetry,
 }
@@ -152,6 +155,14 @@ public sealed record WatchedFolderConfiguration(
     public string? LastError { get; init; }
     public int QueuedChangeCount { get; init; }
     public int PendingChangePlanCount { get; init; }
+    public IReadOnlyList<string> SortingRecipeIds { get; init; } = [];
+    public WorkflowProfileOverride? ProfileOverride { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ResolvedWorkflowConfiguration? EffectiveWorkflow { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public WatchedScanReason? RuntimeScanReason { get; init; }
 }
 
 public sealed record WatchedFolderCreateRequest(
@@ -167,7 +178,11 @@ public sealed record WatchedFolderCreateRequest(
     WatchedFolderNotificationPreferences? Notifications = null,
     TimeSpan? QuietPeriod = null,
     long MaximumFileSizeBytes = 1024L * 1024 * 1024,
-    bool IgnoreHiddenFiles = true);
+    bool IgnoreHiddenFiles = true)
+{
+    public IReadOnlyList<string> SortingRecipeIds { get; init; } = [];
+    public WorkflowProfileOverride? ProfileOverride { get; init; }
+}
 
 public sealed record WatchedFolderUpdateRequest(
     string DisplayName,
@@ -181,7 +196,11 @@ public sealed record WatchedFolderUpdateRequest(
     WatchedFolderNotificationPreferences Notifications,
     TimeSpan QuietPeriod,
     long MaximumFileSizeBytes,
-    bool IgnoreHiddenFiles);
+    bool IgnoreHiddenFiles)
+{
+    public IReadOnlyList<string> SortingRecipeIds { get; init; } = [];
+    public WorkflowProfileOverride? ProfileOverride { get; init; }
+}
 
 public sealed record WatchedFolderHint(
     string ConfigurationId,
@@ -233,7 +252,10 @@ public sealed record WatchedFolderCatalogue(
     IReadOnlyList<WatchedFileState> Files,
     IReadOnlyList<WatchedDirectoryState> Directories,
     DateTimeOffset? LastReconciliationUtc,
-    bool ReconciliationRequired);
+    bool ReconciliationRequired)
+{
+    public WorkflowConfigurationSnapshot? Workflow { get; init; }
+}
 
 public sealed record WatchedActivityEntry(
     string Id,
@@ -388,6 +410,27 @@ public sealed record FileStabilityResult(bool IsStable, int Attempts, string Mes
 public interface IWatchedSortingRecipeResolver
 {
     Task<IReadOnlyList<FileRule>> ResolveAsync(string? recipeId, CancellationToken cancellationToken);
+
+    async Task<IReadOnlyList<FileRule>> ResolveManyAsync(
+        IReadOnlyList<string> recipeIds,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(recipeIds);
+        var rules = new List<FileRule>();
+        foreach (var recipeId in recipeIds)
+        {
+            rules.AddRange(await ResolveAsync(recipeId, cancellationToken).ConfigureAwait(false));
+        }
+
+        return Array.AsReadOnly(rules
+            .GroupBy(rule => rule.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(rule => rule.Priority)
+                .First())
+            .OrderByDescending(rule => rule.Priority)
+            .ThenBy(rule => rule.Id, StringComparer.Ordinal)
+            .ToArray());
+    }
 }
 
 public interface IWatchedSuggestionService

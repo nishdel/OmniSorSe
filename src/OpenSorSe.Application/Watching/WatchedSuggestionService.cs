@@ -3,6 +3,7 @@
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Executor.Models;
 using OpenSorSe.Rules.Models;
@@ -51,15 +52,18 @@ public sealed class WatchedSuggestionService : IWatchedSuggestionService
     private readonly ISuggestionChangePlanFactory _planFactory;
     private readonly IAiSuggestionService _aiService;
     private readonly IConfigurationService _configurationService;
+    private readonly IWorkflowRecipePlanService? _workflowRecipePlanService;
 
     public WatchedSuggestionService(
         ISuggestionChangePlanFactory planFactory,
         IAiSuggestionService aiService,
-        IConfigurationService configurationService)
+        IConfigurationService configurationService,
+        IWorkflowRecipePlanService? workflowRecipePlanService = null)
     {
         _planFactory = planFactory ?? throw new ArgumentNullException(nameof(planFactory));
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+        _workflowRecipePlanService = workflowRecipePlanService;
     }
 
     public async Task<WatchedSuggestionResult> CreateSuggestionsAsync(
@@ -96,8 +100,36 @@ public sealed class WatchedSuggestionService : IWatchedSuggestionService
             }
         }
 
+        if (configuration.EffectiveWorkflow is not null &&
+            _workflowRecipePlanService is not null &&
+            configuration.EffectiveWorkflow.ChangePlans.GenerateChangePlans &&
+            affectedFiles.Count > 0)
+        {
+            try
+            {
+                var recipePlan = await _workflowRecipePlanService.CreatePlanAsync(
+                    configuration.EffectiveWorkflow,
+                    configuration.FolderPath,
+                    snapshot.SessionId,
+                    affectedFiles,
+                    cancellationToken).ConfigureAwait(false);
+                if (recipePlan.Plan is not null)
+                {
+                    plans.Add(recipePlan.Plan);
+                }
+
+                warnings.AddRange(recipePlan.Warnings);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or InvalidOperationException or InvalidDataException or IOException)
+            {
+                warnings.Add($"Workflow recipe suggestions failed safely without invoking execution: {exception.Message}");
+            }
+        }
+
         var settings = _configurationService.Current.Ai;
-        if (!configuration.AiAnalysisEnabled || affectedFiles.Count == 0)
+        var aiFiles = FilterAiFiles(configuration, affectedFiles);
+        if (!configuration.AiAnalysisEnabled || aiFiles.Count == 0)
         {
             return new WatchedSuggestionResult(
                 Array.AsReadOnly(plans.ToArray()),
@@ -120,14 +152,14 @@ public sealed class WatchedSuggestionService : IWatchedSuggestionService
         var aiFailed = false;
         var completedFileIds = new HashSet<string>(StringComparer.Ordinal);
         var failedFileIds = new HashSet<string>(StringComparer.Ordinal);
-        var orderedAffectedFiles = affectedFiles
+        var orderedAffectedFiles = aiFiles
             .OrderBy(file => file.Id, StringComparer.Ordinal)
             .Take(MaximumAiItemsPerRun)
             .ToArray();
-        if (affectedFiles.Count > orderedAffectedFiles.Length)
+        if (aiFiles.Count > orderedAffectedFiles.Length)
         {
             warnings.Add(
-                $"{affectedFiles.Count - orderedAffectedFiles.Length} AI item(s) remain pending after the bounded per-run backlog limit.");
+                $"{aiFiles.Count - orderedAffectedFiles.Length} AI item(s) remain pending after the bounded per-run backlog limit.");
         }
 
         if (settings.FolderStructureSuggestionsEnabled)
@@ -248,5 +280,37 @@ public sealed class WatchedSuggestionService : IWatchedSuggestionService
             CompletedAiFileIds = completedFileIds,
             FailedAiFileIds = failedFileIds,
         };
+    }
+
+    private static IReadOnlyList<ResultFile> FilterAiFiles(
+        WatchedFolderConfiguration configuration,
+        IReadOnlyList<ResultFile> affectedFiles)
+    {
+        var workflow = configuration.EffectiveWorkflow;
+        if (workflow is null)
+        {
+            return affectedFiles;
+        }
+
+        if (!workflow.Ai.Enabled ||
+            workflow.Ai.InvocationPolicy == WorkflowAiInvocationPolicy.Disabled)
+        {
+            return [];
+        }
+
+        IEnumerable<ResultFile> filtered = affectedFiles;
+        filtered = workflow.Ai.InvocationPolicy switch
+        {
+            WorkflowAiInvocationPolicy.MissingDeterministicClassificationOnly =>
+                filtered.Where(file => file.Category is null or OpenSorSe.Scanner.Models.FileCategory.Unknown),
+            WorkflowAiInvocationPolicy.SelectedFileTypesOnly =>
+                filtered.Where(file => workflow.Ai.SelectedFileTypes.Contains(
+                    file.NormalizedExtension,
+                    StringComparer.OrdinalIgnoreCase)),
+            WorkflowAiInvocationPolicy.ExplicitRetryOnly when
+                configuration.RuntimeScanReason != WatchedScanReason.AiRetry => [],
+            _ => filtered,
+        };
+        return Array.AsReadOnly(filtered.ToArray());
     }
 }

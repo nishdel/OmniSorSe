@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Rules;
 using OpenSorSe.Rules.Models;
@@ -18,6 +19,7 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
     private readonly IFileStabilityChecker _stabilityChecker;
     private readonly IFileMetadataReader _metadataReader;
     private readonly IContentIndexingService? _contentIndexingService;
+    private readonly IWorkflowConfigurationResolver? _workflowResolver;
     private readonly IFileHasher _hasher;
     private readonly IFileClassifier _classifier;
     private readonly IDuplicateDetector _duplicateDetector;
@@ -46,7 +48,8 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
         WatchedFolderPathPolicy pathPolicy,
         ILoggingService loggingService,
         IContentIndexingService? contentIndexingService = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IWorkflowConfigurationResolver? workflowResolver = null)
     {
         _catalogueStore = catalogueStore ?? throw new ArgumentNullException(nameof(catalogueStore));
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
@@ -65,6 +68,7 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             .CreateLogger(nameof(WatchedFolderProcessor));
         _contentIndexingService = contentIndexingService;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _workflowResolver = workflowResolver;
     }
 
     public async Task<WatchedFolderProcessResult> ProcessAsync(
@@ -83,6 +87,34 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
         if (!_fileSystem.DirectoryExists(configuration.FolderPath))
         {
             throw new DirectoryNotFoundException("The watched folder is unavailable.");
+        }
+
+        var pipelineWarnings = new List<string>();
+        if (_workflowResolver is not null)
+        {
+            var workflowResolution = await _workflowResolver.ResolveForWatchedFolderAsync(
+                configuration,
+                cancellationToken).ConfigureAwait(false);
+            if (!workflowResolution.IsAvailable || workflowResolution.Configuration is null)
+            {
+                throw new WorkflowProfileUnavailableException(workflowResolution.Message);
+            }
+
+            var effective = workflowResolution.Configuration;
+            pipelineWarnings.AddRange(workflowResolution.Warnings);
+            configuration = configuration with
+            {
+                MaximumFileSizeBytes = effective.Files.MaximumFileSizeBytes,
+                DeterministicAnalysisEnabled =
+                    effective.Analysis.ClassificationEnabled ||
+                    effective.Analysis.DuplicateAnalysisEnabled ||
+                    effective.Analysis.RuleEvaluationEnabled,
+                AiAnalysisEnabled = effective.Ai.Enabled,
+                SortingRecipeIds = effective.Recipes.Select(recipe => recipe.Id).ToArray(),
+                SortingRecipeId = effective.Recipes.FirstOrDefault()?.Id,
+                EffectiveWorkflow = effective,
+                RuntimeScanReason = batch.Reason,
+            };
         }
 
         var now = _timeProvider.GetUtcNow().ToUniversalTime();
@@ -105,18 +137,43 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             ? await DiscoverFullAsync(configuration, cancellationToken).ConfigureAwait(false)
             : await DiscoverTargetedAsync(configuration, existingFiles, existingDirectories, batch, cancellationToken)
                 .ConfigureAwait(false);
+        discovery = ApplyProfileFileSelection(discovery, configuration.EffectiveWorkflow?.Files);
 
         var comparison = Compare(existingFiles, discovery.Files, fullReconciliation);
+        var scanBehavior = configuration.EffectiveWorkflow?.ScanBehavior;
         var stableWork = new List<FileWorkItem>();
         var finalStates = new Dictionary<string, WatchedFileState>(StringComparer.Ordinal);
+        if (scanBehavior?.ReconcileMissingItems == false)
+        {
+            var currentIds = comparison.Current
+                .Select(item => item.Probe.StableId)
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (var existingFile in existingFiles.Where(file => !currentIds.Contains(file.StableId)))
+            {
+                finalStates[existingFile.StableId] = existingFile;
+            }
+        }
+
         var deferred = 0;
         var unresolved = 0;
         foreach (var item in comparison.Current)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!item.RequiresContentProcessing)
+            if (!item.RequiresContentProcessing &&
+                scanBehavior?.ReanalyseChangedContentOnly is not false)
             {
-                finalStates[item.Probe.StableId] = CreatePreservedState(item, now, batch.Reason);
+                var preserved = CreatePreservedState(item, now, batch.Reason);
+                finalStates[item.Probe.StableId] = scanBehavior?.PreserveUnchangedAnalysis == false
+                    ? preserved with
+                    {
+                        ContentHash = null,
+                        Category = null,
+                        DuplicateStatus = DuplicateStatus.Unknown,
+                        DuplicateGroupId = null,
+                        AiAnalysisState = WatchedAiAnalysisState.NotRequested,
+                        AiLastAttemptUtc = null,
+                    }
+                    : preserved;
                 continue;
             }
 
@@ -152,7 +209,6 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             stableWork.Add(item with { Probe = stableProbe });
         }
 
-        var pipelineWarnings = new List<string>();
         var processed = await ProcessChangedFilesAsync(
             stableWork,
             configuration,
@@ -170,7 +226,9 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             .Select(ToFileEntry)
             .ToArray();
         DuplicateDetectionResult? duplicates = null;
-        if (configuration.DeterministicAnalysisEnabled && combinedEntries.Length > 0)
+        if ((configuration.EffectiveWorkflow?.Analysis.DuplicateAnalysisEnabled ??
+             configuration.DeterministicAnalysisEnabled) &&
+            combinedEntries.Length > 0)
         {
             duplicates = await _duplicateDetector.DetectAsync(combinedEntries, cancellationToken).ConfigureAwait(false);
             finalStates = duplicates.Files.ToDictionary(
@@ -194,6 +252,7 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
 
         var changedStableIds = comparison.Current
             .Where(item =>
+                scanBehavior?.ReanalyseChangedContentOnly == false ||
                 item.IsNew ||
                 item.IsContentChanged ||
                 item.IsMetadataChanged ||
@@ -262,7 +321,10 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
                 .OrderBy(directory => directory.FullPath, WatchedFolderPathPolicy.PathComparer)
                 .ToArray()),
             isReconciliation ? now : existing?.LastReconciliationUtc,
-            unresolved > 0);
+            unresolved > 0)
+        {
+            Workflow = configuration.EffectiveWorkflow?.Snapshot ?? existing?.Workflow,
+        };
         await _catalogueStore.UpsertAsync(catalogue, cancellationToken).ConfigureAwait(false);
 
         var affectedResultFiles = snapshot.Files
@@ -340,7 +402,7 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             comparison.Added,
             comparison.Updated,
             comparison.RenamedOrMoved,
-            comparison.Removed,
+            scanBehavior?.ReconcileMissingItems == false ? 0 : comparison.Removed,
             deferred,
             discovery.Ignored,
             unresolved);
@@ -529,20 +591,41 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
         }
 
         var entries = work.Select(item => new FileEntry(item.Probe.FullPath)).ToArray();
-        var metadata = await _metadataReader.ReadAsync(entries, cancellationToken).ConfigureAwait(false);
-        if (metadata.Issues.Count > 0)
+        IReadOnlyList<FileEntry> metadataFiles = entries;
+        if (configuration.EffectiveWorkflow?.Extraction.MetadataEnabled is not false)
         {
-            warnings.Add($"{metadata.Issues.Count} file metadata item(s) were only partially available.");
+            var metadata = await _metadataReader.ReadAsync(entries, cancellationToken).ConfigureAwait(false);
+            metadataFiles = metadata.Files;
+            if (metadata.Issues.Count > 0)
+            {
+                warnings.Add($"{metadata.Issues.Count} file metadata item(s) were only partially available.");
+            }
         }
 
-        IReadOnlyList<FileEntry> enriched = metadata.Files;
-        if (configuration.DeterministicAnalysisEnabled)
+        IReadOnlyList<FileEntry> enriched = metadataFiles;
+        if (configuration.EffectiveWorkflow?.Extraction.MetadataEnabled ??
+            configuration.DeterministicAnalysisEnabled)
         {
-            if (_contentIndexingService is not null)
+            if (_contentIndexingService is not null &&
+                (configuration.EffectiveWorkflow is null ||
+                 configuration.EffectiveWorkflow.Extraction.TextEnabled ||
+                 configuration.EffectiveWorkflow.Extraction.OcrEnabled))
             {
                 try
                 {
-                    var content = await _contentIndexingService.IndexAsync(metadata.Files, cancellationToken).ConfigureAwait(false);
+                    var content = await _contentIndexingService.IndexAsync(
+                        metadataFiles,
+                        configuration.EffectiveWorkflow is null
+                            ? null
+                            : new ContentIndexingOptions(
+                                configuration.EffectiveWorkflow.Extraction.MetadataEnabled,
+                                configuration.EffectiveWorkflow.Extraction.TextEnabled,
+                                configuration.EffectiveWorkflow.Extraction.OcrEnabled,
+                                configuration.EffectiveWorkflow.Extraction.OcrOnlyWhenTextUnavailable,
+                                configuration.EffectiveWorkflow.Extraction.OcrLanguage,
+                                configuration.EffectiveWorkflow.Extraction.MaximumPagesPerDocument,
+                                configuration.EffectiveWorkflow.Files.MaximumFileSizeBytes),
+                        cancellationToken).ConfigureAwait(false);
                     if (content.FailedCount > 0)
                     {
                         warnings.Add($"{content.FailedCount} content extraction item(s) failed safely.");
@@ -561,21 +644,34 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
                 }
             }
 
-            var hashing = await _hasher.HashAsync(metadata.Files, cancellationToken).ConfigureAwait(false);
-            if (hashing.Issues.Count > 0)
+            IReadOnlyList<FileEntry> analysisInput = metadataFiles;
+            if (configuration.EffectiveWorkflow?.Analysis.DuplicateAnalysisEnabled ??
+                configuration.DeterministicAnalysisEnabled)
             {
-                warnings.Add($"{hashing.Issues.Count} file hash item(s) remain unavailable.");
+                var hashing = await _hasher.HashAsync(metadataFiles, cancellationToken).ConfigureAwait(false);
+                if (hashing.Issues.Count > 0)
+                {
+                    warnings.Add($"{hashing.Issues.Count} file hash item(s) remain unavailable.");
+                }
+
+                analysisInput = hashing.Files;
             }
 
-            var classification = await _classifier.ClassifyAsync(
-                hashing.Files,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (classification.Issues.Count > 0)
+            if (configuration.EffectiveWorkflow?.Analysis.ClassificationEnabled ??
+                configuration.DeterministicAnalysisEnabled)
             {
-                warnings.Add($"{classification.Issues.Count} classification item(s) remain unknown.");
+                var classification = await _classifier.ClassifyAsync(
+                    analysisInput,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (classification.Issues.Count > 0)
+                {
+                    warnings.Add($"{classification.Issues.Count} classification item(s) remain unknown.");
+                }
+
+                analysisInput = classification.Files;
             }
 
-            enriched = classification.Files;
+            enriched = analysisInput;
         }
 
         var byPath = work.ToDictionary(
@@ -606,13 +702,22 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
         IReadOnlySet<string> affectedStableIds,
         CancellationToken cancellationToken)
     {
-        if (!configuration.DeterministicAnalysisEnabled || affectedStableIds.Count == 0)
+        if (!(configuration.EffectiveWorkflow?.Analysis.RuleEvaluationEnabled ??
+              configuration.DeterministicAnalysisEnabled) ||
+            affectedStableIds.Count == 0)
         {
             return new PlanningResult(Array.Empty<PlannedOperation>(), Array.Empty<string>());
         }
 
-        var rules = await _recipeResolver.ResolveAsync(
-            configuration.SortingRecipeId,
+        var recipeIds = configuration.EffectiveWorkflow is not null
+            ? configuration.EffectiveWorkflow.Recipes.Select(recipe => recipe.Id).ToArray()
+            : configuration.SortingRecipeIds.Count > 0
+                ? configuration.SortingRecipeIds.ToArray()
+                : string.IsNullOrWhiteSpace(configuration.SortingRecipeId)
+                    ? []
+                    : [configuration.SortingRecipeId];
+        var rules = await _recipeResolver.ResolveManyAsync(
+            recipeIds,
             cancellationToken).ConfigureAwait(false);
         if (rules.Count == 0)
         {
@@ -659,7 +764,10 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             state.Category?.ToString() ?? "Unclassified",
             state.DuplicateStatus,
             state.DuplicateGroupId,
-            operationByPath.ContainsKey(state.FullPath))).ToArray();
+            operationByPath.ContainsKey(state.FullPath))
+        {
+            CreationTimeUtc = state.CreationTimeUtc,
+        }).ToArray();
         var fileByPath = files.ToDictionary(file => file.FullPath, WatchedFolderPathPolicy.PathComparer);
         var resultOperations = operations.Select(operation => new ResultPlannedOperation(
             operation.OperationId,
@@ -721,7 +829,11 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             Array.AsReadOnly(resultOperations),
             Array.AsReadOnly(issues),
             statistics,
-            configuration.DeterministicAnalysisEnabled);
+            configuration.EffectiveWorkflow?.Analysis.DuplicateAnalysisEnabled ??
+            configuration.DeterministicAnalysisEnabled)
+        {
+            Workflow = configuration.EffectiveWorkflow?.Snapshot,
+        };
     }
 
     private static IReadOnlyList<WatchedFolderHint> NormalizeHints(IReadOnlyList<WatchedFolderHint> hints) =>
@@ -733,6 +845,31 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             .Select(group => group.OrderByDescending(hint => hint.DetectedAtUtc).First())
             .OrderBy(hint => hint.DetectedAtUtc)
             .ToArray());
+
+    private static DiscoveryResult ApplyProfileFileSelection(
+        DiscoveryResult discovery,
+        WorkflowFileSelectionOptions? files)
+    {
+        if (files is null)
+        {
+            return discovery;
+        }
+
+        var retained = discovery.Files.Where(probe =>
+        {
+            var extension = Path.GetExtension(probe.FullPath).ToLowerInvariant();
+            return probe.SizeInBytes <= files.MaximumFileSizeBytes &&
+                   (files.IncludedFileTypes.Count == 0 ||
+                    files.IncludedFileTypes.Contains(extension, StringComparer.OrdinalIgnoreCase)) &&
+                   !files.ExcludedFileTypes.Contains(extension, StringComparer.OrdinalIgnoreCase) &&
+                   (files.IncludeHiddenFiles || (probe.Attributes & FileAttributes.Hidden) == 0);
+        }).ToArray();
+        return discovery with
+        {
+            Files = Array.AsReadOnly(retained),
+            Ignored = discovery.Ignored + discovery.Files.Count - retained.Length,
+        };
+    }
 
     private static void RemoveByPath(Dictionary<string, WatchedFileProbe> desired, string path)
     {
@@ -811,7 +948,8 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
         WatchedScanReason.StartupOfflineReconciliation or
         WatchedScanReason.ResumeReconciliation or
         WatchedScanReason.OverflowRecovery or
-        WatchedScanReason.ReconnectReconciliation;
+        WatchedScanReason.ReconnectReconciliation or
+        WatchedScanReason.ConfigurationChangedReconciliation;
 
     private static void ValidateExistingScope(
         WatchedFolderConfiguration configuration,

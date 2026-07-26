@@ -11,9 +11,9 @@ public sealed class AboutViewModel : ViewModelBase
     public string ApplicationName => "OpenSorSe";
 
     /// <summary>
-    /// Gets the declared 1.2.0 application version.
+    /// Gets the declared 1.3 application version.
     /// </summary>
-    public string Version => "1.2.0";
+    public string Version => "1.3";
 
     /// <summary>
     /// Gets the license declared by the v0.1 implementation specification.

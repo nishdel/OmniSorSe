@@ -14,6 +14,9 @@ public enum NavigationDestination
     /// <summary>Manages persistent watched folders and review-only incremental analysis.</summary>
     WatchedFolders,
 
+    /// <summary>Manages persistent workflow profiles and declarative sorting recipes.</summary>
+    Workflows,
+
     /// <summary>Displays processed file results.</summary>
     Results,
 

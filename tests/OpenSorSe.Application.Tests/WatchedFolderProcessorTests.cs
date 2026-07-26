@@ -1,6 +1,7 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
@@ -44,6 +45,36 @@ public sealed class WatchedFolderProcessorTests
         Assert.Equal(secondInitial.AnalysedAtUtc, secondUpdated.AnalysedAtUtc);
         Assert.Single(context.Suggestions.AffectedHistory.Last());
         Assert.Equal(firstUpdated.StableId, context.Suggestions.AffectedHistory.Last()[0].Id);
+    }
+
+    [Fact]
+    public async Task IncrementalProfileBehavior_ReanalysesUnchangedAndCanRetainMissingCatalogueItems()
+    {
+        var behavior = new WorkflowScanBehavior(
+            true,
+            ReanalyseChangedContentOnly: false,
+            ReconcileMissingItems: false,
+            PreserveUnchangedAnalysis: true);
+        using var context = CreateContext(configuration => configuration with
+        {
+            EffectiveWorkflow = EffectiveWorkflow(behavior),
+        });
+        var keptPath = await context.WriteAsync("kept.txt", "keep");
+        var removedPath = await context.WriteAsync("removed.txt", "remove");
+        var initial = await context.ProcessAsync(FullBatch(WatchedScanReason.StartupOfflineReconciliation));
+        var keptInitial = initial.Catalogue.Files.Single(file => file.FullPath == keptPath);
+        context.Time.Advance(TimeSpan.FromMinutes(5));
+        File.Delete(removedPath);
+
+        var reconciled = await context.ProcessAsync(
+            FullBatch(WatchedScanReason.UserFullReconciliation));
+
+        Assert.Equal(0, reconciled.Summary.Removed);
+        Assert.Equal(2, reconciled.Catalogue.Files.Count);
+        Assert.True(
+            reconciled.Catalogue.Files.Single(file => file.FullPath == keptPath).AnalysedAtUtc >
+            keptInitial.AnalysedAtUtc);
+        Assert.Contains(reconciled.Catalogue.Files, file => file.FullPath == removedPath);
     }
 
     [Fact]
@@ -513,6 +544,44 @@ public sealed class WatchedFolderProcessorTests
             time,
             processor,
             logging);
+    }
+
+    private static ResolvedWorkflowConfiguration EffectiveWorkflow(
+        WorkflowScanBehavior scanBehavior)
+    {
+        var profile = BuiltInWorkflowLibrary.Profiles[0] with
+        {
+            IncrementalScan = scanBehavior,
+            SortingRecipeIds = [],
+        };
+        var snapshot = new WorkflowConfigurationSnapshot(
+            profile.Id,
+            profile.Name,
+            profile.Revision,
+            profile.ModifiedAtUtc,
+            [],
+            profile.Files,
+            profile.Extraction,
+            profile.Analysis,
+            profile.Ai,
+            profile.UncertaintyPolicy,
+            profile.ChangePlans,
+            profile.Notifications,
+            scanBehavior,
+            "watch:1",
+            DateTimeOffset.UnixEpoch);
+        return new ResolvedWorkflowConfiguration(
+            profile,
+            [],
+            profile.Files,
+            profile.Extraction,
+            profile.Analysis,
+            profile.Ai,
+            profile.UncertaintyPolicy,
+            profile.ChangePlans,
+            profile.Notifications,
+            scanBehavior,
+            snapshot);
     }
 
     private static WatchedChangeBatch FullBatch(WatchedScanReason reason) => new(

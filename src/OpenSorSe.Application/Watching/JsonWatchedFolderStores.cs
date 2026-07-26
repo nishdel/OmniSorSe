@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Application.Workflows;
 
 namespace OpenSorSe.Application.Watching;
 
@@ -163,13 +164,17 @@ public sealed class JsonWatchedFolderConfigurationStore : IWatchedFolderConfigur
             configuration.MaximumFileSizeBytes <= 0 ||
             configuration.IgnoredPaths is null ||
             configuration.IgnorePatterns is null ||
+            configuration.SortingRecipeIds is null ||
             configuration.Notifications is null ||
             configuration.IgnoredPaths.Count > WatchedFolderLimits.MaximumIgnoreRules ||
             configuration.IgnorePatterns.Count > WatchedFolderLimits.MaximumIgnoreRules ||
             configuration.IgnoredPaths.Any(path =>
                 string.IsNullOrWhiteSpace(path) || path.Length > WatchedFolderLimits.MaximumPathLength) ||
             configuration.IgnorePatterns.Any(pattern =>
-                string.IsNullOrWhiteSpace(pattern) || pattern.Length > WatchedFolderLimits.MaximumPatternLength))
+                string.IsNullOrWhiteSpace(pattern) || pattern.Length > WatchedFolderLimits.MaximumPatternLength) ||
+            configuration.SortingRecipeIds.Count > WorkflowLibraryLimits.MaximumRecipes ||
+            configuration.SortingRecipeIds.Any(id =>
+                string.IsNullOrWhiteSpace(id) || id.Length > WorkflowLibraryLimits.MaximumIdentifierLength))
         {
             throw new InvalidDataException("A watched-folder configuration entry is invalid.");
         }
@@ -183,6 +188,11 @@ public sealed class JsonWatchedFolderConfigurationStore : IWatchedFolderConfigur
             SortingRecipeId = string.IsNullOrWhiteSpace(configuration.SortingRecipeId)
                 ? null
                 : configuration.SortingRecipeId.Trim(),
+            SortingRecipeIds = Array.AsReadOnly(configuration.SortingRecipeIds
+                .Select(value => value.Trim())
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()),
             IgnoredPaths = Array.AsReadOnly(configuration.IgnoredPaths
                 .Select(value => value.Trim())
                 .Where(value => value.Length > 0)
@@ -274,24 +284,30 @@ public sealed class JsonWatchedFolderCatalogueStore : IWatchedFolderCatalogueSto
                 WatchedStoreJson.Options,
                 cancellationToken).ConfigureAwait(false);
             if (envelope is null ||
-                envelope.SchemaVersion != WatchedFolderLimits.CurrentCatalogueSchemaVersion ||
+                envelope.SchemaVersion is < 1 or > WatchedFolderLimits.CurrentCatalogueSchemaVersion ||
                 envelope.Catalogues is null)
             {
                 throw new InvalidDataException("The watched catalogue store has an unsupported format.");
             }
 
-            foreach (var catalogue in envelope.Catalogues)
+            var migrated = envelope.Catalogues
+                .Select(catalogue => catalogue with
+                {
+                    SchemaVersion = WatchedFolderLimits.CurrentCatalogueSchemaVersion,
+                })
+                .ToArray();
+            foreach (var catalogue in migrated)
             {
                 Validate(catalogue);
             }
 
-            if (envelope.Catalogues.Select(item => item.CatalogueId).Distinct(StringComparer.Ordinal).Count() !=
-                envelope.Catalogues.Count)
+            if (migrated.Select(item => item.CatalogueId).Distinct(StringComparer.Ordinal).Count() !=
+                migrated.Length)
             {
                 throw new InvalidDataException("The watched catalogue store contains duplicate identities.");
             }
 
-            return Array.AsReadOnly(envelope.Catalogues.Select(Clone).ToArray());
+            return Array.AsReadOnly(migrated.Select(Clone).ToArray());
         }
         catch (JsonException exception)
         {

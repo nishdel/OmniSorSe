@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Application;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Rules;
@@ -90,12 +91,104 @@ public sealed class ProcessingOrchestratorTests
         Assert.Contains(progress, item => item.Stage == ProcessingProgressStage.ExtractingContent);
     }
 
+    /// <summary>Verifies workflow file selection limits the completed scan before downstream processing.</summary>
+    [Fact]
+    public async Task ProcessAsync_WorkflowFileSelection_FiltersTypeSizeAndHiddenFiles()
+    {
+        var calls = new List<string>();
+        var visible = Entry("C:\\Root\\visible.pdf", ".pdf", 4, FileAttributes.Normal);
+        var excluded = Entry("C:\\Root\\excluded.tmp", ".tmp", 4, FileAttributes.Normal);
+        var oversized = Entry("C:\\Root\\large.pdf", ".pdf", 6, FileAttributes.Normal);
+        var hidden = Entry("C:\\Root\\hidden.pdf", ".pdf", 4, FileAttributes.Hidden);
+        var scanner = new Scanner(calls, ScanStatus.Completed, [visible, excluded, oversized, hidden]);
+        var orchestrator = new ProcessingOrchestrator(
+            scanner,
+            new Metadata(calls),
+            new Hasher(calls),
+            new Classifier(calls),
+            new Duplicates(calls),
+            new Rules(calls),
+            new Planner(calls),
+            new Conflicts(calls),
+            new Logging(),
+            new Errors());
+        var profile = BuiltInWorkflowLibrary.Profiles[0] with
+        {
+            Files = new WorkflowFileSelectionOptions([".pdf"], [".tmp"], 5),
+            Extraction = new WorkflowExtractionOptions(false, false, false, true, "eng", 1),
+            Analysis = new WorkflowAnalysisOptions(false, false, false),
+        };
+        var workflow = new ResolvedWorkflowConfiguration(
+            profile,
+            [],
+            profile.Files,
+            profile.Extraction,
+            profile.Analysis,
+            profile.Ai with
+            {
+                Enabled = false,
+                InvocationPolicy = WorkflowAiInvocationPolicy.Disabled,
+            },
+            profile.UncertaintyPolicy,
+            profile.ChangePlans,
+            profile.Notifications,
+            profile.FullScan,
+            Snapshot(profile));
+
+        var result = await orchestrator.ProcessAsync(Request() with { WorkflowConfiguration = workflow });
+
+        Assert.Equal(["scan"], calls);
+        Assert.Equal(visible, Assert.Single(result.Scan.Files));
+        Assert.Equal(1, result.Scan.Statistics.FilesDiscovered);
+    }
+
     private static ProcessingRequest Request() => new(new ScanRequest(["C:\\Root"], ScanOptions.Default), []);
 
     private static ProcessingOrchestrator Create(List<string> calls, ScanStatus status) => new(
         new Scanner(calls, status), new Metadata(calls), new Hasher(calls), new Classifier(calls), new Duplicates(calls), new Rules(calls), new Planner(calls), new Conflicts(calls), new Logging(), new Errors());
 
-    private static ScanResult Scan(ScanStatus status) => new([], [], new ScanStatistics(0, 0, 0), [], status, TimeSpan.Zero);
+    private static ScanResult Scan(
+        ScanStatus status,
+        IReadOnlyList<FileEntry>? files = null) =>
+        new(
+            files ?? [],
+            [],
+            new ScanStatistics(files?.Count ?? 0, 0, 0),
+            [],
+            status,
+            TimeSpan.Zero);
+    private static FileEntry Entry(
+        string path,
+        string extension,
+        long size,
+        FileAttributes attributes) =>
+        new(
+            path,
+            new FileMetadata(
+                Path.GetFileName(path),
+                extension,
+                size,
+                null,
+                null,
+                null,
+                attributes));
+    private static WorkflowConfigurationSnapshot Snapshot(WorkflowProfile profile) =>
+        new(
+            profile.Id,
+            profile.Name,
+            profile.Revision,
+            profile.ModifiedAtUtc,
+            [],
+            profile.Files,
+            profile.Extraction,
+            profile.Analysis,
+            profile.Ai,
+            profile.UncertaintyPolicy,
+            profile.ChangePlans,
+            profile.Notifications,
+            profile.FullScan,
+            "test",
+            DateTimeOffset.UnixEpoch);
     private static FileMetadataResult MetadataResult() => new([], new FileMetadataStatistics(0, 0, 0), []);
     private static FileHashResult HashResult() => new([], new FileHashStatistics(0, 0, 0, 0), []);
     private static FileClassificationResult ClassificationResult() => new([], new FileClassificationStatistics(0, 0, 0, 0), []);
@@ -104,9 +197,12 @@ public sealed class ProcessingOrchestratorTests
     private static ActionPlanResult PlanResult() => new([], new ActionPlanningStatistics(0, 0, 0, 0, 0, 0, 0, 0, 0), []);
     private static ConflictResolutionResult ConflictResult() => new([], new ConflictResolutionStatistics(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), []);
 
-    private sealed class Scanner(List<string> calls, ScanStatus status) : IFileScanner
+    private sealed class Scanner(
+        List<string> calls,
+        ScanStatus status,
+        IReadOnlyList<FileEntry>? files = null) : IFileScanner
     {
-        public Task<ScanResult> ScanAsync(ScanRequest request, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default) { calls.Add("scan"); return Task.FromResult(Scan(status)); }
+        public Task<ScanResult> ScanAsync(ScanRequest request, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default) { calls.Add("scan"); return Task.FromResult(Scan(status, files)); }
     }
     private sealed class Metadata(List<string> calls) : IFileMetadataReader
     {

@@ -1,0 +1,293 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.WorkflowsView"
+             x:DataType="vm:WorkflowsViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Spacing="3">
+                <TextBlock Classes="page-title" Text="Workflows" />
+                <TextBlock Classes="page-subtitle"
+                           Text="Reusable profiles and declarative sorting recipes. Every file change still requires a reviewed Change Plan." />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="secondary" Content="Refresh" Command="{Binding RefreshCommand}" />
+        </Grid>
+
+        <Border Grid.Row="1" Classes="card" Padding="12">
+            <Grid ColumnDefinitions="2*,*,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+                <TextBox PlaceholderText="Search names and descriptions"
+                         Text="{Binding SearchText}" />
+                <TextBox Grid.Column="1"
+                         PlaceholderText="File type, for example .pdf"
+                         Text="{Binding FileTypeFilter}" />
+                <CheckBox Grid.Column="2" Content="Built-in" IsChecked="{Binding OnlyBuiltIn}" />
+                <CheckBox Grid.Column="3" Content="User-created" IsChecked="{Binding OnlyUserCreated}" />
+                <CheckBox Grid.Column="4" Content="AI" IsChecked="{Binding OnlyAiEnabled}" />
+                <CheckBox Grid.Column="5" Content="OCR" IsChecked="{Binding OnlyOcrEnabled}" />
+                <CheckBox Grid.Column="6" Content="Duplicates" IsChecked="{Binding OnlyDuplicateEnabled}" />
+                <CheckBox Grid.Column="7" Content="Archived" IsChecked="{Binding ShowArchived}" />
+            </Grid>
+        </Border>
+
+        <TabControl Grid.Row="2">
+            <TabItem Header="Workflow profiles">
+                <Grid ColumnDefinitions="0.9*,1.4*" ColumnSpacing="12" Margin="0,10,0,0">
+                    <Grid RowDefinitions="*,Auto" RowSpacing="8">
+                        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:WorkflowProfileRow">
+                                    <Border Classes="card" Padding="10" Margin="0,0,0,7">
+                                        <StackPanel Spacing="4">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding StateText}" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                            <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding OriginText}" />
+                                            <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding CapabilityText}" />
+                                            <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding UsageText}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <WrapPanel Grid.Row="1">
+                            <Button Margin="0,0,6,6" Content="New profile" Command="{Binding NewProfileCommand}" />
+                            <Button Margin="0,0,6,6" Content="Duplicate" Command="{Binding DuplicateProfileCommand}" />
+                            <Button Margin="0,0,6,6" Classes="secondary" Content="Run scan" Command="{Binding RunScanCommand}" />
+                            <Button Margin="0,0,6,6" Classes="secondary" Content="Assign to watched folder" Command="{Binding AssignToWatchedFolderCommand}" />
+                            <Button Margin="0,0,6,6" Classes="secondary" Content="Export" Command="{Binding ExportProfileCommand}" />
+                        </WrapPanel>
+                    </Grid>
+
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel Spacing="10">
+                            <TextBlock FontSize="17" FontWeight="SemiBold" Text="Profile editor" />
+                            <TextBlock FontWeight="SemiBold" Text="Identity" />
+                            <TextBox PlaceholderText="Profile name" Text="{Binding ProfileName}" />
+                            <TextBox AcceptsReturn="True" MinHeight="54" PlaceholderText="Description" Text="{Binding ProfileDescription}" />
+
+                            <TextBlock FontWeight="SemiBold" Text="Files" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <TextBox PlaceholderText="Included: .pdf, .docx" Text="{Binding IncludedFileTypes}" />
+                                <TextBox Grid.Column="1" PlaceholderText="Excluded: .tmp, .part" Text="{Binding ExcludedFileTypes}" />
+                            </Grid>
+                            <NumericUpDown Minimum="1" Maximum="1048576" Value="{Binding MaximumFileSizeMiB}" />
+                            <CheckBox Content="Include hidden files" IsChecked="{Binding IncludeHiddenFiles}" />
+
+                            <TextBlock FontWeight="SemiBold" Text="Extraction" />
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,12,0" Content="Metadata" IsChecked="{Binding MetadataEnabled}" />
+                                <CheckBox Margin="0,0,12,0" Content="Text" IsChecked="{Binding TextEnabled}" />
+                                <CheckBox Margin="0,0,12,0" Content="OCR" IsChecked="{Binding OcrEnabled}" />
+                                <NumericUpDown Width="110" Minimum="1" Maximum="500" Value="{Binding MaximumPages}" />
+                            </WrapPanel>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <CheckBox Content="OCR only when text is unavailable"
+                                          IsChecked="{Binding OcrOnlyWhenTextUnavailable}" />
+                                <TextBox Grid.Column="1" PlaceholderText="OCR language, for example eng"
+                                         Text="{Binding OcrLanguage}" />
+                            </Grid>
+
+                            <TextBlock FontWeight="SemiBold" Text="Classification and duplicates" />
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,12,0" Content="Classification" IsChecked="{Binding ClassificationEnabled}" />
+                                <CheckBox Margin="0,0,12,0" Content="Duplicates" IsChecked="{Binding DuplicateAnalysisEnabled}" />
+                                <CheckBox Content="Rules" IsChecked="{Binding RuleEvaluationEnabled}" />
+                            </WrapPanel>
+
+                            <TextBlock FontWeight="SemiBold" Text="AI" />
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <CheckBox Content="Permit optional AI" IsChecked="{Binding ProfileAiEnabled}" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding AiPolicies}" SelectedItem="{Binding AiPolicy}" />
+                            </Grid>
+                            <TextBox PlaceholderText="AI-selected file types, for example .pdf, .jpg"
+                                     Text="{Binding ProfileAiFileTypes}" />
+
+                            <TextBlock FontWeight="SemiBold" Text="Sorting recipes" />
+                            <ItemsControl ItemsSource="{Binding ProfileRecipeChoices}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:WorkflowRecipeSelectionRow">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,0,0,4">
+                                            <CheckBox IsChecked="{Binding IsSelected}" />
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock Text="{Binding Description}" Opacity="0.7" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding OriginText}" Opacity="0.7" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock FontWeight="SemiBold" Text="Watched-folder behaviour and notifications" />
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,12,0" Content="Incremental scan enabled" IsChecked="{Binding IncrementalScanEnabled}" />
+                                <CheckBox Margin="0,0,12,0" Content="Reanalyse changed content only" IsChecked="{Binding ReanalyseChangedContentOnly}" />
+                                <CheckBox Margin="0,0,12,0" Content="Reconcile missing items" IsChecked="{Binding ReconcileMissingItems}" />
+                                <CheckBox Margin="0,0,12,0" Content="Preserve unchanged analysis" IsChecked="{Binding PreserveUnchangedAnalysis}" />
+                                <CheckBox Content="Full scan enabled" IsChecked="{Binding FullScanEnabled}" />
+                            </WrapPanel>
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,12,0" Content="Generate reviewable Change Plans" IsChecked="{Binding GenerateChangePlans}" />
+                                <CheckBox Margin="0,0,12,0" Content="Rename proposals" IsChecked="{Binding PermitRenameProposals}" />
+                                <CheckBox Margin="0,0,12,0" Content="Move proposals" IsChecked="{Binding PermitMoveProposals}" />
+                                <CheckBox Content="Directory proposals" IsChecked="{Binding PermitDirectoryProposals}" />
+                            </WrapPanel>
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,12,0" Content="Completion notification" IsChecked="{Binding NotifyWhenComplete}" />
+                                <CheckBox Margin="0,0,12,0" Content="Plan-ready notification" IsChecked="{Binding NotifyWhenPlanReady}" />
+                                <CheckBox Content="Error notification" IsChecked="{Binding NotifyOnErrors}" />
+                            </WrapPanel>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <TextBlock VerticalAlignment="Center" Text="Uncertainty policy" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding UncertaintyPolicies}"
+                                          SelectedItem="{Binding ProfileUncertaintyPolicy}" />
+                            </Grid>
+
+                            <WrapPanel>
+                                <Button Margin="0,0,6,6" Content="Save validated profile" Command="{Binding SaveProfileCommand}" />
+                                <Button Margin="0,0,6,6" Classes="secondary" Content="Enable / disable" Command="{Binding ToggleProfileEnabledCommand}" />
+                                <Button Margin="0,0,6,6" Classes="secondary" Content="Archive / restore" Command="{Binding ToggleProfileArchiveCommand}" />
+                                <Button Classes="secondary" Content="Delete safely" Command="{Binding RequestDeleteProfileCommand}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Sorting recipes">
+                <Grid ColumnDefinitions="0.9*,1.4*" ColumnSpacing="12" Margin="0,10,0,0">
+                    <Grid RowDefinitions="*,Auto" RowSpacing="8">
+                        <ListBox ItemsSource="{Binding Recipes}" SelectedItem="{Binding SelectedRecipe}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SortingRecipeRow">
+                                    <Border Classes="card" Padding="10" Margin="0,0,0,7">
+                                        <StackPanel Spacing="4">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding StateText}" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                            <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding TemplateText}" TextWrapping="Wrap" />
+                                            <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding UsageText}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <WrapPanel Grid.Row="1">
+                            <Button Margin="0,0,6,6" Content="New sorting recipe" Command="{Binding NewRecipeCommand}" />
+                            <Button Margin="0,0,6,6" Content="Duplicate" Command="{Binding DuplicateRecipeCommand}" />
+                            <Button Margin="0,0,6,6" Classes="secondary" Content="Export" Command="{Binding ExportRecipeCommand}" />
+                        </WrapPanel>
+                    </Grid>
+
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel Spacing="9">
+                            <TextBlock FontSize="17" FontWeight="SemiBold" Text="Recipe designer" />
+                            <TextBox PlaceholderText="Recipe name" Text="{Binding RecipeName}" />
+                            <TextBox AcceptsReturn="True" MinHeight="48" PlaceholderText="Description" Text="{Binding RecipeDescription}" />
+                            <Grid ColumnDefinitions="*,120" ColumnSpacing="8">
+                                <TextBox PlaceholderText="Applicable file types: .pdf, .jpg" Text="{Binding RecipeFileTypes}" />
+                                <NumericUpDown Grid.Column="1" Minimum="-10000" Maximum="10000" Value="{Binding RecipePriority}" />
+                            </Grid>
+                            <TextBox PlaceholderText="Applicable categories: Document, Image"
+                                     Text="{Binding RecipeCategories}" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <StackPanel>
+                                    <TextBlock Text="Minimum file size (MiB, 0 = none)" />
+                                    <NumericUpDown Minimum="0" Maximum="1048576" Value="{Binding RecipeMinimumFileSizeMiB}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Maximum file size (MiB, 0 = none)" />
+                                    <NumericUpDown Minimum="0" Maximum="1048576" Value="{Binding RecipeMaximumFileSizeMiB}" />
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock FontWeight="SemiBold" Text="Templates" />
+                            <TextBox PlaceholderText="{}{date:yyyy-MM-dd}_{vendor}_{documentType}" Text="{Binding NamingTemplate}" />
+                            <TextBox PlaceholderText="{}Invoices/{date:yyyy}/{vendor}" Text="{Binding DestinationTemplate}" />
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                <TextBox PlaceholderText="Required fields" Text="{Binding RequiredFields}" />
+                                <TextBox Grid.Column="1" PlaceholderText="Optional fields" Text="{Binding OptionalFields}" />
+                            </Grid>
+                            <TextBox AcceptsReturn="True" MinHeight="54" PlaceholderText="Fallbacks: field=value" Text="{Binding FallbackValues}" />
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                <ComboBox ItemsSource="{Binding CasePolicies}" SelectedItem="{Binding CasePolicy}" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding InvalidCharacterPolicies}" SelectedItem="{Binding InvalidCharacterPolicy}" />
+                                <ComboBox Grid.Column="2" ItemsSource="{Binding MissingValuePolicies}" SelectedItem="{Binding MissingValuePolicy}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                <ComboBox ItemsSource="{Binding CollisionPolicies}" SelectedItem="{Binding CollisionPolicy}" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding UncertaintyPolicies}" SelectedItem="{Binding RecipeUncertaintyPolicy}" />
+                                <TextBox Grid.Column="2" PlaceholderText="Default date format"
+                                         Text="{Binding DefaultDateFormat}" />
+                            </Grid>
+                            <WrapPanel>
+                                <CheckBox Margin="0,0,12,0" Content="Preserve extension" IsChecked="{Binding PreserveExtension}" />
+                                <CheckBox Margin="0,0,12,0" Content="Normalize Unicode" IsChecked="{Binding NormalizeUnicode}" />
+                                <CheckBox Margin="0,0,12,0" Content="Collapse whitespace" IsChecked="{Binding CollapseWhitespace}" />
+                                <TextBlock VerticalAlignment="Center" Text="Maximum filename length" />
+                                <NumericUpDown Margin="8,0,0,0" Width="100" Minimum="1" Maximum="240" Value="{Binding MaximumFileNameLength}" />
+                            </WrapPanel>
+
+                            <TextBlock FontWeight="SemiBold" Text="Representative preview metadata" />
+                            <TextBox Text="{Binding SamplePath}" />
+                            <TextBox AcceptsReturn="True" MinHeight="72" Text="{Binding SampleValues}" />
+                            <TextBlock Text="AI-derived sample field names (comma separated, treated as already reviewed)" />
+                            <TextBox Text="{Binding SampleAiFields}" />
+                            <Button HorizontalAlignment="Left" Content="Preview recipe" Command="{Binding PreviewRecipeCommand}" />
+                            <TextBox IsReadOnly="True" AcceptsReturn="True" MinHeight="150" Text="{Binding PreviewText}" />
+                            <WrapPanel>
+                                <Button Margin="0,0,6,6" Content="Save validated recipe" Command="{Binding SaveRecipeCommand}" />
+                                <Button Margin="0,0,6,6" Classes="secondary" Content="Archive / restore" Command="{Binding ToggleRecipeArchiveCommand}" />
+                                <Button Classes="secondary" Content="Delete safely" Command="{Binding RequestDeleteRecipeCommand}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Import and export">
+                <ScrollViewer Margin="0,10,0,0">
+                    <StackPanel Spacing="10">
+                        <TextBlock FontSize="17" FontWeight="SemiBold" Text="Versioned JSON transfer" />
+                        <TextBlock Text="Exports contain declarative configuration and dependency IDs only. Provider endpoints, credentials, secrets, and document contents are excluded."
+                                   TextWrapping="Wrap" />
+                        <ComboBox Width="260"
+                                  HorizontalAlignment="Left"
+                                  ItemsSource="{Binding ImportConflictPolicies}"
+                                  SelectedItem="{Binding ImportConflictPolicy}" />
+                        <TextBox AcceptsReturn="True"
+                                 MinHeight="360"
+                                 Text="{Binding TransferJson}"
+                                 PlaceholderText="Exported profile or recipe JSON" />
+                        <WrapPanel>
+                            <Button Margin="0,0,8,0" Content="Validate and import" Command="{Binding ImportCommand}" />
+                            <Button Classes="secondary" Content="Export workflow diagnostics"
+                                    Command="{Binding ExportDiagnosticsCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.RowSpan="3"
+                IsVisible="{Binding DeleteConfirmationPending}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Classes="card"
+                Padding="18"
+                MaxWidth="460">
+            <StackPanel Spacing="10">
+                <TextBlock FontSize="17" FontWeight="SemiBold" Text="Confirm safe deletion" />
+                <TextBlock Text="Deletion is blocked while a profile or recipe is referenced. Built-ins cannot be deleted."
+                           TextWrapping="Wrap" />
+                <WrapPanel>
+                    <Button Margin="0,0,8,0" Content="Delete unreferenced item" Command="{Binding ConfirmDeleteCommand}" />
+                    <Button Classes="secondary" Content="Cancel" Command="{Binding CancelDeleteCommand}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

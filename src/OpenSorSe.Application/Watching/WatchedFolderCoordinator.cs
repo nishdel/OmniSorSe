@@ -3,6 +3,7 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Executor;
 using OpenSorSe.Executor.Models;
@@ -279,7 +280,9 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
 
                 if (existingRegistration is not null)
                 {
-                    if (!SameProcessingSettings(existingRegistration.Configuration, configuration))
+                    var processingSettingsChanged =
+                        !SameProcessingSettings(existingRegistration.Configuration, configuration);
+                    if (processingSettingsChanged)
                     {
                         lock (_debounceGate)
                         {
@@ -297,6 +300,16 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
                     }
 
                     await PublishStateAsync(configuration, cancellationToken).ConfigureAwait(false);
+                    if (processingSettingsChanged)
+                    {
+                        await EnqueueBatchAsync(
+                            NewBatch(
+                                configuration.Id,
+                                WatchedScanReason.ConfigurationChangedReconciliation,
+                                requiresFullReconciliation: true),
+                            cancellationToken).ConfigureAwait(false);
+                    }
+
                     continue;
                 }
 
@@ -775,6 +788,26 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         {
             await MarkUnavailableAsync(configuration.Id, cancellationToken).ConfigureAwait(false);
         }
+        catch (WorkflowProfileUnavailableException exception)
+        {
+            var unavailable = await _manager.SetRuntimeStateAsync(
+                configuration.Id,
+                current => current with
+                {
+                    Status = WatchedFolderStatus.ProfileUnavailable,
+                    LastError = exception.Message,
+                    LatestSummary = "Profile unavailable — review configuration. No unrelated fallback profile was used.",
+                },
+                cancellationToken).ConfigureAwait(false);
+            await RecordActivityAsync(
+                configuration.Id,
+                WatchedActivityKind.Error,
+                "Watched-folder processing was blocked because its workflow profile or recipe is unavailable.",
+                batch.BatchId,
+                detail: exception.Message,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+            await PublishStateAsync(unavailable, cancellationToken).ConfigureAwait(false);
+        }
         catch (UnauthorizedAccessException)
         {
             var inaccessible = await _manager.SetRuntimeStateAsync(
@@ -1010,6 +1043,8 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         first.IgnorePatterns.SequenceEqual(second.IgnorePatterns, StringComparer.OrdinalIgnoreCase) &&
         string.Equals(first.ScanProfileId, second.ScanProfileId, StringComparison.Ordinal) &&
         string.Equals(first.SortingRecipeId, second.SortingRecipeId, StringComparison.Ordinal) &&
+        first.SortingRecipeIds.SequenceEqual(second.SortingRecipeIds, StringComparer.Ordinal) &&
+        first.ProfileOverride == second.ProfileOverride &&
         first.DeterministicAnalysisEnabled == second.DeterministicAnalysisEnabled &&
         first.AiAnalysisEnabled == second.AiAnalysisEnabled &&
         first.Notifications == second.Notifications &&
@@ -1038,7 +1073,8 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         WatchedScanReason.StartupOfflineReconciliation or
         WatchedScanReason.ResumeReconciliation or
         WatchedScanReason.OverflowRecovery or
-        WatchedScanReason.ReconnectReconciliation;
+        WatchedScanReason.ReconnectReconciliation or
+        WatchedScanReason.ConfigurationChangedReconciliation;
 
     private static bool _pathPolicySafeWithin(string root, string candidate)
     {

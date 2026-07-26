@@ -86,7 +86,10 @@ public sealed class ChangePlanFactory : IChangePlanFactory
                 [],
                 false,
                 BoundedOrNull(proposal.AiModel, 256),
-                BoundedOrNull(proposal.AiRequestCorrelationId, 256)));
+                BoundedOrNull(proposal.AiRequestCorrelationId, 256))
+            {
+                WorkflowProvenance = CloneProvenance(proposal.WorkflowProvenance),
+            });
         }
 
         var draft = new ChangePlan(
@@ -120,7 +123,7 @@ public sealed class ChangePlanFactory : IChangePlanFactory
             .Where(action => action.ActionType == ChangeActionType.CreateDirectory)
             .Select(action => NormalizeDestination(root, action.DestinationPath))
             .ToHashSet(PathComparer);
-        var inferred = new HashSet<string>(PathComparer);
+        var inferred = new Dictionary<string, ChangeActionProposal>(PathComparer);
         foreach (var proposal in supplied.Where(action => action.ActionType != ChangeActionType.CreateDirectory))
         {
             var destination = NormalizeDestination(root, proposal.DestinationPath);
@@ -134,22 +137,30 @@ public sealed class ChangePlanFactory : IChangePlanFactory
                     break;
                 }
 
-                inferred.Add(parent);
+                if (!inferred.TryGetValue(parent, out var existing) ||
+                    existing.WorkflowProvenance is null && proposal.WorkflowProvenance is not null)
+                {
+                    inferred[parent] = proposal;
+                }
+
                 parent = Path.GetDirectoryName(parent);
             }
         }
 
-        foreach (var directory in inferred
-                     .OrderBy(path => path.Count(character => character == Path.DirectorySeparatorChar))
-                     .ThenBy(path => path, PathComparer))
+        foreach (var item in inferred
+                     .OrderBy(pair => pair.Key.Count(character => character == Path.DirectorySeparatorChar))
+                     .ThenBy(pair => pair.Key, PathComparer))
         {
             result.Add(new ChangeActionProposal(
                 ChangeActionType.CreateDirectory,
                 null,
-                directory,
-                ChangeSuggestionSource.ExistingFolderStructureSuggestion,
-                "Required destination folder.",
-                0));
+                item.Key,
+                item.Value.SuggestionSource,
+                $"Required destination folder for {item.Value.Reason}",
+                0)
+            {
+                WorkflowProvenance = item.Value.WorkflowProvenance,
+            });
         }
 
         return result
@@ -191,5 +202,32 @@ public sealed class ChangePlanFactory : IChangePlanFactory
 
         var normalized = value.Trim();
         return normalized.Length <= maximumLength ? normalized : normalized[..maximumLength];
+    }
+
+    private static ChangeWorkflowProvenance? CloneProvenance(ChangeWorkflowProvenance? provenance)
+    {
+        if (provenance is null)
+        {
+            return null;
+        }
+
+        return provenance with
+        {
+            ValuesUsed = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
+                provenance.ValuesUsed.ToDictionary(
+                    pair => Bounded(pair.Key, 128),
+                    pair => Bounded(pair.Value, 512),
+                    StringComparer.OrdinalIgnoreCase)),
+            EvidenceSources = Array.AsReadOnly(provenance.EvidenceSources
+                .Select(value => Bounded(value, 256))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()),
+            Warnings = Array.AsReadOnly(provenance.Warnings
+                .Select(value => Bounded(value, 1_024))
+                .ToArray()),
+            UnresolvedFields = Array.AsReadOnly(provenance.UnresolvedFields
+                .Select(value => Bounded(value, 128))
+                .ToArray()),
+        };
     }
 }

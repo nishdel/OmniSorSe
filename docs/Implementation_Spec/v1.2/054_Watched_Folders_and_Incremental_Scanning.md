@@ -6,11 +6,17 @@
 - Release name: **Watched Folders and Incremental Scanning**
 - Branch: `v1.2-watched-folders`
 
-Release branches follow `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, and `v1.3-plugin-foundation`.
+Release branches follow `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, and `v1.3-workflow-profiles`.
 
 ## Status
 
 Implemented in source with automated Debug/Release validation; manual GUI/filesystem/platform checklist remains required before packaging.
+
+## v1.3 compatibility note
+
+v1.3 supersedes the v1.2 runtime profile fallback and session-only recipe assignment with the persistent library in [specification 055](../v1.3/055_Workflow_Profiles_and_Recipe_Library.md). Legacy profile ID `default` maps explicitly to General Documents with a warning. Legacy recipe ID `current` does not silently resolve for a persistent watched folder; the folder enters **Profile unavailable — review configuration** until the user deliberately selects a permitted persistent recipe. Configuration/catalogue schemas advance to 3/2 while retaining older read compatibility.
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
 
 ## Objective
 
