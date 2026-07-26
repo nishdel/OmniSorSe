@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.2.0
+
+Watched Folders and Incremental Scanning.
+
+Release branch: `v1.2-watched-folders`.
+
+### Added
+
+- Persistent watched-folder configurations with stable IDs, availability/status, subfolder scope, exact/pattern ignores, scan profile, sorting recipe, deterministic/AI switches, notification preferences, quiet period, size/hidden policy, timestamps, queue state, summaries, pending plans, and associated catalogue identity.
+- Versioned atomic `watched-folders.json`, `watched-catalogues.json`, and grouped `watched-activity.json` stores with bounds, corruption preservation, schema migration, and missing-store compatibility.
+- Replaceable `FileSystemWatcher` event source, canonical event/root validation, per-folder quiet-period debounce, duplicate burst grouping, directory/overflow escalation, and a bounded 256-batch single-reader queue with backpressure.
+- Stable Windows file identity and portable best-effort identity, real-filesystem probes, file-stability observations, deferral/retry, and root-confined reparse-safe enumeration.
+- Targeted incremental processing that preserves unchanged analysis and selectively reuses metadata, content/OCR cache, SHA-256, classification, duplicate, and rule infrastructure.
+- Startup, pause/resume, reconnect, overflow, daily, user-triggered incremental, and full reconciliation workflows.
+- Canonical ignore policy for exact paths, directories, filename/extension patterns, hidden/linked/internal/oversized items, and visible built-in temporary/incomplete-download patterns.
+- Optional per-folder AI with global/capability/model gates, 12-item requests, a 120-item per-cycle backlog bound, cancellation, unchanged-content avoidance, persisted pending/completed/failed item state, provenance, independent failure, and pending/failed-only retry.
+- Operation Journal path/identity correlation and verified post-operation reconciliation to suppress recursive suggestions without disabling watching for a fixed duration.
+- **Watched Folders** desktop management, status, actions, grouped activity, precise notifications, explicit configuration-removal confirmation, and review routing.
+- Automated configuration, store, ignore, event/debounce, processor, reconciliation, AI, correlation, stability, and ViewModel tests.
+
+### Changed
+
+- Product, assembly, informational, file, manifest, and About versions report `1.2.0` / `1.2.0.0`.
+- Dedicated watched catalogues update in place without consuming or evicting entries from the separate opt-in Saved scans catalogue.
+- Existing v1.1 deterministic and optional AI suggestions are reused to create reviewable Change Plans.
+- Release branches follow `v<version>-<primary-feature>`.
+- Late v1.1 Review Changes progress callbacks no longer overwrite the verified terminal execution status.
+
+### Safety
+
+- Watched folders automate detection and analysis, not file modification.
+- Watcher events are hints and are reconciled with actual canonical in-root state.
+- Overlapping roots are rejected to prevent duplicate ownership and processing.
+- Missing/disconnected folders retain configuration, catalogue, and history.
+- Ignored files never enter optional AI.
+- Watched-folder processing never invokes `IChangePlanExecutionService`; every mutation remains behind existing v1.1 manual review, approval, validation, and explicit Apply.
+- Journal-correlated OpenSorSe changes update catalogue state without repeated plans or AI analysis.
+
 ## v1.1.0
 
 Safe File Operations and Robustness stable release.

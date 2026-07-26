@@ -11,7 +11,7 @@
 
 OpenSorSe is a modern, open-source Windows desktop application for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, local meaning-based search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
 
-> OpenSorSe 1.1.0 implements preview-first, journalled file organization. Complete the [v1.1 manual checklist](docs/MANUAL_TESTING_v1.1.md) before publishing a binary release.
+> OpenSorSe 1.2.0 adds watched folders and incremental scanning while retaining preview-first, journalled file organization. Complete the [v1.2 manual checklist](docs/MANUAL_TESTING_v1.2.md) before publishing a binary release.
 
 ## Quick links
 
@@ -39,6 +39,7 @@ OpenSorSe is a modern, open-source Windows desktop application for scanning, sea
 | Feature | What it provides |
 | --- | --- |
 | **Fast folder scanning** | Recursively scans selected folders with progress, cancellation, recoverable error isolation, metadata classification, and exact duplicate detection. |
+| **Watched Folders** | Persists selected roots, debounces filesystem hints, verifies real state, incrementally analyses changed files, reconciles offline/missed changes, and produces grouped activity without automatic file modification. |
 | **Duplicate Detective** | Groups byte-identical files, shows potential reclaimable space, and supports review without offering automatic deletion. |
 | **Meaning Search (Beta)** | Builds a bounded local index and finds related filenames, tags, metadata, native text, and OCR text with match explanations. |
 | **File Assistant** | Produces validated, review-only rename and folder-structure suggestions for explicitly selected files and metadata. |
@@ -96,7 +97,7 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 ### Portable ZIP
 
-1. Download `OpenSorSe-v1.1.0-win-x64.zip` from the GitHub release after the v1.1 manual release checklist is complete.
+1. Download `OpenSorSe-v1.2.0-win-x64.zip` only from a published GitHub release after the v1.2 manual release checklist is complete. This source tree does not claim that package has been published.
 2. Extract the entire archive to a writable folder.
 3. Run `OpenSorSe.exe`.
 
@@ -138,15 +139,23 @@ AI output is always untrusted and suggestion-only. Accepting a rename or folder 
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
+> Watched folders automate detection and analysis, not file modification.
+
+Watched-folder AI is separately disabled by default. Ignored files never enter AI analysis; requests contain at most 12 files, one cycle attempts at most 120 items, and per-file state makes retry select pending/failed work without repeating completed AI. Changes made while OpenSorSe is closed, paused, or disconnected are compared with the dedicated watched catalogue during startup/resume/reconnect reconciliation.
+
 Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
 
 ## Known limitations
 
-- The previously produced v1.0 portable package targets Windows x64. A v1.1 package is not claimed until the v1.1 manual release checklist and packaging workflow are completed.
+- The previously produced v1.0 portable package targets Windows x64. A v1.2 package is not claimed until the v1.2 manual release checklist and packaging workflow are completed.
 - Tesseract and its language data are external and required for image/scanned-page OCR. Rendered OCR page previews are not retained in diagnostics.
 - Real approximately 2B, 4B, and 7B/8B Ollama compatibility remains pending the documented manual matrix.
 - Folder-structure AI requests accept at most 12 selected files. Larger selections are rejected as a whole with the exact count shown; no file is silently omitted and no partial plan is generated.
-- Permanent deletion, automatic unattended organization, live folder monitoring, cloud AI, and cloud synchronization remain outside v1.1.
+- Watcher APIs can duplicate, reorder, omit, or overflow events. OpenSorSe treats them as hints and reconciles on startup, resume, reconnect, overflow, at least daily while running, and on demand.
+- Watching runs only while OpenSorSe is open. A root renamed externally is shown as unavailable; v1.2 does not guess its new location.
+- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.2.
+- Watched sorting recipe ID `current` uses rules saved in the current session's Rule Editor; v1.2 does not persist a named recipe library.
+- The watched scan-profile identifier is persisted, but v1.2 ships only the existing `default` processing behavior and no profile-library editor.
 - Filesystem work is transaction-like, not a true filesystem transaction. OpenSorSe revalidates, journals, verifies, and attempts reverse-order rollback, but hardware, permission, or external-process failures can require manual recovery.
 - Undo is blocked rather than overwriting when a result was moved, replaced, materially modified, used by a later OpenSorSe operation, or when the original path became occupied.
 - The portable executable is not code-signed, so Windows SmartScreen may warn.
@@ -167,17 +176,17 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
   --configuration Release `
   --runtime win-x64 `
   --self-contained true `
-  --output .\release\OpenSorSe-v1.1.0
+  --output .\release\OpenSorSe-v1.2.0
 ```
 
 ## Documentation
 
 - [Installation](docs/INSTALLATION.md)
 - [Release status](docs/RELEASE_STATUS.md)
-- [v1.1 user guide](docs/USER_GUIDE_v1.1.md)
-- [v1.1 manual testing](docs/MANUAL_TESTING_v1.1.md)
-- [v1.1 version notes](docs/VERSION_NOTES_v1.1.md)
-- [v1.1 troubleshooting](docs/TROUBLESHOOTING_v1.1.md)
+- [v1.2 user guide](docs/USER_GUIDE_v1.2.md)
+- [v1.2 manual testing](docs/MANUAL_TESTING_v1.2.md)
+- [v1.2 version notes](docs/VERSION_NOTES_v1.2.md)
+- [v1.2 troubleshooting](docs/TROUBLESHOOTING_v1.2.md)
 - [Safety and privacy](docs/SAFETY_AND_PRIVACY.md)
 - [Advanced diagnostics architecture](docs/Architecture/01_Core/10_Advanced_Diagnostics.md)
 - [Small-model AI prompt contracts](docs/Architecture/04_AI/11_Small_Model_Prompt_Contracts.md)
@@ -188,7 +197,7 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
 
 ## Roadmap
 
-After v1.1, likely areas include signed Windows distribution, packaging automation, broader platform verification, localization, accessibility refinement, index-quality improvements, and carefully scoped extension points. Autonomous AI file management and unrestricted filesystem control are not roadmap goals.
+After v1.2, likely areas include signed Windows distribution, packaging automation, broader platform verification, localization, accessibility refinement, index-quality improvements, and carefully scoped extension points. Autonomous AI file management and unrestricted filesystem control are not roadmap goals.
 
 See the detailed [roadmap](docs/roadmap.md).
 

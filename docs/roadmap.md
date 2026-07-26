@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.1 keeps scanning, extraction, page-aware OCR, indexing, duplicate review, diagrams, and AI generation non-mutating. Accepted organization suggestions now enter a user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
+OpenSorSe 1.2 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, and AI generation non-mutating. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
 
 ## Completed releases
 
@@ -152,6 +152,22 @@ Implemented as one stable release; automated validation complete and manual UI/p
 - Existing AI parsers remain suggestion-only. Accepted rename/folder output is captured as a Change Plan; the executed input is the reviewed plan, not a later model response.
 - Existing v1.0 application data remains readable. New bounded atomic stores are `change-plans.json` and `operation-journal.json`.
 
+## v1.2 - Watched Folders and Incremental Scanning
+
+Implemented on branch `v1.2-watched-folders`; automated validation complete and manual GUI/filesystem/platform verification pending.
+
+- Persistent watched roots with pause/resume, subfolder scope, exact/pattern ignores, scan profile, optional current-session sorting recipe, separate deterministic/AI choices, notification settings, quiet period, size/hidden policy, status, timestamps, summaries, and catalogue identity.
+- Versioned bounded atomic configuration, catalogue, and grouped activity stores.
+- Replaceable operating-system watcher adapters feed bounded, debounced hint batches; actual canonical root-confined filesystem state remains authoritative.
+- Stable Windows identity and portable fallback support incremental create/modify/rename/move/delete calculation.
+- Unchanged analysis is preserved. Content/OCR/hash/classification rerun only for content-affected files; duplicate groups and affected deterministic rules are updated from retained data.
+- Startup, paused, reconnected, overflow, daily, user-triggered, and no-change reconciliation workflows.
+- Optional per-folder AI remains default-off, uses existing readiness/schema/retry/cancellation contracts, batches at most 12 affected files, and cannot fail the deterministic catalogue update.
+- Deterministic and AI suggestions reuse v1.1 Change Plans. Operation Journal correlation suppresses recursive suggestions from explicitly applied OpenSorSe changes.
+- Overlapping roots are rejected to avoid duplicate ownership.
+
+> Watched folders automate detection and analysis, not file modification.
+
 ## Future release ideas
 
 The following are longer-term ideas, not current capabilities or committed release scope:
@@ -162,7 +178,6 @@ The following are longer-term ideas, not current capabilities or committed relea
 - Database-backed scan catalogs, tags, and search indexes.
 - Generic rule execution and undo integration beyond the narrow restructuring apply workflow.
 - Plugin system.
-- Live filesystem monitoring or scheduled comparisons.
 - Exportable reports and rename inference.
 
 Any future feature that could modify user files requires a separate safety design covering explicit authorization, live preflight, preview, failure handling, and recovery expectations.

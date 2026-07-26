@@ -11,6 +11,9 @@ public enum NavigationDestination
     /// <summary>Displays scan-related controls.</summary>
     Scan,
 
+    /// <summary>Manages persistent watched folders and review-only incremental analysis.</summary>
+    WatchedFolders,
+
     /// <summary>Displays processed file results.</summary>
     Results,
 

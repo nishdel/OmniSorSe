@@ -1,4 +1,4 @@
-# OpenSorSe 1.0 System Goals
+# OpenSorSe 1.2 System Goals
 
 ## Goals
 
@@ -9,18 +9,20 @@
 5. Avoid repeated organization by activating protection only after a successful apply, while allowing incremental new-file proposals, material-change detection, and explicit override.
 6. Keep data local, stores bounded/atomic/versioned, logs privacy-aware, and v0.9.1 settings/catalog/tags/searches backward compatible.
 7. Maintain responsive asynchronous MVVM workflows with cancellation, bounded memory, lazy/bounded presentation, and failure isolation.
+8. Monitor explicitly registered roots only while OpenSorSe runs, using bounded watcher hints, stability checks, incremental catalogue updates, and conservative reconciliation.
+9. Keep every watched-folder suggestion behind the existing reviewable Change Plan, explicit approval, live revalidation, journalled execution, and conflict-aware Undo boundary.
 
 ## Non-goals
 
-OpenSorSe 1.0 does not provide:
+OpenSorSe 1.2 does not provide:
 
 - Autonomous or AI-driven filesystem control.
 - Duplicate deletion or automatic cleanup.
 - Generic rule execution/undo from the Desktop.
 - Bundled Tesseract executables/language data, GPU acceleration, or externally learned embeddings.
-- Plugins, broad localization, packaging overhaul, live monitoring, cloud indexing, or report export.
+- Plugins, broad localization, packaging overhaul, monitoring while the application is closed, cloud indexing, or automated publishing.
 - Claims of cross-platform packaging validation beyond portable architecture and current Windows build/test validation.
 
 ## Safety invariant
 
-No operation may infer mutation authority from scanning, indexing, an AI response, a preview, or a history record. Only the explicit exact-plan restructuring confirmation grants bounded authority for that one operation.
+No operation may infer mutation authority from scanning, watching, reconciliation, indexing, an AI response, a suggestion, a preview, or a history record. Only an explicitly reviewed, approved, revalidated, and confirmed Change Plan grants bounded authority for that one operation.

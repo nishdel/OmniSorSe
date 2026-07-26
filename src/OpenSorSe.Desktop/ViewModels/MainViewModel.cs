@@ -12,6 +12,7 @@ using OpenSorSe.Application.Features;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
+using OpenSorSe.Application.Watching;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Diagnostics;
@@ -40,6 +41,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.Rules, "Sorting rules", FeatureRequirement.Advanced, NavigationGroup.Advanced, "≡"),
         new(NavigationDestination.Diagnostics, "System check", FeatureRequirement.Advanced, NavigationGroup.Advanced, "✓"),
         new(NavigationDestination.History, "Operation History", FeatureRequirement.Regular, NavigationGroup.Primary, "↶"),
+        new(NavigationDestination.WatchedFolders, "Watched Folders", FeatureRequirement.Regular, NavigationGroup.Primary, "W"),
         new(NavigationDestination.Help, "Help", FeatureRequirement.Regular, NavigationGroup.Footer, "?"),
         new(NavigationDestination.About, "About", FeatureRequirement.Regular, NavigationGroup.Footer, "i"),
     ]);
@@ -47,6 +49,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IConfigurationService _configurationService;
     private readonly IResultsSnapshotProjector _resultsSnapshotProjector;
     private readonly IResultsCatalogStore? _catalogStore;
+    private readonly SessionWatchedSortingRecipeResolver? _watchedSortingRecipeResolver;
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
@@ -250,7 +253,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IChangePlanExecutionService? changePlanExecutionService = null,
         IChangePlanStore? changePlanStore = null,
         IOperationJournalStore? operationJournalStore = null,
-        IOperationReportExporter? operationReportExporter = null)
+        IOperationReportExporter? operationReportExporter = null,
+        IWatchedFolderManager? watchedFolderManager = null,
+        IWatchedFolderCoordinator? watchedFolderCoordinator = null,
+        SessionWatchedSortingRecipeResolver? watchedSortingRecipeResolver = null)
         : this(
             configurationService,
             loggingService,
@@ -281,7 +287,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             changePlanExecutionService,
             changePlanStore,
             operationJournalStore,
-            operationReportExporter)
+            operationReportExporter,
+            watchedFolderManager,
+            watchedFolderCoordinator,
+            watchedSortingRecipeResolver)
     {
     }
 
@@ -315,7 +324,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IChangePlanExecutionService? changePlanExecutionService = null,
         IChangePlanStore? changePlanStore = null,
         IOperationJournalStore? operationJournalStore = null,
-        IOperationReportExporter? operationReportExporter = null)
+        IOperationReportExporter? operationReportExporter = null,
+        IWatchedFolderManager? watchedFolderManager = null,
+        IWatchedFolderCoordinator? watchedFolderCoordinator = null,
+        SessionWatchedSortingRecipeResolver? watchedSortingRecipeResolver = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -323,6 +335,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _applicationController = applicationController;
         _resultsSnapshotProjector = resultsSnapshotProjector ?? throw new ArgumentNullException(nameof(resultsSnapshotProjector));
         _catalogStore = catalogStore;
+        _watchedSortingRecipeResolver = watchedSortingRecipeResolver;
         Dashboard = new DashboardViewModel(Navigate);
         FolderSelection = new FolderSelectionViewModel();
         ScanProgress = new ScanProgressViewModel();
@@ -335,6 +348,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ReviewChanges = new ChangePlanReviewViewModel(
             changePlanValidator,
             changePlanExecutionService,
+            changePlanStore);
+        WatchedFolders = new WatchedFoldersViewModel(
+            watchedFolderManager,
+            watchedFolderCoordinator,
+            externalFileLauncher,
             changePlanStore);
         Catalog = new CatalogViewModel(configurationService, catalogStore);
         CatalogSearch = new CatalogSearchViewModel(configurationService, catalogStore, savedSearchStore);
@@ -351,6 +369,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             folderStructureSnapshotService,
             structureComparisonService ?? new StructureComparisonService());
         RuleEditor = new RuleEditorViewModel();
+        _watchedSortingRecipeResolver?.SetCurrentRules(RuleEditor.Rules.ToArray());
         Settings = new SettingsViewModel(
             configurationService,
             aiSuggestionService,
@@ -393,6 +412,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.PersistedTagsChanged += OnPersistedTagsChanged;
         Results.MeaningSearchRequested += OnMeaningSearchRequested;
         Results.ChangePlanCreated += OnChangePlanCreated;
+        WatchedFolders.ReviewPlanRequested += OnWatchedFolderReviewPlanRequested;
+        WatchedFolders.NotificationRequested += OnWatchedFolderNotificationRequested;
         ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
@@ -403,6 +424,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         CatalogSearch.EntryOpened += OnCatalogEntryOpened;
         CatalogComparison.EntryOpened += OnCatalogEntryOpened;
         Settings.SettingsSaved += OnSettingsSaved;
+        RuleEditor.SaveRequested += OnCurrentSortingRecipeSaved;
         Help.BackRequested += OnHelpBackRequested;
         ConfigureContextualHelp();
     }
@@ -429,6 +451,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the explicit Change Plan review and apply workflow.</summary>
     public ChangePlanReviewViewModel ReviewChanges { get; }
+
+    /// <summary>Gets persistent watched-folder configuration and incremental-scan presentation state.</summary>
+    public WatchedFoldersViewModel WatchedFolders { get; }
 
     /// <summary>
     /// Gets the opt-in, application-owned saved results catalog state.
@@ -687,6 +712,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(CurrentPageTitle));
                 OnPropertyChanged(nameof(IsDashboardSelected));
                 OnPropertyChanged(nameof(IsScanSelected));
+                OnPropertyChanged(nameof(IsWatchedFoldersSelected));
                 OnPropertyChanged(nameof(IsResultsSelected));
                 OnPropertyChanged(nameof(IsReviewChangesSelected));
                 OnPropertyChanged(nameof(IsDuplicatesSelected));
@@ -716,6 +742,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         NavigationDestination.Dashboard => "Home",
         NavigationDestination.Scan => "Scan",
+        NavigationDestination.WatchedFolders => "Watched Folders",
         NavigationDestination.Results => "Files",
         NavigationDestination.ReviewChanges => "Review Changes",
         NavigationDestination.Duplicates => "Duplicates",
@@ -778,6 +805,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// Gets whether the scan-root selection page is currently selected.
     /// </summary>
     public bool IsScanSelected => SelectedDestination == NavigationDestination.Scan;
+
+    /// <summary>Gets whether watched-folder management is selected.</summary>
+    public bool IsWatchedFoldersSelected => SelectedDestination == NavigationDestination.WatchedFolders;
 
     /// <summary>
     /// Gets whether the results-review page is currently selected.
@@ -851,7 +881,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets whether a later feature-page destination is currently selected.
     /// </summary>
-    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
+    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
 
     /// <summary>
     /// Selects a documented application-shell destination.
@@ -882,6 +912,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (destination == NavigationDestination.History)
         {
             _ = UndoHistory.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.WatchedFolders)
+        {
+            _ = WatchedFolders.RefreshAsync();
         }
         else if (destination == NavigationDestination.Catalog)
         {
@@ -915,6 +949,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         if (destination == NavigationDestination.Catalog)
         {
             await Catalog.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.WatchedFolders)
+        {
+            await WatchedFolders.RefreshAsync();
         }
         else if (destination == NavigationDestination.CatalogSearch)
         {
@@ -953,6 +991,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
         Results.ChangePlanCreated -= OnChangePlanCreated;
+        WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
+        WatchedFolders.NotificationRequested -= OnWatchedFolderNotificationRequested;
         ReviewChanges.ReturnRequested -= OnReviewChangesReturnRequested;
         ScanProgress.PropertyChanged -= OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged -= OnHostedOperationPropertyChanged;
@@ -963,9 +1003,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         CatalogSearch.EntryOpened -= OnCatalogEntryOpened;
         CatalogComparison.EntryOpened -= OnCatalogEntryOpened;
         Settings.SettingsSaved -= OnSettingsSaved;
+        RuleEditor.SaveRequested -= OnCurrentSortingRecipeSaved;
         Help.BackRequested -= OnHelpBackRequested;
         _processingCancellation?.Cancel();
         Results.Dispose();
+        WatchedFolders.Dispose();
         ReviewChanges.Dispose();
         Catalog.Dispose();
         CatalogSearch.Dispose();
@@ -983,6 +1025,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         RefreshNavigationItems(settings);
         Results.RefreshFeatureAvailability();
         SemanticSearch.RefreshFeatureAvailability();
+    }
+
+    private void OnCurrentSortingRecipeSaved(object? sender, IReadOnlyList<OpenSorSe.Rules.Models.FileRule> rules)
+    {
+        _watchedSortingRecipeResolver?.SetCurrentRules(rules);
+        StatusText = _watchedSortingRecipeResolver is null
+            ? "Rules remain available for the current manual scan session."
+            : "The current-session sorting recipe is available to watched folders configured with recipe ID \"current\".";
     }
 
     private void OnMeaningSearchRequested(object? sender, EventArgs eventArgs)
@@ -1013,6 +1063,27 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             StatusText = "The Change Plan could not be opened safely. No file was changed.";
         }
     }
+
+    private async void OnWatchedFolderReviewPlanRequested(object? sender, ChangePlan plan)
+    {
+        try
+        {
+            await ReviewChanges.LoadAsync(plan);
+            Navigate(NavigationDestination.ReviewChanges);
+            StatusText = "A watched-folder Change Plan is ready for manual review. No file has been changed.";
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+            UnauthorizedAccessException or
+            InvalidDataException or
+            ArgumentException)
+        {
+            StatusText = "The watched-folder Change Plan could not be opened safely. No file was changed.";
+        }
+    }
+
+    private void OnWatchedFolderNotificationRequested(object? sender, NotificationRequest request) =>
+        Notifications.Publish(request);
 
     private void OnReviewChangesReturnRequested(object? sender, EventArgs eventArgs) =>
         Navigate(NavigationDestination.Results);

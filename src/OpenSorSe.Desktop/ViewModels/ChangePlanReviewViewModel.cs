@@ -449,6 +449,11 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
         _operationCancellation = new CancellationTokenSource();
         var progress = new Progress<ChangeExecutionProgress>(value =>
         {
+            if (LastExecution is not null)
+            {
+                return;
+            }
+
             ProgressText = value.Message;
             StatusText = $"{value.AttemptedActions}/{value.TotalActions} action(s) attempted.";
         });

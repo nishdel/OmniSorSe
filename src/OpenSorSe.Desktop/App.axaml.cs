@@ -17,6 +17,7 @@ using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
+using OpenSorSe.Application.Watching;
 using OpenSorSe.AI;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Core.Diagnostics;
@@ -55,6 +56,10 @@ public partial class App : Avalonia.Application
                     .Current.Diagnostics);
             _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
                 .RecoverInterruptedAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            _serviceProvider.GetRequiredService<IWatchedFolderCoordinator>()
+                .InitializeAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
             _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
@@ -161,6 +166,45 @@ public partial class App : Avalonia.Application
                 ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonResultsCatalogStore(Path.Combine(settingsDirectory, "catalog.json"), serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
+        services.AddSingleton<WatchedFolderPathPolicy>();
+        services.AddSingleton<IWatchedFolderConfigurationStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonWatchedFolderConfigurationStore(
+                Path.Combine(settingsDirectory, "watched-folders.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IWatchedFolderCatalogueStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonWatchedFolderCatalogueStore(
+                Path.Combine(settingsDirectory, "watched-catalogues.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IWatchedActivityStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonWatchedActivityStore(
+                Path.Combine(settingsDirectory, "watched-activity.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IWatchedFolderManager, WatchedFolderManager>();
+        services.AddSingleton<IWatchedFileSystem, PhysicalWatchedFileSystem>();
+        services.AddSingleton<IFileStabilityChecker, FileStabilityChecker>();
+        services.AddSingleton<IWatchedFolderEventSourceFactory, FileSystemWatcherEventSourceFactory>();
+        services.AddSingleton<SessionWatchedSortingRecipeResolver>();
+        services.AddSingleton<IWatchedSortingRecipeResolver>(serviceProvider =>
+            serviceProvider.GetRequiredService<SessionWatchedSortingRecipeResolver>());
+        services.AddSingleton<IWatchedSuggestionService, WatchedSuggestionService>();
+        services.AddSingleton<IWatchedExecutionCorrelation, OperationJournalWatchedExecutionCorrelation>();
+        services.AddSingleton<IWatchedFolderProcessor, WatchedFolderProcessor>();
+        services.AddSingleton<IWatchedFolderCoordinator, WatchedFolderCoordinator>();
         services.AddSingleton<ISavedCatalogSearchStore>(serviceProvider =>
         {
             var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
@@ -200,6 +244,7 @@ public partial class App : Avalonia.Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
+        _serviceProvider?.GetService<IWatchedFolderCoordinator>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll();
         _applicationHost?.ShutdownAsync().GetAwaiter().GetResult();
         _serviceProvider?.Dispose();

@@ -1,10 +1,10 @@
-# OpenSorSe 1.1 Safety and Privacy
+# OpenSorSe 1.2 Safety and Privacy
 
-OpenSorSe is local-first and non-destructive by default. Scanning, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
+OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe 1.1 authorizes only rename file, move file, and create directory through the Change Plan execution boundary. The workflow requires:
+OpenSorSe 1.2 continues to authorize only rename file, move file, and create directory through the v1.1 Change Plan execution boundary. The workflow requires:
 
 1. An explicit absolute root.
 2. A proposal captured with stable action IDs and source identity/size/last-modified data.
@@ -19,6 +19,18 @@ The service rejects out-of-root or linked destinations, unknown/missing/renamed/
 
 Filesystem operations are transaction-like, not perfectly transactional. Power loss, storage failure, permission changes, or another process can prevent complete rollback. OpenSorSe never claims success, rollback, or Undo without verifying the corresponding paths and identities.
 
+## Watched-folder boundary
+
+> Watched folders automate detection and analysis, not file modification.
+
+Watched roots are explicit opt-in configurations. Operating-system watcher events are untrusted hints: they are bounded, debounced, root-checked, grouped, and verified against the real filesystem before an application-owned catalogue changes. Unknown or directory hints, queue pressure, watcher errors, startup, resume, reconnect, and the daily interval conservatively request reconciliation.
+
+Canonical ignore rules exclude configured paths/patterns, temporary and incomplete-download names, hidden or oversized files when configured, OpenSorSe internal data, and reparse points. Overlapping roots are rejected. New or content-changing files must be readable and stable across observations before content extraction, OCR cache checks, hashing, classification, rules, or AI. Deferred files retain an unresolved state and are retried by later reconciliation.
+
+Pause, disconnection, access failure, and removal from the watch list never delete user files, the dedicated watched catalogue, or grouped activity. Watched updates do not consume or evict entries from the separate opt-in Saved scans catalogue. A missing root remains unavailable until the exact path returns. v1.2 does not search other drives or guess that a root moved.
+
+Deterministic and optional AI suggestions become ordinary reviewable Change Plans. The watched-folder coordinator never invokes the execution service. Verified Operation Journal results correlate expected OpenSorSe-generated watcher events and suppress recursive suggestions without suspending observation for an arbitrary time.
+
 ## AI boundary
 
 AI and Advanced mode are independent and disabled by default. While AI is disabled, provider detection, discovery, requests, and background communication are rejected at the application boundary.
@@ -30,6 +42,8 @@ Document-text interpretation has its own default-off switch. It requires global 
 AI output is untrusted strict JSON. Rename models return only an extension-free stem; OpenSorSe preserves and appends the known extension. Folder models receive only opaque request-local IDs and prevalidated folder-name choices. Whole-response validation independently checks exact schema/casing, evidence grounding, identities, counts, assignments, filenames, path components, confidence, parent relationships, cycles, and hierarchy safety. Any safety or identity failure rejects the complete suggestion. Accepted valid rename/folder output is converted into a non-mutating Change Plan. The approved persisted plan—not a later model response—is the only possible execution input.
 
 At most one structured-output repair request may follow malformed JSON or a schema-shape failure. It uses the same task/schema, the bounded prior response, and one concise validation error. Timeouts, cancellations, unsafe or unknown identities, path/traversal attempts, hard bounds, provider failures, and model misuse are never retried. Original and repair attempts remain separate related in-memory diagnostics sessions. AI requests and retries remain read-only. The normal Operation Journal stores model/request correlation metadata where relevant, not prompt text or file contents.
+
+Watched-folder AI is separately disabled by default for every root and still requires the global AI switch, compatible capability, valid endpoint, and exact selected available model. It receives only affected, non-ignored result metadata in batches of at most 12, with at most 120 items attempted in one cycle. Per-file completion/failure state prevents successful work from being repeated by **Retry failed AI analysis**; pending or failed items alone are retried. AI unavailability never rolls back a deterministic catalogue update.
 
 ## Advanced diagnostics
 
@@ -68,6 +82,9 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
 | Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
 | Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
+| Watched-folder configurations | `watched-folders.json` | Up to 64 schema-versioned roots with scope, ignore, analysis, notification, quiet-period, lifecycle, and catalogue settings; atomically replaced. |
+| Watched catalogues | `watched-catalogues.json` | Up to 250,000 files per catalogue and 256 MiB total; stores metadata, stable/best-effort identity, derived results, AI retry state, directories, and reconciliation facts without file contents. |
+| Watched activity | `watched-activity.json` | Up to 1,000 grouped lifecycle/batch/scan/error/plan activities and 16 MiB total; raw watcher events are not persisted individually. |
 
 Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
 
@@ -87,9 +104,9 @@ Clearing Structure history changes no user file, but removes the local record us
 
 ## Execution boundary
 
-The Desktop registers `IChangePlanExecutionService` as the production user-file mutation boundary. `ChangePlanExecutionService` delegates low-level mutations only to `IFileSystemGateway`; ViewModels and AI services perform no raw file operations. The v1.0 deterministic restructuring compatibility workflow now converts its exact confirmed moves into a Change Plan and calls the same execution service.
+The Desktop registers `IChangePlanExecutionService` as the production user-file mutation boundary. `ChangePlanExecutionService` delegates low-level mutations only to `IFileSystemGateway`; ViewModels, watched-folder services, scanners, rules, and AI services perform no raw file operations. The v1.0 deterministic restructuring compatibility workflow converts its exact confirmed moves into a Change Plan and calls the same execution service.
 
-The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1 suggestions or organization workflows.
+The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1/v1.2 suggestions or organization workflows.
 
 ## Undo
 
@@ -99,7 +116,7 @@ Unsafe actions are marked blocked; they do not overwrite or destroy newer data. 
 
 ## Recovery
 
-Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal stores are valid empty states. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
+Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal and v1.2 watched-folder stores are valid empty states. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
 
 At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 
