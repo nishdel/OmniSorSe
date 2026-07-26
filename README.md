@@ -13,6 +13,10 @@ OpenSorSe is a modern, open-source Windows desktop application for scanning, sea
 
 > OpenSorSe 1.0.0 is a final manual-validation candidate. Complete the [release checklist](docs/RELEASE_CHECKLIST_v1.0.md) before treating it as a production release.
 
+
+<img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
+
+
 ## Quick links
 
 - [Installation](#installation)
