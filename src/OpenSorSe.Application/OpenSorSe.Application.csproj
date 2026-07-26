@@ -3,6 +3,10 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="PDFtoImage" Version="5.2.1" />
+    <PackageReference Include="PdfPig" Version="0.1.15" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\OpenSorSe.Core\OpenSorSe.Core.csproj" />
     <ProjectReference Include="..\OpenSorSe.Scanner\OpenSorSe.Scanner.csproj" />
     <ProjectReference Include="..\OpenSorSe.Rules\OpenSorSe.Rules.csproj" />

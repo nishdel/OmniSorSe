@@ -4,7 +4,11 @@
              x:Class="OpenSorSe.Desktop.Views.ScanProgressView"
              x:DataType="vm:ScanProgressViewModel">
     <StackPanel Spacing="12">
-        <TextBlock Text="Scanning" FontSize="24" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Text="Scanning" FontSize="24" FontWeight="SemiBold" />
+            <Button Grid.Column="1" Content="Help" Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Open scanning help" AutomationProperties.Name="Help for scanning" />
+        </Grid>
         <ProgressBar IsIndeterminate="{Binding IsActive}" Height="12" />
         <TextBlock Text="{Binding StatusText}" />
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">

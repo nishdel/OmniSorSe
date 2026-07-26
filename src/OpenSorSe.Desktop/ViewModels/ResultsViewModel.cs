@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.AI;
+using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Desktop.Services;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Desktop.ViewModels;
@@ -13,6 +15,12 @@ namespace OpenSorSe.Desktop.ViewModels;
 /// </summary>
 public sealed class ResultsViewModel : ViewModelBase, IDisposable
 {
+    /// <summary>Gets the minimum usable file-table width in device-independent pixels.</summary>
+    public const double MinimumFileTableWidth = 450;
+
+    /// <summary>Gets the minimum usable selected-file details width in device-independent pixels.</summary>
+    public const double MinimumDetailsPanelWidth = 320;
+
     private static readonly IReadOnlyList<int> PageSizes = [50, 100, 200, 500];
     private static readonly IReadOnlyList<ResultDuplicateFilter> DuplicateFilters = Enum.GetValues<ResultDuplicateFilter>();
     private static readonly IReadOnlyList<ResultPlannedOperationFilter> PlannedOperationFilters = Enum.GetValues<ResultPlannedOperationFilter>();
@@ -25,8 +33,13 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<ResultsExtensionFilterOption> _extensionOptions = [];
     private readonly ObservableCollection<ResultsCategoryFilterOption> _categoryOptions = [];
     private readonly ObservableCollection<ResultTagRow> _userTags = [];
+    private readonly ObservableCollection<ExtractedMetadataField> _contentMetadata = [];
+    private readonly IContentStore? _contentStore;
+    private readonly IConfigurationService _configurationService;
+    private readonly SemaphoreSlim _panelPreferenceSaveGate = new(1, 1);
     private readonly Dictionary<string, IReadOnlyList<TagAssociation>> _tagsByFile = new(StringComparer.Ordinal);
     private CancellationTokenSource? _queryCancellation;
+    private CancellationTokenSource? _contentDetailsCancellation;
     private long _queryVersion;
     private ResultsSnapshot? _snapshot;
     private ResultsQuery _query = ResultsQuery.Default;
@@ -40,12 +53,15 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private ResultTagRow? _selectedUserTag;
     private bool _isLoading;
     private ResultsDisplayMode _displayMode = ResultsDisplayMode.Explorer;
+    private string _contentDetailsStatus = "Select a result to inspect local extracted metadata.";
+    private bool _areFiltersVisible;
+    private double _detailsPanelWidthRatio;
 
     /// <summary>
     /// Initializes the result explorer and its non-mutating navigation commands.
     /// </summary>
     public ResultsViewModel()
-        : this(new PreviewConfigurationService(), null)
+        : this(new PreviewConfigurationService(), null, null, null)
     {
     }
 
@@ -55,8 +71,22 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <param name="configurationService">The centralized configuration source used only by the optional suggestion workflow.</param>
     /// <param name="aiSuggestionService">The optional application-owned suggestion service.</param>
     public ResultsViewModel(IConfigurationService configurationService, IAiSuggestionService? aiSuggestionService)
+        : this(configurationService, aiSuggestionService, null, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes Results with optional AI suggestions and controlled Duplicate View shell-open support.
+    /// </summary>
+    public ResultsViewModel(
+        IConfigurationService configurationService,
+        IAiSuggestionService? aiSuggestionService,
+        IExternalFileLauncher? externalFileLauncher,
+        IContentStore? contentStore = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
+        _configurationService = configurationService;
+        _detailsPanelWidthRatio = configurationService.Current.Features.FilesPageDetailsPanelWidthRatio;
         PageRows = new ReadOnlyObservableCollection<ResultsFileRow>(_pageRows);
         Directories = new ReadOnlyObservableCollection<ResultDirectory>(_directories);
         PlannedOperations = new ReadOnlyObservableCollection<ResultPlannedOperation>(_plannedOperations);
@@ -64,24 +94,42 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         ExtensionOptions = new ReadOnlyObservableCollection<ResultsExtensionFilterOption>(_extensionOptions);
         CategoryOptions = new ReadOnlyObservableCollection<ResultsCategoryFilterOption>(_categoryOptions);
         UserTags = new ReadOnlyObservableCollection<ResultTagRow>(_userTags);
-        DuplicateReview = new DuplicateReviewViewModel();
+        ContentMetadata = new ReadOnlyObservableCollection<ExtractedMetadataField>(_contentMetadata);
+        _contentStore = contentStore;
+        DuplicateReview = new DuplicateReviewViewModel(externalFileLauncher);
         DuplicateReview.ShowGroupFilesRequested += OnShowGroupFilesRequested;
         DuplicateReview.BackToExplorerRequested += OnBackToExplorerRequested;
-        AiSuggestions = new AiSuggestionsViewModel(configurationService, aiSuggestionService);
-        AiSuggestions.TagsAccepted += OnTagsAccepted;
+        AiSuggestions = new AiSuggestionsViewModel(configurationService, aiSuggestionService, contentStore);
         ClearFiltersCommand = new RelayCommand(ClearFilters, CanClearFilters);
+        ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
         PreviousPageCommand = new RelayCommand(GoToPreviousPage, () => CanGoPreviousPage);
         NextPageCommand = new RelayCommand(GoToNextPage, () => CanGoNextPage);
         OpenDuplicateReviewCommand = new RelayCommand(OpenDuplicateReview, () => CanOpenDuplicateReview);
         BackToExplorerCommand = new RelayCommand(BackToExplorer);
+        OpenMeaningSearchCommand = new RelayCommand(
+            () => MeaningSearchRequested?.Invoke(this, EventArgs.Empty),
+            () => IsMeaningSearchEnabled);
         AddUserTagsCommand = new AsyncRelayCommand(AddUserTagsAsync, CanAddUserTags);
         RemoveSelectedTagCommand = new AsyncRelayCommand(RemoveSelectedTagAsync, CanRemoveSelectedTag);
+        AcceptSuggestedTagCommand = new AsyncRelayCommand(
+            AcceptSuggestedTagAsync,
+            () => SelectedUserTag?.CanAccept == true);
+        RejectSuggestedTagCommand = new AsyncRelayCommand(
+            RejectSuggestedTagAsync,
+            () => SelectedUserTag?.CanReject == true);
+        NarrowDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(-0.05));
+        WidenDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(0.05));
+        ResetDetailsPanelWidthCommand = new AsyncRelayCommand(
+            () => SetDetailsPanelWidthRatioAsync(FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio));
     }
 
     /// <summary>
     /// Raised after accepted non-deterministic tags change for the loaded snapshot.
     /// </summary>
     public event EventHandler? PersistedTagsChanged;
+
+    /// <summary>Occurs when the user switches from name search to local Meaning Search.</summary>
+    public event EventHandler? MeaningSearchRequested;
 
     /// <summary>Gets the immutable snapshot currently owned by this review surface.</summary>
     public ResultsSnapshot? Snapshot => _snapshot;
@@ -107,6 +155,26 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets accepted application-owned tags for the selected result file.</summary>
     public ReadOnlyObservableCollection<ResultTagRow> UserTags { get; }
 
+    /// <summary>Gets provenance-aware local metadata for the selected known result.</summary>
+    public ReadOnlyObservableCollection<ExtractedMetadataField> ContentMetadata { get; }
+
+    /// <summary>Gets a user-safe local content-details status.</summary>
+    public string ContentDetailsStatus
+    {
+        get => _contentDetailsStatus;
+        private set => SetProperty(ref _contentDetailsStatus, value);
+    }
+
+    /// <summary>Gets whether extracted metadata is available for the selected result.</summary>
+    public bool HasContentMetadata => ContentMetadata.Count > 0;
+
+    /// <summary>Gets or sets whether secondary filters are progressively disclosed.</summary>
+    public bool AreFiltersVisible
+    {
+        get => _areFiltersVisible;
+        set => SetProperty(ref _areFiltersVisible, value);
+    }
+
     /// <summary>Gets fixed page-size choices that keep result rendering bounded.</summary>
     public IReadOnlyList<int> AvailablePageSizes => PageSizes;
 
@@ -127,6 +195,24 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the preview-only optional AI suggestion workflow for the selected result.</summary>
     public AiSuggestionsViewModel AiSuggestions { get; }
+
+    /// <summary>Refreshes feature presentation after active settings are saved.</summary>
+    public void RefreshFeatureAvailability()
+    {
+        AiSuggestions.RefreshFeatureAvailability();
+        DetailsPanelWidthRatio = _configurationService.Current.Features.FilesPageDetailsPanelWidthRatio;
+        OnPropertyChanged(nameof(IsMeaningSearchEnabled));
+        OnPropertyChanged(nameof(MeaningSearchAvailabilityText));
+        OpenMeaningSearchCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Gets whether local Meaning Search Beta is enabled.</summary>
+    public bool IsMeaningSearchEnabled => _configurationService.Current.SemanticSearch.Enabled;
+
+    /// <summary>Gets plain-language Meaning Search availability guidance.</summary>
+    public string MeaningSearchAvailabilityText => IsMeaningSearchEnabled
+        ? "Meaning Search is ready to open. It finds related ideas using a local index."
+        : "Meaning Search is off. Enable it in Settings to search by related ideas.";
 
     /// <summary>Gets the current normalized explorer query.</summary>
     public ResultsQuery Query
@@ -239,6 +325,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                     : "Tags are OpenSorSe metadata and never change the selected file.";
                 SelectedUserTag = null;
                 UpdateSelectedDetails();
+                UpdateAiSuggestionContext();
+                _ = LoadContentDetailsAsync();
             }
         }
     }
@@ -272,6 +360,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _selectedUserTag, value))
             {
                 RemoveSelectedTagCommand.NotifyCanExecuteChanged();
+                AcceptSuggestedTagCommand.NotifyCanExecuteChanged();
+                RejectSuggestedTagCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -313,6 +403,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             {
                 AddUserTagsCommand.NotifyCanExecuteChanged();
                 RemoveSelectedTagCommand.NotifyCanExecuteChanged();
+                AcceptSuggestedTagCommand.NotifyCanExecuteChanged();
+                RejectSuggestedTagCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -361,6 +453,13 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether selected result details are available.</summary>
     public bool HasSelectedDetails => SelectedDetails is not null;
 
+    /// <summary>Gets the persisted proportion of the Files workspace assigned to selected-file details.</summary>
+    public double DetailsPanelWidthRatio
+    {
+        get => _detailsPanelWidthRatio;
+        private set => SetProperty(ref _detailsPanelWidthRatio, value);
+    }
+
     /// <summary>Gets whether the previous bounded page is available.</summary>
     public bool CanGoPreviousPage => Page.PageIndex > 0;
 
@@ -389,6 +488,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that clears every non-default local filter.</summary>
     public IRelayCommand ClearFiltersCommand { get; }
 
+    /// <summary>Gets the command that opens or closes secondary filters.</summary>
+    public IRelayCommand ToggleFiltersCommand { get; }
+
     /// <summary>Gets the command that opens the previous bounded page.</summary>
     public IRelayCommand PreviousPageCommand { get; }
 
@@ -401,11 +503,70 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that returns from duplicate review to the file explorer.</summary>
     public IRelayCommand BackToExplorerCommand { get; }
 
+    /// <summary>Gets the command that opens local Meaning Search Beta.</summary>
+    public IRelayCommand OpenMeaningSearchCommand { get; }
+
+    /// <summary>Shows the ordinary Files explorer.</summary>
+    public void ShowFiles() => BackToExplorer();
+
+    /// <summary>Shows the existing exact-duplicate review surface.</summary>
+    public void ShowDuplicates() => OpenDuplicateReview();
+
     /// <summary>Gets the command that adds validated application-owned tags to the selected result.</summary>
     public IAsyncRelayCommand AddUserTagsCommand { get; }
 
     /// <summary>Gets the command that removes the selected non-deterministic application-owned tag.</summary>
     public IAsyncRelayCommand RemoveSelectedTagCommand { get; }
+
+    /// <summary>Gets the command that explicitly accepts one generated candidate tag.</summary>
+    public IAsyncRelayCommand AcceptSuggestedTagCommand { get; }
+
+    /// <summary>Gets the command that explicitly rejects one generated candidate tag.</summary>
+    public IAsyncRelayCommand RejectSuggestedTagCommand { get; }
+
+    /// <summary>Gets the keyboard-accessible command that narrows selected-file details.</summary>
+    public IAsyncRelayCommand NarrowDetailsPanelCommand { get; }
+
+    /// <summary>Gets the keyboard-accessible command that widens selected-file details.</summary>
+    public IAsyncRelayCommand WidenDetailsPanelCommand { get; }
+
+    /// <summary>Gets the command that restores the default selected-file details width.</summary>
+    public IAsyncRelayCommand ResetDetailsPanelWidthCommand { get; }
+
+    /// <summary>
+    /// Validates and persists the selected-file details proportion without changing source files.
+    /// </summary>
+    /// <param name="ratio">The requested details-panel proportion.</param>
+    public async Task SetDetailsPanelWidthRatioAsync(double ratio)
+    {
+        var boundedRatio = double.IsFinite(ratio)
+            ? Math.Clamp(
+                ratio,
+                FeatureSettings.MinimumFilesPageDetailsPanelWidthRatio,
+                FeatureSettings.MaximumFilesPageDetailsPanelWidthRatio)
+            : FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio;
+
+        DetailsPanelWidthRatio = boundedRatio;
+        await _panelPreferenceSaveGate.WaitAsync();
+        try
+        {
+            var settings = _configurationService.Current.WithFilesPageDetailsPanelWidthRatio(boundedRatio);
+            settings.Validate();
+            await _configurationService.SaveAsync(settings, CancellationToken.None);
+        }
+        catch (IOException)
+        {
+            StatusText = "The Files layout could not be saved. The current layout remains available for this session.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            StatusText = "The Files layout could not be saved. Check access to the OpenSorSe settings folder.";
+        }
+        finally
+        {
+            _panelPreferenceSaveGate.Release();
+        }
+    }
 
     /// <summary>
     /// Replaces the current in-memory review state with a completed immutable snapshot.
@@ -445,7 +606,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// </summary>
     public IReadOnlyList<TagAssociation> GetPersistableTags() => Array.AsReadOnly(_tagsByFile.Values
         .SelectMany(tags => tags)
-        .Where(tag => tag.AcceptanceState == TagAcceptanceState.Accepted && tag.Source != TagSource.Deterministic)
+        .Where(tag => tag.AcceptanceState == TagAcceptanceState.Accepted &&
+                      tag.Source is TagSource.UserApproved or TagSource.AiSuggestion or TagSource.Preference)
         .OrderBy(tag => tag.FileId, StringComparer.Ordinal)
         .ThenBy(tag => tag.NormalizedValue, StringComparer.Ordinal)
         .ToArray());
@@ -548,11 +710,18 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     {
         DuplicateReview.ShowGroupFilesRequested -= OnShowGroupFilesRequested;
         DuplicateReview.BackToExplorerRequested -= OnBackToExplorerRequested;
-        AiSuggestions.TagsAccepted -= OnTagsAccepted;
+        DuplicateReview.Dispose();
+        var contentCancellation = Interlocked.Exchange(ref _contentDetailsCancellation, null);
+        contentCancellation?.Cancel();
+        contentCancellation?.Dispose();
         AiSuggestions.Dispose();
         _queryCancellation?.Cancel();
         _queryCancellation?.Dispose();
+        _panelPreferenceSaveGate.Dispose();
     }
+
+    private Task AdjustDetailsPanelWidthAsync(double delta) =>
+        SetDetailsPanelWidthRatioAsync(DetailsPanelWidthRatio + delta);
 
     private void ChangeQuery(ResultsQuery query)
     {
@@ -683,6 +852,90 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         RebuildSelectedTagRows(selected?.Id);
         AddUserTagsCommand.NotifyCanExecuteChanged();
         RemoveSelectedTagCommand.NotifyCanExecuteChanged();
+        AcceptSuggestedTagCommand.NotifyCanExecuteChanged();
+        RejectSuggestedTagCommand.NotifyCanExecuteChanged();
+    }
+
+    private void UpdateAiSuggestionContext()
+    {
+        var snapshot = Snapshot;
+        AiSuggestions.SetContext(
+            SelectedRow is null || snapshot is null
+                ? null
+                : snapshot.Files.FirstOrDefault(file => file.Id == SelectedRow.FileId),
+            snapshot,
+            Page.Items);
+    }
+
+    private async Task LoadContentDetailsAsync()
+    {
+        var previous = Interlocked.Exchange(ref _contentDetailsCancellation, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+        var cancellation = _contentDetailsCancellation!;
+        _contentMetadata.Clear();
+        OnPropertyChanged(nameof(HasContentMetadata));
+        if (SelectedRow is null || Snapshot is null)
+        {
+            ContentDetailsStatus = "Select a result to inspect local extracted metadata.";
+            return;
+        }
+
+        if (_contentStore is null)
+        {
+            ContentDetailsStatus = "Local extracted metadata is unavailable in this application context.";
+            return;
+        }
+
+        var selected = Snapshot.Files.FirstOrDefault(file => file.Id == SelectedRow.FileId);
+        if (selected is null)
+        {
+            ContentDetailsStatus = "The selected result is no longer available.";
+            return;
+        }
+
+        try
+        {
+            var record = await _contentStore.GetAsync(selected.FullPath, cancellation.Token);
+            if (!ReferenceEquals(_contentDetailsCancellation, cancellation))
+            {
+                return;
+            }
+
+            foreach (var field in record?.Metadata ?? [])
+            {
+                _contentMetadata.Add(field);
+            }
+
+            if (record is not null && SelectedRow is not null)
+            {
+                var existing = GetTags(SelectedRow.FileId)
+                    .Where(tag => tag.Source is
+                        TagSource.Deterministic or
+                        TagSource.UserApproved or
+                        TagSource.AiSuggestion or
+                        TagSource.Preference)
+                    .ToArray();
+                var generated = record.Tags.Select(tag => tag with { FileId = SelectedRow.FileId });
+                _tagsByFile[SelectedRow.FileId] = Array.AsReadOnly(existing
+                    .Concat(generated)
+                    .DistinctBy(tag => tag.TagId, StringComparer.Ordinal)
+                    .ToArray());
+                RebuildSelectedTagRows(SelectedRow.FileId);
+            }
+
+            ContentDetailsStatus = record is null
+                ? "No extracted metadata is cached for this result."
+                : $"OCR state: {record.OcrStatus}. {record.Metadata.Count} provenance-aware field(s).";
+            OnPropertyChanged(nameof(HasContentMetadata));
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            ContentDetailsStatus = "Extracted metadata could not be loaded.";
+        }
     }
 
     private bool CanAddUserTags() => SelectedRow is not null && !IsLoading && !string.IsNullOrWhiteSpace(UserTagText);
@@ -751,6 +1004,58 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         _tagsByFile[SelectedRow.FileId] = Array.AsReadOnly(remaining);
         SelectedUserTag = null;
         await PublishTagChangeAsync("Tag removed from OpenSorSe metadata. The selected file was not changed.");
+    }
+
+    private Task AcceptSuggestedTagAsync() =>
+        UpdateGeneratedTagStateAsync(TagAcceptanceState.Accepted);
+
+    private Task RejectSuggestedTagAsync() =>
+        UpdateGeneratedTagStateAsync(TagAcceptanceState.Rejected);
+
+    private async Task UpdateGeneratedTagStateAsync(TagAcceptanceState state)
+    {
+        if (_contentStore is null ||
+            SelectedRow is null ||
+            SelectedUserTag is null ||
+            state is not (TagAcceptanceState.Accepted or TagAcceptanceState.Rejected))
+        {
+            return;
+        }
+
+        var selectedFile = Snapshot?.Files.FirstOrDefault(file => file.Id == SelectedRow.FileId);
+        if (selectedFile is null)
+        {
+            return;
+        }
+
+        var record = await _contentStore.GetAsync(selectedFile.FullPath, CancellationToken.None);
+        var tags = record?.Tags.ToArray();
+        var index = tags is null
+            ? -1
+            : Array.FindIndex(
+                tags,
+                tag => string.Equals(tag.TagId, SelectedUserTag.TagId, StringComparison.Ordinal));
+        if (record is null || tags is null || index < 0)
+        {
+            UserTagStatusText = "The generated tag is no longer available.";
+            return;
+        }
+
+        tags[index] = tags[index] with
+        {
+            AcceptanceState = state,
+            UpdatedAtUtc = DateTimeOffset.UtcNow,
+        };
+        await _contentStore.UpsertAsync(
+            record with { Tags = Array.AsReadOnly(tags) },
+            CancellationToken.None);
+        var selectedTagId = tags[index].TagId;
+        await LoadContentDetailsAsync();
+        SelectedUserTag = UserTags.FirstOrDefault(tag =>
+            string.Equals(tag.TagId, selectedTagId, StringComparison.Ordinal));
+        UserTagStatusText = state == TagAcceptanceState.Accepted
+            ? "Generated tag accepted as local OpenSorSe metadata."
+            : "Generated tag rejected until source content changes or generated tags are reset.";
     }
 
     private async Task PublishTagChangeAsync(string status)
@@ -829,37 +1134,6 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<TagAssociation> GetTags(string fileId) => _tagsByFile.TryGetValue(fileId, out var tags)
         ? tags
         : Array.Empty<TagAssociation>();
-
-    private async void OnTagsAccepted(object? sender, IReadOnlyList<TagAssociation> tags)
-    {
-        if (tags.Count == 0)
-        {
-            return;
-        }
-
-        var fileId = tags[0].FileId;
-        var existing = GetTags(fileId);
-        var existingIdentities = existing.Select(tag => tag.NormalizedValue).ToHashSet(StringComparer.Ordinal);
-        var additions = tags.Where(tag => !existingIdentities.Contains(tag.NormalizedValue)).ToArray();
-        var acceptedCount = existing.Count(tag => tag.Source != TagSource.Deterministic && tag.AcceptanceState == TagAcceptanceState.Accepted);
-        if (acceptedCount + additions.Length > UserTagLimits.MaximumAcceptedTagsPerFile)
-        {
-            UserTagStatusText = $"The accepted suggestion would exceed the {UserTagLimits.MaximumAcceptedTagsPerFile}-tag limit for this result.";
-            return;
-        }
-
-        if (additions.Length == 0)
-        {
-            UserTagStatusText = "Those suggested tags are already associated with this result.";
-            return;
-        }
-
-        _tagsByFile[fileId] = Array.AsReadOnly(existing
-            .Concat(additions)
-            .OrderBy(tag => tag.NormalizedValue, StringComparer.Ordinal)
-            .ToArray());
-        await PublishTagChangeAsync("Accepted tags were added as OpenSorSe metadata. The selected file was not changed.");
-    }
 
     private sealed class PreviewConfigurationService : IConfigurationService
     {

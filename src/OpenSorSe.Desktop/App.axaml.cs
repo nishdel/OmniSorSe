@@ -13,7 +13,12 @@ using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.CatalogSearch;
+using OpenSorSe.Application.Content;
+using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Structure;
 using OpenSorSe.AI;
+using OpenSorSe.Desktop.Services;
+using OpenSorSe.Core.Diagnostics;
 
 namespace OpenSorSe.Desktop;
 
@@ -43,6 +48,10 @@ public partial class App : Avalonia.Application
             _serviceProvider = CreateServiceProvider();
             _applicationHost = _serviceProvider.GetRequiredService<IApplicationHost>();
             _applicationHost.InitializeAsync().GetAwaiter().GetResult();
+            _serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
+                _serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
+                    .Current.Diagnostics);
+            _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
             var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
             desktop.MainWindow = new MainWindow(mainViewModel);
             desktop.Exit += OnDesktopExit;
@@ -71,6 +80,49 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IProcessingSessionManager, ProcessingSessionManager>();
         services.AddSingleton<IApplicationController, ApplicationController>();
         services.AddSingleton<IResultsSnapshotProjector, ResultsSnapshotProjector>();
+        services.AddSingleton<IMetadataExtractor, FilesystemMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, PdfMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, OpenXmlMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, ImageMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractionPipeline, MetadataExtractionPipeline>();
+        services.AddSingleton<IPdfPageRasterizer, PdfPageRasterizer>();
+        services.AddSingleton<ITesseractProcessRunner, TesseractProcessRunner>();
+        services.AddSingleton<IOcrEngine, TesseractCliOcrEngine>();
+        services.AddSingleton<IOcrService, OcrService>();
+        services.AddSingleton<IContentStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonContentStore(
+                Path.Combine(settingsDirectory, "content-index.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IContentIndexingService, ContentIndexingService>();
+        services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
+        services.AddSingleton<ISemanticIndexStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonSemanticIndexStore(
+                Path.Combine(settingsDirectory, "semantic-index.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<ISemanticIndexer, SemanticIndexer>();
+        services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
+        services.AddSingleton<IFolderStructureSnapshotService, FolderStructureSnapshotService>();
+        services.AddSingleton<IStructureComparisonService, StructureComparisonService>();
+        services.AddSingleton<IStructureHistoryStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonStructureHistoryStore(
+                Path.Combine(settingsDirectory, "structure-history.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IFolderRestructuringService, FolderRestructuringService>();
         services.AddSingleton<ICatalogComparisonService, CatalogComparisonService>();
         services.AddSingleton<IResultsCatalogStore>(serviceProvider =>
         {
@@ -88,8 +140,17 @@ public partial class App : Avalonia.Application
                 Path.Combine(settingsDirectory, "saved-catalog-searches.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
-        services.AddSingleton<HttpClient>();
+        services.AddSingleton(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         services.AddSingleton<IAiSuggestionProvider, OllamaSuggestionProvider>();
+        services.AddSingleton<IAiPromptBuilder, AiPromptBuilder>();
+        services.AddSingleton<IAiResponseParser, AiResponseParser>();
+        services.AddSingleton<IAiRequestDiagnosticsStore, AiRequestDiagnosticsStore>();
+        services.AddSingleton<IAiDiagnosticsCollector, AiDiagnosticsCollector>();
+        services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
+        services.AddSingleton<IExternalFileLauncher, ExternalFileLauncher>();
+        services.AddSingleton<AdvancedDiagnosticsWindowCoordinator>();
+        services.AddSingleton<IAdvancedDiagnosticsWindowService>(serviceProvider =>
+            serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>());
         services.AddSingleton<IDecisionHistoryStore>(serviceProvider =>
         {
             var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
@@ -109,6 +170,7 @@ public partial class App : Avalonia.Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
+        _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll();
         _applicationHost?.ShutdownAsync().GetAwaiter().GetResult();
         _serviceProvider?.Dispose();
     }

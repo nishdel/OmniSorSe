@@ -1,32 +1,125 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             xmlns:views="using:OpenSorSe.Desktop.Views"
              x:Class="OpenSorSe.Desktop.Views.LogViewerView"
              x:DataType="vm:LogViewerViewModel">
-    <ScrollViewer>
-        <StackPanel Spacing="12">
-            <TextBlock Text="Diagnostics" FontSize="24" FontWeight="SemiBold" />
-            <TextBlock Text="This page reports the health of OpenSorSe's own application logging. It does not inspect selected folders or change user files."
-                       TextWrapping="Wrap" />
-            <Border Padding="12"
-                    BorderBrush="{DynamicResource ThemeBorderLowBrush}"
-                    BorderThickness="1">
-                <StackPanel Spacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,2*,Auto,2*,Auto" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="3">
+                <TextBlock Text="System check" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="Check local services and application readiness."
+                           TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Classes="help"
+                    Content="?"
+                    Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Open System check help"
+                    AutomationProperties.Name="Help for System check" />
+        </Grid>
+
+        <Border Grid.Row="1" Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="2">
                     <TextBlock Text="Logging status" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding LoggingStatus}" TextWrapping="Wrap" />
-                    <TextBlock Text="Recorded events" FontWeight="SemiBold" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="Recorded this session" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding RecordedEventCount}" FontSize="18" />
-                    <TextBlock Text="The number of OpenSorSe diagnostic events recorded during this application session."
-                               TextWrapping="Wrap" />
-                    <TextBlock Text="Log write failures" FontWeight="SemiBold" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="2">
+                    <TextBlock Text="Owned log write failures" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding Statistics.FileWriteFailures}" FontSize="18" />
-                    <TextBlock Text="The number of times OpenSorSe could not write one of its own diagnostic log entries."
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,220,Auto,220,*" ColumnSpacing="8">
+            <TextBlock Text="Severity" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding SeverityFilters}"
+                      SelectedItem="{Binding SeverityFilter, Mode=TwoWay}"
+                      AutomationProperties.Name="Diagnostic severity filter" />
+            <TextBlock Grid.Column="2" Text="Category" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="3"
+                      ItemsSource="{Binding Categories}"
+                      SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
+                      AutomationProperties.Name="Diagnostic category filter" />
+            <Button Grid.Column="4"
+                    Content="Refresh"
+                    Command="{Binding RefreshCommand}"
+                    HorizontalAlignment="Right" />
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnDefinitions="3*,2*" ColumnSpacing="12">
+            <Border Padding="8" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,*" RowSpacing="6">
+                    <StackPanel>
+                        <TextBlock IsVisible="{Binding IsEmpty}"
+                                   Text="No diagnostic events have been recorded in this application session."
+                                   TextWrapping="Wrap" />
+                        <TextBlock IsVisible="{Binding HasNoFilterMatches}"
+                                   Text="No retained diagnostic events match the current filters."
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding VisibleEvents}"
+                             SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                             AutomationProperties.Name="Recorded diagnostic events">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DiagnosticEventRow">
+                                <Grid Margin="0,4" ColumnDefinitions="120,90,160,*" ColumnSpacing="8">
+                                    <TextBlock Text="{Binding TimestampText}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding SeverityLabel}" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Category}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Summary}" TextWrapping="Wrap" MaxLines="3" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Selected event" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock IsVisible="{Binding !HasSelectedEvent}"
+                               Text="Select an event to inspect its safe details."
+                               TextWrapping="Wrap" />
+                    <TextBlock IsVisible="{Binding HasSelectedEvent}"
+                               Text="{Binding SelectedEventDetails}"
+                               TextWrapping="Wrap" />
+                    <Button Content="Copy diagnostic details"
+                            Command="{Binding CopyDiagnosticDetailsCommand}"
+                            HorizontalAlignment="Left" />
+                    <TextBlock Text="Ordinary details never include a raw stack trace."
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
-            <TextBlock IsVisible="{Binding IsEmpty}" Text="{Binding EmptyStateMessage}" TextWrapping="Wrap" />
-            <Button Content="Refresh diagnostics" Command="{Binding RefreshCommand}" />
-            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
-        </StackPanel>
-    </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="4"
+                Grid.RowSpan="2"
+                Padding="10"
+                BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                BorderThickness="1">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Advanced diagnostics" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding AdvancedDiagnosticsSummary}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding AdvancedDiagnosticsRetainedCount, StringFormat='Retained detailed sessions: {0}'}" />
+                    <TextBlock Text="Detailed content is isolated from ordinary application logs and retained only for this process unless manually exported."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="Open advanced diagnostics"
+                        Command="{Binding OpenAdvancedDiagnosticsCommand}"
+                        VerticalAlignment="Top" />
+            </Grid>
+        </Border>
+
+        <views:StatusBanner Grid.Row="6" DataContext="{Binding Status}" />
+    </Grid>
 </UserControl>

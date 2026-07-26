@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.HelpView"
+             x:DataType="vm:HelpViewModel">
+    <Grid RowDefinitions="Auto,*" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="3">
+                <TextBlock Text="Help" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="Local guidance for OpenSorSe pages, workflows, empty states, errors, and safety boundaries."
+                           TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Content="{Binding BackLabel}"
+                    Command="{Binding BackCommand}"
+                    IsVisible="{Binding CanGoBack}" />
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="240,*" ColumnSpacing="12">
+            <ListBox ItemsSource="{Binding Topics}"
+                     SelectedItem="{Binding SelectedTopic, Mode=TwoWay}"
+                     AutomationProperties.Name="Help topics">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HelpTopic">
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Margin="0,4" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ScrollViewer Grid.Column="1">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding SelectedTopic.Title}" FontSize="22" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedTopic.Purpose}" TextWrapping="Wrap" />
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="6">
+                        <TextBlock Text="Reads" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Text="{Binding SelectedTopic.Reads}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="1" Text="Changes" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedTopic.Changes}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="2" Text="Does not change" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedTopic.DoesNotChange}" TextWrapping="Wrap" />
+                    </Grid>
+
+                    <TextBlock Text="Basic workflow" FontSize="18" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding SelectedTopic.Workflow}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" Margin="0,2" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="Important controls" FontSize="18" FontWeight="SemiBold" />
+                    <ItemsControl ItemsSource="{Binding SelectedTopic.ImportantControls}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding StringFormat='• {0}'}" TextWrapping="Wrap" Margin="0,2" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="Empty states" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedTopic.EmptyStates}" TextWrapping="Wrap" />
+                    <TextBlock Text="Common errors" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedTopic.CommonErrors}" TextWrapping="Wrap" />
+                    <TextBlock Text="Safety notes" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedTopic.SafetyNotes}" TextWrapping="Wrap" />
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

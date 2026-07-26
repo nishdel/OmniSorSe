@@ -4,50 +4,122 @@
         xmlns:views="using:OpenSorSe.Desktop.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="650"
+        mc:Ignorable="d"
+        d:DesignWidth="1180"
+        d:DesignHeight="760"
         x:Class="OpenSorSe.Desktop.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="OpenSorSe"
-        MinWidth="960"
-        MinHeight="640">
+        Icon="/Assets/opensorse-app-icon.png"
+        Title="{x:Static vm:DesktopBranding.ProductName}"
+        MinWidth="980"
+        MinHeight="660">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <Grid RowDefinitions="Auto,*,Auto"
-          ColumnDefinitions="220,*">
+    <Grid RowDefinitions="*,Auto"
+          ColumnDefinitions="252,*">
         <Border Grid.Row="0"
-                Grid.ColumnSpan="2"
-                Padding="12"
-                BorderBrush="{DynamicResource ThemeBorderLowBrush}"
-                BorderThickness="0,0,0,1">
-            <TextBlock Text="OpenSorSe" FontSize="20" FontWeight="SemiBold" />
-        </Border>
-
-        <Border Grid.Row="1"
                 Grid.Column="0"
-                Padding="8"
-                BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                Padding="14,18,14,12"
+                Background="{DynamicResource BackgroundSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="0,0,1,0">
-            <ListBox ItemsSource="{Binding NavigationItems}"
-                     SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
-                     SelectionChanged="OnNavigationSelectionChanged"
-                     AutomationProperties.Name="Primary navigation">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:NavigationItem">
-                        <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="18">
+                <Grid ColumnDefinitions="64,*"
+                      ColumnSpacing="10"
+                      AutomationProperties.Name="OpenSorSe, Open Sort and Search">
+                    <Image Width="64"
+                           Height="64"
+                           Source="/Assets/opensorse-app-icon.png"
+                           Stretch="Uniform"
+                           VerticalAlignment="Top" />
+                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Static vm:DesktopBranding.ProductName}"
+                                   FontSize="22"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{x:Static vm:DesktopBranding.ExpandedName}"
+                                   FontSize="9"
+                                   FontWeight="SemiBold"
+                                   LetterSpacing="1.1"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Text="{x:Static vm:DesktopBranding.Tagline}"
+                                   Margin="0,3,0,0"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource AccentOrganizationBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="12">
+                        <ItemsControl ItemsSource="{Binding PrimaryNavigationItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:NavigationItem">
+                                    <Button Classes="nav-item"
+                                            Classes.active="{Binding IsSelected}"
+                                            Click="OnNavigationButtonClick">
+                                        <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                            <TextBlock Text="{Binding Icon}"
+                                                       Foreground="{DynamicResource AccentPrimaryBrush}"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Label}" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel IsVisible="{Binding HasAdvancedNavigationItems}" Spacing="4">
+                            <TextBlock Text="ADVANCED"
+                                       Margin="10,8,0,2"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <ItemsControl ItemsSource="{Binding AdvancedNavigationItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:NavigationItem">
+                                        <Button Classes="nav-item"
+                                                Classes.active="{Binding IsSelected}"
+                                                Click="OnNavigationButtonClick">
+                                            <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                                <TextBlock Text="{Binding Icon}"
+                                                           Foreground="{DynamicResource AccentOrganizationBrush}"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Label}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <ItemsControl Grid.Row="2" ItemsSource="{Binding FooterNavigationItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavigationItem">
+                            <Button Classes="nav-item"
+                                    Classes.active="{Binding IsSelected}"
+                                    Click="OnNavigationButtonClick">
+                                <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                    <TextBlock Text="{Binding Icon}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Label}" />
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
         </Border>
 
-        <Border Grid.Row="1"
+        <Border Grid.Row="0"
                 Grid.Column="1"
-                Padding="24">
+                Padding="22"
+                Background="{DynamicResource BackgroundBaseBrush}">
             <Grid>
                 <Grid IsVisible="{Binding IsDashboardSelected}">
                     <views:DashboardView DataContext="{Binding Dashboard}" />
@@ -60,17 +132,52 @@
                         <views:ScanProgressView DataContext="{Binding ScanProgress}" />
                     </Grid>
                 </Grid>
-                <Grid IsVisible="{Binding IsResultsSelected}">
+                <Grid IsVisible="{Binding IsFilesAreaSelected}">
                     <views:ResultsView DataContext="{Binding Results}" />
                 </Grid>
-                <Grid IsVisible="{Binding IsCatalogSelected}">
-                    <views:CatalogView DataContext="{Binding Catalog}" />
+                <Grid IsVisible="{Binding IsSavedScansAreaSelected}" RowDefinitions="Auto,*" RowSpacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="3">
+                            <TextBlock Classes="page-title" Text="Saved scans" />
+                            <TextBlock Classes="page-subtitle"
+                                        Text="Return to previous scans anytime." />
+                        </StackPanel>
+                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Margin="0,0,6,0"
+                                    Classes="secondary"
+                                    Content="Scan Library"
+                                    Command="{Binding ShowSavedScanLibraryCommand}" />
+                            <Button Margin="0,0,6,0"
+                                    Classes="secondary"
+                                    Content="Search saved scans"
+                                    Command="{Binding ShowSavedScanSearchCommand}" />
+                            <Button Classes="secondary"
+                                    Content="Compare scans"
+                                    IsVisible="{Binding IsCompareScansAvailable}"
+                                    Command="{Binding ShowSavedScanComparisonCommand}" />
+                        </WrapPanel>
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <Grid IsVisible="{Binding IsSavedScanLibrarySelected}">
+                            <views:CatalogView DataContext="{Binding Catalog}" />
+                        </Grid>
+                        <Grid IsVisible="{Binding IsSavedScanSearchSelected}">
+                            <views:CatalogSearchView DataContext="{Binding CatalogSearch}" />
+                        </Grid>
+                        <Grid IsVisible="{Binding IsSavedScanComparisonSelected}">
+                            <views:CatalogComparisonView DataContext="{Binding CatalogComparison}" />
+                        </Grid>
+                    </Grid>
                 </Grid>
-                <Grid IsVisible="{Binding IsCatalogSearchSelected}">
-                    <views:CatalogSearchView DataContext="{Binding CatalogSearch}" />
+                <Grid IsVisible="{Binding IsSemanticSearchSelected}" RowDefinitions="Auto,*" RowSpacing="10">
+                    <Button Classes="secondary"
+                            Content="Back to Files"
+                            HorizontalAlignment="Left"
+                            Command="{Binding BackToFilesCommand}" />
+                    <views:SemanticSearchView Grid.Row="1" DataContext="{Binding SemanticSearch}" />
                 </Grid>
-                <Grid IsVisible="{Binding IsCatalogComparisonSelected}">
-                    <views:CatalogComparisonView DataContext="{Binding CatalogComparison}" />
+                <Grid IsVisible="{Binding IsStructureHistorySelected}">
+                    <views:StructureHistoryView DataContext="{Binding StructureHistory}" />
                 </Grid>
                 <Grid IsVisible="{Binding IsRulesSelected}">
                     <views:RuleEditorView DataContext="{Binding RuleEditor}" />
@@ -84,6 +191,9 @@
                 <Grid IsVisible="{Binding IsHistorySelected}">
                     <views:UndoHistoryView DataContext="{Binding UndoHistory}" />
                 </Grid>
+                <Grid IsVisible="{Binding IsHelpSelected}">
+                    <views:HelpView DataContext="{Binding Help}" />
+                </Grid>
                 <Grid IsVisible="{Binding IsAboutSelected}">
                     <views:AboutView DataContext="{Binding About}" />
                 </Grid>
@@ -91,21 +201,42 @@
                                               VerticalAlignment="Top"
                                               HorizontalAlignment="Right"
                                               Width="360" />
-                <StackPanel IsVisible="{Binding IsFeaturePageSelected}"
-                            Spacing="8">
-                    <TextBlock Text="{Binding CurrentPageTitle}" FontSize="24" FontWeight="SemiBold" />
-                    <TextBlock Text="This application shell hosts the selected feature page." TextWrapping="Wrap" />
-                </StackPanel>
             </Grid>
         </Border>
 
-        <Border Grid.Row="2"
+        <Border Grid.Row="1"
                 Grid.ColumnSpan="2"
-                Padding="8"
-                BorderBrush="{DynamicResource ThemeBorderLowBrush}"
-                BorderThickness="0,1,0,0">
-            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                Classes="status-bar">
+            <Grid ColumnDefinitions="Auto,*,160,Auto" ColumnSpacing="10">
+                <Border Width="9"
+                        Height="9"
+                        Classes="status-indicator"
+                        Classes.active="{Binding IsGlobalOperationActive}"
+                        Classes.error="{Binding IsGlobalStatusError}"
+                        CornerRadius="5"
+                        VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding GlobalStatusText}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding GlobalStatusDetail}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <ProgressBar Grid.Column="2"
+                             IsVisible="{Binding IsGlobalOperationActive}"
+                             Minimum="0"
+                             Maximum="1"
+                             Value="{Binding GlobalProgressValue}"
+                             IsIndeterminate="{Binding IsGlobalProgressIndeterminate}"
+                             VerticalAlignment="Center" />
+                <Button Grid.Column="3"
+                        IsVisible="{Binding CanCancelCurrentOperation}"
+                        Classes="secondary"
+                        Content="Cancel"
+                        Command="{Binding CancelCurrentOperationCommand}" />
+            </Grid>
         </Border>
     </Grid>
-
 </Window>

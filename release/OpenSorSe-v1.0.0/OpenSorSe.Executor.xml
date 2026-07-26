@@ -1,0 +1,472 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>OpenSorSe.Executor</name>
+    </assembly>
+    <members>
+        <member name="T:OpenSorSe.Executor.ActionExecutor">
+            <summary>Executes approved operations sequentially without overwriting destinations.</summary>
+        </member>
+        <member name="M:OpenSorSe.Executor.ActionExecutor.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>Initializes the executor with shared diagnostics infrastructure.</summary>
+            <param name="loggingService">The centralized logging service.</param><param name="errorHandler">The handler for unexpected failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.ActionExecutor.ExecuteAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Rules.Models.PlannedOperation},System.IProgress{OpenSorSe.Executor.Models.ActionExecutionProgress},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Executor.IActionExecutor">
+            <summary>Executes accepted planned operations sequentially and safely.</summary>
+        </member>
+        <member name="M:OpenSorSe.Executor.IActionExecutor.ExecuteAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Rules.Models.PlannedOperation},System.IProgress{OpenSorSe.Executor.Models.ActionExecutionProgress},System.Threading.CancellationToken)">
+            <summary>Executes the supplied operations.</summary>
+            <param name="operations">The accepted operations to execute.</param><param name="progress">An optional progress observer.</param><param name="cancellationToken">A token used to stop future work.</param><returns>The completed or cancelled execution result.</returns>
+        </member>
+        <member name="T:OpenSorSe.Executor.IUndoEngine">
+            <summary>Reverses explicit executor undo records conservatively.</summary>
+        </member>
+        <member name="M:OpenSorSe.Executor.IUndoEngine.UndoAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Executor.Models.UndoRecord},System.IProgress{OpenSorSe.Executor.Models.UndoExecutionProgress},System.Threading.CancellationToken)">
+            <summary>Attempts supplied undo records in caller order.</summary>
+            <param name="records">Explicit undo records.</param>
+            <param name="progress">Optional progress observer.</param>
+            <param name="cancellationToken">Token stopping later records.</param>
+            <returns>Undo outcomes.</returns>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionIssue">
+            <summary>Describes one user-safe execution issue.</summary>
+            <param name="OperationId">The affected operation identifier.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-safe message without raw exception details.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.ActionExecutionIssue.#ctor(System.String,OpenSorSe.Executor.Models.ActionExecutionIssueKind,System.String)">
+            <summary>Describes one user-safe execution issue.</summary>
+            <param name="OperationId">The affected operation identifier.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-safe message without raw exception details.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionIssue.OperationId">
+            <summary>The affected operation identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionIssue.Kind">
+            <summary>The issue category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionIssue.Message">
+            <summary>A user-safe message without raw exception details.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionIssueKind">
+            <summary>Identifies a user-safe per-operation execution failure.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.InvalidOperation">
+            <summary>The operation is structurally invalid.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.UnsupportedOperation">
+            <summary>The operation kind is unsupported in v0.1.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.SourceUnavailable">
+            <summary>The source is unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.SourceTypeUnsupported">
+            <summary>The source is not a regular file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.DestinationDirectoryUnavailable">
+            <summary>The destination parent directory is unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.DestinationAlreadyExists">
+            <summary>The destination already exists.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.AccessDenied">
+            <summary>Filesystem access was denied.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.SourceChanged">
+            <summary>The source differs from available planned metadata.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.IoFailure">
+            <summary>An input/output operation failed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionIssueKind.CancelledDuringOperation">
+            <summary>Cancellation interrupted an active copy operation.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionOutcome">
+            <summary>Contains the outcome of one planned operation.</summary>
+            <param name="OperationId">The operation identifier.</param><param name="Kind">The operation kind.</param><param name="SourcePath">The source path.</param><param name="DestinationPath">The destination path, if any.</param><param name="Status">The outcome status.</param><param name="UndoRecordId">The created undo record identifier on success.</param><param name="Issue">The issue on failure or skip.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.ActionExecutionOutcome.#ctor(System.String,OpenSorSe.Rules.Models.PlannedOperationKind,System.String,System.String,OpenSorSe.Executor.Models.ActionExecutionStatus,System.String,OpenSorSe.Executor.Models.ActionExecutionIssue)">
+            <summary>Contains the outcome of one planned operation.</summary>
+            <param name="OperationId">The operation identifier.</param><param name="Kind">The operation kind.</param><param name="SourcePath">The source path.</param><param name="DestinationPath">The destination path, if any.</param><param name="Status">The outcome status.</param><param name="UndoRecordId">The created undo record identifier on success.</param><param name="Issue">The issue on failure or skip.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.OperationId">
+            <summary>The operation identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.Kind">
+            ><summary>The operation kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.SourcePath">
+            ><summary>The source path.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.DestinationPath">
+            ><summary>The destination path, if any.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.Status">
+            ><summary>The outcome status.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.UndoRecordId">
+            ><summary>The created undo record identifier on success.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionOutcome.Issue">
+            ><summary>The issue on failure or skip.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionProgress">
+            <summary>Reports aggregate progress without exposing a fabricated percentage.</summary>
+            <param name="Stage">The current stage.</param><param name="OperationsReceived">Input operation count.</param><param name="OperationsAttempted">Attempted operation count.</param><param name="OperationsSucceeded">Successful operation count.</param><param name="OperationsFailed">Failed operation count.</param><param name="OperationsSkipped">Skipped operation count.</param><param name="CurrentOperationId">The active operation identifier, if any.</param><param name="CurrentOperationKind">The active operation kind, if any.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.ActionExecutionProgress.#ctor(OpenSorSe.Executor.Models.ActionExecutionProgressStage,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.String,System.Nullable{OpenSorSe.Rules.Models.PlannedOperationKind})">
+            <summary>Reports aggregate progress without exposing a fabricated percentage.</summary>
+            <param name="Stage">The current stage.</param><param name="OperationsReceived">Input operation count.</param><param name="OperationsAttempted">Attempted operation count.</param><param name="OperationsSucceeded">Successful operation count.</param><param name="OperationsFailed">Failed operation count.</param><param name="OperationsSkipped">Skipped operation count.</param><param name="CurrentOperationId">The active operation identifier, if any.</param><param name="CurrentOperationKind">The active operation kind, if any.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.Stage">
+            <summary>The current stage.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.OperationsReceived">
+            ><summary>Input operation count.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.OperationsAttempted">
+            ><summary>Attempted operation count.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.OperationsSucceeded">
+            ><summary>Successful operation count.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.OperationsFailed">
+            ><summary>Failed operation count.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.OperationsSkipped">
+            ><summary>Skipped operation count.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.CurrentOperationId">
+            ><summary>The active operation identifier, if any.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionProgress.CurrentOperationKind">
+            ><summary>The active operation kind, if any.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionProgressStage">
+            <summary>Identifies a progress-reporting stage.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionProgressStage.Starting">
+            <summary>Execution is starting.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionProgressStage.Executing">
+            <summary>An operation is about to execute.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionProgressStage.Completed">
+            <summary>Execution completed normally.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionProgressStage.Cancelled">
+            <summary>Cancellation stopped further execution.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionResult">
+            <summary>Contains execution outcomes, undo records, statistics, and cancellation state.</summary>
+            <param name="Outcomes">Outcomes in attempted input order.</param><param name="UndoRecords">Undo records in successful input order.</param><param name="Statistics">Aggregate execution statistics.</param><param name="WasCancelled">Whether cancellation stopped further execution.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.ActionExecutionResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Executor.Models.ActionExecutionOutcome},System.Collections.Generic.IReadOnlyList{OpenSorSe.Executor.Models.UndoRecord},OpenSorSe.Executor.Models.ActionExecutionStatistics,System.Boolean)">
+            <summary>Contains execution outcomes, undo records, statistics, and cancellation state.</summary>
+            <param name="Outcomes">Outcomes in attempted input order.</param><param name="UndoRecords">Undo records in successful input order.</param><param name="Statistics">Aggregate execution statistics.</param><param name="WasCancelled">Whether cancellation stopped further execution.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionResult.Outcomes">
+            <summary>Outcomes in attempted input order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionResult.UndoRecords">
+            ><summary>Undo records in successful input order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionResult.Statistics">
+            ><summary>Aggregate execution statistics.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionResult.WasCancelled">
+            ><summary>Whether cancellation stopped further execution.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionStatistics">
+            <summary>Contains aggregate execution counts.</summary>
+            <param name="OperationsReceived">All input operations.</param><param name="OperationsAttempted">Operations producing outcomes.</param><param name="OperationsSucceeded">Successful operations.</param><param name="OperationsFailed">Failed operations.</param><param name="OperationsSkipped">Skipped operations.</param><param name="MoveOperationsSucceeded">Successful moves.</param><param name="CopyOperationsSucceeded">Successful copies.</param><param name="RenameOperationsSucceeded">Successful renames.</param><param name="BytesCopied">Bytes from completed copies.</param><param name="IssuesEncountered">Outcomes containing issues.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.ActionExecutionStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>Contains aggregate execution counts.</summary>
+            <param name="OperationsReceived">All input operations.</param><param name="OperationsAttempted">Operations producing outcomes.</param><param name="OperationsSucceeded">Successful operations.</param><param name="OperationsFailed">Failed operations.</param><param name="OperationsSkipped">Skipped operations.</param><param name="MoveOperationsSucceeded">Successful moves.</param><param name="CopyOperationsSucceeded">Successful copies.</param><param name="RenameOperationsSucceeded">Successful renames.</param><param name="BytesCopied">Bytes from completed copies.</param><param name="IssuesEncountered">Outcomes containing issues.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.OperationsReceived">
+            <summary>All input operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.OperationsAttempted">
+            ><summary>Operations producing outcomes.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.OperationsSucceeded">
+            ><summary>Successful operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.OperationsFailed">
+            ><summary>Failed operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.OperationsSkipped">
+            ><summary>Skipped operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.MoveOperationsSucceeded">
+            ><summary>Successful moves.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.CopyOperationsSucceeded">
+            ><summary>Successful copies.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.RenameOperationsSucceeded">
+            ><summary>Successful renames.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.BytesCopied">
+            ><summary>Bytes from completed copies.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.ActionExecutionStatistics.IssuesEncountered">
+            ><summary>Outcomes containing issues.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.ActionExecutionStatus">
+            <summary>Describes the outcome state of an attempted operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionStatus.Succeeded">
+            <summary>The operation completed successfully.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionStatus.Failed">
+            <summary>The operation was attempted but failed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.ActionExecutionStatus.Skipped">
+            <summary>The operation is unsupported and was not attempted.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionIssue">
+            <summary>Describes one undo issue.</summary>
+            <param name="UndoRecordId">The record identifier.</param><param name="Kind">The issue kind.</param><param name="Message">A user-safe message.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.UndoExecutionIssue.#ctor(System.String,OpenSorSe.Executor.Models.UndoExecutionIssueKind,System.String)">
+            <summary>Describes one undo issue.</summary>
+            <param name="UndoRecordId">The record identifier.</param><param name="Kind">The issue kind.</param><param name="Message">A user-safe message.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionIssue.UndoRecordId">
+            <summary>The record identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionIssue.Kind">
+            ><summary>The issue kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionIssue.Message">
+            ><summary>A user-safe message.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionIssueKind">
+            <summary>Identifies a user-safe undo failure.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.InvalidRecord">
+            <summary>The record is invalid.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.UnsupportedUndoKind">
+            <summary>The undo kind is unsupported.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.ResultUnavailable">
+            <summary>The result file is unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.ResultTypeUnsupported">
+            <summary>The result is not a regular file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.OriginalParentUnavailable">
+            <summary>The original parent is unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.OriginalPathOccupied">
+            <summary>The original path is occupied.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.PathMismatch">
+            <summary>The record paths are incompatible.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.AccessDenied">
+            <summary>Access was denied.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionIssueKind.IoFailure">
+            <summary>An I/O operation failed.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionOutcome">
+            <summary>Contains one undo outcome.</summary>
+            <param name="UndoRecordId">The record identifier.</param><param name="OperationId">The original operation identifier.</param><param name="Kind">The undo kind.</param><param name="OriginalPath">The original path.</param><param name="ResultPath">The result path.</param><param name="Status">The outcome status.</param><param name="Issue">The failure issue.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.UndoExecutionOutcome.#ctor(System.String,System.String,OpenSorSe.Executor.Models.UndoOperationKind,System.String,System.String,OpenSorSe.Executor.Models.UndoExecutionStatus,OpenSorSe.Executor.Models.UndoExecutionIssue)">
+            <summary>Contains one undo outcome.</summary>
+            <param name="UndoRecordId">The record identifier.</param><param name="OperationId">The original operation identifier.</param><param name="Kind">The undo kind.</param><param name="OriginalPath">The original path.</param><param name="ResultPath">The result path.</param><param name="Status">The outcome status.</param><param name="Issue">The failure issue.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.UndoRecordId">
+            <summary>The record identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.OperationId">
+            ><summary>The original operation identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.Kind">
+            ><summary>The undo kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.OriginalPath">
+            ><summary>The original path.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.ResultPath">
+            ><summary>The result path.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.Status">
+            ><summary>The outcome status.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionOutcome.Issue">
+            ><summary>The failure issue.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionProgress">
+            <summary>Reports undo progress.</summary>
+            <param name="Stage">Current stage.</param><param name="RecordsReceived">Supplied records.</param><param name="RecordsAttempted">Attempted records.</param><param name="RecordsSucceeded">Succeeded records.</param><param name="RecordsFailed">Failed records.</param><param name="CurrentUndoRecordId">Current record ID.</param><param name="CurrentUndoKind">Current kind.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.UndoExecutionProgress.#ctor(OpenSorSe.Executor.Models.UndoExecutionProgressStage,System.Int64,System.Int64,System.Int64,System.Int64,System.String,System.Nullable{OpenSorSe.Executor.Models.UndoOperationKind})">
+            <summary>Reports undo progress.</summary>
+            <param name="Stage">Current stage.</param><param name="RecordsReceived">Supplied records.</param><param name="RecordsAttempted">Attempted records.</param><param name="RecordsSucceeded">Succeeded records.</param><param name="RecordsFailed">Failed records.</param><param name="CurrentUndoRecordId">Current record ID.</param><param name="CurrentUndoKind">Current kind.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.Stage">
+            <summary>Current stage.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.RecordsReceived">
+            ><summary>Supplied records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.RecordsAttempted">
+            ><summary>Attempted records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.RecordsSucceeded">
+            ><summary>Succeeded records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.RecordsFailed">
+            ><summary>Failed records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.CurrentUndoRecordId">
+            ><summary>Current record ID.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionProgress.CurrentUndoKind">
+            ><summary>Current kind.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionProgressStage">
+            <summary>Identifies undo progress stages.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionProgressStage.Starting">
+            <summary>Undo is starting.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionProgressStage.Executing">
+            <summary>A record is executing.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionProgressStage.Completed">
+            <summary>Undo completed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionProgressStage.Cancelled">
+            <summary>Cancellation stopped undo.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionResult">
+            <summary>Contains undo outcomes and cancellation state.</summary>
+            <param name="Outcomes">Attempted outcomes.</param><param name="Statistics">Aggregate counts.</param><param name="WasCancelled">Whether cancellation stopped later records.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.UndoExecutionResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Executor.Models.UndoExecutionOutcome},OpenSorSe.Executor.Models.UndoExecutionStatistics,System.Boolean)">
+            <summary>Contains undo outcomes and cancellation state.</summary>
+            <param name="Outcomes">Attempted outcomes.</param><param name="Statistics">Aggregate counts.</param><param name="WasCancelled">Whether cancellation stopped later records.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionResult.Outcomes">
+            <summary>Attempted outcomes.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionResult.Statistics">
+            ><summary>Aggregate counts.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionResult.WasCancelled">
+            ><summary>Whether cancellation stopped later records.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionStatistics">
+            <summary>Contains undo execution counts.</summary>
+            <param name="RecordsReceived">Supplied records.</param><param name="RecordsAttempted">Attempted records.</param><param name="RecordsSucceeded">Successful records.</param><param name="RecordsFailed">Failed records.</param><param name="MoveUndosSucceeded">Successful move undos.</param><param name="CopyUndosSucceeded">Successful copy undos.</param><param name="RenameUndosSucceeded">Successful rename undos.</param><param name="IssuesEncountered">Failed outcomes.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.UndoExecutionStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>Contains undo execution counts.</summary>
+            <param name="RecordsReceived">Supplied records.</param><param name="RecordsAttempted">Attempted records.</param><param name="RecordsSucceeded">Successful records.</param><param name="RecordsFailed">Failed records.</param><param name="MoveUndosSucceeded">Successful move undos.</param><param name="CopyUndosSucceeded">Successful copy undos.</param><param name="RenameUndosSucceeded">Successful rename undos.</param><param name="IssuesEncountered">Failed outcomes.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.RecordsReceived">
+            <summary>Supplied records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.RecordsAttempted">
+            ><summary>Attempted records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.RecordsSucceeded">
+            ><summary>Successful records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.RecordsFailed">
+            ><summary>Failed records.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.MoveUndosSucceeded">
+            ><summary>Successful move undos.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.CopyUndosSucceeded">
+            ><summary>Successful copy undos.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.RenameUndosSucceeded">
+            ><summary>Successful rename undos.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoExecutionStatistics.IssuesEncountered">
+            ><summary>Failed outcomes.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoExecutionStatus">
+            <summary>Describes an undo attempt outcome.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionStatus.Succeeded">
+            <summary>The undo succeeded.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoExecutionStatus.Failed">
+            <summary>The undo failed.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoOperationKind">
+            <summary>Identifies the reverse behavior represented by an undo record.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoOperationKind.Move">
+            <summary>Moves a result file back to its original path.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoOperationKind.Copy">
+            <summary>Deletes a copied result file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Executor.Models.UndoOperationKind.Rename">
+            <summary>Renames a result file back to its original path.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.Models.UndoRecord">
+            <summary>Records information needed for a future undo operation.</summary>
+            <param name="UndoRecordId">The deterministic undo record identifier.</param>
+            <param name="OperationId">The completed operation identifier.</param>
+            <param name="Kind">The reverse operation kind.</param>
+            <param name="OriginalPath">The pre-execution source path.</param>
+            <param name="ResultPath">The post-execution result path.</param>
+            <param name="ExecutedAtUtc">The UTC completion time.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.Models.UndoRecord.#ctor(System.String,System.String,OpenSorSe.Executor.Models.UndoOperationKind,System.String,System.String,System.DateTimeOffset)">
+            <summary>Records information needed for a future undo operation.</summary>
+            <param name="UndoRecordId">The deterministic undo record identifier.</param>
+            <param name="OperationId">The completed operation identifier.</param>
+            <param name="Kind">The reverse operation kind.</param>
+            <param name="OriginalPath">The pre-execution source path.</param>
+            <param name="ResultPath">The post-execution result path.</param>
+            <param name="ExecutedAtUtc">The UTC completion time.</param>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoRecord.UndoRecordId">
+            <summary>The deterministic undo record identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoRecord.OperationId">
+            <summary>The completed operation identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoRecord.Kind">
+            <summary>The reverse operation kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoRecord.OriginalPath">
+            <summary>The pre-execution source path.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoRecord.ResultPath">
+            <summary>The post-execution result path.</summary>
+        </member>
+        <member name="P:OpenSorSe.Executor.Models.UndoRecord.ExecutedAtUtc">
+            <summary>The UTC completion time.</summary>
+        </member>
+        <member name="T:OpenSorSe.Executor.UndoEngine">
+            <summary>Conservatively reverses explicit executor records without history access.</summary>
+        </member>
+        <member name="M:OpenSorSe.Executor.UndoEngine.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>Initializes an undo engine.</summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Executor.UndoEngine.UndoAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Executor.Models.UndoRecord},System.IProgress{OpenSorSe.Executor.Models.UndoExecutionProgress},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>

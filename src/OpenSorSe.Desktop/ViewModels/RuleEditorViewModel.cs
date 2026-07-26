@@ -53,7 +53,7 @@ public sealed class RuleEditorViewModel : ViewModelBase
     /// <summary>
     /// Gets the user-facing current-release no-rules explanation.
     /// </summary>
-    public string EmptyStateMessage => "No rules are loaded in this application session. OpenSorSe 0.9 does not create, persist, or execute rules, and scanned files remain read-only.";
+    public string EmptyStateMessage => "No rules are loaded in this application session. OpenSorSe 1.0 does not create, persist, or execute rules, and scanning remains read-only.";
 
     /// <summary>
     /// Gets or sets the selected rule for non-executing edit operations.

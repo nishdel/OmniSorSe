@@ -45,6 +45,104 @@ public sealed class JsonConfigurationServiceTests
         await service.InitializeAsync(CancellationToken.None);
 
         Assert.Equal(LogLevel.Information, service.Current.Logging.MinimumLevel);
+        Assert.False(service.Current.Features.ShowAdvancedFeatures);
+        Assert.Equal(
+            FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio,
+            service.Current.Features.FilesPageDetailsPanelWidthRatio);
+        Assert.False(service.Current.Ai.Enabled);
+        Assert.False(service.Current.Ai.FileRenameSuggestionsEnabled);
+        Assert.False(service.Current.Ai.FolderStructureSuggestionsEnabled);
+        Assert.False(service.Current.Ai.RequestDiagnosticsEnabled);
+        Assert.False(service.Current.Diagnostics.EnableDiagnostics);
+        Assert.False(service.Current.Diagnostics.AiDiagnostics);
+        Assert.False(service.Current.Diagnostics.ShowUnredactedDiagnosticContent);
+        Assert.False(service.Current.Ai.DocumentTextInterpretationEnabled);
+        Assert.True(service.Current.Content.MetadataExtractionEnabled);
+        Assert.False(service.Current.Content.OcrEnabled);
+        Assert.True(service.Current.Content.OcrOnlyWhenNativeTextUnavailable);
+        Assert.Equal(240, service.Current.Content.PdfRasterizationDpi);
+        Assert.Equal(4096, service.Current.Content.MaximumRasterDimension);
+        Assert.Equal(65_536, service.Current.Content.MaximumOcrTextCharacters);
+        Assert.Equal(256, service.Current.Content.MaximumTemporaryStorageMiB);
+        Assert.Null(service.Current.Content.TesseractExecutablePath);
+        Assert.False(service.Current.SemanticSearch.Enabled);
+    }
+
+    /// <summary>Verifies the master, category, and privacy controls persist independently.</summary>
+    [Fact]
+    public async Task SaveAsync_PersistsAdvancedDiagnosticsSettings()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
+        var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        try
+        {
+            var writer = new JsonConfigurationService(settingsFilePath, _ => null);
+            await writer.InitializeAsync(CancellationToken.None);
+            await writer.SaveAsync(new ApplicationSettings
+            {
+                Diagnostics = new DiagnosticsSettings
+                {
+                    EnableDiagnostics = true,
+                    AiDiagnostics = true,
+                    OcrAndTextExtractionDiagnostics = true,
+                    ScanningDiagnostics = true,
+                    DuplicateDetectionDiagnostics = true,
+                    ShowUnredactedDiagnosticContent = true,
+                },
+            }, CancellationToken.None);
+
+            var reader = new JsonConfigurationService(settingsFilePath, _ => null);
+            await reader.InitializeAsync(CancellationToken.None);
+
+            Assert.True(reader.Current.Diagnostics.EnableDiagnostics);
+            Assert.True(reader.Current.Diagnostics.AiDiagnostics);
+            Assert.True(reader.Current.Diagnostics.OcrAndTextExtractionDiagnostics);
+            Assert.True(reader.Current.Diagnostics.ScanningDiagnostics);
+            Assert.True(reader.Current.Diagnostics.DuplicateDetectionDiagnostics);
+            Assert.True(reader.Current.Diagnostics.ShowUnredactedDiagnosticContent);
+            Assert.False(reader.Current.Diagnostics.SearchAndIndexingDiagnostics);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>Verifies pre-v0.9.1 JSON keeps established values while new opt-ins receive safe defaults.</summary>
+    [Fact]
+    public async Task InitializeAsync_PreV091Settings_DefaultsNewSwitchesOffWithoutResettingProviderValues()
+    {
+        var settingsFilePath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(settingsFilePath, """{"Ai":{"Enabled":true,"Endpoint":"http://127.0.0.1:11434","SelectedModel":"existing-model","RequestTimeoutSeconds":45}}""");
+
+        try
+        {
+            var service = new JsonConfigurationService(settingsFilePath, _ => null);
+
+            await service.InitializeAsync(CancellationToken.None);
+
+            Assert.True(service.Current.Ai.Enabled);
+            Assert.Equal("existing-model", service.Current.Ai.SelectedModel);
+            Assert.Equal(45, service.Current.Ai.RequestTimeoutSeconds);
+            Assert.False(service.Current.Ai.FileRenameSuggestionsEnabled);
+            Assert.False(service.Current.Ai.FolderStructureSuggestionsEnabled);
+            Assert.False(service.Current.Ai.RequestDiagnosticsEnabled);
+            Assert.False(service.Current.Ai.DocumentTextInterpretationEnabled);
+            Assert.False(service.Current.Features.ShowAdvancedFeatures);
+            Assert.Equal(
+                FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio,
+                service.Current.Features.FilesPageDetailsPanelWidthRatio);
+            Assert.True(service.Current.Content.MetadataExtractionEnabled);
+            Assert.False(service.Current.Content.OcrEnabled);
+            Assert.False(service.Current.SemanticSearch.Enabled);
+        }
+        finally
+        {
+            File.Delete(settingsFilePath);
+        }
     }
 
     /// <summary>
@@ -195,6 +293,11 @@ public sealed class JsonConfigurationServiceTests
         var settingsFilePath = Path.Combine(directoryPath, "settings.json");
         var settings = new ApplicationSettings
         {
+            Features = new FeatureSettings
+            {
+                ShowAdvancedFeatures = true,
+                FilesPageDetailsPanelWidthRatio = 0.41,
+            },
             Logging = new LoggingSettings
             {
                 MinimumLevel = LogLevel.Warning,
@@ -204,14 +307,41 @@ public sealed class JsonConfigurationServiceTests
             Ai = new AiSettings
             {
                 Enabled = true,
+                FileRenameSuggestionsEnabled = true,
+                FolderStructureSuggestionsEnabled = false,
+                RequestDiagnosticsEnabled = true,
+                ShowUnredactedDiagnosticContent = true,
                 Endpoint = "http://127.0.0.1:11434",
                 SelectedModel = "llama3:latest",
                 RequestTimeoutSeconds = 45,
                 PreferenceAdaptationEnabled = false,
+                DocumentTextInterpretationEnabled = true,
             },
             Catalog = new CatalogSettings
             {
                 Enabled = true,
+            },
+            Content = new ContentSettings
+            {
+                MetadataExtractionEnabled = true,
+                OcrEnabled = true,
+                OcrOnlyWhenNativeTextUnavailable = false,
+                MaximumPagesPerDocument = 12,
+                MaximumFileSizeMiB = 20,
+                OcrLanguage = "deu+eng",
+                MaximumOcrDurationSeconds = 60,
+                PdfRasterizationDpi = 300,
+                MaximumRasterDimension = 5000,
+                MaximumOcrTextCharacters = 32_768,
+                MaximumTemporaryStorageMiB = 128,
+                TesseractExecutablePath = "C:\\Tools\\tesseract.exe",
+                BackgroundProcessingEnabled = true,
+            },
+            SemanticSearch = new SemanticSearchSettings
+            {
+                Enabled = true,
+                MaximumDocumentCount = 5000,
+                MaximumResultCount = 100,
             },
         };
 
@@ -228,10 +358,32 @@ public sealed class JsonConfigurationServiceTests
             Assert.False(reader.Current.Logging.FileLoggingEnabled);
             Assert.Equal(3, reader.Current.Logging.RetainedFileCount);
             Assert.True(reader.Current.Ai.Enabled);
+            Assert.True(reader.Current.Features.ShowAdvancedFeatures);
+            Assert.Equal(0.41, reader.Current.Features.FilesPageDetailsPanelWidthRatio);
+            Assert.True(reader.Current.Ai.FileRenameSuggestionsEnabled);
+            Assert.False(reader.Current.Ai.FolderStructureSuggestionsEnabled);
+            Assert.True(reader.Current.Ai.RequestDiagnosticsEnabled);
+            Assert.True(reader.Current.Ai.ShowUnredactedDiagnosticContent);
             Assert.Equal("llama3:latest", reader.Current.Ai.SelectedModel);
             Assert.Equal(45, reader.Current.Ai.RequestTimeoutSeconds);
             Assert.False(reader.Current.Ai.PreferenceAdaptationEnabled);
+            Assert.True(reader.Current.Ai.DocumentTextInterpretationEnabled);
             Assert.True(reader.Current.Catalog.Enabled);
+            Assert.True(reader.Current.Content.OcrEnabled);
+            Assert.False(reader.Current.Content.OcrOnlyWhenNativeTextUnavailable);
+            Assert.Equal(12, reader.Current.Content.MaximumPagesPerDocument);
+            Assert.Equal(20, reader.Current.Content.MaximumFileSizeMiB);
+            Assert.Equal("deu+eng", reader.Current.Content.OcrLanguage);
+            Assert.Equal(60, reader.Current.Content.MaximumOcrDurationSeconds);
+            Assert.Equal(300, reader.Current.Content.PdfRasterizationDpi);
+            Assert.Equal(5000, reader.Current.Content.MaximumRasterDimension);
+            Assert.Equal(32_768, reader.Current.Content.MaximumOcrTextCharacters);
+            Assert.Equal(128, reader.Current.Content.MaximumTemporaryStorageMiB);
+            Assert.Equal("C:\\Tools\\tesseract.exe", reader.Current.Content.TesseractExecutablePath);
+            Assert.True(reader.Current.Content.BackgroundProcessingEnabled);
+            Assert.True(reader.Current.SemanticSearch.Enabled);
+            Assert.Equal(5000, reader.Current.SemanticSearch.MaximumDocumentCount);
+            Assert.Equal(100, reader.Current.SemanticSearch.MaximumResultCount);
         }
         finally
         {
@@ -278,5 +430,46 @@ public sealed class JsonConfigurationServiceTests
         };
 
         Assert.Throws<ConfigurationValidationException>(settings.Validate);
+    }
+
+    /// <summary>Credentials and request components cannot be persisted inside the Ollama endpoint.</summary>
+    [Theory]
+    [InlineData("http://user:password@127.0.0.1:11434")]
+    [InlineData("http://127.0.0.1:11434?token=secret")]
+    [InlineData("http://127.0.0.1:11434/#secret")]
+    public void ApplicationSettings_CredentialBearingAiEndpoint_IsRejected(string endpoint)
+    {
+        var settings = new ApplicationSettings
+        {
+            Ai = new AiSettings { Enabled = true, Endpoint = endpoint },
+        };
+
+        Assert.Throws<ConfigurationValidationException>(settings.Validate);
+    }
+
+    /// <summary>Verifies a corrupt Files-page proportion activates the established safe-default recovery path.</summary>
+    [Fact]
+    public async Task InitializeAsync_InvalidFilesPanelRatio_UsesDefaultsAndPreservesFile()
+    {
+        var settingsFilePath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}.json");
+        const string invalidSettings = """{"Features":{"FilesPageDetailsPanelWidthRatio":0.95}}""";
+        await File.WriteAllTextAsync(settingsFilePath, invalidSettings);
+
+        try
+        {
+            var service = new JsonConfigurationService(settingsFilePath, _ => null);
+
+            await service.InitializeAsync(CancellationToken.None);
+
+            Assert.Equal(
+                FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio,
+                service.Current.Features.FilesPageDetailsPanelWidthRatio);
+            Assert.NotNull(service.InitializationWarning);
+            Assert.Equal(invalidSettings, await File.ReadAllTextAsync(settingsFilePath));
+        }
+        finally
+        {
+            File.Delete(settingsFilePath);
+        }
     }
 }

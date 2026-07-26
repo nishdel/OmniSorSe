@@ -1,0 +1,139 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             xmlns:semantic="using:OpenSorSe.Application.Semantic"
+             xmlns:views="using:OpenSorSe.Desktop.Views"
+             x:Class="OpenSorSe.Desktop.Views.SemanticSearchView"
+             x:DataType="vm:SemanticSearchViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="3">
+                <WrapPanel>
+                    <TextBlock Classes="page-title" Text="Meaning Search" />
+                    <Border Margin="8,5,0,0"
+                            Padding="7,2"
+                            CornerRadius="8"
+                            Background="{DynamicResource AccentAIMutedBrush}">
+                        <TextBlock Text="BETA"
+                                   FontSize="10"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentSearchBrush}" />
+                    </Border>
+                </WrapPanel>
+                <TextBlock Classes="page-subtitle"
+                           Text="Find files using related ideas, not only exact words." />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Classes="help"
+                    Content="?"
+                    Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Meaning Search builds a local index. It does not send content to Ollama." />
+        </Grid>
+
+        <Border Grid.Row="1" Classes="card">
+            <StackPanel Spacing="9">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <TextBox Text="{Binding QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="Try: tax documents from 2023"
+                             AutomationProperties.Name="Meaning search query" />
+                    <Button Grid.Column="1"
+                            Classes="primary"
+                            Content="Search"
+                            Command="{Binding SearchCommand}" />
+                    <Button Grid.Column="2"
+                            Classes="secondary"
+                            Content="Clear"
+                            Command="{Binding ClearQueryCommand}" />
+                </Grid>
+                <WrapPanel>
+                    <Button Margin="0,0,8,0"
+                            Classes="secondary"
+                            Content="Build or refresh index"
+                            Command="{Binding BuildIndexCommand}" />
+                    <Button Margin="0,0,8,0"
+                            Classes="secondary"
+                            Content="Rebuild index"
+                            Command="{Binding RebuildIndexCommand}" />
+                    <Button Margin="0,0,8,0"
+                            IsVisible="{Binding IsBusy}"
+                            Classes="secondary"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}" />
+                    <Button Classes="secondary"
+                            Content="Clear index"
+                            Command="{Binding RequestClearIndexCommand}" />
+                    <Button Margin="8,0,0,0"
+                            IsVisible="{Binding IsClearPending}"
+                            Classes="danger"
+                            Content="Confirm clear"
+                            Command="{Binding ConfirmClearIndexCommand}" />
+                    <Button Margin="8,0,0,0"
+                            IsVisible="{Binding IsClearPending}"
+                            Classes="secondary"
+                            Content="Keep index"
+                            Command="{Binding CancelClearIndexCommand}" />
+                </WrapPanel>
+                <ProgressBar Minimum="0"
+                             Maximum="1"
+                             Value="{Binding ProgressValue}"
+                             IsVisible="{Binding IsBusy}" />
+                <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
+                <views:StatusBanner DataContext="{Binding Status}" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card">
+            <Grid>
+                <StackPanel IsVisible="{Binding !HasHits}"
+                            Classes="empty-state"
+                            Spacing="6"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="?"
+                               FontSize="30"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource AccentSearchBrush}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="No meaning matches yet"
+                               FontSize="18"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="Build the local index, then search using an idea or phrase."
+                               Classes="page-subtitle"
+                               TextAlignment="Center" />
+                </StackPanel>
+                <ScrollViewer IsVisible="{Binding HasHits}"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Hits}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="semantic:SemanticSearchHit">
+                                <Border Classes="result-row" Padding="0,9">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding FullPath}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Explanation}"
+                                                   Foreground="{DynamicResource AccentSearchBrush}"
+                                                   TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0"
+                                                    Classes="secondary"
+                                                    Content="Open file"
+                                                    Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    x:CompileBindings="False" />
+                                            <Button Classes="secondary"
+                                                    Content="Open folder"
+                                                    Command="{Binding DataContext.OpenContainingFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    x:CompileBindings="False" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -9,6 +9,9 @@ public enum ProcessingProgressStage
     /// <summary>Metadata enrichment is running.</summary>
     ReadingMetadata,
 
+    /// <summary>Bounded local metadata, native-text, and optional OCR extraction is running.</summary>
+    ExtractingContent,
+
     /// <summary>SHA-256 hashing is running.</summary>
     Hashing,
 

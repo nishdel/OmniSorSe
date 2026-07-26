@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Application;
+using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
@@ -59,6 +60,36 @@ public sealed class ProcessingOrchestratorTests
         Assert.Empty(calls);
     }
 
+    /// <summary>Verifies content extraction is ordered after scanner metadata and a local failure cannot break scanning.</summary>
+    [Fact]
+    public async Task ProcessAsync_ContentIndexerFails_ContinuesPrimaryPipeline()
+    {
+        var calls = new List<string>();
+        var orchestrator = new ProcessingOrchestrator(
+            new Scanner(calls, ScanStatus.Completed),
+            new Metadata(calls),
+            new Hasher(calls),
+            new Classifier(calls),
+            new Duplicates(calls),
+            new Rules(calls),
+            new Planner(calls),
+            new Conflicts(calls),
+            new Logging(),
+            new Errors(),
+            new ContentIndexer(calls, shouldFail: true));
+        var progress = new List<ProcessingProgress>();
+
+        var result = await orchestrator.ProcessAsync(
+            Request(),
+            new InlineProgress<ProcessingProgress>(progress.Add));
+
+        Assert.Equal(
+            ["scan", "metadata", "content", "hash", "classify", "duplicates", "rules", "plan", "conflicts"],
+            calls);
+        Assert.Equal(ProcessingStatus.Completed, result.Status);
+        Assert.Contains(progress, item => item.Stage == ProcessingProgressStage.ExtractingContent);
+    }
+
     private static ProcessingRequest Request() => new(new ScanRequest(["C:\\Root"], ScanOptions.Default), []);
 
     private static ProcessingOrchestrator Create(List<string> calls, ScanStatus status) => new(
@@ -104,6 +135,18 @@ public sealed class ProcessingOrchestratorTests
     private sealed class Conflicts(List<string> calls) : IConflictResolver
     {
         public Task<ConflictResolutionResult> ResolveAsync(IReadOnlyCollection<PlannedOperation> operations, ConflictResolutionOptions? options = null, CancellationToken cancellationToken = default) { calls.Add("conflicts"); return Task.FromResult(ConflictResult()); }
+    }
+    private sealed class ContentIndexer(List<string> calls, bool shouldFail) : IContentIndexingService
+    {
+        public Task<ContentIndexingSummary> IndexAsync(
+            IReadOnlyCollection<FileEntry> files,
+            CancellationToken cancellationToken)
+        {
+            calls.Add("content");
+            return shouldFail
+                ? Task.FromException<ContentIndexingSummary>(new InvalidOperationException("Controlled test failure"))
+                : Task.FromResult(new ContentIndexingSummary(files.Count, 0, 0, 0, 0, 0));
+        }
     }
     private sealed class Logging : ILoggingService
     {

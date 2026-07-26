@@ -5,7 +5,11 @@
              x:DataType="vm:FolderSelectionViewModel">
     <ScrollViewer>
         <StackPanel Spacing="12">
-            <TextBlock Text="Folder Selection" FontSize="24" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Text="Folder Selection" FontSize="24" FontWeight="SemiBold" />
+                <Button Grid.Column="1" Content="Help" Command="{Binding HelpCommand}"
+                        ToolTip.Tip="Open scan-folder help" AutomationProperties.Name="Help for Scan folders" />
+            </Grid>
             <TextBlock Text="Add accessible local folders, then start a read-only analysis. OpenSorSe does not modify selected files."
                        TextWrapping="Wrap" />
             <TextBlock Text="Selected folders" FontWeight="SemiBold" />

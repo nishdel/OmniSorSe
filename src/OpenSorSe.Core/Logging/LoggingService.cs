@@ -9,6 +9,7 @@ namespace OpenSorSe.Core.Logging;
 public sealed class LoggingService : ILoggingService
 {
     private readonly object _syncRoot = new();
+    private readonly DiagnosticEventBuffer _eventBuffer = new();
     private readonly LoggingStatisticsCounter _statistics = new();
     private ILoggerFactory _loggerFactory = NullLoggerFactory.Instance;
     private bool _isDisposed;
@@ -29,11 +30,10 @@ public sealed class LoggingService : ILoggingService
         {
             ThrowIfDisposed();
             var previousFactory = _loggerFactory;
-            var localFileProvider = new LocalFileLoggerProvider(options, _statistics);
+            var localFileProvider = new LocalFileLoggerProvider(options, _statistics, _eventBuffer);
             _loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder.SetMinimumLevel(options.MinimumLevel);
-                builder.AddDebug();
                 builder.AddProvider(localFileProvider);
             });
 
@@ -63,6 +63,16 @@ public sealed class LoggingService : ILoggingService
         {
             ThrowIfDisposed();
             return _statistics.Snapshot();
+        }
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<DiagnosticEvent> GetRecentEvents()
+    {
+        lock (_syncRoot)
+        {
+            ThrowIfDisposed();
+            return _eventBuffer.SnapshotNewestFirst();
         }
     }
 

@@ -1,38 +1,114 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             xmlns:views="using:OpenSorSe.Desktop.Views"
              x:Class="OpenSorSe.Desktop.Views.CatalogSearchView"
              x:DataType="vm:CatalogSearchViewModel">
-    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
-        <TextBlock Text="Catalog search" FontSize="24" FontWeight="SemiBold" />
-        <StackPanel Grid.Row="1" Spacing="6">
-            <TextBlock Text="Search saved metadata only" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="Searches filenames, stored paths, extensions, deterministic categories, and accepted tags from saved snapshots. This is deterministic metadata search, not semantic search, and it does not read files from disk."
-                       TextWrapping="Wrap" />
-            <Border Margin="0,4,0,8"
-                    Padding="10"
+    <ScrollViewer>
+        <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="History Search" FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="Find files in saved scans using local metadata."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Classes="help"
+                        Content="?"
+                        Command="{Binding HelpCommand}"
+                        ToolTip.Tip="Learn how saved-scan search works"
+                        AutomationProperties.Name="Help for saved-scan search" />
+            </Grid>
+
+            <Border Padding="12"
                     BorderBrush="{DynamicResource ThemeBorderLowBrush}"
                     BorderThickness="1">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Saved searches" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="A saved search stores only its name and query text in OpenSorSe application data. Hits are always recalculated from the current local catalog and are never persisted."
-                               TextWrapping="Wrap" />
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Search saved scans" FontSize="18" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBox Text="{Binding QueryText, Mode=TwoWay}"
+                                 PlaceholderText="Filename, path, file type, category, or tag"
+                                 AutomationProperties.Name="Search saved scans" />
+                        <Button Grid.Column="1"
+                                Content="Search"
+                                Command="{Binding SearchCommand}"
+                                AutomationProperties.Name="Search saved catalog metadata" />
+                        <Button Grid.Column="2"
+                                Content="Clear"
+                                Command="{Binding ClearQueryCommand}"
+                                AutomationProperties.Name="Clear catalog search" />
+                    </Grid>
+                    <views:StatusBanner DataContext="{Binding Status}" />
+                </StackPanel>
+            </Border>
+
+            <Border Padding="12"
+                    BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBox PlaceholderText="Saved-search name"
-                                 Text="{Binding SavedSearchName, Mode=TwoWay}"
-                                 AutomationProperties.Name="Saved-search name" />
-                        <Button Grid.Column="1" Content="Save current query" Command="{Binding SaveCurrentSearchCommand}" />
+                        <TextBlock Text="Results" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding ResultCountText}"
+                                   IsVisible="{Binding IsSearchCompleted}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock IsVisible="{Binding HasNoHits}"
+                               Text="No saved scans match this search. Try a filename, file type, category, or tag."
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <ListBox ItemsSource="{Binding Hits}"
+                             SelectedItem="{Binding SelectedHit, Mode=TwoWay}"
+                             IsVisible="{Binding HasSearchResults}"
+                             MaxHeight="360"
+                             AutomationProperties.Name="Catalog search results">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CatalogSearchHitRow">
+                                <StackPanel Margin="0,5" Spacing="2">
+                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding FullPath}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding SnapshotLabel}" />
+                                    <TextBlock Text="{Binding MatchExplanation}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Content="Open selected saved scan"
+                            Command="{Binding OpenSelectedHitCommand}"
+                            IsVisible="{Binding HasSearchResults}"
+                            HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <Border Padding="12"
+                    BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="9">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Saved searches" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Save a useful query for later. Only its name and query text are stored; results are recalculated from the local catalog."
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox Text="{Binding SavedSearchName, Mode=TwoWay}"
+                                 PlaceholderText="Name this search"
+                                 AutomationProperties.Name="New saved-search name" />
+                        <Button Grid.Column="1"
+                                Content="Save current search"
+                                Command="{Binding SaveCurrentSearchCommand}" />
                     </Grid>
                     <TextBlock IsVisible="{Binding HasNoSavedSearches}"
-                               Text="No catalog searches are saved."
+                               Text="No saved searches yet."
                                TextWrapping="Wrap" />
                     <ListBox ItemsSource="{Binding SavedSearches}"
                              SelectedItem="{Binding SelectedSavedSearch, Mode=TwoWay}"
-                             MaxHeight="150"
+                             MaxHeight="220"
                              AutomationProperties.Name="Saved catalog searches">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:SavedCatalogSearchRow">
-                                <StackPanel Margin="0,3" Spacing="1">
+                                <StackPanel Margin="0,4" Spacing="2">
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding QueryText, StringFormat=Query: {0}}" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding UpdatedAtUtc, StringFormat=Updated: {0:u}}" />
@@ -40,48 +116,45 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <StackPanel Spacing="8" IsVisible="{Binding HasSelectedSavedSearch}">
+                        <WrapPanel>
+                            <Button Margin="0,0,8,8"
+                                    Content="Run selected search"
+                                    Command="{Binding RunSelectedSavedSearchCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Content="Remove selected search"
+                                    Command="{Binding RemoveSelectedSavedSearchCommand}" />
+                        </WrapPanel>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <TextBox Text="{Binding SavedSearchRenameText, Mode=TwoWay}"
+                                     PlaceholderText="New saved-search name"
+                                     AutomationProperties.Name="Rename selected saved search" />
+                            <Button Grid.Column="1"
+                                    Content="Rename"
+                                    Command="{Binding RenameSelectedSavedSearchCommand}" />
+                        </Grid>
+                    </StackPanel>
                     <WrapPanel>
-                        <Button Margin="0,0,8,8" Content="Refresh saved searches" Command="{Binding RefreshSavedSearchesCommand}" />
-                        <Button Margin="0,0,8,8" Content="Run selected" Command="{Binding RunSelectedSavedSearchCommand}" />
-                        <Button Margin="0,0,8,8" Content="Remove selected" Command="{Binding RemoveSelectedSavedSearchCommand}" />
-                        <Button Margin="0,0,8,8" Content="Reset saved searches" Command="{Binding RequestResetSavedSearchesCommand}" />
+                        <Button Margin="0,0,8,8"
+                                Content="Reload saved searches"
+                                Command="{Binding RefreshSavedSearchesCommand}" />
+                        <Button Margin="0,0,8,8"
+                                Content="Clear all saved searches"
+                                Command="{Binding RequestResetSavedSearchesCommand}" />
                         <Button IsVisible="{Binding IsSavedSearchResetPending}"
                                 Margin="0,0,8,8"
-                                Content="Confirm reset"
+                                Content="Confirm clear all"
                                 Command="{Binding ConfirmResetSavedSearchesCommand}" />
                         <Button IsVisible="{Binding IsSavedSearchResetPending}"
                                 Margin="0,0,8,8"
                                 Content="Cancel"
                                 Command="{Binding CancelResetSavedSearchesCommand}" />
                     </WrapPanel>
-                    <TextBlock Text="{Binding SavedSearchStatusText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SavedSearchStatusText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
             </Border>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <TextBox PlaceholderText="Search saved catalog metadata"
-                         Text="{Binding QueryText, Mode=TwoWay}"
-                         AutomationProperties.Name="Catalog search query" />
-                <Button Grid.Column="1" Content="Search" Command="{Binding SearchCommand}" />
-            </Grid>
-            <Button Content="Open selected saved snapshot" Command="{Binding OpenSelectedHitCommand}" HorizontalAlignment="Left" />
         </StackPanel>
-        <Border Grid.Row="2" Padding="12" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
-            <Grid RowDefinitions="Auto,*" RowSpacing="8">
-                <TextBlock IsVisible="{Binding HasNoHits}" Text="No saved catalog metadata matches this query." TextWrapping="Wrap" />
-                <ListBox Grid.Row="1" ItemsSource="{Binding Hits}" SelectedItem="{Binding SelectedHit, Mode=TwoWay}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:CatalogSearchHitRow">
-                            <StackPanel Margin="0,4" Spacing="2">
-                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding FullPath}" TextWrapping="Wrap" />
-                                <TextBlock Text="{Binding SnapshotLabel}" />
-                                <TextBlock Text="{Binding MatchExplanation}" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </Border>
-        <TextBlock Grid.Row="3" Text="{Binding StatusText}" TextWrapping="Wrap" />
-    </Grid>
+    </ScrollViewer>
 </UserControl>

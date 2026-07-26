@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>OpenSorSe.AI</name>
+    </assembly>
+    <members>
+        <member name="T:OpenSorSe.AI.JsonDecisionHistoryStore">
+            <summary>
+            Stores bounded local preference decisions in a versioned JSON file outside scan results and user folders.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.AI.JsonDecisionHistoryStore.#ctor(System.String,OpenSorSe.Core.Logging.ILoggingService)">
+            <summary>
+            Initializes local decision-history persistence at an explicit application-data path.
+            </summary>
+            <param name="historyFilePath">The rooted JSON history path owned by OpenSorSe.</param>
+            <param name="loggingService">The central redacted diagnostic logging service.</param>
+        </member>
+        <member name="M:OpenSorSe.AI.JsonDecisionHistoryStore.LoadAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.JsonDecisionHistoryStore.AppendAsync(OpenSorSe.Application.AI.AiSuggestionDecision,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.JsonDecisionHistoryStore.ClearAsync(System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.AI.OllamaEndpointNormalizer">
+            <summary>Normalizes supported user-entered Ollama endpoints for all transport operations.</summary>
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaEndpointNormalizer.TryNormalize(System.String,System.Uri@)">
+            <summary>Creates one credential-free trailing-slash base URI shared by every Ollama request.</summary>
+        </member>
+        <member name="T:OpenSorSe.AI.OllamaSuggestionProvider">
+            <summary>Implements the provider-neutral suggestion boundary against Ollama.</summary>
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.#ctor(System.Net.Http.HttpClient,OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Application.AI.IAiDiagnosticsCollector)">
+            <summary>Initializes the transport with one caller-owned reusable HTTP client.</summary>
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.CheckConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.CheckConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.GetConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.GetConnectionAsync(OpenSorSe.Core.Configuration.AiSettings,System.String,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:OpenSorSe.AI.OllamaSuggestionProvider.GenerateAsync(OpenSorSe.Application.AI.AiProviderGenerationRequest,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.AI.OllamaTransportLimits">
+            <summary>
+            Defines fixed memory and presentation bounds for the optional Ollama-compatible transport.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.AI.OllamaTransportLimits.MaximumPromptBytes">
+            <summary>Gets the maximum UTF-8 request prompt size accepted by the provider boundary.</summary>
+        </member>
+        <member name="F:OpenSorSe.AI.OllamaTransportLimits.MaximumResponseBytes">
+            <summary>Gets the maximum response body read from a configured provider endpoint.</summary>
+        </member>
+        <member name="F:OpenSorSe.AI.OllamaTransportLimits.MaximumPublishedModelCount">
+            <summary>Gets the maximum number of validated model identifiers published to the UI.</summary>
+        </member>
+    </members>
+</doc>

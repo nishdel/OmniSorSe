@@ -1,79 +1,238 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.AI;
+using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
 /// <summary>
-/// Owns the read-only AI suggestion review workflow for the selected completed-scan result.
+/// Owns the non-mutating AI suggestion review workflow for known completed-scan results.
 /// </summary>
 public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
 {
     private readonly IAiSuggestionService? _aiSuggestionService;
     private readonly IConfigurationService _configurationService;
+    private readonly IContentStore? _contentStore;
     private readonly ObservableCollection<AiFolderStructurePlanItem> _structureItems = [];
     private IReadOnlyList<string> _existingFolderNames = Array.Empty<string>();
     private IReadOnlyList<string> _siblingFileNames = Array.Empty<string>();
     private IReadOnlyList<ResultFile> _pageFiles = Array.Empty<ResultFile>();
     private ResultFile? _selectedFile;
-    private AiFileOrganizationSuggestion? _suggestion;
+    private AiFileRenameSuggestion? _renameSuggestion;
     private AiFolderStructurePlan? _folderStructurePlan;
+    private AiDocumentInterpretationSuggestion? _documentInterpretation;
     private string? _proposedFileName;
-    private string _proposedTagsText = string.Empty;
-    private string? _proposedCategory;
-    private string? _proposedDestinationFolder;
-    private string _statusText = "Select a completed-scan result to request optional local AI suggestions.";
+    private string _statusText = "Enable an AI capability in Settings to request review-only suggestions.";
+    private StatusPresentation _status = StatusPresentation.Information("Enable an AI capability in Settings to request review-only suggestions.");
+    private AiRequestStage? _progressStage;
+    private string _progressText = "No AI request is active.";
+    private string _elapsedText = string.Empty;
     private bool _isBusy;
     private bool _hasContext;
+    private AiReadinessState _readinessState = AiReadinessState.NotConfigured;
+    private string? _actualModelUsed;
+    private CancellationTokenSource? _operationCancellation;
+    private long _operationVersion;
+    private bool _isDisposed;
 
-    /// <summary>
-    /// Initializes the suggestion-review model over the optional application service.
-    /// </summary>
-    /// <param name="configurationService">The centralized persisted-settings service.</param>
-    /// <param name="aiSuggestionService">The optional application-owned suggestion service.</param>
-    public AiSuggestionsViewModel(IConfigurationService configurationService, IAiSuggestionService? aiSuggestionService = null)
+    /// <summary>Initializes the suggestion-review model over the optional application service.</summary>
+    public AiSuggestionsViewModel(
+        IConfigurationService configurationService,
+        IAiSuggestionService? aiSuggestionService = null,
+        IContentStore? contentStore = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
+        _contentStore = contentStore;
         StructureItems = new ReadOnlyObservableCollection<AiFolderStructurePlanItem>(_structureItems);
-        GenerateSuggestionCommand = new AsyncRelayCommand(GenerateSuggestionAsync, CanGenerateSuggestion);
-        AcceptRenameCommand = new AsyncRelayCommand(AcceptRenameAsync, CanAcceptRename);
-        RejectRenameCommand = new AsyncRelayCommand(RejectRenameAsync, CanRejectRename);
-        AcceptTagsCommand = new AsyncRelayCommand(AcceptTagsAsync, CanAcceptTags);
-        RejectTagsCommand = new AsyncRelayCommand(RejectTagsAsync, CanRejectTags);
-        AcceptCategoryCommand = new AsyncRelayCommand(AcceptCategoryAsync, CanAcceptCategory);
-        RejectCategoryCommand = new AsyncRelayCommand(RejectCategoryAsync, CanRejectCategory);
-        AcceptDestinationCommand = new AsyncRelayCommand(AcceptDestinationAsync, CanAcceptDestination);
-        RejectDestinationCommand = new AsyncRelayCommand(RejectDestinationAsync, CanRejectDestination);
+        GenerateSuggestionCommand = new AsyncRelayCommand(GenerateRenameAsync, CanGenerateRename);
+        AcceptRenameCommand = new AsyncRelayCommand(() => RecordRenameAsync(AiSuggestionDecisionOutcome.Accepted), CanReviewRename);
+        RejectRenameCommand = new AsyncRelayCommand(() => RecordRenameAsync(AiSuggestionDecisionOutcome.Rejected), CanReviewRename);
         GenerateFolderStructureCommand = new AsyncRelayCommand(GenerateFolderStructureAsync, CanGenerateFolderStructure);
-        AcceptFolderStructureCommand = new AsyncRelayCommand(AcceptFolderStructureAsync, CanAcceptFolderStructure);
-        RejectFolderStructureCommand = new AsyncRelayCommand(RejectFolderStructureAsync, CanRejectFolderStructure);
+        AcceptFolderStructureCommand = new AsyncRelayCommand(() => RecordFolderStructureAsync(AiSuggestionDecisionOutcome.Accepted), CanReviewFolderStructure);
+        RejectFolderStructureCommand = new AsyncRelayCommand(() => RecordFolderStructureAsync(AiSuggestionDecisionOutcome.Rejected), CanReviewFolderStructure);
+        GenerateDocumentInterpretationCommand = new AsyncRelayCommand(
+            GenerateDocumentInterpretationAsync,
+            CanGenerateDocumentInterpretation);
+        DismissDocumentInterpretationCommand = new RelayCommand(
+            DismissDocumentInterpretation,
+            () => DocumentInterpretation is not null && !IsBusy);
+        CancelAiOperationCommand = new RelayCommand(CancelOperation, () => IsBusy);
+        RetryConnectionCommand = new AsyncRelayCommand(RetryConnectionAsync, CanRetryConnection);
+        RefreshFeatureAvailability();
     }
-
-    /// <summary>Occurs when the user accepts tags for the current in-memory result session.</summary>
-    public event EventHandler<IReadOnlyList<TagAssociation>>? TagsAccepted;
 
     /// <summary>Gets the selected completed-scan file currently available for review.</summary>
     public ResultFile? SelectedFile => _selectedFile;
 
-    /// <summary>Gets the current validated application-owned suggestion.</summary>
-    public AiFileOrganizationSuggestion? Suggestion
+    /// <summary>Gets whether any enabled AI capability should be presented.</summary>
+    public bool IsVisible => HasContext && (IsFileRenameVisible || IsFolderStructureVisible || IsDocumentInterpretationVisible);
+
+    /// <summary>Gets whether the rename capability is enabled and available.</summary>
+    public bool IsFileRenameVisible =>
+        _aiSuggestionService is not null && _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.FileRenameSuggestions);
+
+    /// <summary>Gets whether the folder-structure capability is enabled and available.</summary>
+    public bool IsFolderStructureVisible =>
+        _aiSuggestionService is not null && _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.FolderStructureSuggestions);
+
+    /// <summary>Gets whether explicit bounded extracted-text interpretation is enabled.</summary>
+    public bool IsDocumentInterpretationVisible =>
+        _aiSuggestionService is not null &&
+        _contentStore is not null &&
+        _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.DocumentTextInterpretation);
+
+    /// <summary>Explains exactly how the bounded folder request treats the current result-page files.</summary>
+    public string FolderStructureContextText => _pageFiles.Count switch
     {
-        get => _suggestion;
+        0 => "No files from the current results page are available for a folder request.",
+        > AiPromptLimits.MaximumFolderStructureFiles =>
+            $"{_pageFiles.Count} files are in the current results-page selection. The safe request limit is " +
+            $"{AiPromptLimits.MaximumFolderStructureFiles}; none will be sent until the selection is reduced.",
+        _ =>
+            $"{_pageFiles.Count} of {_pageFiles.Count} files will be sent using opaque IDs and must be assigned exactly once.",
+    };
+
+    /// <summary>Provides a concise review-before-send summary for the currently available AI tasks.</summary>
+    public string AiRequestContextText
+    {
+        get
+        {
+            var model = _configurationService.Current.Ai.SelectedModel ?? "not selected";
+            var selectedMetadata = _selectedFile is null
+                ? "No file selected."
+                : $"Filename: {_selectedFile.DisplayFileName}; extension: {_selectedFile.NormalizedExtension}; type: {_selectedFile.ClassificationDisplay}.";
+            return
+                $"Model: {model}{Environment.NewLine}" +
+                $"Rename: {AiPromptBuilder.FileRenameTaskId}, prompt {AiPromptTemplates.FileRenamePromptVersion}. {selectedMetadata}{Environment.NewLine}" +
+                $"Folder plan: {AiPromptBuilder.FolderStructureTaskId}, prompt {AiPromptTemplates.FolderStructurePromptVersion}. {FolderStructureContextText}{Environment.NewLine}" +
+                $"Document interpretation: {AiPromptBuilder.DocumentInterpretationTaskId}, prompt {AiPromptTemplates.DocumentInterpretationPromptVersion}; " +
+                $"at most {AiPromptLimits.MaximumDocumentTextPages} text segments and {AiPromptLimits.MaximumDocumentTextCharacters} characters. " +
+                "The indexed native/OCR provenance and any truncation are shown in Advanced Diagnostics after an explicit request.";
+        }
+    }
+
+    /// <summary>Gets the current concise readiness of the optional local AI service.</summary>
+    public AiReadinessState ReadinessState
+    {
+        get => _readinessState;
         private set
         {
-            if (SetProperty(ref _suggestion, value))
+            if (SetProperty(ref _readinessState, value))
             {
-                OnPropertyChanged(nameof(HasSuggestion));
+                OnPropertyChanged(nameof(ReadinessText));
+                OnPropertyChanged(nameof(RenameActionAvailabilityText));
+                OnPropertyChanged(nameof(IsRenameActionAvailable));
+                RetryConnectionCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets plain-language local-AI readiness guidance.</summary>
+    public string ReadinessText => ReadinessState switch
+    {
+        AiReadinessState.NotConfigured => "Local AI is not configured. Enable AI and choose an installed model in Settings.",
+        AiReadinessState.NotChecked => "Local AI has not been checked yet. Retry the connection or request a suggestion.",
+        AiReadinessState.ServerUnavailable => "Your local AI is not running. Start Ollama, then retry the connection.",
+        AiReadinessState.ServerAvailable => "Your local AI is running. The selected model still needs to be checked.",
+        AiReadinessState.ModelMissing => "The selected model is not installed. Choose an installed model in Settings.",
+        AiReadinessState.Ready => ActualModelUsed is null
+            ? "File Assistant is ready."
+            : $"File Assistant is ready. Last model used: {ActualModelUsed}.",
+        AiReadinessState.Running => "File Assistant is working on your explicit request.",
+        AiReadinessState.Failed => "The last suggestion failed safely. Your files were not changed; you can retry.",
+        AiReadinessState.Cancelled => "Suggestion cancelled. Your files were not changed; you can retry.",
+        _ => "Local AI status is unavailable.",
+    };
+
+    /// <summary>Gets the actual model named by the latest validated suggestion.</summary>
+    public string? ActualModelUsed
+    {
+        get => _actualModelUsed;
+        private set
+        {
+            if (SetProperty(ref _actualModelUsed, value))
+            {
+                OnPropertyChanged(nameof(ReadinessText));
+            }
+        }
+    }
+
+    /// <summary>Gets whether rename generation is currently executable.</summary>
+    public bool IsRenameActionAvailable => CanGenerateRename();
+
+    /// <summary>Gets the exact reason rename generation is ready or unavailable.</summary>
+    public string RenameActionAvailabilityText
+    {
+        get
+        {
+            var settings = _configurationService.Current.Ai;
+            if (_selectedFile is null)
+            {
+                return "Choose a file to request a rename suggestion.";
+            }
+
+            if (!settings.Enabled)
+            {
+                return "AI features are off. Enable them in Settings.";
+            }
+
+            if (!settings.FileRenameSuggestionsEnabled)
+            {
+                return "Rename suggestions are off. Enable them in Settings.";
+            }
+
+            if (_aiSuggestionService is null)
+            {
+                return "The local AI service is unavailable in this application session.";
+            }
+
+            if (!IsSupportedRenameContext(_selectedFile))
+            {
+                return "This item does not have a supported filename for rename suggestions.";
+            }
+
+            if (IsBusy)
+            {
+                return "Another File Assistant operation is running.";
+            }
+
+            if (string.IsNullOrWhiteSpace(settings.SelectedModel))
+            {
+                return "Choose an installed AI model in Settings.";
+            }
+
+            return ReadinessState switch
+            {
+                AiReadinessState.ServerUnavailable => "Your local AI is not running. Retry the connection or try the request again.",
+                AiReadinessState.ModelMissing => "The selected model is unavailable. Choose another model in Settings.",
+                AiReadinessState.Failed => "The previous request failed safely. Try again or retry the connection.",
+                AiReadinessState.Cancelled => "The previous request was cancelled. Try again when ready.",
+                _ => $"Ready to suggest a name with '{settings.SelectedModel}'. Nothing will be renamed automatically.",
+            };
+        }
+    }
+
+    /// <summary>Gets the current validated rename proposal.</summary>
+    public AiFileRenameSuggestion? RenameSuggestion
+    {
+        get => _renameSuggestion;
+        private set
+        {
+            if (SetProperty(ref _renameSuggestion, value))
+            {
+                OnPropertyChanged(nameof(HasRenameSuggestion));
+                OnPropertyChanged(nameof(RenameReason));
+                OnPropertyChanged(nameof(RenameConfidenceText));
                 NotifyCommandStates();
             }
         }
     }
 
-    /// <summary>Gets whether a validated suggestion is available for review.</summary>
-    public bool HasSuggestion => Suggestion is not null;
+    /// <summary>Gets whether one completely validated rename proposal is available.</summary>
+    public bool HasRenameSuggestion => RenameSuggestion is not null;
 
     /// <summary>Gets or sets the editable rename proposal. It is never applied to a file by this view model.</summary>
     public string? ProposedFileName
@@ -88,47 +247,13 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Gets or sets the comma-separated editable tag proposal.</summary>
-    public string ProposedTagsText
-    {
-        get => _proposedTagsText;
-        set
-        {
-            if (SetProperty(ref _proposedTagsText, value))
-            {
-                NotifyCommandStates();
-            }
-        }
-    }
+    /// <summary>Gets the bounded model reason for the rename proposal.</summary>
+    public string? RenameReason => RenameSuggestion?.Reason;
 
-    /// <summary>Gets or sets the editable category proposal.</summary>
-    public string? ProposedCategory
-    {
-        get => _proposedCategory;
-        set
-        {
-            if (SetProperty(ref _proposedCategory, value))
-            {
-                NotifyCommandStates();
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the editable relative destination proposal.</summary>
-    public string? ProposedDestinationFolder
-    {
-        get => _proposedDestinationFolder;
-        set
-        {
-            if (SetProperty(ref _proposedDestinationFolder, value))
-            {
-                NotifyCommandStates();
-            }
-        }
-    }
-
-    /// <summary>Gets the optional provider explanation for the current suggestion.</summary>
-    public string? SuggestionExplanation => Suggestion?.Explanation;
+    /// <summary>Gets a non-certain description of the optional model confidence.</summary>
+    public string RenameConfidenceText => RenameSuggestion?.Confidence is { } confidence
+        ? $"Model confidence estimate: {confidence:P0}. This is not certainty."
+        : "The model did not provide a confidence estimate.";
 
     /// <summary>Gets the current preview-only folder-structure plan.</summary>
     public AiFolderStructurePlan? FolderStructurePlan
@@ -139,28 +264,116 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _folderStructurePlan, value))
             {
                 OnPropertyChanged(nameof(HasFolderStructurePlan));
+                OnPropertyChanged(nameof(FolderStructureReason));
                 NotifyCommandStates();
             }
         }
     }
 
-    /// <summary>Gets whether a preview-only folder-structure plan is available.</summary>
+    /// <summary>Gets whether a completely validated preview-only folder plan is available.</summary>
     public bool HasFolderStructurePlan => FolderStructurePlan is not null;
 
-    /// <summary>Gets structure-plan items that cannot create folders or move files.</summary>
+    /// <summary>Gets validated known-file assignments for the current logical hierarchy.</summary>
     public ReadOnlyObservableCollection<AiFolderStructurePlanItem> StructureItems { get; }
 
-    /// <summary>Gets the optional provider explanation for the current structure plan.</summary>
-    public string? FolderStructureExplanation => FolderStructurePlan?.Explanation;
+    /// <summary>Gets the bounded model reason for the logical hierarchy.</summary>
+    public string? FolderStructureReason => FolderStructurePlan?.Reason;
 
-    /// <summary>Gets the user-safe workflow state.</summary>
+    /// <summary>Gets the current unverified document-text interpretation proposal.</summary>
+    public AiDocumentInterpretationSuggestion? DocumentInterpretation
+    {
+        get => _documentInterpretation;
+        private set
+        {
+            if (SetProperty(ref _documentInterpretation, value))
+            {
+                OnPropertyChanged(nameof(HasDocumentInterpretation));
+                OnPropertyChanged(nameof(DocumentInterpretationSummary));
+                DismissDocumentInterpretationCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets whether a validated unverified interpretation is ready for review.</summary>
+    public bool HasDocumentInterpretation => DocumentInterpretation is not null;
+
+    /// <summary>Gets a concise bounded display of the validated interpretation fields.</summary>
+    public string DocumentInterpretationSummary
+    {
+        get
+        {
+            if (DocumentInterpretation is not { } value)
+            {
+                return string.Empty;
+            }
+
+            var parts = new List<string>();
+            Add("Type", value.DocumentType);
+            Add("Title", value.Title);
+            Add("Issuer", value.Issuer);
+            Add("Folder", value.SuggestedFolder);
+            if (value.Dates.Count > 0)
+            {
+                parts.Add($"Dates: {string.Join(", ", value.Dates)}");
+            }
+
+            if (value.Tags.Count > 0)
+            {
+                parts.Add($"Tags: {string.Join(", ", value.Tags.Select(tag => tag.DisplayName))}");
+            }
+
+            parts.Add($"Reason: {value.Reason}");
+            parts.Add(value.Confidence is { } confidence
+                ? $"Model confidence estimate: {confidence:P0}; not certainty."
+                : "No model confidence estimate was supplied.");
+            return string.Join(Environment.NewLine, parts);
+
+            void Add(string label, string? text)
+            {
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    parts.Add($"{label}: {text}");
+                }
+            }
+        }
+    }
+
+    /// <summary>Gets the user-safe workflow status.</summary>
     public string StatusText
     {
         get => _statusText;
         private set => SetProperty(ref _statusText, value);
     }
 
-    /// <summary>Gets whether one optional provider request or decision write is active.</summary>
+    /// <summary>Gets the consistently presented AI workflow status.</summary>
+    public StatusPresentation Status
+    {
+        get => _status;
+        private set => SetProperty(ref _status, value);
+    }
+
+    /// <summary>Gets the latest truthful typed request stage.</summary>
+    public AiRequestStage? ProgressStage
+    {
+        get => _progressStage;
+        private set => SetProperty(ref _progressStage, value);
+    }
+
+    /// <summary>Gets the latest progress-stage explanation.</summary>
+    public string ProgressText
+    {
+        get => _progressText;
+        private set => SetProperty(ref _progressText, value);
+    }
+
+    /// <summary>Gets elapsed-time text updated at stage transitions and completion.</summary>
+    public string ElapsedText
+    {
+        get => _elapsedText;
+        private set => SetProperty(ref _elapsedText, value);
+    }
+
+    /// <summary>Gets whether one explicit provider or local-review operation is active.</summary>
     public bool IsBusy
     {
         get => _isBusy;
@@ -168,77 +381,74 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _isBusy, value))
             {
+                CancelAiOperationCommand.NotifyCanExecuteChanged();
                 NotifyCommandStates();
             }
         }
     }
 
-    /// <summary>Gets whether an optional provider is available to this composed desktop application.</summary>
-    public bool IsAvailable => _aiSuggestionService is not null;
-
-    /// <summary>Gets whether a completed results snapshot is available for optional AI review.</summary>
+    /// <summary>Gets whether a completed Results snapshot is available.</summary>
     public bool HasContext
     {
         get => _hasContext;
-        private set => SetProperty(ref _hasContext, value);
+        private set
+        {
+            if (SetProperty(ref _hasContext, value))
+            {
+                OnPropertyChanged(nameof(IsVisible));
+            }
+        }
     }
 
-    /// <summary>Gets the command that requests one validated organization suggestion.</summary>
+    /// <summary>Gets the command that requests one validated filename proposal.</summary>
     public IAsyncRelayCommand GenerateSuggestionCommand { get; }
 
-    /// <summary>Gets the command that records acceptance or an edit of the rename proposal.</summary>
+    /// <summary>Gets the command that records acceptance or an edit without renaming a file.</summary>
     public IAsyncRelayCommand AcceptRenameCommand { get; }
 
-    /// <summary>Gets the command that records rejection of the rename proposal.</summary>
+    /// <summary>Gets the command that records rejection without changing a file.</summary>
     public IAsyncRelayCommand RejectRenameCommand { get; }
 
-    /// <summary>Gets the command that accepts tags into the current result session and records the decision.</summary>
-    public IAsyncRelayCommand AcceptTagsCommand { get; }
-
-    /// <summary>Gets the command that records rejection of the tag proposal.</summary>
-    public IAsyncRelayCommand RejectTagsCommand { get; }
-
-    /// <summary>Gets the command that records acceptance or an edit of the category proposal.</summary>
-    public IAsyncRelayCommand AcceptCategoryCommand { get; }
-
-    /// <summary>Gets the command that records rejection of the category proposal.</summary>
-    public IAsyncRelayCommand RejectCategoryCommand { get; }
-
-    /// <summary>Gets the command that records acceptance or an edit of the destination proposal.</summary>
-    public IAsyncRelayCommand AcceptDestinationCommand { get; }
-
-    /// <summary>Gets the command that records rejection of the destination proposal.</summary>
-    public IAsyncRelayCommand RejectDestinationCommand { get; }
-
-    /// <summary>Gets the command that requests a bounded preview-only folder-structure plan for the current result page.</summary>
+    /// <summary>Gets the command that requests a bounded preview-only hierarchy.</summary>
     public IAsyncRelayCommand GenerateFolderStructureCommand { get; }
 
-    /// <summary>Gets the command that records acceptance of the preview-only folder-structure plan.</summary>
+    /// <summary>Gets the command that records acceptance without creating folders or moving files.</summary>
     public IAsyncRelayCommand AcceptFolderStructureCommand { get; }
 
-    /// <summary>Gets the command that records rejection of the preview-only folder-structure plan.</summary>
+    /// <summary>Gets the command that records rejection of a logical hierarchy.</summary>
     public IAsyncRelayCommand RejectFolderStructureCommand { get; }
 
-    /// <summary>
-    /// Replaces the in-memory review context without reading the filesystem or retaining source paths for provider requests.
-    /// </summary>
-    /// <param name="selectedFile">The selected immutable result file.</param>
-    /// <param name="snapshot">The owning completed scan snapshot.</param>
-    /// <param name="pageFiles">The bounded result page available for a structure preview.</param>
+    /// <summary>Gets the command for one explicit bounded document-text interpretation request.</summary>
+    public IAsyncRelayCommand GenerateDocumentInterpretationCommand { get; }
+
+    /// <summary>Gets the command that dismisses the in-memory interpretation without changing anything.</summary>
+    public IRelayCommand DismissDocumentInterpretationCommand { get; }
+
+    /// <summary>Gets the command that cancels the active explicit AI operation.</summary>
+    public IRelayCommand CancelAiOperationCommand { get; }
+
+    /// <summary>Gets the explicit bounded local-AI connection retry command.</summary>
+    public IAsyncRelayCommand RetryConnectionCommand { get; }
+
+    /// <summary>Replaces in-memory review context without reading file content or retaining paths for provider requests.</summary>
     public void SetContext(ResultFile? selectedFile, ResultsSnapshot? snapshot, IReadOnlyList<ResultFile>? pageFiles)
     {
+        if (IsBusy)
+        {
+            CancelOperation();
+        }
+
         HasContext = snapshot is not null;
         var fileChanged = !string.Equals(_selectedFile?.Id, selectedFile?.Id, StringComparison.Ordinal);
         _selectedFile = selectedFile;
-        _pageFiles = pageFiles is null ? Array.Empty<ResultFile>() : Array.AsReadOnly(pageFiles.Take(25).ToArray());
+        _pageFiles = pageFiles is null ? Array.Empty<ResultFile>() : Array.AsReadOnly(pageFiles.ToArray());
+        OnPropertyChanged(nameof(FolderStructureContextText));
+        OnPropertyChanged(nameof(AiRequestContextText));
         _existingFolderNames = snapshot is null
             ? Array.Empty<string>()
             : Array.AsReadOnly(snapshot.Directories
                 .Select(directory => directory.DisplayName)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Order(StringComparer.OrdinalIgnoreCase)
-                .Take(30)
                 .ToArray());
         _siblingFileNames = selectedFile is null || snapshot is null
             ? Array.Empty<string>()
@@ -250,81 +460,159 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
 
         if (fileChanged)
         {
-            Suggestion = null;
+            RenameSuggestion = null;
             ProposedFileName = null;
-            ProposedTagsText = string.Empty;
-            ProposedCategory = null;
-            ProposedDestinationFolder = null;
-            StatusText = selectedFile is null
-                ? "Select a completed-scan result to request optional local AI suggestions."
-                : "Ready to request an optional, review-only AI suggestion.";
+            DocumentInterpretation = null;
         }
 
+        FolderStructurePlan = null;
+        _structureItems.Clear();
+
+        StatusText = IsVisible
+            ? "AI capabilities are ready for an explicit review-only request."
+            : "Enable an AI capability in Settings to request review-only suggestions.";
+        Status = StatusPresentation.Information(StatusText);
+        ProgressStage = null;
+        ProgressText = "No AI request is active.";
+        ElapsedText = string.Empty;
+        RefreshReadinessFromConfiguration(preserveRetryableState: true);
+        NotifyCommandStates();
+    }
+
+    /// <summary>Refreshes visibility and command gates after active settings change.</summary>
+    public void RefreshFeatureAvailability()
+    {
+        if (!IsFileRenameVisible)
+        {
+            RenameSuggestion = null;
+            ProposedFileName = null;
+        }
+
+        if (!IsFolderStructureVisible)
+        {
+            FolderStructurePlan = null;
+            _structureItems.Clear();
+        }
+
+        if (!IsDocumentInterpretationVisible)
+        {
+            DocumentInterpretation = null;
+        }
+
+        if (!IsFileRenameVisible && !IsFolderStructureVisible && !IsDocumentInterpretationVisible)
+        {
+            CancelOperation();
+        }
+
+        OnPropertyChanged(nameof(IsFileRenameVisible));
+        OnPropertyChanged(nameof(IsFolderStructureVisible));
+        OnPropertyChanged(nameof(IsDocumentInterpretationVisible));
+        OnPropertyChanged(nameof(IsVisible));
+        OnPropertyChanged(nameof(AiRequestContextText));
+        RefreshReadinessFromConfiguration(preserveRetryableState: false);
         NotifyCommandStates();
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
-    }
-
-    private async Task GenerateSuggestionAsync()
-    {
-        if (_aiSuggestionService is null || _selectedFile is null)
+        if (_isDisposed)
         {
             return;
         }
 
-        IsBusy = true;
-        StatusText = "Requesting an optional local AI suggestion…";
+        CancelOperation();
+        _operationCancellation?.Dispose();
+        _isDisposed = true;
+    }
+
+    private async Task GenerateRenameAsync()
+    {
+        if (_aiSuggestionService is null || _selectedFile is null || !IsFileRenameVisible)
+        {
+            return;
+        }
+
+        var (cancellation, version) = BeginOperation();
+        StatusText = "Requesting an AI-generated rename suggestion...";
+        Status = StatusPresentation.Progress(StatusText);
+        var progress = new Progress<AiRequestProgress>(value => ApplyProgress(value, cancellation, version));
         try
         {
-            var result = await _aiSuggestionService.GenerateFileSuggestionAsync(
-                new AiFileSuggestionRequest(_selectedFile, _existingFolderNames, _siblingFileNames),
+            var result = await _aiSuggestionService.GenerateFileRenameAsync(
+                new AiFileRenameRequest(_selectedFile, _siblingFileNames),
                 _configurationService.Current.Ai,
-                CancellationToken.None);
-            Suggestion = result.Suggestion;
-            if (result.Suggestion is not null)
+                progress,
+                cancellation.Token);
+            if (!IsCurrentOperation(cancellation, version))
             {
-                ProposedFileName = result.Suggestion.SuggestedFileName;
-                ProposedTagsText = string.Join(", ", result.Suggestion.SuggestedTags.Select(tag => tag.DisplayName));
-                ProposedCategory = result.Suggestion.SuggestedCategory?.ToString();
-                ProposedDestinationFolder = result.Suggestion.SuggestedDestinationFolder;
-                OnPropertyChanged(nameof(SuggestionExplanation));
+                return;
             }
 
+            RenameSuggestion = result.Suggestion;
+            ProposedFileName = result.Suggestion?.SuggestedFileName;
+            ActualModelUsed = result.Suggestion?.Model;
+            ReadinessState = MapReadiness(result.State);
             StatusText = result.Message;
+            Status = PresentResult(result.State, result.Message);
         }
         catch (OperationCanceledException)
         {
-            StatusText = "The AI suggestion request was cancelled.";
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The AI rename request was cancelled.";
+                Status = StatusPresentation.Information(StatusText);
+                ReadinessState = AiReadinessState.Cancelled;
+            }
         }
         catch (Exception)
         {
-            StatusText = "The AI suggestion could not be recorded or validated.";
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The AI rename request failed safely. No file was changed.";
+                Status = StatusPresentation.Error(StatusText);
+                ReadinessState = AiReadinessState.Failed;
+            }
         }
         finally
         {
-            IsBusy = false;
+            EndOperation(cancellation, version);
         }
     }
 
     private async Task GenerateFolderStructureAsync()
     {
-        if (_aiSuggestionService is null || _pageFiles.Count == 0)
+        if (_aiSuggestionService is null || _pageFiles.Count == 0 || !IsFolderStructureVisible)
         {
             return;
         }
 
-        IsBusy = true;
-        StatusText = "Requesting an optional folder-structure preview…";
+        if (_pageFiles.Count > AiPromptLimits.MaximumFolderStructureFiles)
+        {
+            StatusText = FolderStructureContextText;
+            Status = StatusPresentation.Warning(StatusText);
+            return;
+        }
+
+        var (cancellation, version) = BeginOperation();
+        StatusText = "Requesting an AI-generated folder-structure suggestion...";
+        Status = StatusPresentation.Progress(StatusText);
+        var progress = new Progress<AiRequestProgress>(value => ApplyProgress(value, cancellation, version));
         try
         {
             var result = await _aiSuggestionService.GenerateFolderStructureAsync(
                 new AiFolderStructureRequest(_pageFiles, _existingFolderNames),
                 _configurationService.Current.Ai,
-                CancellationToken.None);
+                progress,
+                cancellation.Token);
+            if (!IsCurrentOperation(cancellation, version))
+            {
+                return;
+            }
+
             FolderStructurePlan = result.Plan;
+            ActualModelUsed = result.Plan?.Model;
+            ReadinessState = MapReadiness(result.State);
             _structureItems.Clear();
             if (result.Plan is not null)
             {
@@ -332,238 +620,427 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
                 {
                     _structureItems.Add(item);
                 }
-
-                OnPropertyChanged(nameof(FolderStructureExplanation));
             }
 
             StatusText = result.Message;
+            Status = PresentResult(result.State, result.Message);
         }
         catch (OperationCanceledException)
         {
-            StatusText = "The folder-structure preview was cancelled.";
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The AI folder-structure request was cancelled.";
+                Status = StatusPresentation.Information(StatusText);
+                ReadinessState = AiReadinessState.Cancelled;
+            }
         }
         catch (Exception)
         {
-            StatusText = "The folder-structure preview could not be recorded or validated.";
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The AI folder-structure request failed safely. No folder or file was changed.";
+                Status = StatusPresentation.Error(StatusText);
+                ReadinessState = AiReadinessState.Failed;
+            }
         }
         finally
         {
-            IsBusy = false;
+            EndOperation(cancellation, version);
         }
     }
 
-    private async Task AcceptRenameAsync()
+    private async Task RecordRenameAsync(AiSuggestionDecisionOutcome requestedOutcome)
     {
-        var suggestion = Suggestion;
-        if (suggestion?.SuggestedFileName is null || _selectedFile is null)
+        var suggestion = RenameSuggestion;
+        if (_aiSuggestionService is null || suggestion is null || _selectedFile is null || !IsFileRenameVisible)
         {
-            StatusText = "No rename suggestion is available.";
             return;
         }
 
-        if (!AiSuggestionValidator.TryNormalizeFileName(ProposedFileName, _selectedFile.NormalizedExtension, _siblingFileNames, out var finalValue, out var error))
+        var outcome = requestedOutcome;
+        string? finalValue = null;
+        if (requestedOutcome != AiSuggestionDecisionOutcome.Rejected)
         {
-            StatusText = error;
-            return;
+            if (!AiSuggestionValidator.TryNormalizeFileName(
+                    ProposedFileName,
+                    _selectedFile.NormalizedExtension,
+                    _siblingFileNames,
+                    out var normalized,
+                    out var error))
+            {
+                StatusText = error;
+                Status = StatusPresentation.Error(error);
+                return;
+            }
+
+            if (string.Equals(normalized, _selectedFile.DisplayFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                StatusText = "The reviewed filename does not propose a change. No decision was saved and no file was changed.";
+                Status = StatusPresentation.Warning(StatusText);
+                return;
+            }
+
+            finalValue = normalized;
+            outcome = string.Equals(normalized, suggestion.SuggestedFileName, StringComparison.Ordinal)
+                ? AiSuggestionDecisionOutcome.Accepted
+                : AiSuggestionDecisionOutcome.Edited;
         }
 
-        await RecordAsync(AiSuggestionDecisionKind.Rename, suggestion.SuggestedFileName, finalValue, "Rename preference recorded. No file was renamed.");
+        var result = await _aiSuggestionService.RecordDecisionAsync(
+            new AiSuggestionDecision(
+                AiSuggestionDecisionKind.Rename,
+                outcome,
+                _selectedFile.NormalizedExtension,
+                suggestion.SuggestedFileName,
+                finalValue,
+                suggestion.Provider,
+                suggestion.Model,
+                DateTimeOffset.UtcNow),
+            _configurationService.Current.Ai,
+            CancellationToken.None);
+        StatusText = outcome == AiSuggestionDecisionOutcome.Rejected && result.State == AiAvailabilityState.ModelSelected
+            ? "The AI-generated rename suggestion was rejected. No file was changed."
+            : result.Message;
+        Status = PresentResult(result.State, StatusText);
     }
 
-    private Task RejectRenameAsync() => RecordRejectionAsync(AiSuggestionDecisionKind.Rename, Suggestion?.SuggestedFileName, "Rename suggestion rejected. No file was changed.");
-
-    private async Task AcceptTagsAsync()
+    private async Task GenerateDocumentInterpretationAsync()
     {
-        var suggestion = Suggestion;
-        if (suggestion is null)
-        {
-            StatusText = "No tag suggestion is available.";
-            return;
-        }
-
-        if (!AiSuggestionValidator.TryNormalizeTags(SplitTags(ProposedTagsText), out var tags, out var error))
-        {
-            StatusText = error;
-            return;
-        }
-
-        var finalValue = string.Join(",", tags.Select(tag => tag.NormalizedValue));
-        var suggestedValue = string.Join(",", suggestion.SuggestedTags.Select(tag => tag.NormalizedValue));
-        await RecordAsync(AiSuggestionDecisionKind.Tags, suggestedValue, finalValue, "Tags accepted for this in-memory result session. They do not change the file.");
-        TagsAccepted?.Invoke(this, AiSuggestionValidator.CreateAcceptedTagAssociations(suggestion.FileId, tags, suggestion.Explanation, DateTimeOffset.UtcNow));
-    }
-
-    private Task RejectTagsAsync() => RecordRejectionAsync(
-        AiSuggestionDecisionKind.Tags,
-        Suggestion is null ? null : string.Join(",", Suggestion.SuggestedTags.Select(tag => tag.NormalizedValue)),
-        "Tag suggestion rejected.");
-
-    private async Task AcceptCategoryAsync()
-    {
-        var suggestion = Suggestion;
-        var suggestedCategory = suggestion?.SuggestedCategory;
-        if (suggestedCategory is null)
-        {
-            StatusText = "No category suggestion is available.";
-            return;
-        }
-
-        if (!AiSuggestionValidator.TryParseCategory(ProposedCategory, out var category, out var error) || category is null)
-        {
-            StatusText = error;
-            return;
-        }
-
-        await RecordAsync(AiSuggestionDecisionKind.Category, suggestedCategory.Value.ToString(), category.Value.ToString(), "Category preference recorded. The deterministic scan classification was not changed.");
-    }
-
-    private Task RejectCategoryAsync() => RecordRejectionAsync(AiSuggestionDecisionKind.Category, Suggestion?.SuggestedCategory?.ToString(), "Category suggestion rejected.");
-
-    private async Task AcceptDestinationAsync()
-    {
-        var suggestion = Suggestion;
-        if (suggestion?.SuggestedDestinationFolder is null)
-        {
-            StatusText = "No destination suggestion is available.";
-            return;
-        }
-
-        if (!AiSuggestionValidator.TryNormalizeDestinationFolder(ProposedDestinationFolder, out var destination, out var error) || destination is null)
-        {
-            StatusText = error;
-            return;
-        }
-
-        await RecordAsync(AiSuggestionDecisionKind.DestinationFolder, suggestion.SuggestedDestinationFolder, destination, "Destination preference recorded. No folder was created and no file was moved.");
-    }
-
-    private Task RejectDestinationAsync() => RecordRejectionAsync(AiSuggestionDecisionKind.DestinationFolder, Suggestion?.SuggestedDestinationFolder, "Destination suggestion rejected.");
-
-    private Task AcceptFolderStructureAsync() => RecordFolderStructureAsync(AiSuggestionDecisionOutcome.Accepted, "Folder-structure preference recorded. No folders were created and no files were moved.");
-
-    private Task RejectFolderStructureAsync() => RecordFolderStructureAsync(AiSuggestionDecisionOutcome.Rejected, "Folder-structure preview rejected.");
-
-    private async Task RecordFolderStructureAsync(AiSuggestionDecisionOutcome outcome, string message)
-    {
-        if (FolderStructurePlan is null || _aiSuggestionService is null)
+        if (_aiSuggestionService is null || _contentStore is null || _selectedFile is null ||
+            !IsDocumentInterpretationVisible)
         {
             return;
         }
 
-        var value = string.Join(";", FolderStructurePlan.Items.Select(item => $"{item.FileId}:{item.DestinationFolder}"));
-        await RecordDecisionAsync(new AiSuggestionDecision(
-            AiSuggestionDecisionKind.FolderStructure,
-            outcome,
-            null,
-            value,
-            outcome == AiSuggestionDecisionOutcome.Rejected ? null : value,
-            FolderStructurePlan.Provider,
-            FolderStructurePlan.Model,
-            DateTimeOffset.UtcNow), message);
-    }
-
-    private Task RecordRejectionAsync(AiSuggestionDecisionKind kind, string? suggestedValue, string message)
-    {
-        if (Suggestion is null || string.IsNullOrWhiteSpace(suggestedValue))
-        {
-            StatusText = "No suggestion is available to reject.";
-            return Task.CompletedTask;
-        }
-
-        return RecordDecisionAsync(new AiSuggestionDecision(
-            kind,
-            AiSuggestionDecisionOutcome.Rejected,
-            _selectedFile?.NormalizedExtension,
-            suggestedValue,
-            null,
-            Suggestion.Provider,
-            Suggestion.Model,
-            DateTimeOffset.UtcNow), message);
-    }
-
-    private Task RecordAsync(AiSuggestionDecisionKind kind, string suggestedValue, string finalValue, string message)
-    {
-        if (Suggestion is null)
-        {
-            return Task.CompletedTask;
-        }
-
-        var outcome = string.Equals(suggestedValue, finalValue, StringComparison.Ordinal)
-            ? AiSuggestionDecisionOutcome.Accepted
-            : AiSuggestionDecisionOutcome.Edited;
-        return RecordDecisionAsync(new AiSuggestionDecision(
-            kind,
-            outcome,
-            _selectedFile?.NormalizedExtension,
-            suggestedValue,
-            finalValue,
-            Suggestion.Provider,
-            Suggestion.Model,
-            DateTimeOffset.UtcNow), message);
-    }
-
-    private async Task RecordDecisionAsync(AiSuggestionDecision decision, string message)
-    {
-        if (_aiSuggestionService is null)
-        {
-            return;
-        }
-
-        IsBusy = true;
+        var (cancellation, version) = BeginOperation();
+        StatusText = "Loading bounded extracted text for an explicit AI interpretation request...";
+        Status = StatusPresentation.Progress(StatusText);
         try
         {
-            await _aiSuggestionService.RecordDecisionAsync(decision, CancellationToken.None);
-            StatusText = message;
+            var content = await _contentStore.GetAsync(_selectedFile.FullPath, cancellation.Token);
+            if (content is null ||
+                string.IsNullOrWhiteSpace(content.NativeText) && string.IsNullOrWhiteSpace(content.OcrText))
+            {
+                StatusText = "No locally extracted text is available for the selected file. Scan it with content extraction enabled first.";
+                Status = StatusPresentation.Warning(StatusText);
+                return;
+            }
+
+            var result = await _aiSuggestionService.GenerateDocumentInterpretationAsync(
+                new AiDocumentTextRequest(
+                    _selectedFile.Id,
+                    _selectedFile.DisplayFileName,
+                    content.NativeText,
+                    content.OcrText,
+                    content.OcrPages)
+                {
+                    RelatedDiagnosticSessionId = content.DiagnosticSessionId,
+                },
+                _configurationService.Current.Ai,
+                cancellation.Token);
+            if (!IsCurrentOperation(cancellation, version))
+            {
+                return;
+            }
+
+            DocumentInterpretation = result.Suggestion;
+            ActualModelUsed = result.Suggestion?.Model;
+            ReadinessState = MapReadiness(result.State);
+            StatusText = result.Message;
+            Status = PresentResult(result.State, result.Message);
+        }
+        catch (OperationCanceledException)
+        {
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The AI document interpretation request was cancelled.";
+                Status = StatusPresentation.Information(StatusText);
+                ReadinessState = AiReadinessState.Cancelled;
+            }
         }
         catch (Exception)
         {
-            StatusText = "The review decision could not be saved locally. No file was changed.";
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The AI document interpretation request failed safely. No source file was changed.";
+                Status = StatusPresentation.Error(StatusText);
+                ReadinessState = AiReadinessState.Failed;
+            }
         }
         finally
         {
-            IsBusy = false;
+            EndOperation(cancellation, version);
         }
     }
 
-    private bool CanGenerateSuggestion() => !IsBusy && _aiSuggestionService is not null && _selectedFile is not null;
+    private void DismissDocumentInterpretation()
+    {
+        DocumentInterpretation = null;
+        StatusText = "The AI-generated interpretation was dismissed. Nothing was saved or changed.";
+        Status = StatusPresentation.Information(StatusText);
+    }
 
-    private bool CanAcceptRename() => !IsBusy && Suggestion?.SuggestedFileName is not null;
+    private async Task RecordFolderStructureAsync(AiSuggestionDecisionOutcome outcome)
+    {
+        var plan = FolderStructurePlan;
+        if (_aiSuggestionService is null || plan is null || !IsFolderStructureVisible)
+        {
+            return;
+        }
 
-    private bool CanRejectRename() => !IsBusy && Suggestion?.SuggestedFileName is not null;
+        var value = string.Join(';', plan.Folders.Select(folder => folder.Name).Distinct(StringComparer.OrdinalIgnoreCase));
+        var result = await _aiSuggestionService.RecordDecisionAsync(
+            new AiSuggestionDecision(
+                AiSuggestionDecisionKind.FolderStructure,
+                outcome,
+                null,
+                value,
+                outcome == AiSuggestionDecisionOutcome.Rejected ? null : value,
+                plan.Provider,
+                plan.Model,
+                DateTimeOffset.UtcNow),
+            _configurationService.Current.Ai,
+            CancellationToken.None);
+        StatusText = outcome == AiSuggestionDecisionOutcome.Rejected && result.State == AiAvailabilityState.ModelSelected
+            ? "The AI-generated folder-structure suggestion was rejected. No folder or file was changed."
+            : result.Message;
+        Status = PresentResult(result.State, StatusText);
+    }
 
-    private bool CanAcceptTags() => !IsBusy && Suggestion?.SuggestedTags.Count > 0;
+    private bool CanGenerateRename() =>
+        !IsBusy &&
+        IsFileRenameVisible &&
+        _selectedFile is not null &&
+        IsSupportedRenameContext(_selectedFile) &&
+        !string.IsNullOrWhiteSpace(_configurationService.Current.Ai.SelectedModel);
 
-    private bool CanRejectTags() => !IsBusy && Suggestion?.SuggestedTags.Count > 0;
+    private bool CanReviewRename() =>
+        !IsBusy && IsFileRenameVisible && RenameSuggestion is not null;
 
-    private bool CanAcceptCategory() => !IsBusy && Suggestion?.SuggestedCategory is not null;
+    private bool CanGenerateFolderStructure() =>
+        !IsBusy &&
+        IsFolderStructureVisible &&
+        _pageFiles.Count is > 0 and <= AiPromptLimits.MaximumFolderStructureFiles;
 
-    private bool CanRejectCategory() => !IsBusy && Suggestion?.SuggestedCategory is not null;
+    private bool CanReviewFolderStructure() =>
+        !IsBusy && IsFolderStructureVisible && FolderStructurePlan is not null;
 
-    private bool CanAcceptDestination() => !IsBusy && Suggestion?.SuggestedDestinationFolder is not null;
-
-    private bool CanRejectDestination() => !IsBusy && Suggestion?.SuggestedDestinationFolder is not null;
-
-    private bool CanGenerateFolderStructure() => !IsBusy && _aiSuggestionService is not null && _pageFiles.Count > 0;
-
-    private bool CanAcceptFolderStructure() => !IsBusy && FolderStructurePlan is not null;
-
-    private bool CanRejectFolderStructure() => !IsBusy && FolderStructurePlan is not null;
+    private bool CanGenerateDocumentInterpretation() =>
+        !IsBusy && IsDocumentInterpretationVisible && _selectedFile is not null;
 
     private void NotifyCommandStates()
     {
         GenerateSuggestionCommand.NotifyCanExecuteChanged();
         AcceptRenameCommand.NotifyCanExecuteChanged();
         RejectRenameCommand.NotifyCanExecuteChanged();
-        AcceptTagsCommand.NotifyCanExecuteChanged();
-        RejectTagsCommand.NotifyCanExecuteChanged();
-        AcceptCategoryCommand.NotifyCanExecuteChanged();
-        RejectCategoryCommand.NotifyCanExecuteChanged();
-        AcceptDestinationCommand.NotifyCanExecuteChanged();
-        RejectDestinationCommand.NotifyCanExecuteChanged();
         GenerateFolderStructureCommand.NotifyCanExecuteChanged();
         AcceptFolderStructureCommand.NotifyCanExecuteChanged();
         RejectFolderStructureCommand.NotifyCanExecuteChanged();
+        GenerateDocumentInterpretationCommand.NotifyCanExecuteChanged();
+        DismissDocumentInterpretationCommand.NotifyCanExecuteChanged();
+        RetryConnectionCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(IsRenameActionAvailable));
+        OnPropertyChanged(nameof(RenameActionAvailabilityText));
     }
 
-    private static IReadOnlyList<string> SplitTags(string value) => Array.AsReadOnly(value.Split([',', ';', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+    private (CancellationTokenSource Cancellation, long Version) BeginOperation()
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+        var cancellation = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _operationCancellation, cancellation);
+        previous?.Cancel();
+        previous?.Dispose();
+        var version = Interlocked.Increment(ref _operationVersion);
+        IsBusy = true;
+        ReadinessState = AiReadinessState.Running;
+        return (cancellation, version);
+    }
+
+    private bool IsCurrentOperation(CancellationTokenSource cancellation, long version) =>
+        !cancellation.IsCancellationRequested &&
+        ReferenceEquals(_operationCancellation, cancellation) &&
+        version == Volatile.Read(ref _operationVersion);
+
+    private void EndOperation(CancellationTokenSource cancellation, long version)
+    {
+        if (ReferenceEquals(_operationCancellation, cancellation))
+        {
+            _operationCancellation = null;
+        }
+
+        if (version == Volatile.Read(ref _operationVersion))
+        {
+            IsBusy = false;
+        }
+
+        cancellation.Dispose();
+    }
+
+    private void CancelOperation()
+    {
+        var cancellation = Interlocked.Exchange(ref _operationCancellation, null);
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        Interlocked.Increment(ref _operationVersion);
+        cancellation.Cancel();
+        IsBusy = false;
+        ReadinessState = AiReadinessState.Cancelled;
+        StatusText = "Suggestion cancelled. Your files were not changed.";
+        ProgressStage = AiRequestStage.RequestCancelled;
+        ProgressText = StatusText;
+        Status = StatusPresentation.Information(StatusText);
+    }
+
+    private bool CanRetryConnection() =>
+        _aiSuggestionService is not null &&
+        !IsBusy &&
+        _configurationService.Current.Ai.Enabled;
+
+    private async Task RetryConnectionAsync()
+    {
+        if (_aiSuggestionService is null || !CanRetryConnection())
+        {
+            return;
+        }
+
+        var (cancellation, version) = BeginOperation();
+        StatusText = "Checking your local AI...";
+        Status = StatusPresentation.Progress(StatusText);
+        try
+        {
+            var settings = _configurationService.Current;
+            var connection = await _aiSuggestionService.TestConnectionAsync(settings, cancellation.Token);
+            if (!IsCurrentOperation(cancellation, version))
+            {
+                return;
+            }
+
+            if (connection.State != AiAvailabilityState.Connected)
+            {
+                ReadinessState = MapReadiness(connection.State);
+                StatusText = connection.Message;
+                Status = PresentResult(connection.State, connection.Message);
+                return;
+            }
+
+            ReadinessState = AiReadinessState.ServerAvailable;
+            var models = await _aiSuggestionService.DiscoverModelsAsync(settings, cancellation.Token);
+            if (!IsCurrentOperation(cancellation, version))
+            {
+                return;
+            }
+
+            var selectedModel = settings.Ai.SelectedModel;
+            var selectedAvailable = !string.IsNullOrWhiteSpace(selectedModel) &&
+                                    models.Models.Any(model => string.Equals(model.Id, selectedModel, StringComparison.Ordinal));
+            ReadinessState = selectedAvailable
+                ? AiReadinessState.Ready
+                : string.IsNullOrWhiteSpace(selectedModel)
+                    ? AiReadinessState.NotConfigured
+                    : AiReadinessState.ModelMissing;
+            StatusText = selectedAvailable
+                ? $"Local AI is ready with '{selectedModel}'."
+                : string.IsNullOrWhiteSpace(selectedModel)
+                    ? "Choose an installed AI model in Settings."
+                    : $"The selected model '{selectedModel}' is not installed.";
+            Status = selectedAvailable
+                ? StatusPresentation.Success(StatusText)
+                : StatusPresentation.Warning(StatusText);
+        }
+        catch (OperationCanceledException)
+        {
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                ReadinessState = AiReadinessState.Cancelled;
+                StatusText = "Connection check cancelled. You can retry.";
+                Status = StatusPresentation.Information(StatusText);
+            }
+        }
+        catch (Exception)
+        {
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                ReadinessState = AiReadinessState.Failed;
+                StatusText = "Your local AI could not be checked. Start Ollama and retry.";
+                Status = StatusPresentation.Error(StatusText);
+            }
+        }
+        finally
+        {
+            EndOperation(cancellation, version);
+        }
+    }
+
+    private void RefreshReadinessFromConfiguration(bool preserveRetryableState)
+    {
+        var settings = _configurationService.Current.Ai;
+        if (!settings.Enabled || string.IsNullOrWhiteSpace(settings.SelectedModel))
+        {
+            ReadinessState = AiReadinessState.NotConfigured;
+            ActualModelUsed = null;
+            return;
+        }
+
+        if (!preserveRetryableState ||
+            ReadinessState is AiReadinessState.NotConfigured or AiReadinessState.Ready)
+        {
+            ReadinessState = AiReadinessState.NotChecked;
+            ActualModelUsed = null;
+        }
+    }
+
+    private static bool IsSupportedRenameContext(ResultFile file) =>
+        !string.IsNullOrWhiteSpace(file.Id) &&
+        !string.IsNullOrWhiteSpace(file.DisplayFileName) &&
+        file.DisplayFileName is not "." and not ".." &&
+        file.DisplayFileName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+
+    private static AiReadinessState MapReadiness(AiAvailabilityState state) => state switch
+    {
+        AiAvailabilityState.Disabled or AiAvailabilityState.CapabilityDisabled => AiReadinessState.NotConfigured,
+        AiAvailabilityState.Connected => AiReadinessState.ServerAvailable,
+        AiAvailabilityState.ModelSelected or AiAvailabilityState.NoSuggestion => AiReadinessState.Ready,
+        AiAvailabilityState.ModelUnavailable or AiAvailabilityState.NoModelsAvailable => AiReadinessState.ModelMissing,
+        AiAvailabilityState.RequestRunning or AiAvailabilityState.Connecting => AiReadinessState.Running,
+        AiAvailabilityState.RequestCancelled => AiReadinessState.Cancelled,
+        AiAvailabilityState.Unavailable => AiReadinessState.ServerUnavailable,
+        AiAvailabilityState.ResponseInvalid or AiAvailabilityState.InvalidContext => AiReadinessState.Failed,
+        _ => AiReadinessState.Failed,
+    };
+
+    private void ApplyProgress(
+        AiRequestProgress progress,
+        CancellationTokenSource cancellation,
+        long version)
+    {
+        if (!IsCurrentOperation(cancellation, version))
+        {
+            return;
+        }
+
+        ProgressStage = progress.Stage;
+        ProgressText = progress.Message;
+        ElapsedText = $"Elapsed: {progress.Elapsed.TotalSeconds:0.0} seconds";
+        StatusText = progress.Message;
+        Status = progress.Stage switch
+        {
+            AiRequestStage.SuggestionReady => StatusPresentation.Success(progress.Message),
+            AiRequestStage.RequestCancelled => StatusPresentation.Information(progress.Message),
+            AiRequestStage.RequestTimedOut => StatusPresentation.Error(progress.Message),
+            AiRequestStage.RequestFailed => StatusPresentation.Error(progress.Message),
+            _ => StatusPresentation.Progress(progress.Message),
+        };
+    }
+
+    private static StatusPresentation PresentResult(AiAvailabilityState state, string message) => state switch
+    {
+        AiAvailabilityState.ModelSelected => StatusPresentation.Success(message),
+        AiAvailabilityState.NoSuggestion or AiAvailabilityState.RequestCancelled => StatusPresentation.Information(message),
+        AiAvailabilityState.NoModelsAvailable or AiAvailabilityState.ModelUnavailable or AiAvailabilityState.ResponseInvalid => StatusPresentation.Warning(message),
+        AiAvailabilityState.Disabled or AiAvailabilityState.CapabilityDisabled or AiAvailabilityState.InvalidContext => StatusPresentation.Warning(message),
+        _ => StatusPresentation.Error(message),
+    };
 }

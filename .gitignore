@@ -2,5 +2,7 @@
 [Oo]bj/
 .vs/
 TestResults/
+.artifacts/
+.audit-validation/
 *.user
 *.suo

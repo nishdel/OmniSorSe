@@ -35,4 +35,10 @@ public interface ILoggingService : IDisposable
     /// </summary>
     /// <returns>A snapshot of accepted entries and file-sink failures.</returns>
     LoggingStatistics GetStatistics() => LoggingStatistics.Empty;
+
+    /// <summary>
+    /// Gets a newest-first snapshot of bounded process-session diagnostic events.
+    /// </summary>
+    /// <returns>Immutable events safe for ordinary diagnostic inspection.</returns>
+    IReadOnlyList<DiagnosticEvent> GetRecentEvents() => Array.Empty<DiagnosticEvent>();
 }

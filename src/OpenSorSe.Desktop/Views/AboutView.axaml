@@ -4,7 +4,11 @@
              x:Class="OpenSorSe.Desktop.Views.AboutView"
              x:DataType="vm:AboutViewModel">
     <StackPanel Spacing="12">
-        <TextBlock Text="{Binding ApplicationName}" FontSize="24" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBlock Text="{Binding ApplicationName}" FontSize="24" FontWeight="SemiBold" />
+            <Button Grid.Column="1" Content="Help" Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Open About help" AutomationProperties.Name="Help for About" />
+        </Grid>
         <TextBlock Text="{Binding Version}" />
         <TextBlock Text="{Binding License}" />
         <TextBlock Text="{Binding Acknowledgements}" TextWrapping="Wrap" />

@@ -1,0 +1,635 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>OpenSorSe.Scanner</name>
+    </assembly>
+    <members>
+        <member name="T:OpenSorSe.Scanner.DuplicateDetector">
+            <summary>
+            Performs deterministic, read-free exact duplicate detection using normalized SHA-256 hashes.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.DuplicateDetector.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>
+            Initializes a duplicate detector using shared diagnostics infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected operation failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.DuplicateDetector.DetectAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Scanner.FileClassifier">
+            <summary>
+            Performs deterministic metadata-only classification.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileClassifier.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>
+            Initializes a file classifier using shared diagnostics infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected operation failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileClassifier.ClassifyAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},OpenSorSe.Scanner.Models.FileClassificationOptions,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Scanner.FileHasher">
+            <summary>Generates read-only SHA-256 fingerprints using bounded asynchronous streaming.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileHasher.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>Initializes a file hasher using shared diagnostics infrastructure.</summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected operation failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileHasher.HashAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Scanner.FileMetadataReader">
+            <summary>
+            Reads operating-system filesystem metadata without opening or modifying file contents.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileMetadataReader.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler,OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
+            <summary>
+            Initializes a metadata reader that records diagnostics through Core infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler used for unexpected operation-level failures.</param>
+            <param name="diagnostics">The optional failure-isolated detailed diagnostics sink.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileMetadataReader.ReadAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Scanner.FileScanner">
+            <summary>
+            Performs a read-only recursive traversal of selected filesystem directories.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileScanner.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler,OpenSorSe.Core.Diagnostics.IDiagnosticsEventSink)">
+            <summary>
+            Initializes a file scanner that records diagnostics through shared Core infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler used for unexpected operation-level failures.</param>
+            <param name="diagnostics">The optional failure-isolated detailed diagnostics sink.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.FileScanner.ScanAsync(OpenSorSe.Scanner.Models.ScanRequest,System.IProgress{OpenSorSe.Scanner.Models.ScanProgress},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Scanner.IDuplicateDetector">
+            <summary>
+            Identifies exact-content duplicate entries from previously calculated SHA-256 hashes.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.IDuplicateDetector.DetectAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
+            <summary>
+            Recalculates duplicate classifications and groups for the supplied entries.
+            </summary>
+            <param name="files">The entries to evaluate in their required output order.</param>
+            <param name="cancellationToken">A token used to cancel the operation.</param>
+            <returns>The enriched entries, duplicate groups, statistics, and recoverable issues.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="files"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when an input collection contains a null entry.</exception>
+            <exception cref="T:System.OperationCanceledException">Thrown when cancellation is requested.</exception>
+        </member>
+        <member name="T:OpenSorSe.Scanner.IFileClassifier">
+            <summary>Classifies entries using ordered metadata rules.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.IFileClassifier.ClassifyAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},OpenSorSe.Scanner.Models.FileClassificationOptions,System.Threading.CancellationToken)">
+            <summary>Classifies supplied entries.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.IFileHasher">
+            <summary>Generates SHA-256 fingerprints for eligible file entries.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.IFileHasher.HashAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
+            <summary>Hashes supplied entries while preserving input order and multiplicity.</summary>
+            <param name="files">The entries to hash.</param>
+            <param name="cancellationToken">A token used to cancel hashing.</param>
+            <returns>A task containing hashing results.</returns>
+        </member>
+        <member name="T:OpenSorSe.Scanner.IFileMetadataReader">
+            <summary>
+            Enriches discovered file entries with filesystem metadata.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.IFileMetadataReader.ReadAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Threading.CancellationToken)">
+            <summary>
+            Reads filesystem metadata for the supplied entries while preserving their order and multiplicity.
+            </summary>
+            <param name="files">The discovered file entries to enrich.</param>
+            <param name="cancellationToken">A token used to cancel metadata processing.</param>
+            <returns>A task containing the enriched entries and recoverable issues.</returns>
+        </member>
+        <member name="T:OpenSorSe.Scanner.IFileScanner">
+            <summary>
+            Discovers files and directories below user-selected root directories without modifying them.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.IFileScanner.ScanAsync(OpenSorSe.Scanner.Models.ScanRequest,System.IProgress{OpenSorSe.Scanner.Models.ScanProgress},System.Threading.CancellationToken)">
+            <summary>
+            Scans the requested root directories on a single background worker.
+            </summary>
+            <param name="request">The roots and options that define the scan.</param>
+            <param name="progress">An optional receiver for scan progress updates.</param>
+            <param name="cancellationToken">A token used to request cooperative cancellation.</param>
+            <returns>A task containing completed or partial cancelled scan results.</returns>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DirectoryEntry">
+            <summary>
+            Represents a directory discovered during a scan.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.DirectoryEntry.#ctor(System.String)">
+            <summary>
+            Represents a directory discovered during a scan.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateClassification">
+            <summary>
+            Contains the recalculated exact-content duplicate state of a file entry.
+            </summary>
+            <param name="Status">The duplicate status assigned to the entry.</param>
+            <param name="GroupId">The deterministic duplicate-group identifier when the status is <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate"/>.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.DuplicateClassification.#ctor(OpenSorSe.Scanner.Models.DuplicateStatus,System.String)">
+            <summary>
+            Contains the recalculated exact-content duplicate state of a file entry.
+            </summary>
+            <param name="Status">The duplicate status assigned to the entry.</param>
+            <param name="GroupId">The deterministic duplicate-group identifier when the status is <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate"/>.</param>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateClassification.Status">
+            <summary>The duplicate status assigned to the entry.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateClassification.GroupId">
+            <summary>The deterministic duplicate-group identifier when the status is <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate"/>.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateDetectionIssue">
+            <summary>
+            Describes one recoverable duplicate-detection issue for a file entry.
+            </summary>
+            <param name="FilePath">The entry path exactly as supplied.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-readable description of the issue.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.DuplicateDetectionIssue.#ctor(System.String,OpenSorSe.Scanner.Models.DuplicateDetectionIssueKind,System.String)">
+            <summary>
+            Describes one recoverable duplicate-detection issue for a file entry.
+            </summary>
+            <param name="FilePath">The entry path exactly as supplied.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-readable description of the issue.</param>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionIssue.FilePath">
+            <summary>The entry path exactly as supplied.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionIssue.Kind">
+            <summary>The issue category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionIssue.Message">
+            <summary>A user-readable description of the issue.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateDetectionIssueKind">
+            <summary>
+            Identifies a recoverable hash-validation problem during duplicate detection.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.DuplicateDetectionIssueKind.HashUnavailable">
+            <summary>No hash was available for the entry.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.DuplicateDetectionIssueKind.UnsupportedHashAlgorithm">
+            <summary>The entry used a hash algorithm unsupported by this detector.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.DuplicateDetectionIssueKind.InvalidHashValue">
+            <summary>The entry had a malformed SHA-256 hash value.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateDetectionResult">
+            <summary>
+            Contains the enriched entries, duplicate groups, statistics, and recoverable issues from duplicate detection.
+            </summary>
+            <param name="Files">Entries in exactly the supplied input order.</param>
+            <param name="Groups">Duplicate groups ordered by first hash appearance.</param>
+            <param name="Statistics">Aggregate detection statistics.</param>
+            <param name="Issues">Recoverable hash-validation issues.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.DuplicateDetectionResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileEntry},System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.DuplicateGroup},OpenSorSe.Scanner.Models.DuplicateDetectionStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.DuplicateDetectionIssue})">
+            <summary>
+            Contains the enriched entries, duplicate groups, statistics, and recoverable issues from duplicate detection.
+            </summary>
+            <param name="Files">Entries in exactly the supplied input order.</param>
+            <param name="Groups">Duplicate groups ordered by first hash appearance.</param>
+            <param name="Statistics">Aggregate detection statistics.</param>
+            <param name="Issues">Recoverable hash-validation issues.</param>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionResult.Files">
+            <summary>Entries in exactly the supplied input order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionResult.Groups">
+            <summary>Duplicate groups ordered by first hash appearance.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionResult.Statistics">
+            <summary>Aggregate detection statistics.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionResult.Issues">
+            <summary>Recoverable hash-validation issues.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics">
+            <summary>
+            Contains counts produced by a duplicate-detection operation.
+            </summary>
+            <param name="FilesProcessed">The number of input entries examined.</param>
+            <param name="FilesUnique">The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unique"/>.</param>
+            <param name="FilesDuplicate">The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate"/>.</param>
+            <param name="FilesUnknown">The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unknown"/>.</param>
+            <param name="DuplicateGroups">The number of returned duplicate groups.</param>
+            <param name="IssuesEncountered">The number of returned recoverable issues.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>
+            Contains counts produced by a duplicate-detection operation.
+            </summary>
+            <param name="FilesProcessed">The number of input entries examined.</param>
+            <param name="FilesUnique">The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unique"/>.</param>
+            <param name="FilesDuplicate">The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate"/>.</param>
+            <param name="FilesUnknown">The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unknown"/>.</param>
+            <param name="DuplicateGroups">The number of returned duplicate groups.</param>
+            <param name="IssuesEncountered">The number of returned recoverable issues.</param>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.FilesProcessed">
+            <summary>The number of input entries examined.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.FilesUnique">
+            <summary>The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unique"/>.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.FilesDuplicate">
+            <summary>The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate"/>.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.FilesUnknown">
+            <summary>The number of entries assigned <see cref="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unknown"/>.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.DuplicateGroups">
+            <summary>The number of returned duplicate groups.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateDetectionStatistics.IssuesEncountered">
+            <summary>The number of returned recoverable issues.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateGroup">
+            <summary>
+            Represents entries that share a normalized supported content hash.
+            </summary>
+            <param name="GroupId">The deterministic group identifier.</param>
+            <param name="Algorithm">The normalized hash algorithm name.</param>
+            <param name="HashValue">The normalized lowercase hexadecimal hash value.</param>
+            <param name="Files">The enriched entries belonging to the group in input order.</param>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.DuplicateGroup.#ctor(System.String,System.String,System.String,System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileEntry})">
+            <summary>
+            Represents entries that share a normalized supported content hash.
+            </summary>
+            <param name="GroupId">The deterministic group identifier.</param>
+            <param name="Algorithm">The normalized hash algorithm name.</param>
+            <param name="HashValue">The normalized lowercase hexadecimal hash value.</param>
+            <param name="Files">The enriched entries belonging to the group in input order.</param>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateGroup.GroupId">
+            <summary>The deterministic group identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateGroup.Algorithm">
+            <summary>The normalized hash algorithm name.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateGroup.HashValue">
+            <summary>The normalized lowercase hexadecimal hash value.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.DuplicateGroup.Files">
+            <summary>The enriched entries belonging to the group in input order.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.DuplicateStatus">
+            <summary>
+            Describes the exact-content duplicate state of a file entry.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unknown">
+            <summary>No supported hash is available for the entry.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.DuplicateStatus.Unique">
+            <summary>The entry has a valid hash occurring exactly once.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.DuplicateStatus.Duplicate">
+            <summary>The entry has a valid hash shared by multiple entries.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileCategory">
+            <summary>
+            Describes the single v0.1 category assigned to a file.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Unknown">
+            <summary>No deterministic category was matched.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Document">
+            <summary>A text or document file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Spreadsheet">
+            <summary>A spreadsheet file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Presentation">
+            <summary>A presentation file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Image">
+            <summary>An image file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Audio">
+            <summary>An audio file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Video">
+            <summary>A video file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Archive">
+            <summary>An archive file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Code">
+            <summary>A source-code or markup file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Data">
+            <summary>A structured data file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Executable">
+            <summary>An executable or installer file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileCategory.Font">
+            <summary>A font file.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassification">
+            <summary>Contains a deterministic file category.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileClassification.#ctor(OpenSorSe.Scanner.Models.FileCategory)">
+            <summary>Contains a deterministic file category.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationIssue">
+            <summary>Describes a recoverable classification issue.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileClassificationIssue.#ctor(System.String,OpenSorSe.Scanner.Models.FileClassificationIssueKind,System.String)">
+            <summary>Describes a recoverable classification issue.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationIssueKind">
+            <summary>
+            Identifies a recoverable classification issue.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileClassificationIssueKind.MetadataUnavailable">
+            <summary>The file entry did not contain metadata required for classification.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationMatchKind">
+            <summary>
+            Defines metadata used to match a classification rule.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileClassificationMatchKind.ExactFileName">
+            <summary>Matches the complete metadata filename.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileClassificationMatchKind.Extension">
+            <summary>Matches the metadata extension.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationOptions">
+            <summary>Contains ordered classification rules.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileClassificationOptions.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileClassificationRule})">
+            <summary>Contains ordered classification rules.</summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.FileClassificationOptions.Default">
+            <summary>Gets approved built-in extension rules.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationResult">
+            <summary>Contains classified entries.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileClassificationResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileEntry},OpenSorSe.Scanner.Models.FileClassificationStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileClassificationIssue})">
+            <summary>Contains classified entries.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationRule">
+            <summary>Defines one deterministic classification match.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileClassificationRule.#ctor(System.String,OpenSorSe.Scanner.Models.FileClassificationMatchKind,System.String,OpenSorSe.Scanner.Models.FileCategory)">
+            <summary>Defines one deterministic classification match.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileClassificationStatistics">
+            <summary>Summarizes classification work.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileClassificationStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>Summarizes classification work.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileEntry">
+            <summary>
+            Represents a file discovered during a scan.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileEntry.#ctor(System.String,OpenSorSe.Scanner.Models.FileMetadata,OpenSorSe.Scanner.Models.FileHash,OpenSorSe.Scanner.Models.FileClassification,OpenSorSe.Scanner.Models.DuplicateClassification)">
+            <summary>
+            Represents a file discovered during a scan.
+            </summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.FileEntry.ScanDiagnosticSessionId">
+            <summary>Gets the process-session scan diagnostic that discovered this file.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileHash">
+            <summary>Contains a normalized file fingerprint.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileHash.#ctor(System.String,System.String)">
+            <summary>Contains a normalized file fingerprint.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileHashIssue">
+            <summary>Describes a recoverable issue encountered while hashing one file.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileHashIssue.#ctor(System.String,OpenSorSe.Scanner.Models.FileHashIssueKind,System.String)">
+            <summary>Describes a recoverable issue encountered while hashing one file.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileHashIssueKind">
+            <summary>Identifies a recoverable hashing issue.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileHashIssueKind.FileUnavailable">
+            <summary>The file path was invalid or unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileHashIssueKind.AccessDenied">
+            <summary>Access to the file was denied.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileHashIssueKind.FileChangedDuringHashing">
+            <summary>The file changed during best-effort hashing validation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileHashIssueKind.FileUnreadable">
+            <summary>The file stream could not be opened or read.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileHashIssueKind.NonRegularFileSkipped">
+            <summary>The entry was not a regular file.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileHashIssueKind.ReparsePointSkipped">
+            <summary>The entry was a symbolic link, junction, or other reparse point.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileHashResult">
+            <summary>Contains hashed entries and recoverable hashing issues.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileHashResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileEntry},OpenSorSe.Scanner.Models.FileHashStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileHashIssue})">
+            <summary>Contains hashed entries and recoverable hashing issues.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileHashStatistics">
+            <summary>Summarizes work performed by file hashing.</summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileHashStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>Summarizes work performed by file hashing.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileMetadata">
+            <summary>
+            Contains read-only filesystem metadata for a discovered file. Attributes are present whenever metadata is present.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileMetadata.#ctor(System.String,System.String,System.Nullable{System.Int64},System.Nullable{System.DateTimeOffset},System.Nullable{System.DateTimeOffset},System.Nullable{System.DateTimeOffset},System.IO.FileAttributes)">
+            <summary>
+            Contains read-only filesystem metadata for a discovered file. Attributes are present whenever metadata is present.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileMetadataIssue">
+            <summary>
+            Describes a recoverable problem encountered while enriching one file.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileMetadataIssue.#ctor(System.String,OpenSorSe.Scanner.Models.FileMetadataIssueKind,System.String)">
+            <summary>
+            Describes a recoverable problem encountered while enriching one file.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileMetadataIssueKind">
+            <summary>
+            Identifies a recoverable issue encountered while reading file metadata.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileMetadataIssueKind.FileUnavailable">
+            <summary>The file was missing, invalid, or otherwise unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileMetadataIssueKind.AccessDenied">
+            <summary>Access to the file or its metadata was denied.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileMetadataIssueKind.ReparsePointSkipped">
+            <summary>The entry was a symbolic link, junction, or other reparse point and was skipped.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.FileMetadataIssueKind.MetadataUnavailable">
+            <summary>One or more optional metadata fields could not be retrieved.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileMetadataResult">
+            <summary>
+            Contains enriched file entries and recoverable metadata processing issues.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileMetadataResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileEntry},OpenSorSe.Scanner.Models.FileMetadataStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileMetadataIssue})">
+            <summary>
+            Contains enriched file entries and recoverable metadata processing issues.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.FileMetadataStatistics">
+            <summary>
+            Summarizes work completed by file metadata processing.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.FileMetadataStatistics.#ctor(System.Int64,System.Int64,System.Int64)">
+            <summary>
+            Summarizes work completed by file metadata processing.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanIssue">
+            <summary>
+            Describes a recoverable issue that prevented one filesystem location from being scanned.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.ScanIssue.#ctor(System.String,OpenSorSe.Scanner.Models.ScanIssueKind,System.String)">
+            <summary>
+            Describes a recoverable issue that prevented one filesystem location from being scanned.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanIssueKind">
+            <summary>
+            Identifies a recoverable filesystem condition encountered during scanning.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanIssueKind.RootDirectoryUnavailable">
+            <summary>A requested root could not be reached as a directory.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanIssueKind.DirectoryUnavailable">
+            <summary>A directory could not be enumerated.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanIssueKind.EntryUnavailable">
+            <summary>An individual filesystem entry could not be inspected.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanIssueKind.AccessDenied">
+            <summary>Access to a filesystem location was denied.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanIssueKind.SymbolicLinkSkipped">
+            <summary>A reparse point was skipped because symbolic-link support is deferred.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanOptions">
+            <summary>
+            Defines scanner behavior that is configurable for a single operation.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.ScanOptions.#ctor(System.TimeSpan)">
+            <summary>
+            Defines scanner behavior that is configurable for a single operation.
+            </summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.ScanOptions.Default">
+            <summary>
+            Gets the default scanner options.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanProgress">
+            <summary>
+            Provides a point-in-time view of work completed by an active scan.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.ScanProgress.#ctor(System.String,OpenSorSe.Scanner.Models.ScanStatistics,System.TimeSpan)">
+            <summary>
+            Provides a point-in-time view of work completed by an active scan.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanRequest">
+            <summary>
+            Defines the root directories and options for one scan operation.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.ScanRequest.#ctor(System.Collections.Generic.IReadOnlyCollection{System.String},OpenSorSe.Scanner.Models.ScanOptions)">
+            <summary>
+            Defines the root directories and options for one scan operation.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanResult">
+            <summary>
+            Contains all entries and recoverable issues produced by one scan operation.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.ScanResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.FileEntry},System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.DirectoryEntry},OpenSorSe.Scanner.Models.ScanStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Scanner.Models.ScanIssue},OpenSorSe.Scanner.Models.ScanStatus,System.TimeSpan)">
+            <summary>
+            Contains all entries and recoverable issues produced by one scan operation.
+            </summary>
+        </member>
+        <member name="P:OpenSorSe.Scanner.Models.ScanResult.DiagnosticSessionId">
+            <summary>Gets the process-session diagnostic identity for this scan, when collection was enabled.</summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanStatistics">
+            <summary>
+            Summarizes the entries and recoverable issues encountered during a scan.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Scanner.Models.ScanStatistics.#ctor(System.Int64,System.Int64,System.Int64)">
+            <summary>
+            Summarizes the entries and recoverable issues encountered during a scan.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Scanner.Models.ScanStatus">
+            <summary>
+            Describes the final outcome of a scan operation.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanStatus.Completed">
+            <summary>The scan traversed all reachable requested locations.</summary>
+        </member>
+        <member name="F:OpenSorSe.Scanner.Models.ScanStatus.Cancelled">
+            <summary>The scan ended after a cancellation request.</summary>
+        </member>
+    </members>
+</doc>

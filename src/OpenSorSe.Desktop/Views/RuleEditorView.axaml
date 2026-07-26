@@ -4,7 +4,14 @@
              x:Class="OpenSorSe.Desktop.Views.RuleEditorView"
              x:DataType="vm:RuleEditorViewModel">
     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,*,Auto" ColumnSpacing="16" RowSpacing="12">
-        <TextBlock Grid.ColumnSpan="2" Text="Rules (review only)" FontSize="24" FontWeight="SemiBold" />
+        <Grid Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel>
+                <TextBlock Text="Sorting Recipes" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="Define repeatable ways to classify files." Classes="page-subtitle" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="help" Content="?" Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Open Sorting rules help" AutomationProperties.Name="Help for Sorting rules" />
+        </Grid>
         <TextBlock Grid.Row="1" Grid.ColumnSpan="2"
                    Text="The current desktop does not create, persist, or execute rules. This surface only reviews rule data supplied in memory."
                    TextWrapping="Wrap" />

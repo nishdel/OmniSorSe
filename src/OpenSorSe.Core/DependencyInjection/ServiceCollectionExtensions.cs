@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Events;
 using OpenSorSe.Core.Lifecycle;
@@ -37,6 +38,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConfigurationService>(serviceProvider =>
             new JsonConfigurationService(
                 serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath));
+        services.AddSingleton<IDiagnosticsRedactor, DiagnosticsRedactor>();
+        services.AddSingleton<InMemoryDiagnosticsCollector>();
+        services.AddSingleton<IDiagnosticsCollector>(serviceProvider =>
+            serviceProvider.GetRequiredService<InMemoryDiagnosticsCollector>());
+        services.AddSingleton<IDiagnosticsStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<InMemoryDiagnosticsCollector>());
+        services.AddSingleton<IDiagnosticsEventSink>(serviceProvider =>
+            serviceProvider.GetRequiredService<InMemoryDiagnosticsCollector>());
+        services.AddSingleton<IDiagnosticsExportService, DiagnosticsExportService>();
         services.AddSingleton<ILoggingService, LoggingService>();
         services.AddSingleton<IApplicationState, ApplicationState>();
         services.AddSingleton<IEventBus, EventBus>();

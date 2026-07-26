@@ -37,6 +37,7 @@ public sealed class CatalogSearchViewModelTests
         Assert.Contains("tag match: Finance", viewModel.Hits[1].MatchExplanation, StringComparison.Ordinal);
         Assert.Equal(1, store.ListCallCount);
         Assert.Equal(2, store.LoadCallCount);
+        Assert.Equal(StatusKind.Success, viewModel.Status.Kind);
     }
 
     /// <summary>Verifies search hits carry the saved snapshot name without changing matching or ranking.</summary>
@@ -100,6 +101,7 @@ public sealed class CatalogSearchViewModelTests
         await viewModel.SearchAsync();
         Assert.Equal(200, viewModel.Hits.Count);
         Assert.Contains("top 200", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(StatusKind.Warning, viewModel.Status.Kind);
         viewModel.SelectedHit = viewModel.Hits[0];
         await viewModel.OpenSelectedHitCommand.ExecuteAsync(null);
 
@@ -219,6 +221,47 @@ public sealed class CatalogSearchViewModelTests
         Assert.False(viewModel.IsSavedSearchResetPending);
         Assert.Empty(viewModel.SavedSearches);
         Assert.Contains("not changed", viewModel.SavedSearchStatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies rename preserves preset identity, query, and creation time while clear resets transient results.</summary>
+    [Fact]
+    public async Task SavedSearch_RenameAndClearQuery_PreserveOwnedDataAndResetSearchState()
+    {
+        var created = DateTimeOffset.UnixEpoch.AddDays(1);
+        var savedStore = new InMemorySavedSearchStore(
+            new SavedCatalogSearch("saved:one", "Old name", "invoice", created, created));
+        var entry = CreateEntry(
+            "catalog:one",
+            DateTimeOffset.UnixEpoch,
+            [CreateFile("file:one", "C:\\Saved\\invoice.pdf")],
+            []);
+        using var viewModel = new CatalogSearchViewModel(
+            new TestConfigurationService(enabled: true),
+            new InMemoryCatalogStore(entry),
+            savedStore);
+        await viewModel.RefreshSavedSearchesAsync();
+        viewModel.SelectedSavedSearch = Assert.Single(viewModel.SavedSearches);
+        viewModel.SavedSearchRenameText = "Invoices";
+
+        await viewModel.RenameSelectedSavedSearchCommand.ExecuteAsync(null);
+
+        var renamed = Assert.Single(viewModel.SavedSearches);
+        Assert.Equal("saved:one", renamed.Id);
+        Assert.Equal("Invoices", renamed.Name);
+        Assert.Equal("invoice", renamed.QueryText);
+        Assert.Equal(created, renamed.CreatedAtUtc);
+
+        viewModel.QueryText = "invoice";
+        await viewModel.SearchAsync();
+        Assert.True(viewModel.IsSearchCompleted);
+        Assert.Single(viewModel.Hits);
+
+        viewModel.ClearQueryCommand.Execute(null);
+        Assert.Null(viewModel.QueryText);
+        Assert.Empty(viewModel.Hits);
+        Assert.Null(viewModel.SelectedHit);
+        Assert.False(viewModel.IsSearchCompleted);
+        Assert.False(viewModel.HasNoHits);
     }
 
     private static CatalogEntry CreateEntry(string id, DateTimeOffset savedAtUtc, IReadOnlyList<ResultFile> files, IReadOnlyList<TagAssociation> tags) => new(

@@ -6,5 +6,206 @@
 
     <Application.Styles>
         <FluentTheme />
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource BackgroundBaseBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.page-title">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.page-subtitle">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.subtle-card">
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.ai-card">
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource AccentAIMutedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentAIBrush}" />
+            <Setter Property="BorderThickness" Value="1,1,1,2" />
+        </Style>
+        <Style Selector="Border.side-panel">
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryMutedBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.drawer">
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.empty-state">
+            <Setter Property="Padding" Value="24" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.metric-tile">
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1,1,1,3" />
+        </Style>
+        <Style Selector="Border.separator">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource BorderSubtleBrush}" />
+        </Style>
+        <Style Selector="Border.result-row">
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+        </Style>
+        <Style Selector="ListBox.files-table">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
+        <Style Selector="ListBox.files-table > ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.files-table > ListBoxItem:nth-child(even)">
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+        </Style>
+        <Style Selector="ListBox.files-table > ListBoxItem:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AccentPrimaryMutedBrush}" />
+        </Style>
+        <Style Selector="ListBox.files-table > ListBoxItem:selected">
+            <Setter Property="Background" Value="{DynamicResource FilesSelectedRowBrush}" />
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.help">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Button.nav-item">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="3,0,0,0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Padding" Value="10,9" />
+        </Style>
+        <Style Selector="Button.nav-item:pointerover">
+            <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}" />
+        </Style>
+        <Style Selector="Button.nav-item.active">
+            <Setter Property="Background" Value="{DynamicResource AccentPrimaryMutedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}" />
+        </Style>
+        <Style Selector="Border.status-bar">
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+        </Style>
+        <Style Selector="Border.status-indicator">
+            <Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
+        </Style>
+        <Style Selector="Border.status-indicator.active">
+            <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}" />
+        </Style>
+        <Style Selector="Border.status-indicator.error">
+            <Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
+        </Style>
     </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="BackgroundBaseColor">#111827</Color>
+                    <Color x:Key="BackgroundSurfaceColor">#182235</Color>
+                    <Color x:Key="BackgroundElevatedColor">#223047</Color>
+                    <Color x:Key="BorderSubtleColor">#34445D</Color>
+                    <Color x:Key="TextPrimaryColor">#F4F7FB</Color>
+                    <Color x:Key="TextSecondaryColor">#AEBBD0</Color>
+                    <Color x:Key="AccentPrimaryMutedColor">#263F63</Color>
+                    <Color x:Key="AccentAIMutedColor">#30294F</Color>
+                    <Color x:Key="FilesSelectedRowColor">#71303A58</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="BackgroundBaseColor">#F4F7FB</Color>
+                    <Color x:Key="BackgroundSurfaceColor">#FFFFFF</Color>
+                    <Color x:Key="BackgroundElevatedColor">#EAF0F7</Color>
+                    <Color x:Key="BorderSubtleColor">#CBD6E4</Color>
+                    <Color x:Key="TextPrimaryColor">#172033</Color>
+                    <Color x:Key="TextSecondaryColor">#52627A</Color>
+                    <Color x:Key="AccentPrimaryMutedColor">#DCEBFF</Color>
+                    <Color x:Key="AccentAIMutedColor">#EEE7FF</Color>
+                    <Color x:Key="FilesSelectedRowColor">#BFD8FF</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <Color x:Key="AccentPrimaryColor">#2F8CFF</Color>
+            <Color x:Key="AccentOrganizationColor">#16B3A3</Color>
+            <Color x:Key="AccentSearchColor">#7C6CF2</Color>
+            <Color x:Key="AccentDuplicateColor">#F2A93B</Color>
+            <Color x:Key="AccentAIColor">#9A72F5</Color>
+            <Color x:Key="SuccessColor">#36B87E</Color>
+            <Color x:Key="WarningColor">#E9A23B</Color>
+            <Color x:Key="ErrorColor">#E45C63</Color>
+            <SolidColorBrush x:Key="BackgroundBaseBrush" Color="{DynamicResource BackgroundBaseColor}" />
+            <SolidColorBrush x:Key="BackgroundSurfaceBrush" Color="{DynamicResource BackgroundSurfaceColor}" />
+            <SolidColorBrush x:Key="BackgroundElevatedBrush" Color="{DynamicResource BackgroundElevatedColor}" />
+            <SolidColorBrush x:Key="BorderSubtleBrush" Color="{DynamicResource BorderSubtleColor}" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{DynamicResource TextSecondaryColor}" />
+            <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{DynamicResource AccentPrimaryColor}" />
+            <SolidColorBrush x:Key="AccentPrimaryMutedBrush" Color="{DynamicResource AccentPrimaryMutedColor}" />
+            <SolidColorBrush x:Key="AccentOrganizationBrush" Color="{DynamicResource AccentOrganizationColor}" />
+            <SolidColorBrush x:Key="AccentSearchBrush" Color="{DynamicResource AccentSearchColor}" />
+            <SolidColorBrush x:Key="AccentDuplicateBrush" Color="{DynamicResource AccentDuplicateColor}" />
+            <SolidColorBrush x:Key="AccentAIBrush" Color="{DynamicResource AccentAIColor}" />
+            <SolidColorBrush x:Key="AccentAIMutedBrush" Color="{DynamicResource AccentAIMutedColor}" />
+            <SolidColorBrush x:Key="FilesSelectedRowBrush" Color="{DynamicResource FilesSelectedRowColor}" />
+            <SolidColorBrush x:Key="SuccessBrush" Color="{DynamicResource SuccessColor}" />
+            <SolidColorBrush x:Key="WarningBrush" Color="{DynamicResource WarningColor}" />
+            <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}" />
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>

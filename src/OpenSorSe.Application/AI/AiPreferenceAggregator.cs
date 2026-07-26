@@ -16,9 +16,26 @@ public static class AiPreferenceAggregator
         var valid = decisions.Where(IsValid).ToArray();
         return new AiPreferenceSummary(
             TopValues(valid, AiSuggestionDecisionKind.Tags, accepted: true),
-            TopValues(valid, AiSuggestionDecisionKind.DestinationFolder, accepted: true),
+            TopFolderValues(valid),
             TopValues(valid, AiSuggestionDecisionKind.Category, accepted: true),
             TopValues(valid, null, accepted: false));
+    }
+
+    private static IReadOnlyList<string> TopFolderValues(IEnumerable<AiSuggestionDecision> decisions)
+    {
+        var values = decisions
+            .Where(decision => decision.Kind is AiSuggestionDecisionKind.DestinationFolder or AiSuggestionDecisionKind.FolderStructure)
+            .Where(decision => decision.Outcome is AiSuggestionDecisionOutcome.Accepted or AiSuggestionDecisionOutcome.Edited)
+            .Select(decision => decision.FinalValue ?? decision.SuggestedValue)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .SelectMany(value => value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            .GroupBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(group => group.Count())
+            .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Take(5)
+            .Select(group => group.Key)
+            .ToArray();
+        return Array.AsReadOnly(values);
     }
 
     private static IReadOnlyList<string> TopValues(

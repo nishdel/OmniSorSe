@@ -4,14 +4,19 @@
              x:Class="OpenSorSe.Desktop.Views.CatalogComparisonView"
              x:DataType="vm:CatalogComparisonViewModel">
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="10">
-        <TextBlock Text="Compare snapshots" FontSize="24" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel>
+                <TextBlock Text="Before &amp; After" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="See what changed between two saved scans." Classes="page-subtitle" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="help" Content="?" Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Learn how scan comparison works" AutomationProperties.Name="Help for Compare scans" />
+        </Grid>
         <StackPanel Grid.Row="1" Spacing="6">
-            <TextBlock Text="Historical stored-metadata comparison" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="Compares two saved OpenSorSe snapshots only. It does not open, verify, refresh, or modify any stored file path."
-                       TextWrapping="Wrap" />
+            <TextBlock Text="Choose two saved scans" FontSize="18" FontWeight="SemiBold" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                 <StackPanel Spacing="3">
-                    <TextBlock Text="Baseline snapshot" />
+                    <TextBlock Text="Earlier scan" />
                     <ComboBox ItemsSource="{Binding Entries}"
                               SelectedItem="{Binding BaselineSelection, Mode=TwoWay}"
                               IsEnabled="{Binding !IsBusy}"
@@ -24,7 +29,7 @@
                     </ComboBox>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="3">
-                    <TextBlock Text="Current snapshot" />
+                    <TextBlock Text="Later scan" />
                     <ComboBox ItemsSource="{Binding Entries}"
                               SelectedItem="{Binding CurrentSelection, Mode=TwoWay}"
                               IsEnabled="{Binding !IsBusy}"
@@ -39,12 +44,12 @@
             </Grid>
             <WrapPanel>
                 <Button Margin="0,0,8,8" Content="Refresh choices" Command="{Binding RefreshCommand}" />
-                <Button Margin="0,0,8,8" Content="Compare selected snapshots" Command="{Binding CompareCommand}" />
+                <Button Margin="0,0,8,8" Content="Compare selected scans" Command="{Binding CompareCommand}" />
                 <Button Margin="0,0,8,8" Content="Cancel comparison" Command="{Binding CancelCommand}" />
-                <Button Margin="0,0,8,8" Content="Open baseline in Results" Command="{Binding OpenBaselineCommand}" />
-                <Button Margin="0,0,8,8" Content="Open current in Results" Command="{Binding OpenCurrentCommand}" />
+                <Button Margin="0,0,8,8" Content="Open earlier scan in Files" Command="{Binding OpenBaselineCommand}" />
+                <Button Margin="0,0,8,8" Content="Open later scan in Files" Command="{Binding OpenCurrentCommand}" />
             </WrapPanel>
-            <TextBlock IsVisible="{Binding HasNoEntries}" Text="No saved snapshots are available for comparison." TextWrapping="Wrap" />
+            <TextBlock IsVisible="{Binding HasNoEntries}" Text="No saved scans are available for comparison." TextWrapping="Wrap" />
         </StackPanel>
         <Border Grid.Row="2" Padding="8" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
             <StackPanel Spacing="5">

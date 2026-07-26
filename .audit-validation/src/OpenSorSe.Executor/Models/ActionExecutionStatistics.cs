@@ -1,5 +1,0 @@
-namespace OpenSorSe.Executor.Models;
-
-/// <summary>Contains aggregate execution counts.</summary>
-/// <param name="OperationsReceived">All input operations.</param><param name="OperationsAttempted">Operations producing outcomes.</param><param name="OperationsSucceeded">Successful operations.</param><param name="OperationsFailed">Failed operations.</param><param name="OperationsSkipped">Skipped operations.</param><param name="MoveOperationsSucceeded">Successful moves.</param><param name="CopyOperationsSucceeded">Successful copies.</param><param name="RenameOperationsSucceeded">Successful renames.</param><param name="BytesCopied">Bytes from completed copies.</param><param name="IssuesEncountered">Outcomes containing issues.</param>
-public sealed record ActionExecutionStatistics(long OperationsReceived, long OperationsAttempted, long OperationsSucceeded, long OperationsFailed, long OperationsSkipped, long MoveOperationsSucceeded, long CopyOperationsSucceeded, long RenameOperationsSucceeded, long BytesCopied, long IssuesEncountered);

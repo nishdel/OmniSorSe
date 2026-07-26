@@ -29,9 +29,12 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
     private string _statusText = "Enter text to search saved catalog metadata locally.";
     private string? _savedSearchName;
     private SavedCatalogSearchRow? _selectedSavedSearch;
+    private string? _savedSearchRenameText;
     private bool _isSavedSearchBusy;
     private bool _isSavedSearchResetPending;
     private string _savedSearchStatusText = "No saved searches have been loaded.";
+    private bool _isSearchCompleted;
+    private StatusKind _statusKind = StatusKind.Information;
     private bool _isDisposed;
 
     /// <summary>
@@ -56,10 +59,12 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         Hits = new ReadOnlyObservableCollection<CatalogSearchHitRow>(_hits);
         SavedSearches = new ReadOnlyObservableCollection<SavedCatalogSearchRow>(_savedSearches);
         SearchCommand = new AsyncRelayCommand(SearchAsync, () => !IsSearching);
+        ClearQueryCommand = new RelayCommand(ClearQuery, () => HasQuery || Hits.Count > 0);
         OpenSelectedHitCommand = new AsyncRelayCommand(OpenSelectedHitAsync, () => !IsSearching && SelectedHit is not null && IsEnabled);
         RefreshSavedSearchesCommand = new AsyncRelayCommand(RefreshSavedSearchesAsync, () => !IsSavedSearchBusy);
         SaveCurrentSearchCommand = new AsyncRelayCommand(SaveCurrentSearchAsync, CanSaveCurrentSearch);
         RunSelectedSavedSearchCommand = new AsyncRelayCommand(RunSelectedSavedSearchAsync, CanRunSelectedSavedSearch);
+        RenameSelectedSavedSearchCommand = new AsyncRelayCommand(RenameSelectedSavedSearchAsync, CanRenameSelectedSavedSearch);
         RemoveSelectedSavedSearchCommand = new AsyncRelayCommand(RemoveSelectedSavedSearchAsync, CanRemoveSelectedSavedSearch);
         RequestResetSavedSearchesCommand = new RelayCommand(RequestResetSavedSearches, () => !IsSavedSearchBusy && _savedSearchStore is not null);
         ConfirmResetSavedSearchesCommand = new AsyncRelayCommand(ConfirmResetSavedSearchesAsync, () => !IsSavedSearchBusy && IsSavedSearchResetPending && _savedSearchStore is not null);
@@ -83,7 +88,10 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _queryText, value))
             {
+                IsSearchCompleted = false;
                 OnPropertyChanged(nameof(HasQuery));
+                OnPropertyChanged(nameof(HasNoHits));
+                ClearQueryCommand.NotifyCanExecuteChanged();
                 SaveCurrentSearchCommand.NotifyCanExecuteChanged();
             }
         }
@@ -110,8 +118,27 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _selectedSavedSearch, value))
             {
+                SavedSearchRenameText = value?.Name;
+                OnPropertyChanged(nameof(HasSelectedSavedSearch));
                 RunSelectedSavedSearchCommand.NotifyCanExecuteChanged();
+                RenameSelectedSavedSearchCommand.NotifyCanExecuteChanged();
                 RemoveSelectedSavedSearchCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets whether a saved query is selected for its secondary actions.</summary>
+    public bool HasSelectedSavedSearch => SelectedSavedSearch is not null;
+
+    /// <summary>Gets or sets the edited display name for the selected saved query.</summary>
+    public string? SavedSearchRenameText
+    {
+        get => _savedSearchRenameText;
+        set
+        {
+            if (SetProperty(ref _savedSearchRenameText, value))
+            {
+                RenameSelectedSavedSearchCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -143,10 +170,12 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _isSearching, value))
             {
+                OnPropertyChanged(nameof(Status));
                 SearchCommand.NotifyCanExecuteChanged();
                 OpenSelectedHitCommand.NotifyCanExecuteChanged();
                 SaveCurrentSearchCommand.NotifyCanExecuteChanged();
                 RunSelectedSavedSearchCommand.NotifyCanExecuteChanged();
+                ClearQueryCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -162,6 +191,7 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
                 RefreshSavedSearchesCommand.NotifyCanExecuteChanged();
                 SaveCurrentSearchCommand.NotifyCanExecuteChanged();
                 RunSelectedSavedSearchCommand.NotifyCanExecuteChanged();
+                RenameSelectedSavedSearchCommand.NotifyCanExecuteChanged();
                 RemoveSelectedSavedSearchCommand.NotifyCanExecuteChanged();
                 RequestResetSavedSearchesCommand.NotifyCanExecuteChanged();
                 ConfirmResetSavedSearchesCommand.NotifyCanExecuteChanged();
@@ -194,17 +224,50 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Gets whether the completed latest query has no matching saved metadata.</summary>
-    public bool HasNoHits => HasQuery && !IsSearching && Hits.Count == 0;
+    public bool HasNoHits => IsSearchCompleted && !IsSearching && Hits.Count == 0;
+
+    /// <summary>Gets whether the latest completed query produced visible results.</summary>
+    public bool HasSearchResults => Hits.Count > 0;
+
+    /// <summary>Gets whether the current query has completed at least once.</summary>
+    public bool IsSearchCompleted
+    {
+        get => _isSearchCompleted;
+        private set
+        {
+            if (SetProperty(ref _isSearchCompleted, value))
+            {
+                OnPropertyChanged(nameof(HasNoHits));
+            }
+        }
+    }
+
+    /// <summary>Gets a concise result count for the current bounded result set.</summary>
+    public string ResultCountText => Hits.Count == 1 ? "1 result" : $"{Hits.Count} results";
 
     /// <summary>Gets current user-safe search status.</summary>
     public string StatusText
     {
         get => _statusText;
-        private set => SetProperty(ref _statusText, value);
+        private set
+        {
+            if (SetProperty(ref _statusText, value))
+            {
+                OnPropertyChanged(nameof(Status));
+            }
+        }
     }
+
+    /// <summary>Gets the accessible presentation for the current catalog-search status.</summary>
+    public StatusPresentation Status => IsSearching
+        ? StatusPresentation.Progress(StatusText)
+        : new StatusPresentation(_statusKind, StatusText);
 
     /// <summary>Gets the command that evaluates the current local catalog query.</summary>
     public IAsyncRelayCommand SearchCommand { get; }
+
+    /// <summary>Gets the command that clears the query and its transient results.</summary>
+    public IRelayCommand ClearQueryCommand { get; }
 
     /// <summary>Gets the command that opens the saved entry containing the selected hit.</summary>
     public IAsyncRelayCommand OpenSelectedHitCommand { get; }
@@ -217,6 +280,9 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that reruns the selected preset through the current catalog search workflow.</summary>
     public IAsyncRelayCommand RunSelectedSavedSearchCommand { get; }
+
+    /// <summary>Gets the command that renames the selected preset without changing its query.</summary>
+    public IAsyncRelayCommand RenameSelectedSavedSearchCommand { get; }
 
     /// <summary>Gets the command that removes one selected application-owned query preset.</summary>
     public IAsyncRelayCommand RemoveSelectedSavedSearchCommand { get; }
@@ -429,6 +495,77 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Renames the selected application-owned query while preserving its identity and query text.</summary>
+    public async Task RenameSelectedSavedSearchAsync()
+    {
+        var selected = SelectedSavedSearch;
+        var name = string.IsNullOrWhiteSpace(SavedSearchRenameText) ? null : SavedSearchRenameText.Trim();
+        if (selected is null || _savedSearchStore is null || name is null)
+        {
+            SavedSearchStatusText = "Select a saved search and enter a new name.";
+            return;
+        }
+
+        if (name.Length > SavedCatalogSearchLimits.MaximumNameLength || name.Any(char.IsControl))
+        {
+            SavedSearchStatusText = $"Saved-search names must be no longer than {SavedCatalogSearchLimits.MaximumNameLength} characters and contain no control characters.";
+            return;
+        }
+
+        if (SavedSearches.Any(search =>
+                !string.Equals(search.Id, selected.Id, StringComparison.Ordinal) &&
+                string.Equals(search.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            SavedSearchStatusText = "Another saved catalog search already uses that name.";
+            return;
+        }
+
+        if (string.Equals(selected.Name, name, StringComparison.Ordinal))
+        {
+            SavedSearchStatusText = "The saved-search name is unchanged.";
+            return;
+        }
+
+        var updated = new SavedCatalogSearch(
+            selected.Id,
+            name,
+            selected.QueryText,
+            selected.CreatedAtUtc,
+            DateTimeOffset.UtcNow);
+        var (cancellation, version) = BeginSavedSearchOperation();
+        SavedSearchStatusText = "Renaming saved search...";
+        try
+        {
+            var saved = await _savedSearchStore.SaveAsync(updated, cancellation.Token);
+            var searches = await _savedSearchStore.ListAsync(cancellation.Token);
+            if (!IsCurrentSavedSearchOperation(cancellation, version))
+            {
+                return;
+            }
+
+            PublishSavedSearches(searches, saved.Id);
+            SavedSearchStatusText = "Saved search renamed. Its query and saved catalog data were not changed.";
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            if (version == Volatile.Read(ref _savedSearchVersion))
+            {
+                SavedSearchStatusText = "Renaming the saved search was cancelled.";
+            }
+        }
+        catch (Exception)
+        {
+            if (version == Volatile.Read(ref _savedSearchVersion))
+            {
+                SavedSearchStatusText = "The saved search could not be renamed. Existing data was preserved.";
+            }
+        }
+        finally
+        {
+            EndSavedSearchOperation(cancellation, version);
+        }
+    }
+
     private bool CanSaveCurrentSearch() =>
         _savedSearchStore is not null && IsEnabled && !IsSavedSearchBusy && !IsSearching &&
         !string.IsNullOrWhiteSpace(SavedSearchName) && !string.IsNullOrWhiteSpace(QueryText);
@@ -436,8 +573,28 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
     private bool CanRunSelectedSavedSearch() =>
         IsEnabled && !IsSavedSearchBusy && !IsSearching && SelectedSavedSearch is not null;
 
+    private bool CanRenameSelectedSavedSearch() =>
+        _savedSearchStore is not null &&
+        !IsSavedSearchBusy &&
+        SelectedSavedSearch is not null &&
+        !string.IsNullOrWhiteSpace(SavedSearchRenameText);
+
     private bool CanRemoveSelectedSavedSearch() =>
         _savedSearchStore is not null && !IsSavedSearchBusy && SelectedSavedSearch is not null;
+
+    private void ClearQuery()
+    {
+        CancelSearch();
+        _hits.Clear();
+        _entriesById = new Dictionary<string, CatalogEntry>(StringComparer.Ordinal);
+        SelectedHit = null;
+        QueryText = null;
+        IsSearchCompleted = false;
+        NotifyHitStateChanged();
+        SetSearchStatus(
+            StatusKind.Information,
+            "Enter text to search filenames, paths, extensions, categories, and accepted tags in saved snapshots.");
+    }
 
     private void RequestResetSavedSearches()
     {
@@ -506,8 +663,11 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
             _hits.Clear();
             _entriesById = new Dictionary<string, CatalogEntry>(StringComparer.Ordinal);
             SelectedHit = null;
-            OnPropertyChanged(nameof(HasNoHits));
-            StatusText = "Enter text to search filenames, paths, extensions, categories, and accepted tags in saved snapshots.";
+            IsSearchCompleted = false;
+            NotifyHitStateChanged();
+            SetSearchStatus(
+                StatusKind.Information,
+                "Enter text to search filenames, paths, extensions, categories, and accepted tags in saved snapshots.");
             return;
         }
 
@@ -517,21 +677,25 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
             _hits.Clear();
             _entriesById = new Dictionary<string, CatalogEntry>(StringComparer.Ordinal);
             SelectedHit = null;
-            OnPropertyChanged(nameof(HasNoHits));
-            StatusText = "Local catalog storage is disabled. Enable it in Settings before searching saved snapshots.";
+            IsSearchCompleted = false;
+            NotifyHitStateChanged();
+            SetSearchStatus(
+                StatusKind.Warning,
+                "Local catalog storage is disabled. Enable it in Settings before searching saved snapshots.");
             return;
         }
 
         if (_catalogStore is null)
         {
-            StatusText = "The local catalog is unavailable in this application configuration.";
+            IsSearchCompleted = false;
+            SetSearchStatus(StatusKind.Error, "The local catalog is unavailable in this application configuration.");
             return;
         }
 
         var cancellation = ReplaceSearchCancellation();
         var version = Interlocked.Increment(ref _searchVersion);
         IsSearching = true;
-        StatusText = "Searching saved catalog metadata…";
+        SetSearchStatus(StatusKind.Progress, "Searching saved catalog metadata…");
         try
         {
             var summaries = await _catalogStore.ListAsync(cancellation.Token);
@@ -594,12 +758,20 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
                 .Distinct(StringComparer.Ordinal)
                 .ToDictionary(id => id, id => entriesById[id], StringComparer.Ordinal);
             SelectedHit = null;
-            OnPropertyChanged(nameof(HasNoHits));
-            StatusText = published.Length == 0
-                ? "No saved catalog metadata matches this query."
-                : hits.Count > MaximumPublishedHitCount
-                    ? $"Showing the top {MaximumPublishedHitCount} of {hits.Count} matching saved catalog files."
-                    : $"{published.Length} saved catalog file match(es) found.";
+            IsSearchCompleted = true;
+            NotifyHitStateChanged();
+            var wasBounded = hits.Count > MaximumPublishedHitCount;
+            SetSearchStatus(
+                published.Length == 0
+                    ? StatusKind.Information
+                    : wasBounded
+                        ? StatusKind.Warning
+                        : StatusKind.Success,
+                published.Length == 0
+                    ? "No saved catalog metadata matches this query."
+                    : wasBounded
+                        ? $"Showing the top {MaximumPublishedHitCount} of {hits.Count} matching saved catalog files."
+                        : $"{published.Length} saved catalog file match(es) found.");
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -608,7 +780,7 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         {
             if (version == Volatile.Read(ref _searchVersion))
             {
-                StatusText = "The local catalog could not be searched. Existing results remain available.";
+                SetSearchStatus(StatusKind.Error, "The local catalog could not be searched. Existing results remain available.");
             }
         }
         finally
@@ -616,7 +788,7 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
             if (version == Volatile.Read(ref _searchVersion))
             {
                 IsSearching = false;
-                OnPropertyChanged(nameof(HasNoHits));
+                NotifyHitStateChanged();
             }
 
             if (ReferenceEquals(_searchCancellation, cancellation))
@@ -655,8 +827,11 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         _hits.Clear();
         _entriesById = new Dictionary<string, CatalogEntry>(StringComparer.Ordinal);
         SelectedHit = null;
-        OnPropertyChanged(nameof(HasNoHits));
-        StatusText = "Saved catalog data changed. Run the search again to review current historical snapshots.";
+        IsSearchCompleted = false;
+        NotifyHitStateChanged();
+        SetSearchStatus(
+            StatusKind.Information,
+            "Saved catalog data changed. Run the search again to review current historical snapshots.");
     }
 
     private async Task OpenSelectedHitAsync()
@@ -673,18 +848,18 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         }
         catch (Exception)
         {
-            StatusText = "The selected saved snapshot could not be opened. Existing in-memory results remain available.";
+            SetSearchStatus(StatusKind.Error, "The selected saved snapshot could not be opened. Existing in-memory results remain available.");
             return;
         }
 
         if (entry is null)
         {
-            StatusText = "The selected saved snapshot is no longer available. Run the search again.";
+            SetSearchStatus(StatusKind.Warning, "The selected saved snapshot is no longer available. Run the search again.");
             return;
         }
 
         EntryOpened?.Invoke(this, entry);
-        StatusText = "Saved snapshot opened. It has not been refreshed from the filesystem.";
+        SetSearchStatus(StatusKind.Success, "Saved snapshot opened. It has not been refreshed from the filesystem.");
     }
 
     private static IReadOnlyDictionary<string, IReadOnlyList<TagAssociation>> BuildTagsByFile(CatalogEntry entry)
@@ -733,6 +908,21 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
         cancellation?.Cancel();
         cancellation?.Dispose();
         IsSearching = false;
+    }
+
+    private void NotifyHitStateChanged()
+    {
+        OnPropertyChanged(nameof(HasNoHits));
+        OnPropertyChanged(nameof(HasSearchResults));
+        OnPropertyChanged(nameof(ResultCountText));
+        ClearQueryCommand.NotifyCanExecuteChanged();
+    }
+
+    private void SetSearchStatus(StatusKind kind, string message)
+    {
+        _statusKind = kind;
+        StatusText = message;
+        OnPropertyChanged(nameof(Status));
     }
 
     private (CancellationTokenSource Cancellation, long Version) BeginSavedSearchOperation()

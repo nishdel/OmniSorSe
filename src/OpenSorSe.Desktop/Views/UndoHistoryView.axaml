@@ -5,7 +5,11 @@
              x:DataType="vm:UndoHistoryViewModel">
     <ScrollViewer>
         <StackPanel Spacing="12">
-            <TextBlock Text="Operation history" FontSize="24" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <TextBlock Text="Activity details" FontSize="24" FontWeight="SemiBold" />
+                <Button Grid.Column="1" Classes="help" Content="?" Command="{Binding HelpCommand}"
+                        ToolTip.Tip="Open Activity details help" AutomationProperties.Name="Help for Activity details" />
+            </Grid>
             <TextBlock Text="This page lists completed file operations when a future execution workflow supplies them."
                        TextWrapping="Wrap" />
             <Border IsVisible="{Binding IsEmpty}"

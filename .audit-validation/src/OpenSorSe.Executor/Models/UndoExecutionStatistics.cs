@@ -1,4 +1,0 @@
-namespace OpenSorSe.Executor.Models;
-/// <summary>Contains undo execution counts.</summary>
-/// <param name="RecordsReceived">Supplied records.</param><param name="RecordsAttempted">Attempted records.</param><param name="RecordsSucceeded">Successful records.</param><param name="RecordsFailed">Failed records.</param><param name="MoveUndosSucceeded">Successful move undos.</param><param name="CopyUndosSucceeded">Successful copy undos.</param><param name="RenameUndosSucceeded">Successful rename undos.</param><param name="IssuesEncountered">Failed outcomes.</param>
-public sealed record UndoExecutionStatistics(long RecordsReceived,long RecordsAttempted,long RecordsSucceeded,long RecordsFailed,long MoveUndosSucceeded,long CopyUndosSucceeded,long RenameUndosSucceeded,long IssuesEncountered);

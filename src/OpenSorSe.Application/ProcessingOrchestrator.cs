@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
@@ -22,6 +23,7 @@ public sealed class ProcessingOrchestrator : IProcessingOrchestrator
     private readonly IActionPlanner _planner;
     private readonly IRuleEngine _ruleEngine;
     private readonly IFileScanner _scanner;
+    private readonly IContentIndexingService? _contentIndexingService;
 
     /// <summary>Initializes all stage dependencies required by the documented pipeline.</summary>
     /// <param name="scanner">The file discovery stage.</param>
@@ -34,7 +36,8 @@ public sealed class ProcessingOrchestrator : IProcessingOrchestrator
     /// <param name="conflictResolver">The lexical conflict-resolution stage.</param>
     /// <param name="loggingService">The centralized diagnostic logging service.</param>
     /// <param name="errorHandler">The handler for unexpected operation-level failures.</param>
-    public ProcessingOrchestrator(IFileScanner scanner, IFileMetadataReader metadataReader, IFileHasher hasher, IFileClassifier classifier, IDuplicateDetector duplicateDetector, IRuleEngine ruleEngine, IActionPlanner planner, IConflictResolver conflictResolver, ILoggingService loggingService, IErrorHandler errorHandler)
+    /// <param name="contentIndexingService">The optional failure-isolated local content extraction stage.</param>
+    public ProcessingOrchestrator(IFileScanner scanner, IFileMetadataReader metadataReader, IFileHasher hasher, IFileClassifier classifier, IDuplicateDetector duplicateDetector, IRuleEngine ruleEngine, IActionPlanner planner, IConflictResolver conflictResolver, ILoggingService loggingService, IErrorHandler errorHandler, IContentIndexingService? contentIndexingService = null)
     {
         _scanner = scanner ?? throw new ArgumentNullException(nameof(scanner));
         _metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
@@ -46,6 +49,7 @@ public sealed class ProcessingOrchestrator : IProcessingOrchestrator
         _conflictResolver = conflictResolver ?? throw new ArgumentNullException(nameof(conflictResolver));
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService))).CreateLogger(LoggerCategory);
         _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        _contentIndexingService = contentIndexingService;
     }
 
     /// <inheritdoc />
@@ -73,6 +77,23 @@ public sealed class ProcessingOrchestrator : IProcessingOrchestrator
 
             progress?.Report(new ProcessingProgress(ProcessingProgressStage.ReadingMetadata));
             var metadata = await _metadataReader.ReadAsync(scan.Files, cancellationToken).ConfigureAwait(false);
+            if (_contentIndexingService is not null)
+            {
+                progress?.Report(new ProcessingProgress(ProcessingProgressStage.ExtractingContent));
+                try
+                {
+                    await _contentIndexingService.IndexAsync(metadata.Files, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Local content extraction was unavailable; the primary scan pipeline will continue.");
+                }
+            }
+
             progress?.Report(new ProcessingProgress(ProcessingProgressStage.Hashing));
             var hashing = await _hasher.HashAsync(metadata.Files, cancellationToken).ConfigureAwait(false);
             progress?.Report(new ProcessingProgress(ProcessingProgressStage.Classifying));

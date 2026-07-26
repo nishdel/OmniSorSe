@@ -50,9 +50,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnNavigationSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
+    private async void OnNavigationButtonClick(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
     {
-        if (DataContext is MainViewModel viewModel && sender is ListBox { SelectedItem: NavigationItem item })
+        if (DataContext is MainViewModel viewModel &&
+            sender is Button { DataContext: NavigationItem item })
         {
             await viewModel.NavigateAsync(item.Destination);
         }

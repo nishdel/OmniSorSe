@@ -20,7 +20,7 @@ namespace OpenSorSe.Desktop.Tests;
 public sealed class MainViewModelTests
 {
     /// <summary>
-    /// Verifies the shell starts on Dashboard and exposes destinations in documented enum order.
+    /// Verifies the shell starts on Dashboard and exposes only regular destinations by default.
     /// </summary>
     [Fact]
     public void Constructor_InitializesDashboardNavigation()
@@ -28,9 +28,51 @@ public sealed class MainViewModelTests
         var viewModel = new MainViewModel();
 
         Assert.Equal(NavigationDestination.Dashboard, viewModel.SelectedDestination);
-        Assert.Equal("Dashboard", viewModel.CurrentPageTitle);
+        Assert.Equal("Home", viewModel.CurrentPageTitle);
         Assert.Equal("Ready", viewModel.StatusText);
-        Assert.Equal(Enum.GetValues<NavigationDestination>(), viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.CatalogComparison, viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.StructureHistory, viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.Diagnostics, viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.History, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.Scan, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.Results, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.Catalog, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.Duplicates, viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.CatalogSearch, viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.SemanticSearch, viewModel.Destinations);
+    }
+
+    /// <summary>Verifies Help is regular, immediately precedes About, and contextual Back restores its origin.</summary>
+    [Fact]
+    public void ContextualHelp_OpensExpectedTopicAndReturnsToOrigin()
+    {
+        using var viewModel = new MainViewModel();
+        var labels = viewModel.NavigationItems.Select(item => item.Label).ToArray();
+        Assert.Equal(Array.IndexOf(labels, "About") - 1, Array.IndexOf(labels, "Help"));
+        viewModel.Navigate(NavigationDestination.CatalogSearch);
+
+        viewModel.CatalogSearch.HelpCommand.Execute(null);
+
+        Assert.Equal(NavigationDestination.Help, viewModel.SelectedDestination);
+        Assert.Equal(HelpTopicId.CatalogSearch, viewModel.Help.SelectedTopic.Id);
+        Assert.Equal(NavigationDestination.CatalogSearch, viewModel.Help.PreviousDestination);
+        viewModel.Help.BackCommand.Execute(null);
+        Assert.Equal(NavigationDestination.CatalogSearch, viewModel.SelectedDestination);
+    }
+
+    /// <summary>Verifies the shell retains one Settings instance across navigation and Help round-trips.</summary>
+    [Fact]
+    public void Navigation_RetainsLongLivedSettingsInstance()
+    {
+        using var viewModel = new MainViewModel();
+        var settings = viewModel.Settings;
+        viewModel.Navigate(NavigationDestination.Settings);
+        settings.HelpCommand.Execute(null);
+        viewModel.Help.BackCommand.Execute(null);
+        viewModel.Navigate(NavigationDestination.Dashboard);
+        viewModel.Navigate(NavigationDestination.Settings);
+
+        Assert.Same(settings, viewModel.Settings);
     }
 
     /// <summary>
@@ -52,6 +94,7 @@ public sealed class MainViewModelTests
         Assert.False(viewModel.IsScanSelected);
         Assert.False(viewModel.IsResultsSelected);
         Assert.False(viewModel.IsRulesSelected);
+        Assert.False(viewModel.IsStructureHistorySelected);
         Assert.False(viewModel.IsDiagnosticsSelected);
         Assert.False(viewModel.IsHistorySelected);
         Assert.False(viewModel.IsAboutSelected);
@@ -61,6 +104,7 @@ public sealed class MainViewModelTests
         Assert.Contains(nameof(MainViewModel.IsScanSelected), changedProperties);
         Assert.Contains(nameof(MainViewModel.IsResultsSelected), changedProperties);
         Assert.Contains(nameof(MainViewModel.IsRulesSelected), changedProperties);
+        Assert.Contains(nameof(MainViewModel.IsStructureHistorySelected), changedProperties);
         Assert.Contains(nameof(MainViewModel.IsSettingsSelected), changedProperties);
         Assert.Contains(nameof(MainViewModel.IsDiagnosticsSelected), changedProperties);
         Assert.Contains(nameof(MainViewModel.IsHistorySelected), changedProperties);
@@ -86,29 +130,69 @@ public sealed class MainViewModelTests
     [Fact]
     public void NavigationItems_ExposeReadableLabelsAndTrackDestination()
     {
-        using var viewModel = new MainViewModel();
+        using var viewModel = new MainViewModel(new TestConfigurationService(advancedEnabled: true), new TestLoggingService());
 
-        Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison && item.Label == "Compare snapshots");
+        Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
+        Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
+        Assert.Equal(
+            ["Home", "Scan", "Files", "Duplicates", "Saved scans", "Settings"],
+            viewModel.PrimaryNavigationItems.Select(item => item.Label));
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Label == nameof(NavigationDestination.CatalogComparison));
 
         viewModel.Navigate(NavigationDestination.CatalogSearch);
 
-        Assert.Equal(NavigationDestination.CatalogSearch, viewModel.SelectedNavigationItem.Destination);
-        Assert.Equal("Catalog search", viewModel.SelectedNavigationItem.Label);
+        Assert.Equal(NavigationDestination.Catalog, viewModel.SelectedNavigationItem.Destination);
+        Assert.Equal("Saved scans", viewModel.SelectedNavigationItem.Label);
+        Assert.True(viewModel.IsSavedScansAreaSelected);
+    }
+
+    /// <summary>Verifies Structure history is an advanced hosted page with a controlled unavailable state in preview composition.</summary>
+    [Fact]
+    public async Task NavigateAsync_ToStructureHistory_HostsAdvancedHistoryPage()
+    {
+        using var viewModel = new MainViewModel(
+            new TestConfigurationService(advancedEnabled: true),
+            new TestLoggingService());
+
+        await viewModel.NavigateAsync(NavigationDestination.StructureHistory);
+
+        Assert.True(viewModel.IsStructureHistorySelected);
+        Assert.False(viewModel.IsFeaturePageSelected);
+        Assert.Equal("Folder plans", viewModel.CurrentPageTitle);
+        Assert.Contains("unavailable", viewModel.StructureHistory.StatusText, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Verifies the v0.9 comparison destination is fully hosted rather than falling through to a placeholder.</summary>
     [Fact]
     public void Navigate_ToCatalogComparison_ExposesComparisonState()
     {
-        using var viewModel = new MainViewModel();
+        using var viewModel = new MainViewModel(new TestConfigurationService(advancedEnabled: true), new TestLoggingService());
 
         viewModel.Navigate(NavigationDestination.CatalogComparison);
 
         Assert.True(viewModel.IsCatalogComparisonSelected);
         Assert.False(viewModel.IsFeaturePageSelected);
-        Assert.Equal("Compare snapshots", viewModel.CurrentPageTitle);
+        Assert.Equal("Compare scans", viewModel.CurrentPageTitle);
+        Assert.Equal(SavedScansSection.Compare, viewModel.SelectedSavedScansSection);
         Assert.NotNull(viewModel.CatalogComparison);
+    }
+
+    /// <summary>Verifies Semantic Search Beta is independently gated and does not require AI or advanced mode.</summary>
+    [Fact]
+    public void Constructor_SemanticSearchEnabled_ExposesMeaningSearchFromFiles()
+    {
+        using var viewModel = new MainViewModel(
+            new TestConfigurationService(semanticSearchEnabled: true),
+            new TestLoggingService());
+
+        Assert.DoesNotContain(NavigationDestination.SemanticSearch, viewModel.Destinations);
+        Assert.True(viewModel.Results.IsMeaningSearchEnabled);
+        Assert.False(viewModel.EnableAi);
+        Assert.False(viewModel.ShowAdvancedFeatures);
+        viewModel.Results.OpenMeaningSearchCommand.Execute(null);
+        Assert.True(viewModel.IsSemanticSearchSelected);
+        Assert.Equal("Meaning Search (Beta)", viewModel.CurrentPageTitle);
+        Assert.Equal(NavigationDestination.Results, viewModel.SelectedNavigationItem.Destination);
     }
 
     /// <summary>Verifies sidebar-style navigation awaits the destination refresh instead of abandoning background work.</summary>
@@ -117,7 +201,7 @@ public sealed class MainViewModelTests
     {
         var catalogStore = new RecordingCatalogStore();
         using var viewModel = new MainViewModel(
-            new TestConfigurationService(catalogEnabled: true),
+            new TestConfigurationService(catalogEnabled: true, advancedEnabled: true),
             new TestLoggingService(),
             new RecordingController(),
             new ResultsSnapshotProjector(),
@@ -130,6 +214,81 @@ public sealed class MainViewModelTests
         Assert.Equal(NavigationDestination.CatalogComparison, viewModel.SelectedDestination);
         Assert.Equal(1, catalogStore.ListCallCount);
         Assert.Equal("No saved snapshots are available for comparison.", viewModel.CatalogComparison.StatusText);
+    }
+
+    /// <summary>Verifies direct or stale navigation cannot bypass hidden advanced-feature policy.</summary>
+    [Fact]
+    public void Navigate_HiddenAdvancedDestination_IsRejectedWithoutChangingSelection()
+    {
+        using var viewModel = new MainViewModel();
+
+        viewModel.Navigate(NavigationDestination.Diagnostics);
+
+        Assert.Equal(NavigationDestination.Dashboard, viewModel.SelectedDestination);
+        Assert.Contains("hidden", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies saving advanced mode off rebuilds navigation and safely recovers a hidden selection.</summary>
+    [Fact]
+    public async Task SaveSettings_DisablesAdvancedMode_RecoversToDashboard()
+    {
+        var configuration = new TestConfigurationService(advancedEnabled: true);
+        using var viewModel = new MainViewModel(configuration, new TestLoggingService());
+        viewModel.Navigate(NavigationDestination.Diagnostics);
+        viewModel.Settings.Draft.ShowAdvancedFeatures = false;
+
+        await viewModel.Settings.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(NavigationDestination.Dashboard, viewModel.SelectedDestination);
+        Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.Diagnostics);
+        Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.Results);
+    }
+
+    /// <summary>Verifies shell switches persist, synchronize the Settings draft, and never contact the AI provider.</summary>
+    [Fact]
+    public async Task ShellFeatureSwitches_UpdateSettingsWithoutProviderActivity()
+    {
+        var configuration = new TestConfigurationService();
+        var ai = new NoopAiSuggestionService();
+        using var viewModel = new MainViewModel(
+            configuration,
+            new TestLoggingService(),
+            new RecordingController(),
+            new ResultsSnapshotProjector(),
+            ai);
+
+        Assert.False(viewModel.EnableAi);
+        Assert.False(viewModel.ShowAdvancedFeatures);
+        Assert.Equal("AI: Off", viewModel.AiShellStatusText);
+
+        viewModel.EnableAi = true;
+        viewModel.ShowAdvancedFeatures = true;
+        await configuration.Saved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await WaitUntilAsync(
+            () => configuration.Current.Ai.Enabled &&
+                  configuration.Current.Features.ShowAdvancedFeatures);
+
+        Assert.True(viewModel.Settings.Draft.AiEnabled);
+        Assert.True(viewModel.Settings.Draft.ShowAdvancedFeatures);
+        Assert.Equal("AI: On", viewModel.AiShellStatusText);
+        Assert.Equal("Advanced: On", viewModel.AdvancedShellStatusText);
+        Assert.Equal(0, ai.ProviderActivityCount);
+    }
+
+    /// <summary>Verifies the global Advanced switch safely leaves a page that becomes hidden.</summary>
+    [Fact]
+    public async Task ShellAdvancedSwitch_DisablingOnAdvancedPage_FallsBackToDashboard()
+    {
+        var configuration = new TestConfigurationService(advancedEnabled: true);
+        using var viewModel = new MainViewModel(configuration, new TestLoggingService());
+        viewModel.Navigate(NavigationDestination.Diagnostics);
+
+        viewModel.ShowAdvancedFeatures = false;
+        await configuration.Saved.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await WaitUntilAsync(() => viewModel.SelectedDestination == NavigationDestination.Dashboard);
+
+        Assert.DoesNotContain(NavigationDestination.Diagnostics, viewModel.Destinations);
+        Assert.False(viewModel.Settings.Draft.ShowAdvancedFeatures);
     }
 
     /// <summary>
@@ -336,12 +495,23 @@ public sealed class MainViewModelTests
 
     private sealed class TestConfigurationService : IConfigurationService
     {
-        public TestConfigurationService(bool catalogEnabled = false)
+        public TestConfigurationService(
+            bool catalogEnabled = false,
+            bool advancedEnabled = false,
+            bool semanticSearchEnabled = false)
         {
-            Current = new ApplicationSettings { Catalog = new CatalogSettings { Enabled = catalogEnabled } };
+            Current = new ApplicationSettings
+            {
+                Features = new FeatureSettings { ShowAdvancedFeatures = advancedEnabled },
+                Catalog = new CatalogSettings { Enabled = catalogEnabled },
+                SemanticSearch = new SemanticSearchSettings { Enabled = semanticSearchEnabled },
+            };
         }
 
         public ApplicationSettings Current { get; private set; }
+
+        public TaskCompletionSource<ApplicationSettings> Saved { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
@@ -350,8 +520,20 @@ public sealed class MainViewModelTests
         public Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken)
         {
             Current = settings;
+            Saved.TrySetResult(settings);
             return Task.CompletedTask;
         }
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var timeout = DateTime.UtcNow.AddSeconds(2);
+        while (!condition() && DateTime.UtcNow < timeout)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition());
     }
 
     private sealed class TestLoggingService : ILoggingService
@@ -430,17 +612,35 @@ public sealed class MainViewModelTests
 
     private sealed class NoopAiSuggestionService : IAiSuggestionService
     {
-        public Task<AiConnectionResult> TestConnectionAsync(AiSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiConnectionResult(AiAvailabilityState.Disabled, "Disabled", []));
+        public int ProviderActivityCount { get; private set; }
 
-        public Task<AiConnectionResult> DiscoverModelsAsync(AiSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiConnectionResult(AiAvailabilityState.Disabled, "Disabled", []));
+        public Task<AiConnectionResult> TestConnectionAsync(ApplicationSettings settings, CancellationToken cancellationToken)
+        {
+            ProviderActivityCount++;
+            return Task.FromResult(new AiConnectionResult(AiAvailabilityState.Disabled, "Disabled", []));
+        }
 
-        public Task<AiFileSuggestionResult> GenerateFileSuggestionAsync(AiFileSuggestionRequest request, AiSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiFileSuggestionResult(AiAvailabilityState.Disabled, "Disabled", null));
+        public Task<AiConnectionResult> DiscoverModelsAsync(ApplicationSettings settings, CancellationToken cancellationToken)
+        {
+            ProviderActivityCount++;
+            return Task.FromResult(new AiConnectionResult(AiAvailabilityState.Disabled, "Disabled", []));
+        }
 
-        public Task<AiFolderStructureResult> GenerateFolderStructureAsync(AiFolderStructureRequest request, AiSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiFolderStructureResult(AiAvailabilityState.Disabled, "Disabled", null));
+        public Task<AiFileRenameResult> GenerateFileRenameAsync(AiFileRenameRequest request, AiSettings settings, CancellationToken cancellationToken)
+        {
+            ProviderActivityCount++;
+            return Task.FromResult(new AiFileRenameResult(AiAvailabilityState.Disabled, "Disabled", null));
+        }
 
-        public Task RecordDecisionAsync(AiSuggestionDecision decision, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<AiFolderStructureResult> GenerateFolderStructureAsync(AiFolderStructureRequest request, AiSettings settings, CancellationToken cancellationToken)
+        {
+            ProviderActivityCount++;
+            return Task.FromResult(new AiFolderStructureResult(AiAvailabilityState.Disabled, "Disabled", null));
+        }
 
-        public Task ResetDecisionHistoryAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<AiDecisionResult> RecordDecisionAsync(AiSuggestionDecision decision, AiSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiDecisionResult(AiAvailabilityState.Disabled, "Disabled"));
+
+        public Task<AiDecisionResult> ResetDecisionHistoryAsync(ApplicationSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiDecisionResult(AiAvailabilityState.Disabled, "Disabled"));
     }
 
     private sealed class RecordingSavedSearchStore : ISavedCatalogSearchStore

@@ -1,0 +1,719 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>OpenSorSe.Rules</name>
+    </assembly>
+    <members>
+        <member name="T:OpenSorSe.Rules.ActionPlanner">
+            <summary>
+            Produces deterministic lexical operation plans without inspecting or changing the filesystem.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Rules.ActionPlanner.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>
+            Initializes an action planner using shared diagnostics infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected operation failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.ActionPlanner.PlanAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Rules.Models.RuleDecision},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Rules.ConflictResolver">
+            <summary>
+            Resolves deterministic lexical conflicts within a plan without filesystem access.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Rules.ConflictResolver.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>
+            Initializes a conflict resolver using shared diagnostics infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected operation failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.ConflictResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Rules.Models.PlannedOperation},OpenSorSe.Rules.Models.ConflictResolutionOptions,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:OpenSorSe.Rules.IActionPlanner">
+            <summary>
+            Converts rule decisions into immutable operations without executing filesystem changes.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Rules.IActionPlanner.PlanAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Rules.Models.RuleDecision},System.Threading.CancellationToken)">
+            <summary>
+            Plans supported actions from the supplied decisions in input order.
+            </summary>
+            <param name="decisions">The rule decisions to plan.</param>
+            <param name="cancellationToken">A token used to cancel planning.</param>
+            <returns>The operations, statistics, and recoverable issues.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="decisions"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when the collection contains a null decision.</exception>
+            <exception cref="T:System.OperationCanceledException">Thrown when cancellation is requested.</exception>
+        </member>
+        <member name="T:OpenSorSe.Rules.IConflictResolver">
+            <summary>
+            Resolves lexical conflicts within planned operations without inspecting the filesystem.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Rules.IConflictResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Rules.Models.PlannedOperation},OpenSorSe.Rules.Models.ConflictResolutionOptions,System.Threading.CancellationToken)">
+            <summary>
+            Resolves conflicts in supplied operation order using the requested deterministic strategy.
+            </summary>
+            <param name="operations">The planned operations to validate and resolve.</param>
+            <param name="options">Optional conflict-resolution options.</param>
+            <param name="cancellationToken">A token used to cancel resolution.</param>
+            <returns>The accepted operations, statistics, and recoverable issues.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="operations"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when the collection contains null entries or options are invalid.</exception>
+            <exception cref="T:System.OperationCanceledException">Thrown when cancellation is requested.</exception>
+        </member>
+        <member name="T:OpenSorSe.Rules.IRuleEngine">
+            <summary>
+            Evaluates configured rules against enriched file entries without executing actions.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Rules.IRuleEngine.EvaluateAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.FileRule},System.Threading.CancellationToken)">
+            <summary>
+            Evaluates the supplied files against the supplied rules in deterministic input order.
+            </summary>
+            <param name="files">The enriched entries to evaluate.</param>
+            <param name="rules">The ordered rules to validate and evaluate.</param>
+            <param name="cancellationToken">A token used to cancel the operation.</param>
+            <returns>The proposed decisions and evaluation statistics.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when an input collection is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when inputs or rules are invalid.</exception>
+            <exception cref="T:System.OperationCanceledException">Thrown when cancellation is requested.</exception>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ActionPlanningIssue">
+            <summary>
+            Describes one recoverable planning issue for an input decision.
+            </summary>
+            <param name="DecisionIndex">The zero-based input decision position.</param>
+            <param name="FilePath">The supplied file path, if available.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-readable issue description.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ActionPlanningIssue.#ctor(System.Int32,System.String,OpenSorSe.Rules.Models.ActionPlanningIssueKind,System.String)">
+            <summary>
+            Describes one recoverable planning issue for an input decision.
+            </summary>
+            <param name="DecisionIndex">The zero-based input decision position.</param>
+            <param name="FilePath">The supplied file path, if available.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-readable issue description.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningIssue.DecisionIndex">
+            <summary>The zero-based input decision position.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningIssue.FilePath">
+            <summary>The supplied file path, if available.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningIssue.Kind">
+            <summary>The issue category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningIssue.Message">
+            <summary>A user-readable issue description.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ActionPlanningIssueKind">
+            <summary>
+            Identifies a recoverable per-decision action-planning problem.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ActionPlanningIssueKind.InvalidDecision">
+            <summary>The decision does not provide valid planning input.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ActionPlanningIssueKind.MissingMetadata">
+            <summary>Required metadata is unavailable.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ActionPlanningIssueKind.InvalidDestinationPath">
+            <summary>A destination path is invalid for lexical planning.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ActionPlanningIssueKind.InvalidNameTemplate">
+            <summary>A rename template is invalid.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ActionPlanningIssueKind.SourceEqualsDestination">
+            <summary>The normalized source and destination paths are equal.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ActionPlanningIssueKind.UnsupportedAction">
+            <summary>The action kind is not supported by this planner.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ActionPlanningStatistics">
+            <summary>
+            Contains counts produced while planning proposed actions.
+            </summary>
+            <param name="DecisionsProcessed">The number of input decisions examined.</param>
+            <param name="OperationsPlanned">The number of returned operations.</param>
+            <param name="DecisionsWithNoAction">The number of no-action decisions.</param>
+            <param name="DecisionsFailed">The number of decisions producing an issue.</param>
+            <param name="MoveOperations">The number of planned moves.</param>
+            <param name="CopyOperations">The number of planned copies.</param>
+            <param name="RenameOperations">The number of planned renames.</param>
+            <param name="DeleteOperations">The number of planned deletes.</param>
+            <param name="IssuesEncountered">The number of returned issues.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ActionPlanningStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>
+            Contains counts produced while planning proposed actions.
+            </summary>
+            <param name="DecisionsProcessed">The number of input decisions examined.</param>
+            <param name="OperationsPlanned">The number of returned operations.</param>
+            <param name="DecisionsWithNoAction">The number of no-action decisions.</param>
+            <param name="DecisionsFailed">The number of decisions producing an issue.</param>
+            <param name="MoveOperations">The number of planned moves.</param>
+            <param name="CopyOperations">The number of planned copies.</param>
+            <param name="RenameOperations">The number of planned renames.</param>
+            <param name="DeleteOperations">The number of planned deletes.</param>
+            <param name="IssuesEncountered">The number of returned issues.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.DecisionsProcessed">
+            <summary>The number of input decisions examined.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.OperationsPlanned">
+            <summary>The number of returned operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.DecisionsWithNoAction">
+            <summary>The number of no-action decisions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.DecisionsFailed">
+            <summary>The number of decisions producing an issue.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.MoveOperations">
+            <summary>The number of planned moves.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.CopyOperations">
+            <summary>The number of planned copies.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.RenameOperations">
+            <summary>The number of planned renames.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.DeleteOperations">
+            <summary>The number of planned deletes.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanningStatistics.IssuesEncountered">
+            <summary>The number of returned issues.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ActionPlanResult">
+            <summary>
+            Contains planned operations, planning statistics, and recoverable planning issues.
+            </summary>
+            <param name="Operations">Successful operations in input-decision order.</param>
+            <param name="Statistics">Aggregate planning counts.</param>
+            <param name="Issues">Recoverable issues in input-decision order.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ActionPlanResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.PlannedOperation},OpenSorSe.Rules.Models.ActionPlanningStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.ActionPlanningIssue})">
+            <summary>
+            Contains planned operations, planning statistics, and recoverable planning issues.
+            </summary>
+            <param name="Operations">Successful operations in input-decision order.</param>
+            <param name="Statistics">Aggregate planning counts.</param>
+            <param name="Issues">Recoverable issues in input-decision order.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanResult.Operations">
+            <summary>Successful operations in input-decision order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanResult.Statistics">
+            <summary>Aggregate planning counts.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ActionPlanResult.Issues">
+            <summary>Recoverable issues in input-decision order.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ConflictResolutionIssue">
+            <summary>
+            Describes one recoverable issue for an input planned operation.
+            </summary>
+            <param name="OperationIndex">The zero-based input operation position.</param>
+            <param name="OperationId">The supplied operation identifier, if available.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-readable description without raw exception details.</param>
+            <param name="ConflictingOperationId">The earlier accepted or input operation causing the issue, if applicable.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ConflictResolutionIssue.#ctor(System.Int32,System.String,OpenSorSe.Rules.Models.ConflictResolutionIssueKind,System.String,System.String)">
+            <summary>
+            Describes one recoverable issue for an input planned operation.
+            </summary>
+            <param name="OperationIndex">The zero-based input operation position.</param>
+            <param name="OperationId">The supplied operation identifier, if available.</param>
+            <param name="Kind">The issue category.</param>
+            <param name="Message">A user-readable description without raw exception details.</param>
+            <param name="ConflictingOperationId">The earlier accepted or input operation causing the issue, if applicable.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionIssue.OperationIndex">
+            <summary>The zero-based input operation position.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionIssue.OperationId">
+            <summary>The supplied operation identifier, if available.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionIssue.Kind">
+            <summary>The issue category.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionIssue.Message">
+            <summary>A user-readable description without raw exception details.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionIssue.ConflictingOperationId">
+            <summary>The earlier accepted or input operation causing the issue, if applicable.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ConflictResolutionIssueKind">
+            <summary>
+            Identifies a recoverable intra-plan conflict-resolution issue.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ConflictResolutionIssueKind.InvalidOperation">
+            <summary>The operation does not meet the required lexical contract.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ConflictResolutionIssueKind.DuplicateOperationId">
+            <summary>The operation identifier was already used by an earlier input operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ConflictResolutionIssueKind.DuplicateOperation">
+            <summary>The operation duplicates an earlier accepted operation signature.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ConflictResolutionIssueKind.DestinationConflict">
+            <summary>The operation targets a destination already owned by an accepted operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ConflictResolutionIssueKind.SourceConflict">
+            <summary>The operation has an unsafe source relationship with an accepted operation.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ConflictResolutionOptions">
+            <summary>
+            Configures deterministic conflict-resolution behavior.
+            </summary>
+            <param name="Strategy">The strategy used to resolve conflicts.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ConflictResolutionOptions.#ctor(OpenSorSe.Rules.Models.ConflictResolutionStrategy)">
+            <summary>
+            Configures deterministic conflict-resolution behavior.
+            </summary>
+            <param name="Strategy">The strategy used to resolve conflicts.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionOptions.Strategy">
+            <summary>The strategy used to resolve conflicts.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionOptions.Default">
+            <summary>
+            Gets the default v0.1 keep-first strategy.
+            </summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ConflictResolutionResult">
+            <summary>
+            Contains accepted operations, statistics, and recoverable intra-plan issues.
+            </summary>
+            <param name="Operations">Accepted original operations in input order.</param>
+            <param name="Statistics">Aggregate conflict-resolution counts.</param>
+            <param name="Issues">Recoverable issues in input order.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ConflictResolutionResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.PlannedOperation},OpenSorSe.Rules.Models.ConflictResolutionStatistics,System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.ConflictResolutionIssue})">
+            <summary>
+            Contains accepted operations, statistics, and recoverable intra-plan issues.
+            </summary>
+            <param name="Operations">Accepted original operations in input order.</param>
+            <param name="Statistics">Aggregate conflict-resolution counts.</param>
+            <param name="Issues">Recoverable issues in input order.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionResult.Operations">
+            <summary>Accepted original operations in input order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionResult.Statistics">
+            <summary>Aggregate conflict-resolution counts.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionResult.Issues">
+            <summary>Recoverable issues in input order.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ConflictResolutionStatistics">
+            <summary>
+            Contains counts produced by intra-plan conflict resolution.
+            </summary>
+            <param name="OperationsProcessed">The number of input operations examined.</param>
+            <param name="OperationsAccepted">The number of returned accepted operations.</param>
+            <param name="OperationsRejected">The number of operations producing an issue.</param>
+            <param name="MoveOperationsAccepted">The number of accepted move operations.</param>
+            <param name="CopyOperationsAccepted">The number of accepted copy operations.</param>
+            <param name="RenameOperationsAccepted">The number of accepted rename operations.</param>
+            <param name="DeleteOperationsAccepted">The number of accepted delete operations.</param>
+            <param name="DuplicateOperationIds">The number of duplicate operation identifier issues.</param>
+            <param name="DuplicateOperations">The number of duplicate operation signature issues.</param>
+            <param name="DestinationConflicts">The number of destination conflict issues.</param>
+            <param name="SourceConflicts">The number of source conflict issues.</param>
+            <param name="IssuesEncountered">The total number of returned issues.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.ConflictResolutionStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>
+            Contains counts produced by intra-plan conflict resolution.
+            </summary>
+            <param name="OperationsProcessed">The number of input operations examined.</param>
+            <param name="OperationsAccepted">The number of returned accepted operations.</param>
+            <param name="OperationsRejected">The number of operations producing an issue.</param>
+            <param name="MoveOperationsAccepted">The number of accepted move operations.</param>
+            <param name="CopyOperationsAccepted">The number of accepted copy operations.</param>
+            <param name="RenameOperationsAccepted">The number of accepted rename operations.</param>
+            <param name="DeleteOperationsAccepted">The number of accepted delete operations.</param>
+            <param name="DuplicateOperationIds">The number of duplicate operation identifier issues.</param>
+            <param name="DuplicateOperations">The number of duplicate operation signature issues.</param>
+            <param name="DestinationConflicts">The number of destination conflict issues.</param>
+            <param name="SourceConflicts">The number of source conflict issues.</param>
+            <param name="IssuesEncountered">The total number of returned issues.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.OperationsProcessed">
+            <summary>The number of input operations examined.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.OperationsAccepted">
+            <summary>The number of returned accepted operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.OperationsRejected">
+            <summary>The number of operations producing an issue.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.MoveOperationsAccepted">
+            <summary>The number of accepted move operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.CopyOperationsAccepted">
+            <summary>The number of accepted copy operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.RenameOperationsAccepted">
+            <summary>The number of accepted rename operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.DeleteOperationsAccepted">
+            <summary>The number of accepted delete operations.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.DuplicateOperationIds">
+            <summary>The number of duplicate operation identifier issues.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.DuplicateOperations">
+            <summary>The number of duplicate operation signature issues.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.DestinationConflicts">
+            <summary>The number of destination conflict issues.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.SourceConflicts">
+            <summary>The number of source conflict issues.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.ConflictResolutionStatistics.IssuesEncountered">
+            <summary>The total number of returned issues.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.ConflictResolutionStrategy">
+            <summary>
+            Defines the deterministic policy used to resolve intra-plan conflicts.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.ConflictResolutionStrategy.KeepFirst">
+            <summary>Accepts the earliest valid operation and rejects later conflicting operations.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.FileRule">
+            <summary>
+            Defines an ordered, priority-based rule evaluated against a file entry.
+            </summary>
+            <param name="Id">The case-insensitively unique rule identifier.</param>
+            <param name="Name">The human-readable rule name.</param>
+            <param name="Priority">The precedence value used after matching.</param>
+            <param name="Conditions">The non-empty AND-combined conditions.</param>
+            <param name="Action">The proposed, non-executed action.</param>
+            <param name="IsEnabled">Whether the rule participates in evaluation.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.FileRule.#ctor(System.String,System.String,System.Int32,System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.RuleCondition},OpenSorSe.Rules.Models.RuleAction,System.Boolean)">
+            <summary>
+            Defines an ordered, priority-based rule evaluated against a file entry.
+            </summary>
+            <param name="Id">The case-insensitively unique rule identifier.</param>
+            <param name="Name">The human-readable rule name.</param>
+            <param name="Priority">The precedence value used after matching.</param>
+            <param name="Conditions">The non-empty AND-combined conditions.</param>
+            <param name="Action">The proposed, non-executed action.</param>
+            <param name="IsEnabled">Whether the rule participates in evaluation.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.FileRule.Id">
+            <summary>The case-insensitively unique rule identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.FileRule.Name">
+            <summary>The human-readable rule name.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.FileRule.Priority">
+            <summary>The precedence value used after matching.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.FileRule.Conditions">
+            <summary>The non-empty AND-combined conditions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.FileRule.Action">
+            <summary>The proposed, non-executed action.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.FileRule.IsEnabled">
+            <summary>Whether the rule participates in evaluation.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.PlannedOperation">
+            <summary>
+            Represents one immutable, non-executed filesystem operation.
+            </summary>
+            <param name="OperationId">The deterministic identifier within one plan.</param>
+            <param name="Kind">The planned operation kind.</param>
+            <param name="File">The original immutable file entry.</param>
+            <param name="SourcePath">The source path copied from <paramref name="File"/>.</param>
+            <param name="DestinationPath">The planned destination path, or null for delete.</param>
+            <param name="SelectedRuleId">The originating selected rule identifier.</param>
+            <param name="SelectedRuleName">The originating selected rule name.</param>
+            <param name="SelectedRulePriority">The originating selected rule priority.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.PlannedOperation.#ctor(System.String,OpenSorSe.Rules.Models.PlannedOperationKind,OpenSorSe.Scanner.Models.FileEntry,System.String,System.String,System.String,System.String,System.Nullable{System.Int32})">
+            <summary>
+            Represents one immutable, non-executed filesystem operation.
+            </summary>
+            <param name="OperationId">The deterministic identifier within one plan.</param>
+            <param name="Kind">The planned operation kind.</param>
+            <param name="File">The original immutable file entry.</param>
+            <param name="SourcePath">The source path copied from <paramref name="File"/>.</param>
+            <param name="DestinationPath">The planned destination path, or null for delete.</param>
+            <param name="SelectedRuleId">The originating selected rule identifier.</param>
+            <param name="SelectedRuleName">The originating selected rule name.</param>
+            <param name="SelectedRulePriority">The originating selected rule priority.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.OperationId">
+            <summary>The deterministic identifier within one plan.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.Kind">
+            <summary>The planned operation kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.File">
+            <summary>The original immutable file entry.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.SourcePath">
+            <summary>The source path copied from <paramref name="File"/>.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.DestinationPath">
+            <summary>The planned destination path, or null for delete.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.SelectedRuleId">
+            <summary>The originating selected rule identifier.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.SelectedRuleName">
+            <summary>The originating selected rule name.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.PlannedOperation.SelectedRulePriority">
+            <summary>The originating selected rule priority.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.PlannedOperationKind">
+            <summary>
+            Identifies a filesystem operation proposed for later execution.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.PlannedOperationKind.Move">
+            <summary>A planned move operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.PlannedOperationKind.Copy">
+            <summary>A planned copy operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.PlannedOperationKind.Rename">
+            <summary>A planned rename operation.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.PlannedOperationKind.Delete">
+            <summary>A planned delete operation.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleAction">
+            <summary>
+            Describes an unevaluated, non-executed action proposed by a file rule.
+            </summary>
+            <param name="Kind">The proposed action kind.</param>
+            <param name="DestinationPath">The unexpanded destination path for move or copy actions.</param>
+            <param name="NameTemplate">The unexpanded name template for rename actions.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.RuleAction.#ctor(OpenSorSe.Rules.Models.RuleActionKind,System.String,System.String)">
+            <summary>
+            Describes an unevaluated, non-executed action proposed by a file rule.
+            </summary>
+            <param name="Kind">The proposed action kind.</param>
+            <param name="DestinationPath">The unexpanded destination path for move or copy actions.</param>
+            <param name="NameTemplate">The unexpanded name template for rename actions.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleAction.Kind">
+            <summary>The proposed action kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleAction.DestinationPath">
+            <summary>The unexpanded destination path for move or copy actions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleAction.NameTemplate">
+            <summary>The unexpanded name template for rename actions.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleActionKind">
+            <summary>
+            Identifies a proposed future action without executing it.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleActionKind.NoAction">
+            <summary>No action is proposed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleActionKind.Move">
+            <summary>A future move action is proposed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleActionKind.Copy">
+            <summary>A future copy action is proposed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleActionKind.Rename">
+            <summary>A future rename action is proposed.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleActionKind.Delete">
+            <summary>A future delete action is proposed.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleCondition">
+            <summary>
+            Defines one deterministic condition within a file rule.
+            </summary>
+            <param name="Kind">The condition kind.</param>
+            <param name="StringValue">The required string value for filename or extension conditions.</param>
+            <param name="LongValue">The required byte value for size conditions.</param>
+            <param name="CategoryValue">The required category for category conditions.</param>
+            <param name="DuplicateStatusValue">The required duplicate status for duplicate conditions.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.RuleCondition.#ctor(OpenSorSe.Rules.Models.RuleConditionKind,System.String,System.Nullable{System.Int64},System.Nullable{OpenSorSe.Scanner.Models.FileCategory},System.Nullable{OpenSorSe.Scanner.Models.DuplicateStatus})">
+            <summary>
+            Defines one deterministic condition within a file rule.
+            </summary>
+            <param name="Kind">The condition kind.</param>
+            <param name="StringValue">The required string value for filename or extension conditions.</param>
+            <param name="LongValue">The required byte value for size conditions.</param>
+            <param name="CategoryValue">The required category for category conditions.</param>
+            <param name="DuplicateStatusValue">The required duplicate status for duplicate conditions.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleCondition.Kind">
+            <summary>The condition kind.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleCondition.StringValue">
+            <summary>The required string value for filename or extension conditions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleCondition.LongValue">
+            <summary>The required byte value for size conditions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleCondition.CategoryValue">
+            <summary>The required category for category conditions.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleCondition.DuplicateStatusValue">
+            <summary>The required duplicate status for duplicate conditions.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleConditionKind">
+            <summary>
+            Identifies a deterministic metadata condition supported by the v0.1 rule engine.
+            </summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleConditionKind.FileCategoryEquals">
+            <summary>Matches a deterministic file category.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleConditionKind.DuplicateStatusEquals">
+            <summary>Matches an exact-content duplicate status.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleConditionKind.ExtensionEquals">
+            <summary>Matches a metadata extension.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleConditionKind.ExactFileNameEquals">
+            <summary>Matches an exact metadata filename.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleConditionKind.MinimumSizeInBytes">
+            <summary>Matches a minimum metadata size.</summary>
+        </member>
+        <member name="F:OpenSorSe.Rules.Models.RuleConditionKind.MaximumSizeInBytes">
+            <summary>Matches a maximum metadata size.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleDecision">
+            <summary>
+            Contains the winning proposed action and all matching rule identifiers for an input file entry.
+            </summary>
+            <param name="File">The original immutable input entry.</param>
+            <param name="Action">The selected action or <see cref="F:OpenSorSe.Rules.Models.RuleActionKind.NoAction"/>.</param>
+            <param name="SelectedRuleId">The selected rule identifier, if any.</param>
+            <param name="SelectedRuleName">The selected rule name, if any.</param>
+            <param name="SelectedRulePriority">The selected rule priority, if any.</param>
+            <param name="MatchingRuleIds">All enabled matching rule identifiers in supplied order.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.RuleDecision.#ctor(OpenSorSe.Scanner.Models.FileEntry,OpenSorSe.Rules.Models.RuleAction,System.String,System.String,System.Nullable{System.Int32},System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>
+            Contains the winning proposed action and all matching rule identifiers for an input file entry.
+            </summary>
+            <param name="File">The original immutable input entry.</param>
+            <param name="Action">The selected action or <see cref="F:OpenSorSe.Rules.Models.RuleActionKind.NoAction"/>.</param>
+            <param name="SelectedRuleId">The selected rule identifier, if any.</param>
+            <param name="SelectedRuleName">The selected rule name, if any.</param>
+            <param name="SelectedRulePriority">The selected rule priority, if any.</param>
+            <param name="MatchingRuleIds">All enabled matching rule identifiers in supplied order.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleDecision.File">
+            <summary>The original immutable input entry.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleDecision.Action">
+            <summary>The selected action or <see cref="F:OpenSorSe.Rules.Models.RuleActionKind.NoAction"/>.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleDecision.SelectedRuleId">
+            <summary>The selected rule identifier, if any.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleDecision.SelectedRuleName">
+            <summary>The selected rule name, if any.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleDecision.SelectedRulePriority">
+            <summary>The selected rule priority, if any.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleDecision.MatchingRuleIds">
+            <summary>All enabled matching rule identifiers in supplied order.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleEvaluationResult">
+            <summary>
+            Contains the decisions and aggregate statistics from deterministic rule evaluation.
+            </summary>
+            <param name="Decisions">One decision for every input entry in input order.</param>
+            <param name="Statistics">Aggregate evaluation counts.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.RuleEvaluationResult.#ctor(System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.RuleDecision},OpenSorSe.Rules.Models.RuleEvaluationStatistics)">
+            <summary>
+            Contains the decisions and aggregate statistics from deterministic rule evaluation.
+            </summary>
+            <param name="Decisions">One decision for every input entry in input order.</param>
+            <param name="Statistics">Aggregate evaluation counts.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationResult.Decisions">
+            <summary>One decision for every input entry in input order.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationResult.Statistics">
+            <summary>Aggregate evaluation counts.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.Models.RuleEvaluationStatistics">
+            <summary>
+            Contains counts produced by a rule-evaluation operation.
+            </summary>
+            <param name="FilesProcessed">The number of input files evaluated.</param>
+            <param name="FilesWithMatches">The number of files matching one or more enabled rules.</param>
+            <param name="FilesWithoutMatches">The number of files matching no enabled rule.</param>
+            <param name="RulesEvaluated">The total enabled rule evaluations across files.</param>
+            <param name="RuleMatches">The total successful enabled rule matches across files.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.Models.RuleEvaluationStatistics.#ctor(System.Int64,System.Int64,System.Int64,System.Int64,System.Int64)">
+            <summary>
+            Contains counts produced by a rule-evaluation operation.
+            </summary>
+            <param name="FilesProcessed">The number of input files evaluated.</param>
+            <param name="FilesWithMatches">The number of files matching one or more enabled rules.</param>
+            <param name="FilesWithoutMatches">The number of files matching no enabled rule.</param>
+            <param name="RulesEvaluated">The total enabled rule evaluations across files.</param>
+            <param name="RuleMatches">The total successful enabled rule matches across files.</param>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationStatistics.FilesProcessed">
+            <summary>The number of input files evaluated.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationStatistics.FilesWithMatches">
+            <summary>The number of files matching one or more enabled rules.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationStatistics.FilesWithoutMatches">
+            <summary>The number of files matching no enabled rule.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationStatistics.RulesEvaluated">
+            <summary>The total enabled rule evaluations across files.</summary>
+        </member>
+        <member name="P:OpenSorSe.Rules.Models.RuleEvaluationStatistics.RuleMatches">
+            <summary>The total successful enabled rule matches across files.</summary>
+        </member>
+        <member name="T:OpenSorSe.Rules.RuleEngine">
+            <summary>
+            Performs deterministic, side-effect-free evaluation of configured file rules.
+            </summary>
+        </member>
+        <member name="M:OpenSorSe.Rules.RuleEngine.#ctor(OpenSorSe.Core.Logging.ILoggingService,OpenSorSe.Core.Errors.IErrorHandler)">
+            <summary>
+            Initializes a rule engine using shared diagnostics infrastructure.
+            </summary>
+            <param name="loggingService">The centralized logging service.</param>
+            <param name="errorHandler">The handler for unexpected operation failures.</param>
+        </member>
+        <member name="M:OpenSorSe.Rules.RuleEngine.EvaluateAsync(System.Collections.Generic.IReadOnlyCollection{OpenSorSe.Scanner.Models.FileEntry},System.Collections.Generic.IReadOnlyList{OpenSorSe.Rules.Models.FileRule},System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>

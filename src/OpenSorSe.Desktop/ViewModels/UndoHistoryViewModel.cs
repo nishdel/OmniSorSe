@@ -49,7 +49,7 @@ public sealed class UndoHistoryViewModel : ViewModelBase
     /// <summary>
     /// Gets the current-release explanation shown when no operation history exists.
     /// </summary>
-    public string EmptyStateMessage => "OpenSorSe 0.9 does not execute or undo file operations. No execution history exists; completed scan snapshots are reviewed in Saved catalog.";
+    public string EmptyStateMessage => "OpenSorSe 1.0 does not expose generic rule execution or undo. Explicitly confirmed folder restructuring has separate records on Structure history; completed scan snapshots remain in Saved catalog.";
 
     /// <summary>
     /// Gets or sets the session currently selected for review.

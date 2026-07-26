@@ -10,13 +10,18 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
     private const string OwnershipMarker = "# OpenSorSe owned log v1";
     private readonly LoggingOptions _options;
     private readonly LoggingStatisticsCounter _statistics;
+    private readonly DiagnosticEventBuffer _eventBuffer;
     private readonly object _syncRoot = new();
     private bool _fileSinkUnavailable;
 
-    public LocalFileLoggerProvider(LoggingOptions options, LoggingStatisticsCounter statistics)
+    public LocalFileLoggerProvider(
+        LoggingOptions options,
+        LoggingStatisticsCounter statistics,
+        DiagnosticEventBuffer eventBuffer)
     {
         _options = options;
         _statistics = statistics;
+        _eventBuffer = eventBuffer;
         InitializeFileSink();
     }
 
@@ -29,9 +34,15 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
     public bool IsEnabled(LogLevel logLevel) =>
         logLevel is not LogLevel.None && logLevel >= _options.MinimumLevel;
 
-    public void Write(LogLevel logLevel, string categoryName, string message)
+    public void Write(
+        LogLevel logLevel,
+        string categoryName,
+        EventId eventId,
+        string message,
+        Exception? exception)
     {
         _statistics.IncrementEntry(logLevel);
+        _eventBuffer.Add(logLevel, categoryName, eventId, message, exception);
         if (!_options.FileLoggingEnabled || _fileSinkUnavailable)
         {
             return;
@@ -81,7 +92,7 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
                 writer.Flush();
                 stream.Flush(flushToDisk: true);
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+            catch (Exception writeException) when (writeException is IOException or UnauthorizedAccessException or NotSupportedException)
             {
                 _fileSinkUnavailable = true;
                 _statistics.IncrementFileWriteFailures();
@@ -177,7 +188,7 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
             ArgumentNullException.ThrowIfNull(formatter);
             if (IsEnabled(logLevel))
             {
-                provider.Write(logLevel, categoryName, formatter(state, exception));
+                provider.Write(logLevel, categoryName, eventId, formatter(state, exception), exception);
             }
         }
     }

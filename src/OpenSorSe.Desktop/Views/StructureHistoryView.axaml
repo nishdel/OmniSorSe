@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.StructureHistoryView"
+             x:DataType="vm:StructureHistoryViewModel">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+        <StackPanel Grid.Row="0" Spacing="6">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <StackPanel>
+                    <TextBlock Text="Folder Timeline" FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Text="Review proposed and applied folder structures."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="help" Content="?" Command="{Binding HelpCommand}"
+                        AutomationProperties.Name="Folder plans help" />
+            </Grid>
+            <TextBlock Text="Diagrams and previews are read-only. Applying requires a second explicit confirmation and never overwrites or deletes files."
+                       TextWrapping="Wrap" FontWeight="SemiBold" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+            <StackPanel Spacing="7">
+                <TextBlock Text="Create a folder plan" FontWeight="SemiBold" />
+                <TextBox Text="{Binding RootPath, Mode=TwoWay}"
+                         PlaceholderText="Absolute folder root"
+                         AutomationProperties.Name="Folder restructuring root" />
+                <WrapPanel>
+                    <Button Margin="0,0,8,8" Content="Preview restructuring" Command="{Binding PreviewCommand}" />
+                    <Button Margin="0,0,8,8" Content="Propose restructuring again" Command="{Binding ProposeAgainCommand}"
+                            ToolTip.Tip="Explicitly overrides repeat protection; it still produces only a reviewable proposal." />
+                    <Button Margin="0,0,8,8" Content="Apply reviewed proposal" Command="{Binding RequestApplyCommand}" />
+                    <Button Margin="0,0,8,8" Content="Cancel active work" Command="{Binding CancelCommand}" />
+                </WrapPanel>
+                <Border IsVisible="{Binding IsApplyConfirmationPending}"
+                        Padding="8" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Confirm apply: OpenSorSe will revalidate the exact preview, reject changed roots and conflicts, and move only the listed files."
+                                   TextWrapping="Wrap" />
+                        <WrapPanel>
+                            <Button Margin="0,0,8,0" Content="Confirm exact reviewed proposal" Command="{Binding ConfirmApplyCommand}" />
+                            <Button Content="Cancel" Command="{Binding CancelApplyConfirmationCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="{Binding ProtectionText}" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="330,*" ColumnSpacing="10" MinHeight="300">
+            <Border Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="7">
+                    <WrapPanel>
+                        <Button Margin="0,0,8,8" Content="Refresh history" Command="{Binding RefreshCommand}" />
+                        <Button Margin="0,0,8,8" Content="Clear history" Command="{Binding RequestClearHistoryCommand}"
+                                ToolTip.Tip="Clears only application-owned records; it never undoes or changes files." />
+                    </WrapPanel>
+                    <Grid Grid.Row="1" RowDefinitions="Auto,Auto" RowSpacing="5">
+                        <TextBox Text="{Binding RootFilter, Mode=TwoWay}"
+                                 PlaceholderText="Filter by root"
+                                 AutomationProperties.Name="Filter structure history by root" />
+                        <ComboBox Grid.Row="1"
+                                  ItemsSource="{Binding StatusFilters}"
+                                  SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}"
+                                  AutomationProperties.Name="Filter structure history by status">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StructureStatusFilterOption">
+                                    <TextBlock Text="{Binding Label}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
+                    <Grid Grid.Row="2">
+                        <TextBlock IsVisible="{Binding HasNoHistory}"
+                                   Text="No restructuring records match the current filters."
+                                   TextWrapping="Wrap" />
+                        <ListBox ItemsSource="{Binding History}"
+                                 SelectedItem="{Binding SelectedHistory, Mode=TwoWay}"
+                                 AutomationProperties.Name="Folder restructuring history">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StructureHistoryRow">
+                                    <StackPanel Margin="0,5" Spacing="2">
+                                        <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding RootPath}" TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding RootPath}" />
+                                        <TextBlock Text="{Binding StartedText}" FontSize="12" />
+                                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="12" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="7">
+                    <TextBlock Text="{Binding SelectedDetailsText}" TextWrapping="Wrap" />
+                    <WrapPanel Grid.Row="1">
+                        <ComboBox Width="190"
+                                  Margin="0,0,8,8"
+                                  ItemsSource="{Binding SnapshotOptions}"
+                                  SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
+                                  AutomationProperties.Name="Structure snapshot">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StructureSnapshotOption">
+                                    <TextBlock Text="{Binding Label}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Margin="0,0,8,8" Content="Capture current structure" Command="{Binding CaptureCurrentCommand}" />
+                        <TextBox Width="220" Margin="0,0,0,8"
+                                 Text="{Binding DiagramSearch, Mode=TwoWay}"
+                                 PlaceholderText="Search relative paths"
+                                 AutomationProperties.Name="Search structure diagram" />
+                    </WrapPanel>
+                    <TextBlock Grid.Row="2" Text="{Binding ComparisonSummary}" TextWrapping="Wrap" />
+                    <Grid Grid.Row="3">
+                        <TextBlock IsVisible="{Binding HasNoDiagramRows}"
+                                   Text="No nodes are available for this structure view."
+                                   TextWrapping="Wrap" />
+                        <ListBox ItemsSource="{Binding DiagramRows}"
+                                 AutomationProperties.Name="Accessible folder structure diagram">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StructureDiagramRow">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,2">
+                                        <TextBlock Text="{Binding DisplayText}" TextWrapping="Wrap"
+                                                   ToolTip.Tip="{Binding RelativePath}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding ChangeText}" FontWeight="SemiBold" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Spacing="5">
+            <Border IsVisible="{Binding IsClearConfirmationPending}"
+                    Padding="8" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                <StackPanel Spacing="5">
+                    <TextBlock Text="Clear local structure history? This never changes or undoes files, but removes repeat-protection records." TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button Margin="0,0,8,0" Content="Confirm clear history" Command="{Binding ConfirmClearHistoryCommand}" />
+                        <Button Content="Cancel" Command="{Binding CancelClearHistoryCommand}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</UserControl>

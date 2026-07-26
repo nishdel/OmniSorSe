@@ -96,7 +96,8 @@ public sealed class UndoHistoryViewModelTests
 
         Assert.True(viewModel.IsEmpty);
         Assert.False(viewModel.HasSessions);
-        Assert.Contains("does not execute or undo file operations", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("does not expose generic rule execution or undo", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Structure history", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Saved catalog", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
         Assert.False(viewModel.RequestUndoCommand.CanExecute(null));
     }

@@ -1,4 +1,7 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.AI;
+using OpenSorSe.Application.Content;
+using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
@@ -10,6 +13,33 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class ResultsViewModelTests
 {
+    /// <summary>Verifies divider commands persist a bounded preference without changing other settings.</summary>
+    [Fact]
+    public async Task DetailsPanelResizeCommands_PersistBoundedRatioAndResetDefault()
+    {
+        var configuration = new Configuration();
+        using var viewModel = new ResultsViewModel(configuration, null);
+
+        await viewModel.SetDetailsPanelWidthRatioAsync(0.44);
+        Assert.Equal(0.44, configuration.Current.Features.FilesPageDetailsPanelWidthRatio);
+
+        await viewModel.WidenDetailsPanelCommand.ExecuteAsync(null);
+        await viewModel.WidenDetailsPanelCommand.ExecuteAsync(null);
+        Assert.Equal(
+            FeatureSettings.MaximumFilesPageDetailsPanelWidthRatio,
+            configuration.Current.Features.FilesPageDetailsPanelWidthRatio);
+
+        await viewModel.SetDetailsPanelWidthRatioAsync(double.NaN);
+        Assert.Equal(
+            FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio,
+            configuration.Current.Features.FilesPageDetailsPanelWidthRatio);
+
+        await viewModel.ResetDetailsPanelWidthCommand.ExecuteAsync(null);
+        Assert.Equal(
+            FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio,
+            viewModel.DetailsPanelWidthRatio);
+    }
+
     /// <summary>
     /// Verifies loading keeps review data in the immutable snapshot and publishes only one bounded page.
     /// </summary>
@@ -225,6 +255,81 @@ public sealed class ResultsViewModelTests
         Assert.Contains("already", viewModel.UserTagStatusText, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Verifies generated candidates can be accepted or rejected and rejected state persists in the content store.</summary>
+    [Fact]
+    public async Task GeneratedTagCommands_PersistAcceptanceAndRejection()
+    {
+        var file = CreateFile("file:0", "C:\\Selected\\invoice.txt", DuplicateStatus.Unique, null);
+        var first = GeneratedTag(file.FullPath, "invoice");
+        var second = GeneratedTag(file.FullPath, "receipt");
+        var store = new ContentStore(new ContentRecord(
+            file.FullPath,
+            2,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            [],
+            null,
+            "invoice receipt",
+            OcrStatus.Completed,
+            "fake",
+            [])
+        {
+            Tags = [first, second],
+        });
+        using var viewModel = new ResultsViewModel(new Configuration(), null, null, store);
+        await viewModel.LoadSnapshotAsync(CreateSnapshot([file]));
+
+        viewModel.SelectedRow = Assert.Single(viewModel.PageRows);
+        await WaitUntilAsync(() => viewModel.UserTags.Count >= 3);
+        viewModel.SelectedUserTag = viewModel.UserTags.Single(tag => tag.DisplayName == "invoice");
+        await viewModel.AcceptSuggestedTagCommand.ExecuteAsync(null);
+        viewModel.SelectedUserTag = viewModel.UserTags.Single(tag => tag.DisplayName == "receipt");
+        await viewModel.RejectSuggestedTagCommand.ExecuteAsync(null);
+
+        Assert.Contains(store.Record.Tags, tag =>
+            tag.TagId == first.TagId &&
+            tag.AcceptanceState == TagAcceptanceState.Accepted);
+        Assert.Contains(store.Record.Tags, tag =>
+            tag.TagId == second.TagId &&
+            tag.AcceptanceState == TagAcceptanceState.Rejected);
+        Assert.DoesNotContain(viewModel.GetPersistableTags(), tag =>
+            tag.TagId == first.TagId || tag.TagId == second.TagId);
+    }
+
+    /// <summary>Verifies visible row selection immediately supplies the AI rename context without a query refresh.</summary>
+    [Fact]
+    public async Task SelectedRow_ImmediatelyEnablesRenameSuggestionContext()
+    {
+        var file = CreateFile("file:0", "C:\\Selected\\invoice.txt", DuplicateStatus.Unique, null);
+        var configuration = new AiEnabledConfiguration();
+        using var viewModel = new ResultsViewModel(configuration, new NoopAiService());
+        await viewModel.LoadSnapshotAsync(CreateSnapshot([file]));
+
+        Assert.Null(viewModel.AiSuggestions.SelectedFile);
+        Assert.False(viewModel.AiSuggestions.GenerateSuggestionCommand.CanExecute(null));
+
+        viewModel.SelectedRow = Assert.Single(viewModel.PageRows);
+
+        Assert.Equal(file.Id, viewModel.AiSuggestions.SelectedFile?.Id);
+        Assert.True(viewModel.AiSuggestions.GenerateSuggestionCommand.CanExecute(null));
+        Assert.Contains("Ready", viewModel.AiSuggestions.RenameActionAvailabilityText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies secondary filters use progressive disclosure without resetting their values.</summary>
+    [Fact]
+    public void ToggleFilters_PreservesFilterStateWhileDrawerIsHidden()
+    {
+        using var viewModel = new ResultsViewModel();
+        viewModel.SelectedDuplicateFilter = ResultDuplicateFilter.ExactDuplicatesOnly;
+
+        viewModel.ToggleFiltersCommand.Execute(null);
+        Assert.True(viewModel.AreFiltersVisible);
+        viewModel.ToggleFiltersCommand.Execute(null);
+
+        Assert.False(viewModel.AreFiltersVisible);
+        Assert.Equal(ResultDuplicateFilter.ExactDuplicatesOnly, viewModel.SelectedDuplicateFilter);
+    }
+
     private static ResultsSnapshot CreateSnapshot(IReadOnlyList<ResultFile> files, bool duplicateDataAvailable = true)
     {
         var groups = duplicateDataAvailable && files.Count(file => file.DuplicateGroupId == "group:opaque") >= 2
@@ -271,4 +376,102 @@ public sealed class ResultsViewModelTests
             duplicateStatus,
             groupId,
             false);
+
+    private static TagAssociation GeneratedTag(string path, string value) => new(
+        $"tag:generated:{value}",
+        path,
+        value,
+        value,
+        "OCR candidate",
+        TagSource.OcrCandidate,
+        TagAcceptanceState.Suggested,
+        "Generated locally",
+        DateTimeOffset.UnixEpoch)
+    {
+        Confidence = 0.5,
+        UpdatedAtUtc = DateTimeOffset.UnixEpoch,
+        SourceFingerprint = "2:0",
+    };
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var timeout = DateTime.UtcNow.AddSeconds(2);
+        while (!condition() && DateTime.UtcNow < timeout)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition());
+    }
+
+    private sealed class Configuration : IConfigurationService
+    {
+        public ApplicationSettings Current { get; private set; } = new();
+        public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken)
+        {
+            Current = settings;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class AiEnabledConfiguration : IConfigurationService
+    {
+        public ApplicationSettings Current { get; private set; } = new()
+        {
+            Ai = new AiSettings
+            {
+                Enabled = true,
+                FileRenameSuggestionsEnabled = true,
+                SelectedModel = "local-model",
+            },
+        };
+
+        public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveAsync(ApplicationSettings settings, CancellationToken cancellationToken)
+        {
+            Current = settings;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class NoopAiService : IAiSuggestionService
+    {
+        public Task<AiConnectionResult> TestConnectionAsync(ApplicationSettings settings, CancellationToken cancellationToken) =>
+            Task.FromResult(new AiConnectionResult(AiAvailabilityState.Connected, "Connected", []));
+
+        public Task<AiConnectionResult> DiscoverModelsAsync(ApplicationSettings settings, CancellationToken cancellationToken) =>
+            Task.FromResult(new AiConnectionResult(AiAvailabilityState.Connected, "Connected", [new AiModel("local-model", "local-model")]));
+
+        public Task<AiFileRenameResult> GenerateFileRenameAsync(AiFileRenameRequest request, AiSettings settings, CancellationToken cancellationToken) =>
+            Task.FromResult(new AiFileRenameResult(AiAvailabilityState.NoSuggestion, "No suggestion", null));
+
+        public Task<AiFolderStructureResult> GenerateFolderStructureAsync(AiFolderStructureRequest request, AiSettings settings, CancellationToken cancellationToken) =>
+            Task.FromResult(new AiFolderStructureResult(AiAvailabilityState.NoSuggestion, "No suggestion", null));
+
+        public Task<AiDecisionResult> RecordDecisionAsync(AiSuggestionDecision decision, AiSettings settings, CancellationToken cancellationToken) =>
+            Task.FromResult(new AiDecisionResult(AiAvailabilityState.ModelSelected, "Saved"));
+
+        public Task<AiDecisionResult> ResetDecisionHistoryAsync(ApplicationSettings settings, CancellationToken cancellationToken) =>
+            Task.FromResult(new AiDecisionResult(AiAvailabilityState.ModelSelected, "Reset"));
+    }
+
+    private sealed class ContentStore(ContentRecord initial) : IContentStore
+    {
+        public ContentRecord Record { get; private set; } = initial;
+        public Task<ContentRecord?> GetAsync(string fullPath, CancellationToken cancellationToken) =>
+            Task.FromResult<ContentRecord?>(Record);
+        public Task<IReadOnlyList<ContentRecord>> ListAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ContentRecord>>([Record]);
+        public Task UpsertAsync(ContentRecord record, CancellationToken cancellationToken)
+        {
+            Record = record;
+            return Task.CompletedTask;
+        }
+        public Task RemoveMissingAsync(IReadOnlyCollection<string> knownPaths, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+        public Task ClearAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
 }

@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-26",
+  "generatedFrom": "OpenSorSe.sln restored for net8.0",
+  "policyDocument": "docs/FOSS_DEPENDENCY_POLICY.md",
+  "noticeDocument": "THIRD_PARTY_NOTICES.md",
+  "disclaimer": "Engineering inventory; not legal advice.",
+  "groups": [
+    {
+      "name": "Avalonia UI",
+      "purpose": "Cross-platform desktop UI, rendering, fonts, platform integration, and build support.",
+      "upstream": "https://github.com/AvaloniaUI/Avalonia",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expression and upstream LICENSE.",
+      "notice": "THIRD_PARTY_NOTICES.md#avalonia",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the MIT copyright and permission notice.",
+      "packages": [
+        "Avalonia@12.1.0",
+        "Avalonia.BuildServices@11.3.2",
+        "Avalonia.Desktop@12.1.0",
+        "Avalonia.Fonts.Inter@12.1.0",
+        "Avalonia.FreeDesktop@12.1.0",
+        "Avalonia.FreeDesktop.AtSpi@12.1.0",
+        "Avalonia.HarfBuzz@12.1.0",
+        "Avalonia.Native@12.1.0",
+        "Avalonia.Remote.Protocol@12.1.0",
+        "Avalonia.Skia@12.1.0",
+        "Avalonia.Themes.Fluent@12.1.0",
+        "Avalonia.Win32@12.1.0",
+        "Avalonia.X11@12.1.0"
+      ]
+    },
+    {
+      "name": "ANGLE native binaries",
+      "purpose": "Windows graphics translation used transitively by Avalonia.",
+      "upstream": "https://chromium.googlesource.com/angle/angle/",
+      "license": "BSD-3-Clause",
+      "licenseEvidence": "LICENSE file embedded in the NuGet package.",
+      "notice": "THIRD_PARTY_NOTICES.md#angle",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the BSD copyright, conditions, and disclaimer.",
+      "packages": [
+        "Avalonia.Angle.Windows.Natives@2.1.27548.20260419"
+      ]
+    },
+    {
+      "name": "PDFium native binaries",
+      "purpose": "In-process rendering of bounded PDF pages before OCR.",
+      "upstream": "https://pdfium.googlesource.com/pdfium/",
+      "license": "Apache-2.0",
+      "licenseEvidence": "NuGet package license expression; upstream contains additional permissive third-party notices.",
+      "notice": "THIRD_PARTY_NOTICES.md#pdfium",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain Apache-2.0 and the upstream PDFium third-party notices in any binary distribution.",
+      "packages": [
+        "bblanchon.PDFium.Linux@147.0.7690",
+        "bblanchon.PDFium.macOS@147.0.7690",
+        "bblanchon.PDFium.Win32@147.0.7690"
+      ]
+    },
+    {
+      "name": "Application libraries",
+      "purpose": "MVVM support, JSON compatibility, PDF rendering wrapper, and Linux desktop IPC.",
+      "upstream": "See each package's NuGet project URL.",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expressions.",
+      "notice": "THIRD_PARTY_NOTICES.md#other-mit-components",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain each component's MIT copyright and permission notice.",
+      "packages": [
+        "CommunityToolkit.Mvvm@8.4.2",
+        "Newtonsoft.Json@13.0.1",
+        "PDFtoImage@5.2.1",
+        "Tmds.DBus.Protocol@0.94.1"
+      ]
+    },
+    {
+      "name": "HarfBuzzSharp",
+      "purpose": "Text shaping used transitively by Avalonia and Skia.",
+      "upstream": "https://github.com/mono/SkiaSharp",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expressions.",
+      "notice": "THIRD_PARTY_NOTICES.md#other-mit-components",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the MIT copyright and permission notice.",
+      "packages": [
+        "HarfBuzzSharp@8.3.1.3",
+        "HarfBuzzSharp.NativeAssets.Linux@8.3.1.3",
+        "HarfBuzzSharp.NativeAssets.macOS@8.3.1.3",
+        "HarfBuzzSharp.NativeAssets.WebAssembly@8.3.1.3",
+        "HarfBuzzSharp.NativeAssets.Win32@8.3.1.3"
+      ]
+    },
+    {
+      "name": "MicroCom",
+      "purpose": "Native interop support used transitively by Avalonia.",
+      "upstream": "https://github.com/AvaloniaUI/Avalonia",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expression.",
+      "notice": "THIRD_PARTY_NOTICES.md#other-mit-components",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the MIT copyright and permission notice.",
+      "packages": [
+        "MicroCom.Runtime@0.11.6"
+      ]
+    },
+    {
+      "name": "Microsoft extensions",
+      "purpose": "Dependency injection, logging, options, and primitives.",
+      "upstream": "https://github.com/dotnet/runtime",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expressions.",
+      "notice": "THIRD_PARTY_NOTICES.md#microsoft-net",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the MIT copyright and permission notice.",
+      "packages": [
+        "Microsoft.Extensions.DependencyInjection@8.0.1",
+        "Microsoft.Extensions.DependencyInjection.Abstractions@8.0.2",
+        "Microsoft.Extensions.Logging@8.0.1",
+        "Microsoft.Extensions.Logging.Abstractions@8.0.2",
+        "Microsoft.Extensions.Logging.Debug@8.0.1",
+        "Microsoft.Extensions.Options@8.0.2",
+        "Microsoft.Extensions.Primitives@8.0.0"
+      ]
+    },
+    {
+      "name": "Microsoft test platform",
+      "purpose": "Build-time test discovery, execution, and code-coverage collection.",
+      "upstream": "https://github.com/microsoft/vstest",
+      "license": "MIT",
+      "licenseEvidence": "LICENSE_MIT.txt embedded in the NuGet packages.",
+      "notice": "THIRD_PARTY_NOTICES.md#microsoft-net",
+      "distributionStatus": "test-only",
+      "optional": false,
+      "redistribution": "Not shipped in application output; retain the MIT notice when redistributing test tooling.",
+      "packages": [
+        "Microsoft.CodeCoverage@17.8.0",
+        "Microsoft.NET.Test.Sdk@17.8.0",
+        "Microsoft.TestPlatform.ObjectModel@17.8.0",
+        "Microsoft.TestPlatform.TestHost@17.8.0"
+      ]
+    },
+    {
+      "name": ".NET compatibility runtime",
+      "purpose": "Transitive .NET Standard compatibility and runtime assets.",
+      "upstream": "https://github.com/dotnet/runtime",
+      "license": "MIT",
+      "licenseEvidence": "NuGet MIT license expressions/files or legacy Microsoft license links resolving to the .NET Foundation MIT license.",
+      "notice": "THIRD_PARTY_NOTICES.md#microsoft-net",
+      "distributionStatus": "transitive-build-assets",
+      "optional": false,
+      "redistribution": "Retain the MIT copyright and permission notice.",
+      "packages": [
+        "System.IO.Pipelines@8.0.0",
+        "System.Reflection.Metadata@1.6.0"
+      ]
+    },
+    {
+      "name": "SkiaSharp",
+      "purpose": "Cross-platform graphics and PNG encoding used by Avalonia and PDF rendering.",
+      "upstream": "https://github.com/mono/SkiaSharp",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expressions.",
+      "notice": "THIRD_PARTY_NOTICES.md#other-mit-components",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the MIT copyright and permission notice.",
+      "packages": [
+        "SkiaSharp@3.119.2",
+        "SkiaSharp@3.119.4",
+        "SkiaSharp.NativeAssets.Linux@3.119.4",
+        "SkiaSharp.NativeAssets.Linux.NoDependencies@3.119.2",
+        "SkiaSharp.NativeAssets.macOS@3.119.2",
+        "SkiaSharp.NativeAssets.macOS@3.119.4",
+        "SkiaSharp.NativeAssets.WebAssembly@3.119.4",
+        "SkiaSharp.NativeAssets.Win32@3.119.2",
+        "SkiaSharp.NativeAssets.Win32@3.119.4"
+      ]
+    },
+    {
+      "name": "PDF text extraction",
+      "purpose": "Read-only page-aware native PDF text and metadata extraction.",
+      "upstream": "https://github.com/UglyToad/PdfPig",
+      "license": "Apache-2.0",
+      "licenseEvidence": "NuGet package license expression and upstream LICENSE.",
+      "notice": "THIRD_PARTY_NOTICES.md#pdfpig",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the Apache-2.0 license and any NOTICE file.",
+      "packages": [
+        "PdfPig@0.1.15"
+      ]
+    },
+    {
+      "name": "NuGet framework support",
+      "purpose": "Transitive framework compatibility metadata.",
+      "upstream": "https://github.com/NuGet/NuGet.Client",
+      "license": "Apache-2.0",
+      "licenseEvidence": "NuGet package license expression.",
+      "notice": "THIRD_PARTY_NOTICES.md#apache-20-components",
+      "distributionStatus": "transitive-build-assets",
+      "optional": false,
+      "redistribution": "Retain the Apache-2.0 license and any NOTICE file.",
+      "packages": [
+        "NuGet.Frameworks@6.5.0"
+      ]
+    },
+    {
+      "name": "Coverlet",
+      "purpose": "Test-only code coverage collector.",
+      "upstream": "https://github.com/coverlet-coverage/coverlet",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expression.",
+      "notice": "THIRD_PARTY_NOTICES.md#other-mit-components",
+      "distributionStatus": "test-only",
+      "optional": false,
+      "redistribution": "Not shipped in application output; retain the MIT notice when redistributing test tooling.",
+      "packages": [
+        "coverlet.collector@6.0.0"
+      ]
+    },
+    {
+      "name": "xUnit.net",
+      "purpose": "Test-only unit-test framework, analyzers, and Visual Studio runner.",
+      "upstream": "https://github.com/xunit/xunit",
+      "license": "Apache-2.0",
+      "licenseEvidence": "NuGet license expressions or upstream license link.",
+      "notice": "THIRD_PARTY_NOTICES.md#apache-20-components",
+      "distributionStatus": "test-only",
+      "optional": false,
+      "redistribution": "Not shipped in application output; retain Apache-2.0 and any NOTICE file when redistributing test tooling.",
+      "packages": [
+        "xunit@2.9.3",
+        "xunit.abstractions@2.0.3",
+        "xunit.analyzers@1.18.0",
+        "xunit.assert@2.9.3",
+        "xunit.core@2.9.3",
+        "xunit.extensibility.core@2.9.3",
+        "xunit.extensibility.execution@2.9.3",
+        "xunit.runner.visualstudio@2.8.2"
+      ]
+    }
+  ],
+  "externalComponents": [
+    {
+      "name": "Tesseract OCR",
+      "minimumVersion": "5.x recommended",
+      "purpose": "Optional local OCR executable and separately installed eng/deu language data.",
+      "upstream": "https://github.com/tesseract-ocr/tesseract",
+      "license": "Apache-2.0",
+      "notice": "THIRD_PARTY_NOTICES.md#tesseract-ocr",
+      "distributionStatus": "external-not-bundled",
+      "optional": true,
+      "redistribution": "OpenSorSe never downloads or bundles the executable or language data; distributors must review any separately bundled data."
+    }
+  ]
+}

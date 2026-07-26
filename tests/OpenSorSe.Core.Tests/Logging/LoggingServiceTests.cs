@@ -170,6 +170,29 @@ public sealed class LoggingServiceTests
         Assert.Throws<ObjectDisposedException>(() => service.Initialize(LogLevel.Information));
     }
 
+    /// <summary>Verifies inspectable session events are newest-first, bounded, and contain no exception stack.</summary>
+    [Fact]
+    public void GetRecentEvents_MoreThanCapacity_ReturnsBoundedSafeNewestFirstSnapshot()
+    {
+        using var service = new LoggingService();
+        service.Initialize(new LoggingOptions(LogLevel.Information, FileLoggingEnabled: false));
+        var logger = service.CreateLogger("BoundedCategory");
+        for (var index = 0; index < DiagnosticEventLimits.MaximumRetainedEvents + 3; index++)
+        {
+            logger.LogInformation(new EventId(index, $"event-{index}"), "message {Index}", index);
+        }
+
+        logger.LogError(new InvalidOperationException("safe exception summary"), "final failure");
+        var events = service.GetRecentEvents();
+
+        Assert.Equal(DiagnosticEventLimits.MaximumRetainedEvents, events.Count);
+        Assert.Equal("final failure", events[0].Summary);
+        Assert.Equal("InvalidOperationException", events[0].ExceptionType);
+        Assert.Null(events[0].ExceptionSummary);
+        Assert.Equal("BoundedCategory", events[0].Category);
+        Assert.True(events.Zip(events.Skip(1), (newer, older) => newer.Sequence > older.Sequence).All(value => value));
+    }
+
     /// <summary>
     /// Verifies shared Core registration resolves the centralized logging contract without UI infrastructure.
     /// </summary>
