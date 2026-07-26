@@ -403,6 +403,9 @@
                                     <Expander IsVisible="{Binding IsFolderStructureVisible}"
                                               Header="Folder suggestion">
                                         <StackPanel Spacing="5">
+                                            <TextBlock Text="{Binding FolderStructureContextText}"
+                                                       Classes="page-subtitle"
+                                                       TextWrapping="Wrap" />
                                             <Button Classes="secondary"
                                                     Content="Suggest a folder plan"
                                                     Command="{Binding GenerateFolderStructureCommand}" />
@@ -417,6 +420,13 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </StackPanel>
+                                    </Expander>
+                                    <Expander Header="AI request context">
+                                        <TextBox Text="{Binding AiRequestContextText}"
+                                                 IsReadOnly="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 FontFamily="Consolas, Cascadia Mono, monospace" />
                                     </Expander>
                                     <Expander IsVisible="{Binding IsDocumentInterpretationVisible}"
                                               Header="Document summary">

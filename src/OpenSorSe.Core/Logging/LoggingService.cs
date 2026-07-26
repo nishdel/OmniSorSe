@@ -34,7 +34,6 @@ public sealed class LoggingService : ILoggingService
             _loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder.SetMinimumLevel(options.MinimumLevel);
-                builder.AddDebug();
                 builder.AddProvider(localFileProvider);
             });
 

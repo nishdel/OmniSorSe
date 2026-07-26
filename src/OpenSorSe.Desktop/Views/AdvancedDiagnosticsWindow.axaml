@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:OpenSorSe.Desktop.Views"
+        xmlns:vm="clr-namespace:OpenSorSe.Desktop.ViewModels"
+        x:Class="OpenSorSe.Desktop.Views.AdvancedDiagnosticsWindow"
+        x:DataType="vm:AdvancedDiagnosticsViewModel"
+        Title="OpenSorSe Advanced Diagnostics"
+        Width="1240" Height="820" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="14" RowSpacing="10">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <StackPanel Spacing="3">
+        <TextBlock Classes="page-title" Text="Advanced diagnostics" />
+        <TextBlock Classes="page-subtitle" Text="Shared live, bounded, process-memory-only feature inspection" />
+        <TextBlock Text="{Binding PrivacyNotice}" TextWrapping="Wrap" />
+      </StackPanel>
+      <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+        <CheckBox Margin="8,0" Content="Auto-scroll" IsChecked="{Binding AutoScroll}" />
+        <CheckBox Margin="8,0" Content="Word wrap" IsChecked="{Binding WordWrap}" Click="OnWordWrapChanged" />
+        <Button Margin="8,0,0,0" Content="Copy current section" Command="{Binding CopyCurrentSectionCommand}" />
+        <Button Margin="8,0,0,0" Content="Copy complete diagnostic" Command="{Binding CopyCompleteDiagnosticCommand}" />
+      </WrapPanel>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,280,Auto,200,*,Auto,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Text="Category" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="1"
+                ItemsSource="{Binding CategoryFilters}"
+                SelectedItem="{Binding SelectedCategoryFilter}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:AdvancedDiagnosticCategoryFilter">
+            <TextBlock Text="{Binding DisplayName}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <TextBlock Grid.Column="2" Text="Status" VerticalAlignment="Center" />
+      <ComboBox Grid.Column="3"
+                ItemsSource="{Binding StatusFilters}"
+                SelectedItem="{Binding SelectedStatusFilter}" />
+      <Button Grid.Column="5" Content="Export JSON" Click="OnSaveSelectedJson" />
+      <Button Grid.Column="6" Content="Export text" Click="OnSaveSelectedText" />
+      <Button Grid.Column="7" Content="Export all retained" Click="OnSaveAll" />
+    </Grid>
+
+    <Grid Grid.Row="2" ColumnDefinitions="300,*" ColumnSpacing="12">
+      <Border Classes="card">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+          <TextBlock Text="Active and recent sessions" FontWeight="SemiBold" />
+          <Grid Grid.Row="1">
+            <TextBlock IsVisible="{Binding HasNoVisibleSessions}"
+                       Text="No retained sessions match the current filters."
+                       TextWrapping="Wrap" />
+            <ListBox ItemsSource="{Binding VisibleSessions}"
+                     SelectedItem="{Binding SelectedSession}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:AdvancedDiagnosticSessionRow">
+                  <StackPanel Margin="2,5" Spacing="2">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                      <TextBlock FontWeight="SemiBold" Text="{Binding Category}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding Status}" />
+                    </Grid>
+                    <TextBlock Text="{Binding Operation}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Started}" FontSize="11" />
+                    <TextBlock Text="{Binding SessionId}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+          <StackPanel Grid.Row="2" Spacing="6">
+            <Button Content="Clear selected session" Command="{Binding ClearSelectedCommand}" />
+            <Button Content="Clear all sessions" Command="{Binding ClearAllCommand}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="10">
+        <Border Classes="card">
+          <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10">
+            <TextBlock Text="{Binding SessionId, StringFormat='Session ID: {0}'}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="1" Text="{Binding Category, StringFormat='Category: {0}'}" />
+            <TextBlock Grid.Column="2" Text="{Binding Operation, StringFormat='Operation: {0}'}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Row="1" Text="{Binding Started, StringFormat='Started: {0}'}" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Elapsed, StringFormat='Elapsed: {0}'}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding FinalStatus, StringFormat='Status: {0}'}" />
+            <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Text="{Binding RelatedSessions, StringFormat='Related sessions: {0}'}" TextWrapping="Wrap" />
+          </Grid>
+        </Border>
+
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
+          <TabItem Header="Overview"><local:DiagnosticTextBox x:Name="OverviewText" Text="{Binding OverviewText}" /></TabItem>
+          <TabItem Header="Timeline"><local:DiagnosticTextBox x:Name="TimelineText" Text="{Binding TimelineText}" /></TabItem>
+          <TabItem Header="Inputs"><local:DiagnosticTextBox x:Name="InputsText" Text="{Binding InputsText}" /></TabItem>
+          <TabItem Header="Intermediate results"><local:DiagnosticTextBox x:Name="IntermediateText" Text="{Binding IntermediateResultsText}" /></TabItem>
+          <TabItem Header="Outputs"><local:DiagnosticTextBox x:Name="OutputsText" Text="{Binding OutputsText}" /></TabItem>
+          <TabItem Header="Warnings and errors"><local:DiagnosticTextBox x:Name="WarningsText" Text="{Binding WarningsAndErrorsText}" /></TabItem>
+          <TabItem Header="Performance"><local:DiagnosticTextBox x:Name="PerformanceText" Text="{Binding PerformanceText}" /></TabItem>
+        </TabControl>
+      </Grid>
+    </Grid>
+    <TextBlock Grid.Row="3" Text="{Binding StatusText}" />
+  </Grid>
+</Window>

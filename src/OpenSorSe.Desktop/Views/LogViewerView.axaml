@@ -102,48 +102,21 @@
 
         <Border Grid.Row="4"
                 Grid.RowSpan="2"
-                IsVisible="{Binding IsAiDiagnosticsVisible}"
                 Padding="10"
                 BorderBrush="{DynamicResource ThemeBorderLowBrush}"
                 BorderThickness="1">
-            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <StackPanel Spacing="3">
-                        <TextBlock Text="AI request diagnostics" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding AiDiagnosticsPrivacyNotice}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <Button Grid.Column="1" Content="Clear AI diagnostics" Command="{Binding ClearAiDiagnosticsCommand}" />
-                </Grid>
-                <TextBlock Grid.Row="1"
-                           IsVisible="{Binding HasNoAiRequests}"
-                           Text="No AI requests have been captured during this session."
-                           TextWrapping="Wrap" />
-                <Grid Grid.Row="2" ColumnDefinitions="2*,3*" ColumnSpacing="10">
-                    <ListBox ItemsSource="{Binding AiRequests}"
-                             SelectedItem="{Binding SelectedAiRequest, Mode=TwoWay}"
-                             AutomationProperties.Name="AI request diagnostics">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:AiRequestDiagnosticRow">
-                                <StackPanel Margin="0,4" Spacing="2">
-                                    <TextBlock Text="{Binding CapabilityText}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding TimestampText}" />
-                                    <TextBlock Text="{Binding OutcomeText}" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    <ScrollViewer Grid.Column="1">
-                        <StackPanel IsVisible="{Binding HasSelectedAiRequest}" Spacing="6">
-                            <TextBlock Text="Selected AI request" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding SelectedAiRequest.SummaryText}" TextWrapping="Wrap" />
-                            <WrapPanel>
-                                <Button Margin="0,0,8,8" Content="Copy prompt" Command="{Binding CopyAiPromptCommand}" />
-                                <Button Margin="0,0,8,8" Content="Copy response" Command="{Binding CopyAiResponseCommand}" />
-                                <Button Margin="0,0,8,8" Content="Copy request diagnostics" Command="{Binding CopyAiRequestDiagnosticsCommand}" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Advanced diagnostics" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding AdvancedDiagnosticsSummary}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding AdvancedDiagnosticsRetainedCount, StringFormat='Retained detailed sessions: {0}'}" />
+                    <TextBlock Text="Detailed content is isolated from ordinary application logs and retained only for this process unless manually exported."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="Open advanced diagnostics"
+                        Command="{Binding OpenAdvancedDiagnosticsCommand}"
+                        VerticalAlignment="Top" />
             </Grid>
         </Border>
 

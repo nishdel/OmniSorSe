@@ -13,6 +13,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Scanner.Models;
 using OpenSorSe.Desktop.Services;
 
@@ -237,7 +238,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IFolderRestructuringService? folderRestructuringService = null,
         IFolderStructureSnapshotService? folderStructureSnapshotService = null,
         IStructureComparisonService? structureComparisonService = null,
-        IAiDiagnosticsCollector? aiDiagnosticsCollector = null)
+        IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
+        IDiagnosticsCollector? diagnosticsCollector = null,
+        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null)
         : this(
             configurationService,
             loggingService,
@@ -260,7 +263,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             folderRestructuringService,
             folderStructureSnapshotService,
             structureComparisonService,
-            aiDiagnosticsCollector)
+            aiDiagnosticsCollector,
+            diagnosticsCollector,
+            advancedDiagnosticsWindowService)
     {
     }
 
@@ -286,7 +291,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IFolderRestructuringService? folderRestructuringService = null,
         IFolderStructureSnapshotService? folderStructureSnapshotService = null,
         IStructureComparisonService? structureComparisonService = null,
-        IAiDiagnosticsCollector? aiDiagnosticsCollector = null)
+        IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
+        IDiagnosticsCollector? diagnosticsCollector = null,
+        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -323,7 +330,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             aiRequestDiagnosticsStore,
             contentStore,
             ocrService,
-            aiDiagnosticsCollector);
+            aiDiagnosticsCollector,
+            diagnosticsCollector);
         _enableAi = configurationService.Current.Ai.Enabled;
         _showAdvancedFeatures = configurationService.Current.Features.ShowAdvancedFeatures;
         NavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_navigationItems);
@@ -338,7 +346,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         BackToFilesCommand = new RelayCommand(() => Navigate(NavigationDestination.Results));
         CancelCurrentOperationCommand = new RelayCommand(CancelCurrentOperation, () => CanCancelCurrentOperation);
         RefreshNavigationItems(configurationService.Current);
-        LogViewer = new LogViewerViewModel(loggingService, clipboardService, configurationService, aiRequestDiagnosticsStore);
+        LogViewer = new LogViewerViewModel(
+            loggingService,
+            clipboardService,
+            configurationService,
+            aiRequestDiagnosticsStore,
+            diagnosticsCollector,
+            advancedDiagnosticsWindowService);
         UndoHistory = new UndoHistoryViewModel();
         Help = new HelpViewModel();
         About = new AboutViewModel();

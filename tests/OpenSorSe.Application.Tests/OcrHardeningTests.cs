@@ -74,6 +74,7 @@ public sealed class OcrHardeningTests
         Assert.Equal([2], rasterizer.RenderedPages);
         Assert.Equal(3, result.Pages.Count);
         Assert.Equal(OcrPageTextSource.NativeText, result.Pages[0].TextSource);
+        Assert.Null(result.Pages[0].Confidence);
         Assert.Equal(OcrPageTextSource.NativeAndOcrFallback, result.Pages[1].TextSource);
         Assert.Contains("[Page 2]", result.ExtractedText, StringComparison.Ordinal);
         Assert.True(rasterizer.WorkspaceDeleted);

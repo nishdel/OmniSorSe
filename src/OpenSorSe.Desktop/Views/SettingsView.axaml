@@ -243,23 +243,51 @@
                 </StackPanel>
             </Border>
 
+            <Border IsVisible="{Binding IsAdvancedSettingsVisible}"
+                    Padding="12"
+                    BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Advanced diagnostics" FontSize="18" FontWeight="SemiBold" />
+                    <CheckBox Content="Enable diagnostics"
+                              IsChecked="{Binding Draft.DiagnosticsEnabled, Mode=TwoWay}" />
+                    <TextBlock Text="Detailed sessions are bounded, retained only in memory, and displayed in one shared non-modal viewer. Disabling and saving clears all retained sessions."
+                               TextWrapping="Wrap" />
+                    <StackPanel IsEnabled="{Binding Draft.DiagnosticsEnabled}" Spacing="6">
+                        <CheckBox Content="AI diagnostics"
+                                  IsChecked="{Binding Draft.AiDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="OCR and text extraction diagnostics"
+                                  IsChecked="{Binding Draft.OcrAndTextExtractionDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="Scanning diagnostics"
+                                  IsChecked="{Binding Draft.ScanningDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="Duplicate detection diagnostics — not yet instrumented"
+                                  IsChecked="{Binding Draft.DuplicateDetectionDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="Search and indexing diagnostics — not yet instrumented"
+                                  IsChecked="{Binding Draft.SearchAndIndexingDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="Rules and organisation diagnostics — not yet instrumented"
+                                  IsChecked="{Binding Draft.RulesAndOrganisationDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="File operation diagnostics — not yet instrumented"
+                                  IsChecked="{Binding Draft.FileOperationDiagnosticsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="Performance diagnostics — not yet instrumented"
+                                  IsChecked="{Binding Draft.PerformanceDiagnosticsEnabled, Mode=TwoWay}" />
+                        <TextBlock Text="Duplicate detection, search and indexing, rules and organisation, file operations, and standalone performance sessions are planned extension points; their switches do not collect detailed sessions in this release."
+                                   TextWrapping="Wrap" />
+                        <CheckBox Content="Show unredacted diagnostic content"
+                                  IsChecked="{Binding Draft.ShowUnredactedDiagnosticContent, Mode=TwoWay}" />
+                    </StackPanel>
+                    <TextBlock Text="Privacy: unredacted diagnostics may contain filenames, complete paths, extracted document text, OCR output, metadata, tags, search terms, AI prompts, and AI responses. Secrets, credentials, and authorization headers are always removed, and detailed content is never written to normal logs."
+                               IsVisible="{Binding Draft.ShowUnredactedDiagnosticContent}"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <Border IsVisible="{Binding IsAdvancedAiSettingsVisible}"
                     Padding="12"
                     BorderBrush="{DynamicResource ThemeBorderLowBrush}"
                     BorderThickness="1">
                 <StackPanel Spacing="8">
-                    <TextBlock Text="Advanced AI diagnostics" FontSize="18" FontWeight="SemiBold" />
-                    <CheckBox Content="Enable AI request diagnostics"
-                              IsChecked="{Binding Draft.AiRequestDiagnosticsEnabled, Mode=TwoWay}" />
-                    <TextBlock Text="Opens a live, non-modal window for explicit Ollama operations. The latest 20 requests are retained in memory for this session only. Disabling and saving clears them."
-                               TextWrapping="Wrap" />
-                    <CheckBox Content="Show unredacted prompt and response content"
-                              IsEnabled="{Binding Draft.AiRequestDiagnosticsEnabled}"
-                              IsChecked="{Binding Draft.ShowUnredactedAiDiagnosticContent, Mode=TwoWay}" />
-                    <TextBlock Text="Warning: unredacted diagnostics may expose filenames, folder structure, relative paths, and extracted metadata. They are never written to normal log files."
-                               IsVisible="{Binding Draft.ShowUnredactedAiDiagnosticContent}"
-                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
-                               TextWrapping="Wrap" />
+                    <TextBlock Text="Local AI review history" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Use locally recorded review decisions as concise preference context"
                               IsChecked="{Binding Draft.PreferenceAdaptationEnabled, Mode=TwoWay}" />
                     <WrapPanel>

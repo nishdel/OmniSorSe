@@ -53,6 +53,9 @@ public sealed class JsonConfigurationServiceTests
         Assert.False(service.Current.Ai.FileRenameSuggestionsEnabled);
         Assert.False(service.Current.Ai.FolderStructureSuggestionsEnabled);
         Assert.False(service.Current.Ai.RequestDiagnosticsEnabled);
+        Assert.False(service.Current.Diagnostics.EnableDiagnostics);
+        Assert.False(service.Current.Diagnostics.AiDiagnostics);
+        Assert.False(service.Current.Diagnostics.ShowUnredactedDiagnosticContent);
         Assert.False(service.Current.Ai.DocumentTextInterpretationEnabled);
         Assert.True(service.Current.Content.MetadataExtractionEnabled);
         Assert.False(service.Current.Content.OcrEnabled);
@@ -63,6 +66,49 @@ public sealed class JsonConfigurationServiceTests
         Assert.Equal(256, service.Current.Content.MaximumTemporaryStorageMiB);
         Assert.Null(service.Current.Content.TesseractExecutablePath);
         Assert.False(service.Current.SemanticSearch.Enabled);
+    }
+
+    /// <summary>Verifies the master, category, and privacy controls persist independently.</summary>
+    [Fact]
+    public async Task SaveAsync_PersistsAdvancedDiagnosticsSettings()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
+        var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        try
+        {
+            var writer = new JsonConfigurationService(settingsFilePath, _ => null);
+            await writer.InitializeAsync(CancellationToken.None);
+            await writer.SaveAsync(new ApplicationSettings
+            {
+                Diagnostics = new DiagnosticsSettings
+                {
+                    EnableDiagnostics = true,
+                    AiDiagnostics = true,
+                    OcrAndTextExtractionDiagnostics = true,
+                    ScanningDiagnostics = true,
+                    DuplicateDetectionDiagnostics = true,
+                    ShowUnredactedDiagnosticContent = true,
+                },
+            }, CancellationToken.None);
+
+            var reader = new JsonConfigurationService(settingsFilePath, _ => null);
+            await reader.InitializeAsync(CancellationToken.None);
+
+            Assert.True(reader.Current.Diagnostics.EnableDiagnostics);
+            Assert.True(reader.Current.Diagnostics.AiDiagnostics);
+            Assert.True(reader.Current.Diagnostics.OcrAndTextExtractionDiagnostics);
+            Assert.True(reader.Current.Diagnostics.ScanningDiagnostics);
+            Assert.True(reader.Current.Diagnostics.DuplicateDetectionDiagnostics);
+            Assert.True(reader.Current.Diagnostics.ShowUnredactedDiagnosticContent);
+            Assert.False(reader.Current.Diagnostics.SearchAndIndexingDiagnostics);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
     }
 
     /// <summary>Verifies pre-v0.9.1 JSON keeps established values while new opt-ins receive safe defaults.</summary>
@@ -381,6 +427,21 @@ public sealed class JsonConfigurationServiceTests
         var settings = new ApplicationSettings
         {
             Ai = new AiSettings { Enabled = true, SelectedModel = "bad\nmodel" },
+        };
+
+        Assert.Throws<ConfigurationValidationException>(settings.Validate);
+    }
+
+    /// <summary>Credentials and request components cannot be persisted inside the Ollama endpoint.</summary>
+    [Theory]
+    [InlineData("http://user:password@127.0.0.1:11434")]
+    [InlineData("http://127.0.0.1:11434?token=secret")]
+    [InlineData("http://127.0.0.1:11434/#secret")]
+    public void ApplicationSettings_CredentialBearingAiEndpoint_IsRejected(string endpoint)
+    {
+        var settings = new ApplicationSettings
+        {
+            Ai = new AiSettings { Enabled = true, Endpoint = endpoint },
         };
 
         Assert.Throws<ConfigurationValidationException>(settings.Validate);

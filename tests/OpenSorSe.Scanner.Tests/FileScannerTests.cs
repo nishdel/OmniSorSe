@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Scanner;
 using OpenSorSe.Scanner.Models;
 
@@ -174,6 +176,148 @@ public sealed class FileScannerTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => CreateScanner().ScanAsync(request));
     }
 
+    /// <summary>Verifies accepted, unsupported-for-extraction, missing, and aggregate scan decisions are retained.</summary>
+    [Fact]
+    public async Task ScanAsync_AdvancedDiagnostics_ExplainsAcceptedAndSkippedEntries()
+    {
+        using var directory = new TemporaryDirectory();
+        directory.CreateFile("supported.pdf");
+        directory.CreateFile("unsupported.bin");
+        var missing = Path.Combine(directory.Path, "missing");
+        var collector = EnabledCollector(showUnredacted: true);
+        var scanner = new FileScanner(new TestLoggingService(), new TestErrorHandler(), collector);
+
+        var result = await scanner.ScanAsync(CreateRequest(missing, directory.Path));
+
+        var session = collector.Get(result.DiagnosticSessionId!)!;
+        Assert.Equal(DiagnosticStatus.PartiallySucceeded, session.Status);
+        Assert.Contains(session.Events, item =>
+            item.Stage == "File accepted" &&
+            Field(item, "Extension") == ".pdf" &&
+            Field(item, "Downstream extraction support") == "Supported");
+        Assert.Contains(session.Events, item =>
+            item.Stage == "File accepted" &&
+            Field(item, "Extension") == ".bin" &&
+            Field(item, "Downstream extraction support") == "Unsupported extension");
+        Assert.Contains(session.Events, item =>
+            item.Stage == "Entry skipped" &&
+            Field(item, "Skip reason") == ScanIssueKind.RootDirectoryUnavailable.ToString());
+        var completed = session.Events.Last(item => item.Stage == "Completed");
+        Assert.Equal("2", Field(completed, "Accepted files"));
+        Assert.Equal("1", Field(completed, "Accepted files with unsupported extraction extensions"));
+    }
+
+    /// <summary>Verifies large scans retain bounded detail and report aggregate sampling.</summary>
+    [Fact]
+    public async Task ScanAsync_LargeFolder_ReportsDetailedEntrySampling()
+    {
+        using var directory = new TemporaryDirectory();
+        for (var index = 0; index < DiagnosticLimits.MaximumScanEntryRecords + 12; index++)
+        {
+            directory.CreateFile($"item-{index:D4}.txt");
+        }
+        var collector = EnabledCollector(showUnredacted: false);
+        var scanner = new FileScanner(new TestLoggingService(), new TestErrorHandler(), collector);
+
+        var result = await scanner.ScanAsync(CreateRequest(directory.Path));
+
+        var session = collector.Get(result.DiagnosticSessionId!)!;
+        var sampling = Assert.Single(session.Events, item => item.Stage == "Detailed entry sampling");
+        Assert.Equal("13", Field(sampling, "Omitted detailed entries"));
+        var completed = session.Events.Last(item => item.Stage == "Completed");
+        Assert.Equal(
+            (DiagnosticLimits.MaximumScanEntryRecords + 12).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Field(completed, "Accepted files"));
+        Assert.DoesNotContain(
+            directory.Path,
+            string.Join(Environment.NewLine, session.Events.SelectMany(item => item.Fields).Select(field => field.Value)),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies every diagnostic-sink failure is isolated from read-only scan results.</summary>
+    [Fact]
+    public async Task ScanAsync_DiagnosticSinkFailure_DoesNotAlterResults()
+    {
+        using var directory = new TemporaryDirectory();
+        var file = directory.CreateFile("known.pdf");
+        var scanner = new FileScanner(
+            new TestLoggingService(),
+            new TestErrorHandler(),
+            new ThrowingDiagnosticsSink());
+
+        var result = await scanner.ScanAsync(CreateRequest(directory.Path));
+
+        Assert.Equal(ScanStatus.Completed, result.Status);
+        Assert.Equal(file, Assert.Single(result.Files).FullPath);
+        Assert.Empty(result.Issues);
+        Assert.Null(result.DiagnosticSessionId);
+    }
+
+    /// <summary>Verifies cancellation remains a normal partial result with a terminal diagnostic.</summary>
+    [Fact]
+    public async Task ScanAsync_Cancelled_RecordsTerminalCancellation()
+    {
+        using var directory = new TemporaryDirectory();
+        directory.CreateFile("one.txt");
+        using var cancellation = new CancellationTokenSource();
+        var collector = EnabledCollector(showUnredacted: true);
+        var scanner = new FileScanner(new TestLoggingService(), new TestErrorHandler(), collector);
+        var progress = new CallbackProgress(value =>
+        {
+            if (value.CurrentPath is not null)
+            {
+                cancellation.Cancel();
+            }
+        });
+
+        var result = await scanner.ScanAsync(
+            CreateRequest(directory.Path, TimeSpan.Zero),
+            progress,
+            cancellation.Token);
+
+        Assert.Equal(ScanStatus.Cancelled, result.Status);
+        Assert.Equal(DiagnosticStatus.Cancelled, collector.Get(result.DiagnosticSessionId!)!.Status);
+    }
+
+    /// <summary>Verifies missing or changed files produce correlated metadata-read diagnostics.</summary>
+    [Fact]
+    public async Task MetadataReader_MissingFile_RecordsFailureRelatedToScan()
+    {
+        using var directory = new TemporaryDirectory();
+        var missing = Path.Combine(directory.Path, "gone.pdf");
+        var collector = EnabledCollector(showUnredacted: true);
+        var reader = new FileMetadataReader(
+            new TestLoggingService(),
+            new TestErrorHandler(),
+            collector);
+
+        var result = await reader.ReadAsync(
+            [new FileEntry(missing) { ScanDiagnosticSessionId = "scan:parent" }]);
+
+        Assert.Single(result.Issues);
+        var session = Assert.Single(collector.GetRecent());
+        Assert.Contains("scan:parent", session.RelatedSessionIds);
+        Assert.Equal(DiagnosticStatus.PartiallySucceeded, session.Status);
+        Assert.Contains(session.Events, item =>
+            item.Stage == "Metadata read failure" &&
+            Field(item, "Failure kind") == FileMetadataIssueKind.FileUnavailable.ToString());
+    }
+
+    private static string Field(OpenSorSe.Core.Diagnostics.DiagnosticEvent item, string name) =>
+        item.Fields.Single(field => field.Name == name).Value;
+
+    private static InMemoryDiagnosticsCollector EnabledCollector(bool showUnredacted)
+    {
+        var collector = new InMemoryDiagnosticsCollector();
+        collector.Configure(new DiagnosticsSettings
+        {
+            EnableDiagnostics = true,
+            ScanningDiagnostics = true,
+            ShowUnredactedDiagnosticContent = showUnredacted,
+        });
+        return collector;
+    }
+
     private static StringComparer PathComparer => OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
@@ -256,5 +400,42 @@ public sealed class FileScannerTests
         {
             ErrorReported?.Invoke(this, applicationError);
         }
+    }
+
+    private sealed class ThrowingDiagnosticsSink : IDiagnosticsEventSink
+    {
+        public bool IsCategoryEnabled(DiagnosticCategory category) => throw Failure();
+
+        public string? BeginSession(
+            DiagnosticCategory category,
+            string operation,
+            IReadOnlyList<DiagnosticField>? context = null,
+            IReadOnlyCollection<string>? relatedSessionIds = null) =>
+            throw Failure();
+
+        public void Publish(
+            string? sessionId,
+            string stage,
+            DiagnosticStatus status,
+            DiagnosticSeverity severity,
+            DiagnosticSection section,
+            string message,
+            IReadOnlyList<DiagnosticField>? fields = null) =>
+            throw Failure();
+
+        public void Relate(string? sessionId, params string?[] relatedSessionIds) =>
+            throw Failure();
+
+        public void Complete(
+            string? sessionId,
+            DiagnosticStatus status,
+            TimeSpan elapsed,
+            string message,
+            DiagnosticSeverity severity = DiagnosticSeverity.Information,
+            IReadOnlyList<DiagnosticField>? fields = null) =>
+            throw Failure();
+
+        private static InvalidOperationException Failure() =>
+            new("Simulated diagnostic failure.");
     }
 }

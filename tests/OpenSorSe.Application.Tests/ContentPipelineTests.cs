@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Scanner.Models;
 
@@ -152,6 +153,28 @@ public sealed class ContentPipelineTests
 
         Assert.False(result.HasReliableNativeText);
         Assert.Equal(2, result.PdfPages.Count);
+    }
+
+    /// <summary>Diagnostic page limits do not truncate the feature's configured native-page context.</summary>
+    [Fact]
+    public async Task MetadataPipeline_MoreThanDiagnosticPageLimit_PreservesConfiguredPages()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("large.pdf");
+        await File.WriteAllBytesAsync(path, "%PDF-1.7"u8.ToArray());
+        var pages = Enumerable.Range(1, DiagnosticLimits.MaximumPageRecords + 20)
+            .Select(page => new PdfPageText(page, $"Readable native page {page} with sufficient text.", true))
+            .ToArray();
+        var pipeline = new MetadataExtractionPipeline([new FixedPdfExtractor(pages)]);
+
+        var result = await pipeline.ExtractAsync(
+            Entry(path),
+            1024,
+            DiagnosticLimits.MaximumPageRecords + 20,
+            CancellationToken.None);
+
+        Assert.Equal(DiagnosticLimits.MaximumPageRecords + 20, result.PdfPages.Count);
+        Assert.False(result.WasTruncated);
     }
 
     /// <summary>Verifies OCR disabled state rejects work before the engine is invoked.</summary>

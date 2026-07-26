@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Scanner.Models;
 
@@ -14,7 +15,7 @@ public sealed class AiSuggestionServiceTests
     [Fact]
     public async Task GenerateFileRenameAsync_ValidResponse_PublishesReviewOnlySuggestion()
     {
-        var provider = new FakeProvider(RenameJson("item-001", "April Invoice.pdf"));
+        var provider = new FakeProvider(RenameJson("item-001", "document-invoice"));
         var service = CreateService(provider, new InMemoryDecisionHistoryStore());
 
         var result = await service.GenerateFileRenameAsync(CreateRenameRequest(), EnabledSettings(), CancellationToken.None);
@@ -22,7 +23,7 @@ public sealed class AiSuggestionServiceTests
         var suggestion = Assert.IsType<AiFileRenameSuggestion>(result.Suggestion);
         Assert.Equal(AiAvailabilityState.ModelSelected, result.State);
         Assert.Equal("file:1", suggestion.SourceFileId);
-        Assert.Equal("April Invoice.pdf", suggestion.SuggestedFileName);
+        Assert.Equal("document-invoice.pdf", suggestion.SuggestedFileName);
         Assert.Equal(0.74, suggestion.Confidence);
         Assert.DoesNotContain("C:\\Reports", provider.LastPrompt, StringComparison.Ordinal);
         Assert.Contains(AiPromptBuilder.FileRenameTaskId, provider.LastPrompt, StringComparison.Ordinal);
@@ -84,6 +85,27 @@ public sealed class AiSuggestionServiceTests
         Assert.Equal(0, provider.GenerateCallCount);
     }
 
+    /// <summary>A mismatched or unsafe source extension is rejected before any provider communication.</summary>
+    [Theory]
+    [InlineData(".txt")]
+    [InlineData(".pdf\\outside")]
+    [InlineData("")]
+    public async Task GenerateFileRenameAsync_UnsafeOriginalExtension_IsRejectedBeforeProvider(string extension)
+    {
+        var provider = new FakeProvider("{}");
+        var service = CreateService(provider, new InMemoryDecisionHistoryStore());
+        var file = CreateFile("file:1", "invoice.pdf") with { NormalizedExtension = extension };
+
+        var result = await service.GenerateFileRenameAsync(
+            new AiFileRenameRequest(file, []),
+            EnabledSettings(),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.InvalidContext, result.State);
+        Assert.Equal(0, provider.ConnectionCallCount);
+        Assert.Equal(0, provider.GenerateCallCount);
+    }
+
     /// <summary>Verifies invalid known context is rejected before provider or preference access.</summary>
     [Fact]
     public async Task GenerateFolderStructureAsync_DuplicateSourceIdentity_IsRejectedBeforeProvider()
@@ -103,19 +125,43 @@ public sealed class AiSuggestionServiceTests
         Assert.Equal(0, history.LoadCallCount);
     }
 
+    /// <summary>Verifies selections over the small-model bound are rejected visibly without contacting Ollama or dropping files.</summary>
+    [Fact]
+    public async Task GenerateFolderStructureAsync_MoreThanTwelveFiles_SendsNone()
+    {
+        var files = Enumerable.Range(1, AiPromptLimits.MaximumFolderStructureFiles + 1)
+            .Select(index => CreateFile($"file:{index}", $"invoice-{index}.pdf"))
+            .ToArray();
+        var provider = new FakeProvider("{}");
+        var history = new InMemoryDecisionHistoryStore();
+        var service = CreateService(provider, history);
+
+        var result = await service.GenerateFolderStructureAsync(
+            new AiFolderStructureRequest(files, []),
+            EnabledSettings(),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.InvalidContext, result.State);
+        Assert.Contains(files.Length.ToString(System.Globalization.CultureInfo.InvariantCulture), result.Message, StringComparison.Ordinal);
+        Assert.Contains("none were sent", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, provider.ConnectionCallCount);
+        Assert.Equal(0, provider.GenerateCallCount);
+        Assert.Equal(0, history.LoadCallCount);
+    }
+
     /// <summary>Verifies a valid hierarchy references only known sources and remains a logical preview.</summary>
     [Fact]
     public async Task GenerateFolderStructureAsync_ValidResponse_PublishesLogicalHierarchy()
     {
         var response = """
             {
-              "taskId":"folder-structure-v1",
+              "taskId":"folder-structure-v2",
               "status":"suggestion",
               "folders":[
-                {"folderId":"f1","name":"Finance","parentFolderId":null,"reason":"Category","confidence":0.8},
-                {"folderId":"f2","name":"Invoices","parentFolderId":"f1","reason":"Filename","confidence":0.7}
+                {"folderId":"folder-001","name":"Finance","parentFolderId":null},
+                {"folderId":"folder-002","name":"Invoices","parentFolderId":"folder-001"}
               ],
-              "assignments":[{"sourceFileId":"item-001","folderId":"f2"}],
+              "assignments":[{"sourceFileId":"item-001","folderId":"folder-002"}],
               "reason":"A bounded logical grouping."
             }
             """;
@@ -123,7 +169,7 @@ public sealed class AiSuggestionServiceTests
         var service = CreateService(provider, new InMemoryDecisionHistoryStore());
 
         var result = await service.GenerateFolderStructureAsync(
-            new AiFolderStructureRequest([CreateFile("file:1", "invoice.pdf")], ["Existing"]),
+            new AiFolderStructureRequest([CreateFile("file:1", "invoice.pdf")], ["Finance", "Invoices"]),
             EnabledSettings(),
             CancellationToken.None);
 
@@ -156,8 +202,8 @@ public sealed class AiSuggestionServiceTests
     {
         const string json = """
             {"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001",
-             "documentType":"Invoice","title":"Consulting invoice","tags":["Finance"],
-             "dates":["2026-07-24"],"issuer":"Local Studio","suggestedFolder":"Invoices",
+             "documentType":"Invoice","title":"Invoice","tags":["Invoice"],
+             "dates":["2026-07-24"],"issuer":"Local Studio","suggestedFolder":"Invoice",
              "reason":"Explicit invoice fields are present.","confidence":0.71}
             """;
         var provider = new FakeProvider(json);
@@ -171,9 +217,73 @@ public sealed class AiSuggestionServiceTests
 
         var suggestion = Assert.IsType<AiDocumentInterpretationSuggestion>(result.Suggestion);
         Assert.Equal("known:1", suggestion.SourceFileId);
-        Assert.Equal("Invoices", suggestion.SuggestedFolder);
+        Assert.Equal("Invoice", suggestion.SuggestedFolder);
         Assert.Contains(AiPromptBuilder.DocumentInterpretationTaskId, provider.LastPrompt, StringComparison.Ordinal);
         Assert.Contains("Invoice date", provider.LastPrompt, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies invented document facts are grounding failures and cannot trigger a repair request.</summary>
+    [Fact]
+    public async Task GenerateDocumentInterpretation_InventedIssuer_IsRejectedWithoutRepair()
+    {
+        const string json = """
+            {"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001",
+             "documentType":"Invoice","title":"Invoice","tags":["Invoice"],
+             "dates":["2026-07-24"],"issuer":"Invented Corporation","suggestedFolder":"Invoice",
+             "reason":"Explicit fields.","confidence":0.71}
+            """;
+        var provider = new FakeProvider(json);
+        provider.EnqueueResponse("""{"taskId":"document-text-interpretation-v1","status":"no_suggestion","reason":"Ambiguous."}""");
+        var service = CreateService(provider, new InMemoryDecisionHistoryStore());
+
+        var result = await service.GenerateDocumentInterpretationAsync(
+            DocumentRequest(),
+            EnabledSettings(documentText: true),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.ResponseInvalid, result.State);
+        Assert.Null(result.Suggestion);
+        Assert.Contains("introduced values", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(1, provider.GenerateCallCount);
+    }
+
+    /// <summary>Verifies document shape errors use one correlated repair pass and never a third request.</summary>
+    [Fact]
+    public async Task GenerateDocumentInterpretation_RepresentationFailure_RepairsOnce()
+    {
+        var provider = new FakeProvider(
+            """{"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001","reason":{"text":"Wrong type"}}""");
+        provider.EnqueueResponse(
+            """
+            {"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001",
+             "documentType":"Invoice","title":"Invoice","tags":["Invoice"],
+             "dates":["2026-07-24"],"issuer":"Local Studio","suggestedFolder":"Invoice",
+             "reason":"Explicit fields.","confidence":0.71}
+            """);
+        var commonCollector = new InMemoryDiagnosticsCollector();
+        var diagnostics = new AiDiagnosticsCollector(commonCollector);
+        diagnostics.Configure(true, true);
+        var service = new AiSuggestionService(
+            provider,
+            new InMemoryDecisionHistoryStore(),
+            new LoggingService(),
+            new FixedTimeProvider(DateTimeOffset.UnixEpoch),
+            diagnosticsCollector: diagnostics);
+
+        var result = await service.GenerateDocumentInterpretationAsync(
+            DocumentRequest(),
+            EnabledSettings(documentText: true),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.ModelSelected, result.State);
+        Assert.NotNull(result.Suggestion);
+        Assert.Equal(2, provider.GenerateCallCount);
+        Assert.Equal(AiStructuredOutputContracts.RepairSystemPrompt, provider.Requests[1].SystemPrompt);
+        var sessions = commonCollector.GetRecent();
+        Assert.Equal(2, sessions.Count);
+        Assert.All(sessions, session => Assert.Single(
+            session.RelatedSessionIds,
+            id => sessions.Any(other => other.SessionId == id)));
     }
 
     /// <summary>Verifies typed provider failures are translated without parsing or throwing.</summary>
@@ -193,6 +303,7 @@ public sealed class AiSuggestionServiceTests
 
         Assert.Equal(expected, result.State);
         Assert.Null(result.Suggestion);
+        Assert.Equal(1, provider.GenerateCallCount);
     }
 
     /// <summary>Verifies pre-cancellation does not load history or invoke a provider.</summary>
@@ -201,7 +312,7 @@ public sealed class AiSuggestionServiceTests
     {
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        var provider = new FakeProvider(RenameJson("file:1", "name.pdf"));
+        var provider = new FakeProvider(RenameJson("item-001", "document-invoice"));
         var history = new InMemoryDecisionHistoryStore();
         var service = CreateService(provider, history);
 
@@ -216,7 +327,7 @@ public sealed class AiSuggestionServiceTests
     [Fact]
     public async Task GenerateFileRenameAsync_DiagnosticsEnabled_CapturesBoundedStagesAndLocalIdentity()
     {
-        var provider = new FakeProvider(RenameJson("item-001", "April Invoice.pdf"));
+        var provider = new FakeProvider(RenameJson("item-001", "document-invoice"));
         var diagnostics = new AiRequestDiagnosticsStore();
         diagnostics.SetEnabled(true);
         var service = new AiSuggestionService(
@@ -268,7 +379,7 @@ public sealed class AiSuggestionServiceTests
         var diagnostics = new AiRequestDiagnosticsStore();
         diagnostics.SetEnabled(true);
         var service = new AiSuggestionService(
-            new FakeProvider(RenameJson("item-001", "April Invoice.pdf")),
+            new FakeProvider(RenameJson("item-001", "document-invoice")),
             new InMemoryDecisionHistoryStore(),
             new LoggingService(),
             new FixedTimeProvider(DateTimeOffset.UnixEpoch),
@@ -289,7 +400,7 @@ public sealed class AiSuggestionServiceTests
     {
         var collector = new AiDiagnosticsCollector();
         collector.Configure(true, true);
-        var provider = new FakeProvider(RenameJson("item-001", "April Invoice.pdf"));
+        var provider = new FakeProvider(RenameJson("item-001", "document-invoice"));
         var settings = EnabledSettings();
         settings = new AiSettings
         {
@@ -313,10 +424,115 @@ public sealed class AiSuggestionServiceTests
         Assert.NotNull(result.Suggestion);
         var session = Assert.Single(collector.GetRecent());
         Assert.Equal(provider.LastPrompt, session.UserPrompt);
-        Assert.Equal(AiStructuredOutputContracts.SystemPrompt, session.SystemPrompt);
-        Assert.Contains("\"taskId\": \"file-rename-v1\"", session.ParsedStructuredResponse, StringComparison.Ordinal);
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSystemPrompt(AiSuggestionKind.FileRename),
+            session.SystemPrompt);
+        Assert.Contains("\"taskId\": \"file-rename-v2\"", session.ParsedStructuredResponse, StringComparison.Ordinal);
         Assert.All(session.Validation, check => Assert.True(check.Passed, check.Message));
         Assert.Equal(AiDiagnosticState.Succeeded, session.Status);
+    }
+
+    /// <summary>One repairable response gets exactly one related structured repair request.</summary>
+    [Fact]
+    public async Task GenerateFileRenameAsync_RepairableResponse_RepairsOnceAndCorrelatesDiagnostics()
+    {
+        var provider = new FakeProvider(
+            "```json\n{\"taskId\":\"file-rename-v2\",\"status\":\"suggestion\"}\n```");
+        provider.EnqueueResponse(RenameJson("item-001", "document-invoice"));
+        var commonCollector = new InMemoryDiagnosticsCollector();
+        var collector = new AiDiagnosticsCollector(commonCollector);
+        collector.Configure(true, true);
+        var service = new AiSuggestionService(
+            provider,
+            new InMemoryDecisionHistoryStore(),
+            new LoggingService(),
+            new FixedTimeProvider(DateTimeOffset.UnixEpoch),
+            diagnosticsCollector: collector);
+
+        var result = await service.GenerateFileRenameAsync(
+            CreateRenameRequest(),
+            EnabledSettings(),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.ModelSelected, result.State);
+        Assert.NotNull(result.Suggestion);
+        Assert.Equal(2, provider.GenerateCallCount);
+        Assert.Equal(
+            AiStructuredOutputContracts.RepairSystemPrompt,
+            provider.Requests[1].SystemPrompt);
+        Assert.Contains("originalTaskId", provider.Requests[1].Prompt, StringComparison.Ordinal);
+        Assert.Contains("validationError", provider.Requests[1].Prompt, StringComparison.Ordinal);
+        var sessions = collector.GetRecent();
+        Assert.Equal(2, sessions.Count);
+        Assert.Contains(sessions, session => session.RetryAttempt == 1);
+        Assert.Contains(sessions, session =>
+            session.RetryAttempt == 2 &&
+            session.SystemPrompt == AiStructuredOutputContracts.RepairSystemPrompt);
+        var commonSessions = commonCollector.GetRecent();
+        Assert.Equal(2, commonSessions.Count);
+        Assert.All(commonSessions, session =>
+            Assert.Contains(
+                commonSessions.Single(other => other.SessionId != session.SessionId).SessionId,
+                session.RelatedSessionIds));
+    }
+
+    /// <summary>Unsafe opaque identities are rejected without asking the model to repair them.</summary>
+    [Fact]
+    public async Task GenerateFileRenameAsync_UnknownIdentity_DoesNotRepair()
+    {
+        var provider = new FakeProvider(RenameJson("unknown-item", "document-invoice"));
+        provider.EnqueueResponse(RenameJson("item-001", "document-invoice"));
+        var service = CreateService(provider, new InMemoryDecisionHistoryStore());
+
+        var result = await service.GenerateFileRenameAsync(
+            CreateRenameRequest(),
+            EnabledSettings(),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.ResponseInvalid, result.State);
+        Assert.Equal(1, provider.GenerateCallCount);
+        Assert.Contains("unknown source file", result.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Folder suggestions use the same single repair mechanism and revalidate every assignment.</summary>
+    [Fact]
+    public async Task GenerateFolderStructureAsync_RepairableAssignments_RepairOnce()
+    {
+        var provider = new FakeProvider(
+            """{"taskId":"folder-structure-v2","status":"suggestion","folders":[{"folderId":"folder-001","name":"Document","parentFolderId":null}],"assignments":[],"reason":"Group document."}""");
+        provider.EnqueueResponse(
+            """{"taskId":"folder-structure-v2","status":"suggestion","folders":[{"folderId":"folder-001","name":"Document","parentFolderId":null}],"assignments":[{"sourceFileId":"item-001","folderId":"folder-001"}],"reason":"Group document."}""");
+        var service = CreateService(provider, new InMemoryDecisionHistoryStore());
+
+        var result = await service.GenerateFolderStructureAsync(
+            new AiFolderStructureRequest([CreateFile("file:1", "invoice.pdf")], []),
+            EnabledSettings(),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.ModelSelected, result.State);
+        Assert.NotNull(result.Plan);
+        Assert.Equal(2, provider.GenerateCallCount);
+        Assert.Equal(AiStructuredOutputContracts.RepairSystemPrompt, provider.Requests[1].SystemPrompt);
+    }
+
+    /// <summary>A failed repair is never followed by a third generation request.</summary>
+    [Fact]
+    public async Task GenerateFileRenameAsync_InvalidRepair_StopsAfterSecondAttempt()
+    {
+        var provider = new FakeProvider(
+            """{"taskId":"file-rename-v2","status":"suggestion","reason":"Missing fields."}""");
+        provider.EnqueueResponse(
+            """{"taskId":"file-rename-v2","status":"suggestion","reason":"Still missing fields."}""");
+        provider.EnqueueResponse(RenameJson("item-001", "document-invoice"));
+        var service = CreateService(provider, new InMemoryDecisionHistoryStore());
+
+        var result = await service.GenerateFileRenameAsync(
+            CreateRenameRequest(),
+            EnabledSettings(),
+            CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.ResponseInvalid, result.State);
+        Assert.Equal(2, provider.GenerateCallCount);
     }
 
     /// <summary>A broken diagnostics implementation cannot change a valid AI operation outcome.</summary>
@@ -333,7 +549,7 @@ public sealed class AiSuggestionServiceTests
             RequestDiagnosticsEnabled = true,
         };
         var service = new AiSuggestionService(
-            new FakeProvider(RenameJson("item-001", "April Invoice.pdf")),
+            new FakeProvider(RenameJson("item-001", "document-invoice")),
             new InMemoryDecisionHistoryStore(),
             new LoggingService(),
             diagnosticsCollector: new ThrowingDiagnosticsCollector());
@@ -390,6 +606,36 @@ public sealed class AiSuggestionServiceTests
         Assert.Equal(AiAvailabilityState.Unavailable, result.State);
         Assert.Empty(result.Models);
         Assert.Equal(1, provider.ConnectionCallCount);
+    }
+
+    /// <summary>Verifies connection testing and model discovery remain separate common diagnostic sessions.</summary>
+    [Fact]
+    public async Task ConnectionAndDiscovery_CreateSeparateLiveDiagnosticSessions()
+    {
+        var provider = new FakeProvider("{}");
+        var collector = new AiDiagnosticsCollector();
+        collector.Configure(true, true);
+        var service = new AiSuggestionService(
+            provider,
+            new InMemoryDecisionHistoryStore(),
+            new LoggingService(),
+            diagnosticsCollector: collector);
+        var settings = new ApplicationSettings
+        {
+            Features = new FeatureSettings { ShowAdvancedFeatures = true },
+            Ai = EnabledSettings(),
+        };
+
+        var connection = await service.TestConnectionAsync(settings, CancellationToken.None);
+        var discovery = await service.DiscoverModelsAsync(settings, CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.Connected, connection.State);
+        Assert.Equal(AiAvailabilityState.ModelSelected, discovery.State);
+        var sessions = collector.GetRecent();
+        Assert.Equal(2, sessions.Count);
+        Assert.Contains(sessions, item => item.OperationType == AiSuggestionKind.ConnectionTest);
+        Assert.Contains(sessions, item => item.OperationType == AiSuggestionKind.ModelDiscovery);
+        Assert.All(sessions, item => Assert.Equal(AiDiagnosticState.Succeeded, item.Status));
     }
 
     /// <summary>Verifies disabled review recording cannot write local AI history.</summary>
@@ -469,8 +715,8 @@ public sealed class AiSuggestionServiceTests
         PreferenceAdaptationEnabled = settings.PreferenceAdaptationEnabled,
     };
 
-    private static string RenameJson(string sourceId, string name) =>
-        $$"""{"taskId":"file-rename-v1","status":"suggestion","sourceFileId":"{{sourceId}}","suggestedFileName":"{{name}}","reason":"Clearer supplied metadata name.","confidence":0.74}""";
+    private static string RenameJson(string sourceId, string stem) =>
+        $$"""{"taskId":"file-rename-v2","status":"suggestion","sourceFileId":"{{sourceId}}","suggestedStem":"{{stem}}","reason":"Clearer supplied metadata name.","confidence":0.74}""";
 
     private static AiDocumentTextRequest DocumentRequest() =>
         new("known:1", "invoice.pdf", "Invoice date 2026-07-24 and issuer Local Studio.", null, []);
@@ -480,15 +726,21 @@ public sealed class AiSuggestionServiceTests
 
     private sealed class FakeProvider(string? response, AiProviderFailureKind failure = AiProviderFailureKind.None) : IAiSuggestionProvider
     {
+        private readonly Queue<string?> _queuedResponses = new([response]);
+
         public int GenerateCallCount { get; private set; }
 
         public int ConnectionCallCount { get; private set; }
 
         public string LastPrompt { get; private set; } = string.Empty;
 
+        public List<AiProviderGenerationRequest> Requests { get; } = [];
+
         public Exception? ConnectionException { get; init; }
 
         public IReadOnlyList<AiModel> ConnectionModels { get; init; } = [new AiModel("local-model", "local-model")];
+
+        public void EnqueueResponse(string? value) => _queuedResponses.Enqueue(value);
 
         public Task<AiConnectionResult> GetConnectionAsync(AiSettings settings, CancellationToken cancellationToken)
         {
@@ -505,7 +757,16 @@ public sealed class AiSuggestionServiceTests
         {
             GenerateCallCount++;
             LastPrompt = request.Prompt;
-            return Task.FromResult(new AiProviderGenerationResult(response, failure, failure == AiProviderFailureKind.None ? "OK" : "Controlled provider failure."));
+            Requests.Add(request);
+            var currentResponse = _queuedResponses.Count == 0
+                ? response
+                : _queuedResponses.Dequeue();
+            return Task.FromResult(new AiProviderGenerationResult(
+                currentResponse,
+                failure,
+                failure == AiProviderFailureKind.None
+                    ? "OK"
+                    : "Controlled provider failure."));
         }
     }
 
@@ -559,6 +820,7 @@ public sealed class AiSuggestionServiceTests
         public string? Begin(AiSuggestionKind operationType, string model, string endpoint, int retryAttempt = 1) => throw new InvalidOperationException();
         public void ReportStage(string? requestId, string name, AiDiagnosticState state, TimeSpan elapsed, string? error = null) => throw new InvalidOperationException();
         public void Capture(string? requestId, AiDiagnosticContentKind kind, string? value) => throw new InvalidOperationException();
+        public void SetContract(string? requestId, string taskId, string promptVersion, string schemaSha256) => throw new InvalidOperationException();
         public void SetTransport(string? requestId, int? statusCode, string? contentType, IReadOnlyDictionary<string, string>? safeHeaders, int responseSizeBytes, bool complete, bool streaming) => throw new InvalidOperationException();
         public void SetValidation(string? requestId, string? parsedJson, IReadOnlyList<AiDiagnosticValidation> validation, IReadOnlyList<string> errors) => throw new InvalidOperationException();
         public void Complete(string? requestId, AiDiagnosticState state, bool cancelled, TimeSpan elapsed, string? error = null) => throw new InvalidOperationException();

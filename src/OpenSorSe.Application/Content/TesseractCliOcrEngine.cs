@@ -223,8 +223,13 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
                         OcrPageTextSource.NativeText,
                         OcrStatus.Skipped,
                         native.NativeText,
-                        1,
-                        "Reliable native page text was retained; rasterization was skipped."));
+                        null,
+                        "Reliable native page text was retained; rasterization was skipped.")
+                    {
+                        RawText = native.RawNativeText,
+                        NormalizedText = native.NativeText,
+                        PreprocessingSteps = ["Native PDF text quality check; rasterization skipped"],
+                    });
                     continue;
                 }
 
@@ -278,7 +283,16 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
                             pageResult.Status,
                             pageResult.ExtractedText,
                             pageResult.Confidence,
-                            pageResult.Message));
+                            pageResult.Message)
+                        {
+                            RawText = pageResult.RawExtractedText,
+                            NormalizedText = pageResult.NormalizedText ?? pageResult.ExtractedText,
+                            RenderDpi = request.RasterizationDpi,
+                            RenderedWidth = rendered.Width,
+                            RenderedHeight = rendered.Height,
+                            PreprocessingSteps = ["Rendered PDF page to bounded grayscale PNG; no additional preprocessing"],
+                            ProcessingDuration = pageResult.ProcessingDuration,
+                        });
                         AppendPageBounded(
                             combinedOcrText,
                             pageNumber,
@@ -351,6 +365,10 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
             {
                 Pages = Array.AsReadOnly(pageResults.ToArray()),
                 RasterizerIdentifier = capability.RasterizerIdentifier,
+                RawExtractedText = CombineRawPageText(pageResults, request.MaximumTextCharacters),
+                NormalizedText = hasOcrText ? ContentText.Normalize(combinedOcrText.ToString()) : null,
+                DownstreamText = hasOcrText ? ContentText.Normalize(combinedOcrText.ToString()) : null,
+                WasTruncated = wasBounded,
             };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -416,7 +434,10 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
                     OcrFailureCategory.EngineFailure,
                     capability,
                     started.Elapsed,
-                    "The local OCR response exceeded the configured text bound and was discarded.");
+                    "The local OCR response exceeded the configured text bound and was discarded.") with
+                {
+                    WasTruncated = true,
+                };
             }
 
             var normalized = ContentText.Normalize(execution.StandardOutput);
@@ -441,7 +462,12 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
                 started.Elapsed,
                 capability.EngineIdentifier,
                 capability.EngineVersion,
-                "OCR completed locally.");
+                "OCR completed locally.")
+            {
+                RawExtractedText = execution.StandardOutput,
+                NormalizedText = normalized,
+                DownstreamText = normalized,
+            };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -514,6 +540,19 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
         {
             output.Append(text.AsSpan(0, Math.Min(text.Length, remaining)));
         }
+    }
+
+    private static string? CombineRawPageText(
+        IReadOnlyList<OcrPageResult> pages,
+        int maximumCharacters)
+    {
+        var output = new StringBuilder();
+        foreach (var page in pages.Where(page => !string.IsNullOrEmpty(page.RawText)))
+        {
+            AppendPageBounded(output, page.PageNumber, page.RawText!, maximumCharacters);
+        }
+
+        return output.Length == 0 ? null : output.ToString();
     }
 
     private static string TranslateTesseractError(string error)

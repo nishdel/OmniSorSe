@@ -81,6 +81,7 @@ public sealed class TesseractProcessRunner : ITesseractProcessRunner
         catch (OperationCanceledException)
         {
             TryKill(process);
+            await ObserveReaderCompletionAsync(outputTask, errorTask).ConfigureAwait(false);
             throw;
         }
     }
@@ -125,6 +126,21 @@ public sealed class TesseractProcessRunner : ITesseractProcessRunner
         catch (Exception exception) when (
             exception is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
+        }
+    }
+
+    private static async Task ObserveReaderCompletionAsync(
+        Task<BoundedText> outputTask,
+        Task<BoundedText> errorTask)
+    {
+        try
+        {
+            await Task.WhenAll(outputTask, errorTask).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (
+            exception is OperationCanceledException or IOException or ObjectDisposedException)
+        {
+            // Both redirected-stream tasks are observed after cancellation so no fault is left unobserved.
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
+using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 
 namespace OpenSorSe.Application.AI;
 
@@ -109,12 +110,18 @@ public interface IAiDiagnosticsCollector
     void ReportStage(string? requestId, string name, AiDiagnosticState state, TimeSpan elapsed, string? error = null);
     /// <summary>Captures one diagnostic artifact.</summary>
     void Capture(string? requestId, AiDiagnosticContentKind kind, string? value);
+    /// <summary>Captures safe version identities for the exact prompt and schema contract.</summary>
+    void SetContract(string? requestId, string taskId, string promptVersion, string schemaSha256);
     /// <summary>Captures safe HTTP transport facts.</summary>
     void SetTransport(string? requestId, int? statusCode, string? contentType, IReadOnlyDictionary<string, string>? safeHeaders, int responseSizeBytes, bool complete, bool streaming);
     /// <summary>Captures parsed content and validation checks.</summary>
     void SetValidation(string? requestId, string? parsedJson, IReadOnlyList<AiDiagnosticValidation> validation, IReadOnlyList<string> errors);
     /// <summary>Completes a session.</summary>
     void Complete(string? requestId, AiDiagnosticState state, bool cancelled, TimeSpan elapsed, string? error = null);
+    /// <summary>Adds a related OCR, scan, or downstream diagnostic session.</summary>
+    void Relate(string? requestId, string? relatedRequestId)
+    {
+    }
     /// <summary>Gets newest-first session snapshots.</summary>
     IReadOnlyList<AiDiagnosticSession> GetRecent();
     /// <summary>Clears one retained request.</summary>
@@ -143,12 +150,16 @@ public static class AiDiagnosticsIsolation
         public void ReportStage(string? requestId, string name, AiDiagnosticState state, TimeSpan elapsed, string? error = null) =>
             Try(() => inner.ReportStage(requestId, name, state, elapsed, error));
         public void Capture(string? requestId, AiDiagnosticContentKind kind, string? value) => Try(() => inner.Capture(requestId, kind, value));
+        public void SetContract(string? requestId, string taskId, string promptVersion, string schemaSha256) =>
+            Try(() => inner.SetContract(requestId, taskId, promptVersion, schemaSha256));
         public void SetTransport(string? requestId, int? statusCode, string? contentType, IReadOnlyDictionary<string, string>? safeHeaders, int responseSizeBytes, bool complete, bool streaming) =>
             Try(() => inner.SetTransport(requestId, statusCode, contentType, safeHeaders, responseSizeBytes, complete, streaming));
         public void SetValidation(string? requestId, string? parsedJson, IReadOnlyList<AiDiagnosticValidation> validation, IReadOnlyList<string> errors) =>
             Try(() => inner.SetValidation(requestId, parsedJson, validation, errors));
         public void Complete(string? requestId, AiDiagnosticState state, bool cancelled, TimeSpan elapsed, string? error = null) =>
             Try(() => inner.Complete(requestId, state, cancelled, elapsed, error));
+        public void Relate(string? requestId, string? relatedRequestId) =>
+            Try(() => inner.Relate(requestId, relatedRequestId));
         public IReadOnlyList<AiDiagnosticSession> GetRecent() { try { return inner.GetRecent(); } catch { return []; } }
         public void Clear(string requestId) => Try(() => inner.Clear(requestId));
         public void Clear() => Try(inner.Clear);
@@ -156,13 +167,11 @@ public static class AiDiagnosticsIsolation
     }
 }
 
-/// <summary>Thread-safe observable implementation; observer failures never escape.</summary>
-public sealed partial class AiDiagnosticsCollector : IAiDiagnosticsCollector
+/// <summary>
+/// AI compatibility facade over the common diagnostics store; it retains no independent history.
+/// </summary>
+public sealed class AiDiagnosticsCollector : IAiDiagnosticsCollector
 {
-    private readonly object _sync = new();
-    private readonly LinkedList<AiDiagnosticSession> _sessions = [];
-    private bool _enabled;
-    private bool _unredacted;
     private static readonly string[] ExpectedStages =
     [
         "Preparing file context",
@@ -175,193 +184,402 @@ public sealed partial class AiDiagnosticsCollector : IAiDiagnosticsCollector
         "Response headers received",
         "Response body received",
         "Extracting assistant content",
-        "Removing permitted formatting wrappers",
+        "Preserving exact assistant content",
         "Parsing structured JSON",
         "Validating response",
         "Completed",
     ];
+    private readonly IDiagnosticsCollector _collector;
+
+    /// <summary>Initializes a standalone compatibility collector for tests and non-DI callers.</summary>
+    public AiDiagnosticsCollector()
+        : this(new InMemoryDiagnosticsCollector())
+    {
+    }
+
+    /// <summary>Initializes the AI facade over the application-wide diagnostics collector.</summary>
+    /// <param name="collector">The shared process-session collector.</param>
+    public AiDiagnosticsCollector(IDiagnosticsCollector collector)
+    {
+        _collector = collector ?? throw new ArgumentNullException(nameof(collector));
+        _collector.SessionChanged += OnSessionChanged;
+    }
 
     /// <inheritdoc />
-    public bool IsEnabled { get { lock (_sync) return _enabled; } }
+    public bool IsEnabled => _collector.IsCategoryEnabled(DiagnosticCategory.Ai);
+
     /// <inheritdoc />
-    public bool ShowUnredactedContent { get { lock (_sync) return _unredacted; } }
+    public bool ShowUnredactedContent => _collector.ShowUnredactedContent;
+
     /// <inheritdoc />
     public event EventHandler<AiDiagnosticSessionChangedEventArgs>? SessionChanged;
 
     /// <inheritdoc />
-    public void Configure(bool enabled, bool showUnredactedContent)
-    {
-        lock (_sync)
+    public void Configure(bool enabled, bool showUnredactedContent) =>
+        _collector.Configure(new DiagnosticsSettings
         {
-            _enabled = enabled;
-            _unredacted = enabled && showUnredactedContent;
-            if (!enabled)
-            {
-                _sessions.Clear();
-            }
-        }
-    }
-
-    /// <inheritdoc />
-    public string? Begin(AiSuggestionKind operationType, string model, string endpoint, int retryAttempt = 1)
-    {
-        AiDiagnosticSession? session;
-        lock (_sync)
-        {
-            if (!_enabled) return null;
-            var started = DateTimeOffset.UtcNow;
-            session = new AiDiagnosticSession(
-                $"ai-request:{Guid.NewGuid():N}", operationType, model, Redact(endpoint), DateTimeOffset.UtcNow,
-                TimeSpan.Zero, AiDiagnosticState.Active, null, false, Math.Max(1, retryAttempt), string.Empty,
-                new Dictionary<string, string>(), 0, false, false,
-                ExpectedStages.Select(name => new AiDiagnosticStage(name, AiDiagnosticState.Pending, started, TimeSpan.Zero)).ToArray(),
-                "", "", "", "", "", "", [], []);
-            _sessions.AddFirst(session);
-            while (_sessions.Count > AiRequestDiagnosticLimits.MaximumRetainedRequests) _sessions.RemoveLast();
-        }
-        Publish(session, true);
-        return session.RequestId;
-    }
-
-    /// <inheritdoc />
-    public void ReportStage(string? requestId, string name, AiDiagnosticState state, TimeSpan elapsed, string? error = null) =>
-        Update(requestId, current =>
-        {
-            var stages = current.Stages.ToArray();
-            var index = Array.FindIndex(stages, stage => string.Equals(stage.Name, name, StringComparison.Ordinal));
-            var update = new AiDiagnosticStage(name, state, DateTimeOffset.UtcNow, elapsed, Safe(error));
-            if (index >= 0) stages[index] = update;
-            else stages = stages.Concat([update]).TakeLast(100).ToArray();
-            return current with { Elapsed = elapsed, Stages = stages };
+            EnableDiagnostics = enabled,
+            AiDiagnostics = enabled,
+            ShowUnredactedDiagnosticContent = showUnredactedContent,
         });
+
+    /// <inheritdoc />
+    public string? Begin(
+        AiSuggestionKind operationType,
+        string model,
+        string endpoint,
+        int retryAttempt = 1) =>
+        _collector.BeginSession(
+            DiagnosticCategory.Ai,
+            operationType.ToString(),
+            [
+                new DiagnosticField("Model", model),
+                new DiagnosticField("Endpoint", endpoint),
+                new DiagnosticField("Retry attempt", Math.Max(1, retryAttempt).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            ]);
+
+    /// <inheritdoc />
+    public void ReportStage(
+        string? requestId,
+        string name,
+        AiDiagnosticState state,
+        TimeSpan elapsed,
+        string? error = null) =>
+        _collector.Publish(
+            requestId,
+            name,
+            ToCommon(state),
+            string.IsNullOrWhiteSpace(error) ? DiagnosticSeverity.Information : DiagnosticSeverity.Error,
+            string.IsNullOrWhiteSpace(error) ? DiagnosticSection.Overview : DiagnosticSection.WarningsAndErrors,
+            string.IsNullOrWhiteSpace(error) ? name : "The AI request stage reported an error.",
+            [
+                new DiagnosticField("Elapsed milliseconds", elapsed.TotalMilliseconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)),
+                new DiagnosticField("Error", error ?? string.Empty, DiagnosticDataClassification.Metadata),
+            ]);
 
     /// <inheritdoc />
     public void Capture(string? requestId, AiDiagnosticContentKind kind, string? value)
     {
-        var safe = Safe(value);
-        Update(requestId, current => kind switch
+        var (section, name) = kind switch
         {
-            AiDiagnosticContentKind.SystemPrompt => current with { SystemPrompt = safe },
-            AiDiagnosticContentKind.UserPrompt => current with { UserPrompt = safe },
-            AiDiagnosticContentKind.RequestJson => current with { RequestJson = safe },
-            AiDiagnosticContentKind.RawHttpResponse => current with { RawHttpResponse = safe },
-            AiDiagnosticContentKind.ExtractedAssistantResponse => current with { ExtractedAssistantResponse = safe },
-            AiDiagnosticContentKind.ParsedStructuredResponse => current with { ParsedStructuredResponse = safe },
-            _ => current,
-        });
+            AiDiagnosticContentKind.SystemPrompt => (DiagnosticSection.Inputs, "Exact system prompt"),
+            AiDiagnosticContentKind.UserPrompt => (DiagnosticSection.Inputs, "Exact user prompt"),
+            AiDiagnosticContentKind.RequestJson => (DiagnosticSection.Inputs, "Serialized Ollama request"),
+            AiDiagnosticContentKind.RawHttpResponse => (DiagnosticSection.IntermediateResults, "Raw HTTP response"),
+            AiDiagnosticContentKind.ExtractedAssistantResponse => (DiagnosticSection.IntermediateResults, "Extracted assistant content"),
+            AiDiagnosticContentKind.ParsedStructuredResponse => (DiagnosticSection.Outputs, "Parsed structured response"),
+            _ => (DiagnosticSection.Overview, kind.ToString()),
+        };
+        _collector.Publish(
+            requestId,
+            name,
+            DiagnosticStatus.Active,
+            DiagnosticSeverity.Information,
+            section,
+            $"{name} captured.",
+            [new DiagnosticField(name, value ?? string.Empty, DiagnosticDataClassification.Content)]);
     }
 
     /// <inheritdoc />
-    public void SetTransport(string? requestId, int? statusCode, string? contentType, IReadOnlyDictionary<string, string>? safeHeaders, int responseSizeBytes, bool complete, bool streaming) =>
-        Update(requestId, current => current with
-        {
-            HttpStatusCode = statusCode,
-            ContentType = Bound(contentType, 200),
-            SafeResponseHeaders = safeHeaders is null
-                ? new Dictionary<string, string>()
-                : safeHeaders.ToDictionary(pair => Bound(pair.Key, 100), pair => Safe(Bound(pair.Value, 500))),
-            ResponseSizeBytes = Math.Max(0, responseSizeBytes),
-            ResponseComplete = complete,
-            WasStreaming = streaming,
-        });
+    public void SetContract(
+        string? requestId,
+        string taskId,
+        string promptVersion,
+        string schemaSha256) =>
+        _collector.Publish(
+            requestId,
+            "Prompt contract",
+            DiagnosticStatus.Active,
+            DiagnosticSeverity.Information,
+            DiagnosticSection.Overview,
+            "The versioned prompt and exact structured-output schema were selected.",
+            [
+                new DiagnosticField("Task ID", taskId),
+                new DiagnosticField("Prompt version", promptVersion),
+                new DiagnosticField("Schema SHA-256", schemaSha256),
+                new DiagnosticField("Intended model size", AiPromptTemplates.IntendedModelSizeRange),
+            ]);
 
     /// <inheritdoc />
-    public void SetValidation(string? requestId, string? parsedJson, IReadOnlyList<AiDiagnosticValidation> validation, IReadOnlyList<string> errors)
+    public void SetTransport(
+        string? requestId,
+        int? statusCode,
+        string? contentType,
+        IReadOnlyDictionary<string, string>? safeHeaders,
+        int responseSizeBytes,
+        bool complete,
+        bool streaming) =>
+        _collector.Publish(
+            requestId,
+            "HTTP transport",
+            DiagnosticStatus.Active,
+            DiagnosticSeverity.Information,
+            DiagnosticSection.Performance,
+            "HTTP transport facts updated.",
+            [
+                new DiagnosticField("HTTP status", statusCode?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty),
+                new DiagnosticField("Content type", contentType ?? string.Empty),
+                new DiagnosticField("Safe response headers", JsonSerializer.Serialize(safeHeaders ?? new Dictionary<string, string>())),
+                new DiagnosticField("Response size bytes", Math.Max(0, responseSizeBytes).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                new DiagnosticField("Response complete", complete.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                new DiagnosticField("Streaming", streaming.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            ]);
+
+    /// <inheritdoc />
+    public void SetValidation(
+        string? requestId,
+        string? parsedJson,
+        IReadOnlyList<AiDiagnosticValidation> validation,
+        IReadOnlyList<string> errors)
     {
         Capture(requestId, AiDiagnosticContentKind.ParsedStructuredResponse, parsedJson);
-        Update(requestId, current => current with
+        foreach (var item in validation.Take(100))
         {
-            Validation = validation.Take(100).Select(item => item with
-            {
-                ActualValue = Safe(Bound(item.ActualValue, 1000)),
-                Message = Safe(Bound(item.Message, 1000)),
-            }).ToArray(),
-            Errors = errors.Select(error => Safe(Bound(error, 1000))).Take(100).ToArray(),
-        });
+            _collector.Publish(
+                requestId,
+                "Validating response",
+                item.Passed ? DiagnosticStatus.Succeeded : DiagnosticStatus.Rejected,
+                item.Passed ? DiagnosticSeverity.Information : DiagnosticSeverity.Warning,
+                item.Passed ? DiagnosticSection.Outputs : DiagnosticSection.WarningsAndErrors,
+                "A structured-response validation check completed.",
+                [
+                    new DiagnosticField("Validation property", item.PropertyName),
+                    new DiagnosticField("Required", item.Required.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    new DiagnosticField("Expected type", item.ExpectedType),
+                    new DiagnosticField("Allowed values", item.AllowedValues ?? string.Empty),
+                    new DiagnosticField("Actual type", item.ActualType),
+                    new DiagnosticField("Actual value", item.ActualValue, DiagnosticDataClassification.Content),
+                    new DiagnosticField("Passed", item.Passed.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    new DiagnosticField("Validation message", item.Message, DiagnosticDataClassification.Safe),
+                ]);
+        }
+
+        foreach (var error in errors.Take(100))
+        {
+            _collector.Publish(
+                requestId,
+                "Validation error",
+                DiagnosticStatus.Rejected,
+                DiagnosticSeverity.Error,
+                DiagnosticSection.WarningsAndErrors,
+                "The structured response failed validation.",
+                [new DiagnosticField("Error", error, DiagnosticDataClassification.Safe)]);
+        }
     }
 
     /// <inheritdoc />
-    public void Complete(string? requestId, AiDiagnosticState state, bool cancelled, TimeSpan elapsed, string? error = null) =>
-        Update(requestId, current => current with
-        {
-            Status = state,
-            WasCancelled = cancelled,
-            Elapsed = elapsed,
-            Errors = string.IsNullOrWhiteSpace(error) ? current.Errors : current.Errors.Concat([Safe(error)]).Take(100).ToArray(),
-        });
+    public void Complete(
+        string? requestId,
+        AiDiagnosticState state,
+        bool cancelled,
+        TimeSpan elapsed,
+        string? error = null) =>
+        _collector.Complete(
+            requestId,
+            cancelled ? DiagnosticStatus.Cancelled : ToCommon(state),
+            elapsed,
+            $"AI request {state}.",
+            state is AiDiagnosticState.Failed ? DiagnosticSeverity.Error :
+                state is AiDiagnosticState.Rejected or AiDiagnosticState.Cancelled ? DiagnosticSeverity.Warning :
+                DiagnosticSeverity.Information,
+            string.IsNullOrWhiteSpace(error)
+                ? null
+                : [new DiagnosticField("Error", error, DiagnosticDataClassification.Safe)]);
 
     /// <inheritdoc />
-    public IReadOnlyList<AiDiagnosticSession> GetRecent()
+    public void Relate(string? requestId, string? relatedRequestId)
     {
-        lock (_sync) return _sessions.ToArray();
+        if (string.IsNullOrWhiteSpace(requestId) || string.IsNullOrWhiteSpace(relatedRequestId))
+        {
+            return;
+        }
+
+        _collector.Relate(requestId, relatedRequestId);
+        _collector.Relate(relatedRequestId, requestId);
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AiDiagnosticSession> GetRecent() =>
+        Array.AsReadOnly(_collector.GetRecent()
+            .Where(session => session.Category == DiagnosticCategory.Ai)
+            .Take(AiRequestDiagnosticLimits.MaximumRetainedRequests)
+            .Select(Project)
+            .ToArray());
+
+    /// <inheritdoc />
+    public void Clear(string requestId) => _collector.Clear(requestId);
 
     /// <inheritdoc />
     public void Clear()
     {
-        lock (_sync) _sessions.Clear();
+        foreach (var session in _collector.GetRecent()
+                     .Where(item => item.Category == DiagnosticCategory.Ai))
+        {
+            _collector.Clear(session.SessionId);
+        }
     }
 
-    /// <inheritdoc />
-    public void Clear(string requestId)
+    private void OnSessionChanged(object? sender, DiagnosticSessionChangedEventArgs eventArgs)
     {
-        if (string.IsNullOrWhiteSpace(requestId)) return;
-        lock (_sync)
+        if (eventArgs.Session.Category != DiagnosticCategory.Ai)
         {
-            var node = _sessions.First;
-            while (node is not null)
+            return;
+        }
+
+        var projected = Project(eventArgs.Session);
+        foreach (EventHandler<AiDiagnosticSessionChangedEventArgs> handler in
+                 SessionChanged?.GetInvocationList() ?? [])
+        {
+            try
             {
-                if (node.Value.RequestId == requestId)
-                {
-                    _sessions.Remove(node);
-                    return;
-                }
-                node = node.Next;
+                handler(this, new AiDiagnosticSessionChangedEventArgs(projected, eventArgs.IsNew));
+            }
+            catch
+            {
+                // Compatibility observers remain isolated from the shared event stream.
             }
         }
     }
 
-    private void Update(string? requestId, Func<AiDiagnosticSession, AiDiagnosticSession> update)
+    private static AiDiagnosticSession Project(DiagnosticSession session)
     {
-        if (requestId is null) return;
-        AiDiagnosticSession? changed = null;
-        lock (_sync)
+        var model = Context(session, "Model");
+        var endpoint = Context(session, "Endpoint");
+        var retryAttempt = int.TryParse(
+            Context(session, "Retry attempt"),
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var retry)
+            ? retry
+            : 1;
+        var stages = ExpectedStages
+            .Select(name => new AiDiagnosticStage(
+                name,
+                AiDiagnosticState.Pending,
+                session.StartedAtUtc,
+                TimeSpan.Zero))
+            .ToList();
+        foreach (var item in session.Events)
         {
-            if (!_enabled) return;
-            var node = _sessions.First;
-            while (node is not null && node.Value.RequestId != requestId) node = node.Next;
-            if (node is null) return;
-            changed = update(node.Value);
-            node.Value = changed;
+            if (string.Equals(item.Stage, "Completed", StringComparison.Ordinal) &&
+                item.Message.StartsWith("AI request ", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var index = stages.FindIndex(stage => string.Equals(stage.Name, item.Stage, StringComparison.Ordinal));
+            var elapsed = item.TimestampUtc - session.StartedAtUtc;
+            var stage = new AiDiagnosticStage(
+                item.Stage,
+                ToAi(item.Status),
+                item.TimestampUtc,
+                elapsed < TimeSpan.Zero ? TimeSpan.Zero : elapsed,
+                item.Severity == DiagnosticSeverity.Error
+                    ? EmptyToNull(Field(item, "Error")) ?? item.Message
+                    : null);
+            if (index >= 0)
+            {
+                stages[index] = stage;
+            }
+            else if (!string.Equals(item.Stage, "HTTP transport", StringComparison.Ordinal) &&
+                     !string.Equals(item.Stage, "Validation error", StringComparison.Ordinal))
+            {
+                stages.Add(stage);
+            }
         }
-        Publish(changed, false);
+
+        var transport = session.Events.LastOrDefault(item =>
+            string.Equals(item.Stage, "HTTP transport", StringComparison.Ordinal));
+        var validations = session.Events
+            .Where(item =>
+                string.Equals(item.Stage, "Validating response", StringComparison.Ordinal) &&
+                item.Fields.Any(field =>
+                    string.Equals(field.Name, "Validation property", StringComparison.Ordinal)))
+            .Select(item => new AiDiagnosticValidation(
+                Field(item, "Validation property"),
+                bool.TryParse(Field(item, "Required"), out var required) && required,
+                Field(item, "Expected type"),
+                EmptyToNull(Field(item, "Allowed values")),
+                Field(item, "Actual type"),
+                Field(item, "Actual value"),
+                bool.TryParse(Field(item, "Passed"), out var passed) && passed,
+                Field(item, "Validation message")))
+            .ToArray();
+        var errors = session.Events
+            .Where(item => item.Severity == DiagnosticSeverity.Error)
+            .Select(item => Field(item, "Error") is { Length: > 0 } value ? value : item.Message)
+            .Distinct(StringComparer.Ordinal)
+            .Take(100)
+            .ToArray();
+        return new AiDiagnosticSession(
+            session.SessionId,
+            Enum.TryParse<AiSuggestionKind>(session.Operation, out var operation) ? operation : AiSuggestionKind.FileRename,
+            model,
+            endpoint,
+            session.StartedAtUtc,
+            session.Elapsed,
+            ToAi(session.Status),
+            int.TryParse(Field(transport, "HTTP status"), out var statusCode) ? statusCode : null,
+            session.Status == DiagnosticStatus.Cancelled,
+            retryAttempt,
+            Field(transport, "Content type"),
+            ParseHeaders(Field(transport, "Safe response headers")),
+            int.TryParse(Field(transport, "Response size bytes"), out var size) ? size : 0,
+            bool.TryParse(Field(transport, "Response complete"), out var complete) && complete,
+            bool.TryParse(Field(transport, "Streaming"), out var streaming) && streaming,
+            Array.AsReadOnly(stages.Take(100).ToArray()),
+            Content(session, "Exact system prompt"),
+            Content(session, "Exact user prompt"),
+            Content(session, "Serialized Ollama request"),
+            Content(session, "Raw HTTP response"),
+            Content(session, "Extracted assistant content"),
+            Content(session, "Parsed structured response"),
+            Array.AsReadOnly(validations),
+            Array.AsReadOnly(errors));
     }
 
-    private void Publish(AiDiagnosticSession session, bool isNew)
+    private static DiagnosticStatus ToCommon(AiDiagnosticState state) => state switch
     {
-        foreach (EventHandler<AiDiagnosticSessionChangedEventArgs> handler in SessionChanged?.GetInvocationList() ?? [])
+        AiDiagnosticState.Pending or AiDiagnosticState.Active => DiagnosticStatus.Active,
+        AiDiagnosticState.Succeeded => DiagnosticStatus.Succeeded,
+        AiDiagnosticState.Rejected => DiagnosticStatus.Rejected,
+        AiDiagnosticState.Cancelled => DiagnosticStatus.Cancelled,
+        _ => DiagnosticStatus.Failed,
+    };
+
+    private static AiDiagnosticState ToAi(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Active => AiDiagnosticState.Active,
+        DiagnosticStatus.Succeeded or DiagnosticStatus.PartiallySucceeded or DiagnosticStatus.Skipped => AiDiagnosticState.Succeeded,
+        DiagnosticStatus.Rejected => AiDiagnosticState.Rejected,
+        DiagnosticStatus.Cancelled => AiDiagnosticState.Cancelled,
+        _ => AiDiagnosticState.Failed,
+    };
+
+    private static string Context(DiagnosticSession session, string name) =>
+        session.Context.LastOrDefault(field => string.Equals(field.Name, name, StringComparison.Ordinal))?.Value ?? string.Empty;
+
+    private static string Content(DiagnosticSession session, string name) =>
+        session.Events.SelectMany(item => item.Fields)
+            .LastOrDefault(field => string.Equals(field.Name, name, StringComparison.Ordinal))?.Value ?? string.Empty;
+
+    private static string Field(DiagnosticEvent? item, string name) =>
+        item?.Fields.LastOrDefault(field => string.Equals(field.Name, name, StringComparison.Ordinal))?.Value ?? string.Empty;
+
+    private static string? EmptyToNull(string value) => value.Length == 0 ? null : value;
+
+    private static IReadOnlyDictionary<string, string> ParseHeaders(string value)
+    {
+        try
         {
-            try { handler(this, new AiDiagnosticSessionChangedEventArgs(session, isNew)); }
-            catch { /* Diagnostics observers must never affect the AI operation. */ }
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(value) ??
+                   new Dictionary<string, string>();
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, string>();
         }
     }
-
-    private string Safe(string? value) => _unredacted ? value ?? string.Empty : Redact(value);
-    private static string Redact(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return string.Empty;
-        var redacted = SensitiveJsonStringRegex().Replace(value, "$1[REDACTED]$3");
-        return PathLikeRegex().Replace(redacted, "[REDACTED_PATH]");
-    }
-
-    private static string Bound(string? value, int maximum) =>
-        string.IsNullOrEmpty(value) ? string.Empty : value.Length <= maximum ? value : value[..maximum];
-
-    [GeneratedRegex("(\\\"(?:fileName|currentFileName|displayFileName|sourceFile|relativePath|path|text|metadata)\\\"\\s*:\\s*\\\")([^\\\"]*)(\\\")", RegexOptions.IgnoreCase)]
-    private static partial Regex SensitiveJsonStringRegex();
-
-    [GeneratedRegex(@"(?:[A-Za-z]:\\|(?<!:)\/(?!\/))[^\s""}]+", RegexOptions.IgnoreCase)]
-    private static partial Regex PathLikeRegex();
 }
 
 /// <summary>Creates validation diagnostics without changing the authoritative parser result.</summary>

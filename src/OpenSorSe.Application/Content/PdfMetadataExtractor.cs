@@ -76,20 +76,28 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
 
         var pages = new List<PdfPageText>(Math.Min(pageCount, maximumPages));
         var combined = new StringBuilder();
+        var rawCombined = new StringBuilder();
         var processedPages = Math.Min(pageCount, maximumPages);
         for (var pageNumber = 1; pageNumber <= processedPages; pageNumber++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var normalized = ContentText.Normalize(
-                ContentOrderTextExtractor.GetText(document.GetPage(pageNumber)));
+            var raw = ContentOrderTextExtractor.GetText(document.GetPage(pageNumber));
+            var normalized = ContentText.Normalize(raw);
             var reliable = PdfNativeTextQuality.IsReliable(normalized);
             pages.Add(new PdfPageText(
                 pageNumber,
                 normalized.Length == 0 ? null : normalized,
-                reliable));
+                reliable)
+            {
+                RawNativeText = string.IsNullOrEmpty(raw) ? null : BoundRaw(raw),
+            });
             if (normalized.Length > 0)
             {
                 AppendPage(combined, pageNumber, normalized);
+            }
+            if (!string.IsNullOrEmpty(raw))
+            {
+                AppendPage(rawCombined, pageNumber, BoundRaw(raw));
             }
         }
 
@@ -105,6 +113,8 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             Array.AsReadOnly(warnings))
         {
             PdfPages = Array.AsReadOnly(pages.ToArray()),
+            RawNativeText = rawCombined.Length == 0 ? null : BoundRaw(rawCombined.ToString()),
+            ExtractionStrategies = ["PdfPig page-aware native text"],
         };
     }
 
@@ -138,13 +148,20 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             "Page count",
             pageCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ContentProvenance.EmbeddedMetadata));
-        var nativeText = pageCount > maximumPages
+        var rawNativeText = pageCount > maximumPages
             ? string.Empty
-            : ContentText.Normalize(string.Join(' ', TextRegex.Matches(source)
+            : string.Join(' ', TextRegex.Matches(source)
                 .Take(2048)
-                .Select(match => UnescapePdfText(match.Groups["value"].Value))));
+                .Select(match => UnescapePdfText(match.Groups["value"].Value)));
+        var nativeText = ContentText.Normalize(rawNativeText);
         var pages = pageCount == 1
-            ? new[] { new PdfPageText(1, nativeText.Length == 0 ? null : nativeText, PdfNativeTextQuality.IsReliable(nativeText)) }
+            ? new[]
+            {
+                new PdfPageText(1, nativeText.Length == 0 ? null : nativeText, PdfNativeTextQuality.IsReliable(nativeText))
+                {
+                    RawNativeText = rawNativeText.Length == 0 ? null : BoundRaw(rawNativeText),
+                },
+            }
             : [];
         var warnings = new List<string> { "PDF required the compatibility text reader; page-level extraction may be incomplete." };
         if (pageCount > maximumPages)
@@ -160,6 +177,8 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             Array.AsReadOnly(warnings.ToArray()))
         {
             PdfPages = Array.AsReadOnly(pages),
+            RawNativeText = rawNativeText.Length == 0 ? null : BoundRaw(rawNativeText),
+            ExtractionStrategies = ["Bounded compatibility PDF text reader"],
         };
     }
 
@@ -216,6 +235,11 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
 
     private static MetadataExtractionResult Empty(string warning) =>
         new([], null, false, null, [warning]);
+
+    private static string BoundRaw(string value) =>
+        value.Length <= ContentText.MaximumTextCharacters
+            ? value
+            : value[..ContentText.MaximumTextCharacters];
 }
 
 /// <summary>Applies the documented deterministic PDF-native-text sufficiency policy.</summary>

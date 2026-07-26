@@ -170,6 +170,6 @@ public sealed partial class AiRequestDiagnosticsStore : IAiRequestDiagnosticsSto
     [GeneratedRegex("(?i)(\\\"?(?:api[_-]?key|access[_-]?token|password|secret)\\\"?\\s*[:=]\\s*\\\"?)([^\\\",}\\s]+)(\\\"?)")]
     private static partial Regex SecretPropertyRegex();
 
-    [GeneratedRegex("(\\\"(?:fileName|currentFileName|suggestedFileName|displayFileName|relativePath|path|text|metadata)\\\"\\s*:\\s*\\\")([^\\\"]*)(\\\")", RegexOptions.IgnoreCase)]
+    [GeneratedRegex("(\\\"(?:fileName|currentFileName|suggestedFileName|currentStem|suggestedStem|displayFileName|relativePath|path|text|metadata|documentType|title|issuer|reason)\\\"\\s*:\\s*\\\")([^\\\"]*)(\\\")", RegexOptions.IgnoreCase)]
     private static partial Regex DiagnosticContentRegex();
 }

@@ -11,18 +11,22 @@ public static class AiResponseLimits
     public const int MaximumStructuredResponseBytes = 256 * 1024;
 
     /// <summary>Maximum folders in one logical hierarchy.</summary>
-    public const int MaximumFolders = 25;
+    public const int MaximumFolders = 8;
 
     /// <summary>Maximum assignments in one logical hierarchy.</summary>
     public const int MaximumAssignments = AiPromptLimits.MaximumFolderStructureFiles;
 
     /// <summary>Maximum provider reason length.</summary>
-    public const int MaximumReasonLength = 240;
+    public const int MaximumReasonLength = 160;
+
+    /// <summary>Maximum parent depth in one proposed logical hierarchy.</summary>
+    public const int MaximumFolderDepth = 3;
 }
 
 /// <summary>Contains validated rename response values before provider attribution.</summary>
 public sealed record AiParsedFileRename(
     string SourceFileId,
+    string SuggestedStem,
     string SuggestedFileName,
     string Reason,
     double? Confidence);
@@ -46,11 +50,36 @@ public sealed record AiParsedDocumentInterpretation(
     double? Confidence);
 
 /// <summary>Contains either one fully valid response, a valid no-suggestion response, or one safe error.</summary>
-public sealed record AiResponseParseResult<T>(T? Value, bool IsNoSuggestion, string Message)
+public enum AiResponseFailureKind
+{
+    /// <summary>The response is valid.</summary>
+    None,
+    /// <summary>JSON or the exact schema shape may be corrected once.</summary>
+    RepairableFormatOrSchema,
+    /// <summary>An opaque identity was unknown or unsafe and must not be retried.</summary>
+    UnsafeIdentity,
+    /// <summary>A path, traversal, reserved location, or filesystem value must not be retried.</summary>
+    UnsafePath,
+    /// <summary>The model invented evidence or otherwise departed from the requested task.</summary>
+    ModelMisuse,
+    /// <summary>The response was empty or exceeded a hard bound.</summary>
+    HardBound,
+}
+
+/// <summary>Contains either one fully valid response, a valid no-suggestion response, or one classified error.</summary>
+public sealed record AiResponseParseResult<T>(
+    T? Value,
+    bool IsNoSuggestion,
+    string Message,
+    AiResponseFailureKind FailureKind = AiResponseFailureKind.None)
     where T : class
 {
     /// <summary>Gets whether the complete structured response passed validation.</summary>
     public bool IsValid => Value is not null || IsNoSuggestion;
+
+    /// <summary>Gets whether exactly one structured-output repair attempt may be made.</summary>
+    public bool CanRepair => !IsValid &&
+        FailureKind == AiResponseFailureKind.RepairableFormatOrSchema;
 }
 
 /// <summary>Parses and validates capability-specific untrusted JSON.</summary>
@@ -74,6 +103,13 @@ public interface IAiResponseParser
         IReadOnlyList<ResultFile> includedFiles,
         IReadOnlyList<AiPromptSourceMapping> sourceMappings);
 
+    /// <summary>Parses one folder response against exact mappings and declared folder-name choices.</summary>
+    AiResponseParseResult<AiParsedFolderStructure> ParseFolderStructure(
+        string response,
+        IReadOnlyList<ResultFile> includedFiles,
+        IReadOnlyList<AiPromptSourceMapping> sourceMappings,
+        IReadOnlyList<string> allowedFolderNames);
+
     /// <summary>Parses a document interpretation against the exact request-local identity.</summary>
     AiResponseParseResult<AiParsedDocumentInterpretation> ParseDocumentInterpretation(
         string response,
@@ -82,7 +118,7 @@ public interface IAiResponseParser
 }
 
 /// <summary>
-/// Implements strict required-field validation while ignoring unknown JSON properties for forward compatibility.
+/// Implements exact, case-sensitive response-shape and deterministic safety validation.
 /// </summary>
 public sealed class AiResponseParser : IAiResponseParser
 {
@@ -112,12 +148,14 @@ public sealed class AiResponseParser : IAiResponseParser
             : null;
         if (sourceMapping is null)
         {
-            return Failure<AiParsedFileRename>("The known rename identity mapping is invalid. No suggestion was used.");
+            return Failure<AiParsedFileRename>(
+                "The known rename identity mapping is invalid. No suggestion was used.",
+                AiResponseFailureKind.UnsafeIdentity);
         }
 
-        if (!TryOpen(response, out var document, out var error))
+        if (!TryOpen(response, out var document, out var error, out var openFailureKind))
         {
-            return Failure<AiParsedFileRename>(error);
+            return Failure<AiParsedFileRename>(error, openFailureKind);
         }
 
         using (document)
@@ -125,39 +163,89 @@ public sealed class AiResponseParser : IAiResponseParser
             var root = document.RootElement;
             if (!TryReadCommon(root, AiPromptBuilder.FileRenameTaskId, out var status, out var reason, out error))
             {
-                return Failure<AiParsedFileRename>(error);
+                return Failure<AiParsedFileRename>(error, ClassifyCommonError(error));
             }
 
             if (status == NoSuggestionStatus)
             {
-                if (root.TryGetProperty("sourceFileId", out _) || root.TryGetProperty("suggestedFileName", out _) || root.TryGetProperty("confidence", out _))
+                if (!HasOnlyProperties(root, ["taskId", "status", "reason"], out var unknown))
                 {
-                    return Failure<AiParsedFileRename>("The AI no-suggestion response contained actionable rename values. No suggestion was used.");
+                    return Failure<AiParsedFileRename>(
+                        "The AI no-suggestion response contained an unsupported or wrong-case property. No suggestion was used.",
+                        IsMisuseProperty(unknown)
+                            ? AiResponseFailureKind.ModelMisuse
+                            : AiResponseFailureKind.RepairableFormatOrSchema);
                 }
 
                 return new AiResponseParseResult<AiParsedFileRename>(null, true, reason);
             }
 
-            if (!TryReadRequiredString(root, "sourceFileId", 128, out var sourceFileId, out error) ||
-                !string.Equals(sourceFileId, sourceMapping.RequestSourceId, StringComparison.Ordinal))
+            if (!HasOnlyProperties(
+                    root,
+                    ["taskId", "status", "sourceFileId", "suggestedStem", "reason", "confidence"],
+                    out var unknownProperty))
             {
-                return Failure<AiParsedFileRename>("The AI rename response referenced an unknown source file. No suggestion was used.");
+                return Failure<AiParsedFileRename>(
+                    "The AI rename response contained an unsupported or wrong-case property. No suggestion was used.",
+                    IsMisuseProperty(unknownProperty)
+                        ? AiResponseFailureKind.ModelMisuse
+                        : AiResponseFailureKind.RepairableFormatOrSchema);
             }
 
-            if (!TryReadRequiredString(root, "suggestedFileName", 255, out var suggestedFileName, out error) ||
-                !AiSuggestionValidator.TryNormalizeFileName(
-                    suggestedFileName,
-                    request.File.NormalizedExtension,
-                    request.SiblingFileNames,
-                    out var normalizedFileName,
+            if (!TryReadRequiredString(root, "sourceFileId", 32, out var sourceFileId, out error))
+            {
+                return Failure<AiParsedFileRename>(error);
+            }
+
+            if (!string.Equals(sourceFileId, sourceMapping.RequestSourceId, StringComparison.Ordinal))
+            {
+                return Failure<AiParsedFileRename>(
+                    "The AI rename response referenced an unknown source file. No suggestion was used.",
+                    AiResponseFailureKind.UnsafeIdentity);
+            }
+
+            if (!TryReadRequiredString(
+                    root,
+                    "suggestedStem",
+                    AiSuggestionValidator.MaximumFileStemLength,
+                    out var suggestedStem,
                     out error))
             {
                 return Failure<AiParsedFileRename>(error);
             }
 
-            if (string.Equals(normalizedFileName, request.File.DisplayFileName, StringComparison.OrdinalIgnoreCase))
+            if (!AiSuggestionValidator.TryNormalizeFileStem(
+                    suggestedStem,
+                    request.File.NormalizedExtension,
+                    request.SiblingFileNames,
+                    out var normalizedFileName,
+                    out error))
             {
-                return Failure<AiParsedFileRename>("The AI rename response did not propose a filename change. No suggestion was used.");
+                return Failure<AiParsedFileRename>(
+                    error,
+                    LooksLikePathOrTraversal(suggestedStem)
+                        ? AiResponseFailureKind.UnsafePath
+                        : AiResponseFailureKind.ModelMisuse);
+            }
+
+            if (!AiSuggestionValidator.IsFileStemGrounded(
+                    suggestedStem,
+                    request.File.DisplayFileName,
+                    request.File.ClassificationDisplay))
+            {
+                return Failure<AiParsedFileRename>(
+                    "The AI rename response introduced words or facts that were not present in the supplied evidence. No suggestion was used.",
+                    AiResponseFailureKind.ModelMisuse);
+            }
+
+            if (string.Equals(
+                    NormalizeStemForComparison(suggestedStem),
+                    NormalizeStemForComparison(Path.GetFileNameWithoutExtension(request.File.DisplayFileName)),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return Failure<AiParsedFileRename>(
+                    "The AI rename response did not propose a filename-stem change. No suggestion was used.",
+                    AiResponseFailureKind.ModelMisuse);
             }
 
             if (!TryReadConfidence(root, out var confidence, out error))
@@ -166,7 +254,12 @@ public sealed class AiResponseParser : IAiResponseParser
             }
 
             return new AiResponseParseResult<AiParsedFileRename>(
-                new AiParsedFileRename(sourceMapping.KnownSourceId, normalizedFileName, reason, confidence),
+                new AiParsedFileRename(
+                    sourceMapping.KnownSourceId,
+                    suggestedStem,
+                    normalizedFileName,
+                    reason,
+                    confidence),
                 false,
                 "A validated AI-generated rename suggestion is available for review.");
         }
@@ -186,12 +279,14 @@ public sealed class AiResponseParser : IAiResponseParser
             : null;
         if (mapping is null)
         {
-            return Failure<AiParsedDocumentInterpretation>("The known document identity mapping is invalid. No suggestion was used.");
+            return Failure<AiParsedDocumentInterpretation>(
+                "The known document identity mapping is invalid. No suggestion was used.",
+                AiResponseFailureKind.UnsafeIdentity);
         }
 
-        if (!TryOpen(response, out var document, out var error))
+        if (!TryOpen(response, out var document, out var error, out var openFailureKind))
         {
-            return Failure<AiParsedDocumentInterpretation>(error);
+            return Failure<AiParsedDocumentInterpretation>(error, openFailureKind);
         }
 
         using (document)
@@ -204,36 +299,59 @@ public sealed class AiResponseParser : IAiResponseParser
                     out var reason,
                     out error))
             {
-                return Failure<AiParsedDocumentInterpretation>(error);
+                return Failure<AiParsedDocumentInterpretation>(error, ClassifyCommonError(error));
             }
 
             if (status == NoSuggestionStatus)
             {
-                var actionableProperties = new[]
-                {
-                    "sourceFileId", "documentType", "title", "tags", "dates", "issuer",
-                    "suggestedFolder", "confidence",
-                };
-                if (actionableProperties.Any(property => root.TryGetProperty(property, out _)))
+                if (!HasOnlyProperties(root, ["taskId", "status", "reason"], out var unknown))
                 {
                     return Failure<AiParsedDocumentInterpretation>(
-                        "The AI no-suggestion response contained interpretation values. No suggestion was used.");
+                        "The AI no-suggestion response contained an unsupported or wrong-case property. No suggestion was used.",
+                        IsMisuseProperty(unknown)
+                            ? AiResponseFailureKind.ModelMisuse
+                            : AiResponseFailureKind.RepairableFormatOrSchema);
                 }
 
                 return new AiResponseParseResult<AiParsedDocumentInterpretation>(null, true, reason);
             }
 
-            if (!TryReadRequiredString(root, "sourceFileId", 64, out var sourceId, out error) ||
-                !string.Equals(sourceId, mapping.RequestSourceId, StringComparison.Ordinal))
+            if (!HasOnlyProperties(
+                    root,
+                    [
+                        "taskId", "status", "sourceFileId", "documentType", "title", "tags",
+                        "dates", "issuer", "suggestedFolder", "reason", "confidence",
+                    ],
+                    out var unknownProperty))
             {
                 return Failure<AiParsedDocumentInterpretation>(
-                    "The AI interpretation referenced an unknown source file. No suggestion was used.");
+                    "The AI interpretation contained an unsupported or wrong-case property. No suggestion was used.",
+                    IsMisuseProperty(unknownProperty)
+                        ? AiResponseFailureKind.ModelMisuse
+                        : AiResponseFailureKind.RepairableFormatOrSchema);
+            }
+
+            if (!TryReadRequiredString(root, "sourceFileId", 32, out var sourceId, out error))
+            {
+                return Failure<AiParsedDocumentInterpretation>(error);
+            }
+
+            if (!string.Equals(sourceId, mapping.RequestSourceId, StringComparison.Ordinal))
+            {
+                return Failure<AiParsedDocumentInterpretation>(
+                    "The AI interpretation referenced an unknown source file. No suggestion was used.",
+                    AiResponseFailureKind.UnsafeIdentity);
             }
 
             if (!TryReadNullableRequiredString(root, "documentType", 96, out var documentType, out error) ||
                 !TryReadNullableRequiredString(root, "title", 240, out var title, out error) ||
                 !TryReadNullableRequiredString(root, "issuer", 160, out var issuer, out error) ||
-                !TryReadNullableRequiredString(root, "suggestedFolder", 100, out var folder, out error) ||
+                !TryReadNullableRequiredString(
+                    root,
+                    "suggestedFolder",
+                    AiSuggestionValidator.MaximumFolderComponentLength,
+                    out var folder,
+                    out error) ||
                 !TryReadStringArray(root, "tags", 12, 64, out var rawTags, out error) ||
                 !TryReadStringArray(root, "dates", 8, 10, out var dates, out error) ||
                 !TryReadConfidence(root, out var confidence, out error))
@@ -262,7 +380,11 @@ public sealed class AiResponseParser : IAiResponseParser
             {
                 if (!AiSuggestionValidator.TryNormalizeFolderName(folder, out var normalizedFolder, out error))
                 {
-                    return Failure<AiParsedDocumentInterpretation>(error);
+                    return Failure<AiParsedDocumentInterpretation>(
+                        error,
+                        LooksLikePathOrTraversal(folder)
+                            ? AiResponseFailureKind.UnsafePath
+                            : AiResponseFailureKind.ModelMisuse);
                 }
 
                 safeFolder = normalizedFolder;
@@ -272,7 +394,22 @@ public sealed class AiResponseParser : IAiResponseParser
                 tags.Count == 0 && dates.Count == 0)
             {
                 return Failure<AiParsedDocumentInterpretation>(
-                    "The AI interpretation contained no reviewable values. No suggestion was used.");
+                    "The AI interpretation contained no reviewable values. No suggestion was used.",
+                    AiResponseFailureKind.ModelMisuse);
+            }
+
+            if (!AiSuggestionValidator.AreDocumentInterpretationValuesGrounded(
+                    request,
+                    documentType,
+                    title,
+                    rawTags,
+                    dates,
+                    issuer,
+                    safeFolder))
+            {
+                return Failure<AiParsedDocumentInterpretation>(
+                    "The AI interpretation introduced values that were not present in the supplied filename or extracted text. No suggestion was used.",
+                    AiResponseFailureKind.ModelMisuse);
             }
 
             return new AiResponseParseResult<AiParsedDocumentInterpretation>(
@@ -304,12 +441,31 @@ public sealed class AiResponseParser : IAiResponseParser
         IReadOnlyList<ResultFile> includedFiles,
         IReadOnlyList<AiPromptSourceMapping> sourceMappings)
     {
+        var allowedFolderNames = includedFiles
+            .Select(file => file.ClassificationDisplay)
+            .Append("Other")
+            .Where(value => AiSuggestionValidator.TryNormalizeFolderName(value, out _, out _))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return ParseFolderStructure(response, includedFiles, sourceMappings, allowedFolderNames);
+    }
+
+    /// <inheritdoc />
+    public AiResponseParseResult<AiParsedFolderStructure> ParseFolderStructure(
+        string response,
+        IReadOnlyList<ResultFile> includedFiles,
+        IReadOnlyList<AiPromptSourceMapping> sourceMappings,
+        IReadOnlyList<string> allowedFolderNames)
+    {
         ArgumentNullException.ThrowIfNull(includedFiles);
         ArgumentNullException.ThrowIfNull(sourceMappings);
+        ArgumentNullException.ThrowIfNull(allowedFolderNames);
         if (includedFiles.Count == 0 || includedFiles.Any(file => file is null || string.IsNullOrWhiteSpace(file.Id)) ||
             includedFiles.Select(file => file.Id).Distinct(StringComparer.Ordinal).Count() != includedFiles.Count)
         {
-            return Failure<AiParsedFolderStructure>("The known folder-structure context is invalid. No suggestion was used.");
+            return Failure<AiParsedFolderStructure>(
+                "The known folder-structure context is invalid. No suggestion was used.",
+                AiResponseFailureKind.UnsafeIdentity);
         }
 
         if (sourceMappings.Count != includedFiles.Count ||
@@ -317,12 +473,14 @@ public sealed class AiResponseParser : IAiResponseParser
             sourceMappings.Select(mapping => mapping.KnownSourceId).Distinct(StringComparer.Ordinal).Count() != sourceMappings.Count ||
             sourceMappings.Any(mapping => !includedFiles.Any(file => string.Equals(file.Id, mapping.KnownSourceId, StringComparison.Ordinal))))
         {
-            return Failure<AiParsedFolderStructure>("The known folder-structure identity mapping is invalid. No suggestion was used.");
+            return Failure<AiParsedFolderStructure>(
+                "The known folder-structure identity mapping is invalid. No suggestion was used.",
+                AiResponseFailureKind.UnsafeIdentity);
         }
 
-        if (!TryOpen(response, out var document, out var error))
+        if (!TryOpen(response, out var document, out var error, out var openFailureKind))
         {
-            return Failure<AiParsedFolderStructure>(error);
+            return Failure<AiParsedFolderStructure>(error, openFailureKind);
         }
 
         using (document)
@@ -330,51 +488,130 @@ public sealed class AiResponseParser : IAiResponseParser
             var root = document.RootElement;
             if (!TryReadCommon(root, AiPromptBuilder.FolderStructureTaskId, out var status, out var reason, out error))
             {
-                return Failure<AiParsedFolderStructure>(error);
+                return Failure<AiParsedFolderStructure>(error, ClassifyCommonError(error));
             }
 
             if (status == NoSuggestionStatus)
             {
-                if (root.TryGetProperty("folders", out _) || root.TryGetProperty("assignments", out _))
+                if (!HasOnlyProperties(root, ["taskId", "status", "reason"], out var unknown))
                 {
-                    return Failure<AiParsedFolderStructure>("The AI no-suggestion response contained actionable folder values. No suggestion was used.");
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI no-suggestion response contained an unsupported or wrong-case property. No suggestion was used.",
+                        IsMisuseProperty(unknown)
+                            ? AiResponseFailureKind.ModelMisuse
+                            : AiResponseFailureKind.RepairableFormatOrSchema);
                 }
 
                 return new AiResponseParseResult<AiParsedFolderStructure>(null, true, reason);
             }
 
+            if (!HasOnlyProperties(
+                    root,
+                    ["taskId", "status", "folders", "assignments", "reason"],
+                    out var unknownProperty))
+            {
+                return Failure<AiParsedFolderStructure>(
+                    "The AI folder response contained an unsupported or wrong-case property. No suggestion was used.",
+                    IsMisuseProperty(unknownProperty)
+                        ? AiResponseFailureKind.ModelMisuse
+                        : AiResponseFailureKind.RepairableFormatOrSchema);
+            }
+
             if (!root.TryGetProperty("folders", out var foldersElement) || foldersElement.ValueKind != JsonValueKind.Array ||
                 foldersElement.GetArrayLength() is 0 or > AiResponseLimits.MaximumFolders)
             {
-                return Failure<AiParsedFolderStructure>("The AI folder response contains an invalid folder list. No suggestion was used.");
+                return Failure<AiParsedFolderStructure>(
+                    "The AI folder response contains an invalid or excessive folder list. No suggestion was used.",
+                    foldersElement.ValueKind == JsonValueKind.Array &&
+                    foldersElement.GetArrayLength() > AiResponseLimits.MaximumFolders
+                        ? AiResponseFailureKind.HardBound
+                        : AiResponseFailureKind.RepairableFormatOrSchema);
             }
 
             var folderInputs = new Dictionary<string, FolderInput>(StringComparer.Ordinal);
             foreach (var folderElement in foldersElement.EnumerateArray())
             {
-                if (folderElement.ValueKind != JsonValueKind.Object ||
-                    !TryReadRequiredString(folderElement, "folderId", 64, out var folderId, out error) ||
-                    !TryReadRequiredString(folderElement, "name", 100, out var name, out error) ||
-                    !AiSuggestionValidator.TryNormalizeFolderName(name, out var normalizedName, out error) ||
-                    !TryReadNullableRequiredString(folderElement, "parentFolderId", 64, out var parentFolderId, out error) ||
-                    !TryReadRequiredString(folderElement, "reason", AiResponseLimits.MaximumReasonLength, out var folderReason, out error) ||
-                    !TryReadConfidence(folderElement, out var confidence, out error))
+                if (folderElement.ValueKind != JsonValueKind.Object)
                 {
-                    return Failure<AiParsedFolderStructure>(error);
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response contains a non-object folder record. No suggestion was used.");
                 }
 
-                if (!folderInputs.TryAdd(folderId, new FolderInput(folderId, normalizedName, parentFolderId, folderReason, confidence)))
+                if (!HasOnlyProperties(
+                        folderElement,
+                        ["folderId", "name", "parentFolderId"],
+                        out var unknownFolderProperty))
                 {
-                    return Failure<AiParsedFolderStructure>("The AI folder response contains duplicate folder identities. No suggestion was used.");
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response contained an unsupported or wrong-case folder property. No suggestion was used.",
+                        IsMisuseProperty(unknownFolderProperty)
+                            ? AiResponseFailureKind.ModelMisuse
+                            : AiResponseFailureKind.RepairableFormatOrSchema);
+                }
+
+                var name = string.Empty;
+                string? parentFolderId = null;
+                if (!TryReadRequiredString(folderElement, "folderId", 10, out var folderId, out error) ||
+                    !IsFolderId(folderId) ||
+                    !TryReadRequiredString(
+                        folderElement,
+                        "name",
+                        AiSuggestionValidator.MaximumFolderComponentLength,
+                        out name,
+                        out error) ||
+                    !TryReadNullableRequiredString(folderElement, "parentFolderId", 10, out parentFolderId, out error) ||
+                    parentFolderId is not null && !IsFolderId(parentFolderId))
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        string.IsNullOrWhiteSpace(error)
+                            ? "The AI folder response contains an invalid folder identity. No suggestion was used."
+                            : error,
+                        LooksLikePathOrTraversal(name) ||
+                        LooksLikePathOrTraversal(parentFolderId)
+                            ? AiResponseFailureKind.UnsafePath
+                            : AiResponseFailureKind.RepairableFormatOrSchema);
+                }
+
+                if (!AiSuggestionValidator.TryNormalizeFolderName(name, out var normalizedName, out error))
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        error,
+                        LooksLikePathOrTraversal(name)
+                            ? AiResponseFailureKind.UnsafePath
+                            : AiResponseFailureKind.ModelMisuse);
+                }
+
+                if (!allowedFolderNames.Contains(normalizedName, StringComparer.OrdinalIgnoreCase))
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response invented a folder name that was not declared in allowedFolderNames. No suggestion was used.",
+                        AiResponseFailureKind.ModelMisuse);
+                }
+
+                if (!folderInputs.TryAdd(folderId, new FolderInput(folderId, normalizedName, parentFolderId)))
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response contains duplicate folder identities. No suggestion was used.",
+                        AiResponseFailureKind.UnsafeIdentity);
                 }
             }
 
             foreach (var folder in folderInputs.Values)
             {
                 if (folder.ParentFolderId is not null &&
-                    (!folderInputs.ContainsKey(folder.ParentFolderId) || string.Equals(folder.FolderId, folder.ParentFolderId, StringComparison.Ordinal)))
+                    !folderInputs.ContainsKey(folder.ParentFolderId))
                 {
-                    return Failure<AiParsedFolderStructure>("The AI folder response contains an unknown or circular parent folder. No suggestion was used.");
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response referenced an unknown parent folder identity. No suggestion was used.",
+                        AiResponseFailureKind.UnsafeIdentity);
+                }
+
+                if (folder.ParentFolderId is not null &&
+                    string.Equals(folder.FolderId, folder.ParentFolderId, StringComparison.Ordinal))
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response contains a circular parent folder. No suggestion was used.",
+                        AiResponseFailureKind.ModelMisuse);
                 }
             }
 
@@ -383,20 +620,34 @@ public sealed class AiResponseParser : IAiResponseParser
             {
                 if (!TryBuildLogicalPath(folderId, folderInputs, paths, new HashSet<string>(StringComparer.Ordinal), out _, out error))
                 {
-                    return Failure<AiParsedFolderStructure>(error);
+                    return Failure<AiParsedFolderStructure>(error, AiResponseFailureKind.ModelMisuse);
                 }
             }
 
             if (paths.Values.Distinct(StringComparer.OrdinalIgnoreCase).Count() != paths.Count)
             {
-                return Failure<AiParsedFolderStructure>("The AI folder response contains duplicate logical folder paths. No suggestion was used.");
+                return Failure<AiParsedFolderStructure>(
+                    "The AI folder response contains duplicate logical folder paths. No suggestion was used.",
+                    AiResponseFailureKind.ModelMisuse);
             }
 
-            if (!root.TryGetProperty("assignments", out var assignmentsElement) || assignmentsElement.ValueKind != JsonValueKind.Array ||
-                assignmentsElement.GetArrayLength() is 0 or > AiResponseLimits.MaximumAssignments ||
-                assignmentsElement.GetArrayLength() != includedFiles.Count)
+            if (!root.TryGetProperty("assignments", out var assignmentsElement) ||
+                assignmentsElement.ValueKind != JsonValueKind.Array ||
+                assignmentsElement.GetArrayLength() is 0 or > AiResponseLimits.MaximumAssignments)
             {
-                return Failure<AiParsedFolderStructure>("The AI folder response contains an invalid assignment list. No suggestion was used.");
+                return Failure<AiParsedFolderStructure>(
+                    "The AI folder response contains an invalid or excessive assignment list. No suggestion was used.",
+                    assignmentsElement.ValueKind == JsonValueKind.Array &&
+                    assignmentsElement.GetArrayLength() > AiResponseLimits.MaximumAssignments
+                        ? AiResponseFailureKind.HardBound
+                        : AiResponseFailureKind.RepairableFormatOrSchema);
+            }
+
+            if (assignmentsElement.GetArrayLength() != includedFiles.Count)
+            {
+                return Failure<AiParsedFolderStructure>(
+                    "The AI folder response did not contain exactly one assignment for every supplied source file. No suggestion was used.",
+                    AiResponseFailureKind.UnsafeIdentity);
             }
 
             var knownFiles = includedFiles.ToDictionary(file => file.Id, StringComparer.Ordinal);
@@ -405,19 +656,45 @@ public sealed class AiResponseParser : IAiResponseParser
             var items = new List<AiFolderStructurePlanItem>();
             foreach (var assignmentElement in assignmentsElement.EnumerateArray())
             {
-                if (assignmentElement.ValueKind != JsonValueKind.Object ||
-                    !TryReadRequiredString(assignmentElement, "sourceFileId", 128, out var sourceFileId, out error) ||
-                    !TryReadRequiredString(assignmentElement, "folderId", 64, out var folderId, out error) ||
+                if (assignmentElement.ValueKind != JsonValueKind.Object)
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response contains a non-object assignment. No suggestion was used.");
+                }
+
+                if (!HasOnlyProperties(
+                        assignmentElement,
+                        ["sourceFileId", "folderId"],
+                        out var unknownAssignmentProperty))
+                {
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response contained an unsupported or wrong-case assignment property. No suggestion was used.",
+                        IsMisuseProperty(unknownAssignmentProperty)
+                            ? AiResponseFailureKind.ModelMisuse
+                            : AiResponseFailureKind.RepairableFormatOrSchema);
+                }
+
+                if (!TryReadRequiredString(assignmentElement, "sourceFileId", 32, out var sourceFileId, out error) ||
+                    !TryReadRequiredString(assignmentElement, "folderId", 10, out var folderId, out error))
+                {
+                    return Failure<AiParsedFolderStructure>(error);
+                }
+
+                if (
                     !sourceMap.TryGetValue(sourceFileId, out var mapping) ||
                     !knownFiles.TryGetValue(mapping.KnownSourceId, out var file) ||
                     !paths.TryGetValue(folderId, out var logicalPath))
                 {
-                    return Failure<AiParsedFolderStructure>("The AI folder response referenced an unknown source file or folder. No suggestion was used.");
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response referenced an unknown source file or folder. No suggestion was used.",
+                        AiResponseFailureKind.UnsafeIdentity);
                 }
 
                 if (!assignedFiles.Add(sourceFileId))
                 {
-                    return Failure<AiParsedFolderStructure>("The AI folder response assigned the same source file more than once. No suggestion was used.");
+                    return Failure<AiParsedFolderStructure>(
+                        "The AI folder response assigned the same source file more than once. No suggestion was used.",
+                        AiResponseFailureKind.UnsafeIdentity);
                 }
 
                 items.Add(new AiFolderStructurePlanItem(file.Id, file.DisplayFileName, logicalPath));
@@ -425,7 +702,9 @@ public sealed class AiResponseParser : IAiResponseParser
 
             if (assignedFiles.Count != sourceMappings.Count)
             {
-                return Failure<AiParsedFolderStructure>("The AI folder response did not assign every supplied source file exactly once. No suggestion was used.");
+                return Failure<AiParsedFolderStructure>(
+                    "The AI folder response did not assign every supplied source file exactly once. No suggestion was used.",
+                    AiResponseFailureKind.UnsafeIdentity);
             }
 
             var folders = folderInputs.Values
@@ -435,8 +714,8 @@ public sealed class AiResponseParser : IAiResponseParser
                     folder.Name,
                     folder.ParentFolderId,
                     paths[folder.FolderId],
-                    folder.Reason,
-                    folder.Confidence))
+                    reason,
+                    null))
                 .ToArray();
             var orderedItems = items
                 .OrderBy(item => item.FileId, StringComparer.Ordinal)
@@ -450,13 +729,19 @@ public sealed class AiResponseParser : IAiResponseParser
         }
     }
 
-    private static bool TryOpen(string response, out JsonDocument document, out string error)
+    private static bool TryOpen(
+        string response,
+        out JsonDocument document,
+        out string error,
+        out AiResponseFailureKind failureKind)
     {
         document = default!;
         error = string.Empty;
+        failureKind = AiResponseFailureKind.RepairableFormatOrSchema;
         if (string.IsNullOrWhiteSpace(response))
         {
             error = "The AI returned an empty structured response. No suggestion was used.";
+            failureKind = AiResponseFailureKind.HardBound;
             return false;
         }
 
@@ -470,6 +755,7 @@ public sealed class AiResponseParser : IAiResponseParser
         if (Encoding.UTF8.GetByteCount(trimmed) > AiResponseLimits.MaximumStructuredResponseBytes)
         {
             error = "The AI returned an excessively large structured response. No suggestion was used.";
+            failureKind = AiResponseFailureKind.HardBound;
             return false;
         }
 
@@ -496,6 +782,7 @@ public sealed class AiResponseParser : IAiResponseParser
             return false;
         }
 
+        failureKind = AiResponseFailureKind.None;
         return true;
     }
 
@@ -508,8 +795,12 @@ public sealed class AiResponseParser : IAiResponseParser
     {
         status = string.Empty;
         reason = string.Empty;
-        if (!TryReadRequiredString(root, "taskId", 64, out var taskId, out error) ||
-            !string.Equals(taskId, expectedTaskId, StringComparison.Ordinal))
+        if (!TryReadRequiredString(root, "taskId", 64, out var taskId, out error))
+        {
+            return false;
+        }
+
+        if (!string.Equals(taskId, expectedTaskId, StringComparison.Ordinal))
         {
             error = "The AI response used an unexpected task identifier. No suggestion was used.";
             return false;
@@ -689,11 +980,12 @@ public sealed class AiResponseParser : IAiResponseParser
             logicalPath = $"{parentPath}/{folder.Name}";
         }
 
-        if (logicalPath.Length > 512)
+        if (logicalPath.Length > 512 ||
+            logicalPath.Count(character => character == '/') + 1 > AiResponseLimits.MaximumFolderDepth)
         {
             visiting.Remove(folderId);
             logicalPath = string.Empty;
-            error = "The AI folder response contains an excessively deep or long logical path. No suggestion was used.";
+            error = "The AI folder response exceeds the maximum folder depth or logical-path length. No suggestion was used.";
             return false;
         }
 
@@ -703,15 +995,79 @@ public sealed class AiResponseParser : IAiResponseParser
         return true;
     }
 
-    private static AiResponseParseResult<T> Failure<T>(string error)
-        where T : class => new(null, false, string.IsNullOrWhiteSpace(error)
-            ? "The AI response was invalid. No suggestion was used."
-            : error);
+    private static AiResponseParseResult<T> Failure<T>(
+        string error,
+        AiResponseFailureKind failureKind = AiResponseFailureKind.RepairableFormatOrSchema)
+        where T : class => new(
+            null,
+            false,
+            string.IsNullOrWhiteSpace(error)
+                ? "The AI response was invalid. No suggestion was used."
+                : error,
+            failureKind);
+
+    private static bool HasOnlyProperties(
+        JsonElement element,
+        IReadOnlyCollection<string> allowedProperties,
+        out string unknownProperty)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var property in element.EnumerateObject())
+        {
+            if (!seen.Add(property.Name) ||
+                !allowedProperties.Contains(property.Name, StringComparer.Ordinal))
+            {
+                unknownProperty = property.Name;
+                return false;
+            }
+        }
+
+        unknownProperty = string.Empty;
+        return true;
+    }
+
+    private static bool IsFolderId(string value) =>
+        value.Length == 10 &&
+        value.StartsWith("folder-", StringComparison.Ordinal) &&
+        value.Skip(7).All(character => character is >= '0' and <= '9');
+
+    private static bool IsMisuseProperty(string propertyName) =>
+        propertyName.Contains("path", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("command", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("action", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("operation", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("alternative", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("fileNames", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("suggestions", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("options", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("metadata", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("issuer", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("title", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("tag", StringComparison.OrdinalIgnoreCase) ||
+        propertyName.Contains("date", StringComparison.OrdinalIgnoreCase);
+
+    private static bool LooksLikePathOrTraversal(string? value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        (Path.IsPathRooted(value) ||
+         value.Contains("..", StringComparison.Ordinal) ||
+         value.Contains('/') ||
+         value.Contains('\\') ||
+         value.Contains(':'));
+
+    private static AiResponseFailureKind ClassifyCommonError(string error) =>
+        error.Contains("unexpected task identifier", StringComparison.Ordinal)
+            ? AiResponseFailureKind.ModelMisuse
+            : AiResponseFailureKind.RepairableFormatOrSchema;
+
+    private static string NormalizeStemForComparison(string value) =>
+        string.Join(
+            '-',
+            value.Split(
+                [' ', '_', '-', '.'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
     private sealed record FolderInput(
         string FolderId,
         string Name,
-        string? ParentFolderId,
-        string Reason,
-        double? Confidence);
+        string? ParentFolderId);
 }

@@ -9,4 +9,8 @@ public sealed record ScanResult(
     ScanStatistics Statistics,
     IReadOnlyList<ScanIssue> Issues,
     ScanStatus Status,
-    TimeSpan Elapsed);
+    TimeSpan Elapsed)
+{
+    /// <summary>Gets the process-session diagnostic identity for this scan, when collection was enabled.</summary>
+    public string? DiagnosticSessionId { get; init; }
+}

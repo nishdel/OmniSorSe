@@ -178,7 +178,11 @@ public sealed record AiDocumentTextRequest(
     string DisplayFileName,
     string? NativeText,
     string? OcrText,
-    IReadOnlyList<OpenSorSe.Application.Content.OcrPageResult> Pages);
+    IReadOnlyList<OpenSorSe.Application.Content.OcrPageResult> Pages)
+{
+    /// <summary>Gets the related OCR or extraction diagnostic session, when known.</summary>
+    public string? RelatedDiagnosticSessionId { get; init; }
+}
 
 /// <summary>Represents an application-normalized tag retained for existing deterministic and historical workflows.</summary>
 public sealed record SuggestedTag(string DisplayName, string NormalizedValue);
@@ -283,7 +287,12 @@ public sealed record AiProviderGenerationRequest(
     TimeSpan Timeout)
 {
     /// <summary>Gets the exact system prompt sent to the provider.</summary>
-    public string SystemPrompt { get; init; } = AiStructuredOutputContracts.SystemPrompt;
+    public string SystemPrompt { get; init; } =
+        Kind is AiSuggestionKind.FileRename or
+            AiSuggestionKind.FolderStructure or
+            AiSuggestionKind.DocumentTextInterpretation
+            ? AiStructuredOutputContracts.GetSystemPrompt(Kind)
+            : string.Empty;
 
     /// <summary>Gets the exact user prompt sent to the provider.</summary>
     public string UserPrompt => Prompt;

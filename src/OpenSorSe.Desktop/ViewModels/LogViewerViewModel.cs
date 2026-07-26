@@ -6,6 +6,8 @@ using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Desktop.Services;
+using OpenSorSe.Core.Diagnostics;
+using LoggingDiagnosticEvent = OpenSorSe.Core.Logging.DiagnosticEvent;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
@@ -23,7 +25,7 @@ public enum DiagnosticSeverityFilter
 }
 
 /// <summary>Projects one retained event into bounded, copy-safe user-facing details.</summary>
-public sealed record DiagnosticEventRow(DiagnosticEvent Event)
+public sealed record DiagnosticEventRow(LoggingDiagnosticEvent Event)
 {
     /// <summary>Gets the event timestamp in a stable readable form.</summary>
     public string TimestampText => Event.TimestampUtc.ToString("u");
@@ -133,8 +135,9 @@ public sealed class LogViewerViewModel : ViewModelBase
     private const string AllCategories = "All categories";
     private readonly ILoggingService _loggingService;
     private readonly IClipboardService? _clipboardService;
-    private readonly IConfigurationService? _configurationService;
     private readonly IAiRequestDiagnosticsStore? _aiRequestDiagnosticsStore;
+    private readonly IDiagnosticsCollector? _advancedDiagnosticsCollector;
+    private readonly IAdvancedDiagnosticsWindowService? _advancedDiagnosticsWindowService;
     private readonly ObservableCollection<DiagnosticEventRow> _events = [];
     private readonly ObservableCollection<DiagnosticEventRow> _visibleEvents = [];
     private readonly ObservableCollection<string> _categories = [AllCategories];
@@ -152,12 +155,16 @@ public sealed class LogViewerViewModel : ViewModelBase
         ILoggingService loggingService,
         IClipboardService? clipboardService = null,
         IConfigurationService? configurationService = null,
-        IAiRequestDiagnosticsStore? aiRequestDiagnosticsStore = null)
+        IAiRequestDiagnosticsStore? aiRequestDiagnosticsStore = null,
+        IDiagnosticsCollector? advancedDiagnosticsCollector = null,
+        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null)
     {
         _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
         _clipboardService = clipboardService;
-        _configurationService = configurationService;
+        _ = configurationService;
         _aiRequestDiagnosticsStore = aiRequestDiagnosticsStore;
+        _advancedDiagnosticsCollector = advancedDiagnosticsCollector;
+        _advancedDiagnosticsWindowService = advancedDiagnosticsWindowService;
         Events = new ReadOnlyObservableCollection<DiagnosticEventRow>(_events);
         VisibleEvents = new ReadOnlyObservableCollection<DiagnosticEventRow>(_visibleEvents);
         Categories = new ReadOnlyObservableCollection<string>(_categories);
@@ -168,6 +175,9 @@ public sealed class LogViewerViewModel : ViewModelBase
         CopyAiResponseCommand = new AsyncRelayCommand(() => CopyAiTextAsync(SelectedAiRequest?.Record.Response, "AI response"), () => SelectedAiRequest?.HasResponse == true && _clipboardService is not null);
         CopyAiRequestDiagnosticsCommand = new AsyncRelayCommand(() => CopyAiTextAsync(SelectedAiRequest?.FormatSummary(), "AI request diagnostics"), () => SelectedAiRequest is not null && _clipboardService is not null);
         ClearAiDiagnosticsCommand = new RelayCommand(ClearAiDiagnostics, () => AiRequests.Count > 0 && _aiRequestDiagnosticsStore is not null);
+        OpenAdvancedDiagnosticsCommand = new RelayCommand(
+            () => _advancedDiagnosticsWindowService?.Show(),
+            () => _advancedDiagnosticsWindowService is not null);
         Refresh();
     }
 
@@ -184,15 +194,20 @@ public sealed class LogViewerViewModel : ViewModelBase
     public ReadOnlyObservableCollection<AiRequestDiagnosticRow> AiRequests { get; }
 
     /// <summary>Gets whether the active settings authorize the raw AI diagnostics section.</summary>
-    public bool IsAiDiagnosticsVisible =>
-        _configurationService?.Current is { } settings &&
-        settings.Ai.Enabled && settings.Features.ShowAdvancedFeatures && settings.Ai.RequestDiagnosticsEnabled;
+    public bool IsAiDiagnosticsVisible => false;
 
     /// <summary>Gets whether the visible AI diagnostics collection is empty.</summary>
     public bool HasNoAiRequests => AiRequests.Count == 0;
 
     /// <summary>Gets the explicit filename privacy notice.</summary>
     public string AiDiagnosticsPrivacyNotice => "AI request diagnostics may contain filenames and relative folder metadata. They are retained only for this session and never include file contents or authorization headers.";
+
+    /// <summary>Gets the retained common advanced-diagnostic session count.</summary>
+    public int AdvancedDiagnosticsRetainedCount => _advancedDiagnosticsCollector?.GetRecent().Count ?? 0;
+
+    /// <summary>Gets a truthful instrumentation summary for System Check.</summary>
+    public string AdvancedDiagnosticsSummary =>
+        "AI, OCR and text extraction, and scanning are instrumented. Duplicate detection, search and indexing, rules and organisation, file operations, and standalone performance sessions are planned.";
 
     /// <summary>Gets or sets the AI request selected for prompt/response inspection.</summary>
     public AiRequestDiagnosticRow? SelectedAiRequest
@@ -333,6 +348,9 @@ public sealed class LogViewerViewModel : ViewModelBase
     /// <summary>Clears only session AI request diagnostics.</summary>
     public IRelayCommand ClearAiDiagnosticsCommand { get; }
 
+    /// <summary>Opens the shared non-modal advanced-diagnostics viewer.</summary>
+    public IRelayCommand OpenAdvancedDiagnosticsCommand { get; }
+
     /// <summary>Refreshes the bounded process-session projection without reading log files.</summary>
     public void Refresh()
     {
@@ -348,6 +366,7 @@ public sealed class LogViewerViewModel : ViewModelBase
         RebuildCategories();
         ApplyFilters(selectedSequence);
         RefreshAiDiagnostics();
+        OnPropertyChanged(nameof(AdvancedDiagnosticsRetainedCount));
         StatusText = HasRecordedEvents ? "Diagnostics updated." : EmptyStateMessage;
         Status = !HasRecordedEvents
             ? StatusPresentation.Information(StatusText)

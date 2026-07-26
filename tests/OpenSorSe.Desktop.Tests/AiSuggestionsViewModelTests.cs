@@ -50,6 +50,27 @@ public sealed class AiSuggestionsViewModelTests
         Assert.Equal(folder, viewModel.GenerateFolderStructureCommand.CanExecute(null));
     }
 
+    /// <summary>Verifies an oversized results-page selection is visibly blocked and no files can be silently omitted.</summary>
+    [Fact]
+    public async Task FolderSuggestion_MoreThanTwelveFiles_IsBlockedWithExactCount()
+    {
+        var configuration = new MutableConfigurationService(Settings(rename: false, folder: true));
+        var service = new RecordingService();
+        using var viewModel = new AiSuggestionsViewModel(configuration, service);
+        var files = Enumerable.Range(1, AiPromptLimits.MaximumFolderStructureFiles + 1)
+            .Select(index => CreateFile($"file:{index}", $"invoice-{index}.pdf"))
+            .ToArray();
+
+        viewModel.SetContext(files[0], CreateSnapshot(files[0]), files);
+        await viewModel.GenerateFolderStructureCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.GenerateFolderStructureCommand.CanExecute(null));
+        Assert.Contains(files.Length.ToString(System.Globalization.CultureInfo.InvariantCulture), viewModel.FolderStructureContextText, StringComparison.Ordinal);
+        Assert.Contains("none will be sent", viewModel.FolderStructureContextText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(AiPromptBuilder.FolderStructureTaskId, viewModel.AiRequestContextText, StringComparison.Ordinal);
+        Assert.Equal(0, service.FolderCallCount);
+    }
+
     /// <summary>Verifies a generated rename remains editable and acceptance records only a local decision.</summary>
     [Fact]
     public async Task RenameSuggestion_EditAndAccept_RecordsDecisionWithoutFilesystemAction()

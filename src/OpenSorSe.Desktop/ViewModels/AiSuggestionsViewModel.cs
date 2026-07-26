@@ -84,6 +84,36 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         _contentStore is not null &&
         _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.DocumentTextInterpretation);
 
+    /// <summary>Explains exactly how the bounded folder request treats the current result-page files.</summary>
+    public string FolderStructureContextText => _pageFiles.Count switch
+    {
+        0 => "No files from the current results page are available for a folder request.",
+        > AiPromptLimits.MaximumFolderStructureFiles =>
+            $"{_pageFiles.Count} files are in the current results-page selection. The safe request limit is " +
+            $"{AiPromptLimits.MaximumFolderStructureFiles}; none will be sent until the selection is reduced.",
+        _ =>
+            $"{_pageFiles.Count} of {_pageFiles.Count} files will be sent using opaque IDs and must be assigned exactly once.",
+    };
+
+    /// <summary>Provides a concise review-before-send summary for the currently available AI tasks.</summary>
+    public string AiRequestContextText
+    {
+        get
+        {
+            var model = _configurationService.Current.Ai.SelectedModel ?? "not selected";
+            var selectedMetadata = _selectedFile is null
+                ? "No file selected."
+                : $"Filename: {_selectedFile.DisplayFileName}; extension: {_selectedFile.NormalizedExtension}; type: {_selectedFile.ClassificationDisplay}.";
+            return
+                $"Model: {model}{Environment.NewLine}" +
+                $"Rename: {AiPromptBuilder.FileRenameTaskId}, prompt {AiPromptTemplates.FileRenamePromptVersion}. {selectedMetadata}{Environment.NewLine}" +
+                $"Folder plan: {AiPromptBuilder.FolderStructureTaskId}, prompt {AiPromptTemplates.FolderStructurePromptVersion}. {FolderStructureContextText}{Environment.NewLine}" +
+                $"Document interpretation: {AiPromptBuilder.DocumentInterpretationTaskId}, prompt {AiPromptTemplates.DocumentInterpretationPromptVersion}; " +
+                $"at most {AiPromptLimits.MaximumDocumentTextPages} text segments and {AiPromptLimits.MaximumDocumentTextCharacters} characters. " +
+                "The indexed native/OCR provenance and any truncation are shown in Advanced Diagnostics after an explicit request.";
+        }
+    }
+
     /// <summary>Gets the current concise readiness of the optional local AI service.</summary>
     public AiReadinessState ReadinessState
     {
@@ -412,6 +442,8 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         var fileChanged = !string.Equals(_selectedFile?.Id, selectedFile?.Id, StringComparison.Ordinal);
         _selectedFile = selectedFile;
         _pageFiles = pageFiles is null ? Array.Empty<ResultFile>() : Array.AsReadOnly(pageFiles.ToArray());
+        OnPropertyChanged(nameof(FolderStructureContextText));
+        OnPropertyChanged(nameof(AiRequestContextText));
         _existingFolderNames = snapshot is null
             ? Array.Empty<string>()
             : Array.AsReadOnly(snapshot.Directories
@@ -476,6 +508,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsFolderStructureVisible));
         OnPropertyChanged(nameof(IsDocumentInterpretationVisible));
         OnPropertyChanged(nameof(IsVisible));
+        OnPropertyChanged(nameof(AiRequestContextText));
         RefreshReadinessFromConfiguration(preserveRetryableState: false);
         NotifyCommandStates();
     }
@@ -551,6 +584,13 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     {
         if (_aiSuggestionService is null || _pageFiles.Count == 0 || !IsFolderStructureVisible)
         {
+            return;
+        }
+
+        if (_pageFiles.Count > AiPromptLimits.MaximumFolderStructureFiles)
+        {
+            StatusText = FolderStructureContextText;
+            Status = StatusPresentation.Warning(StatusText);
             return;
         }
 
@@ -692,7 +732,10 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
                     _selectedFile.DisplayFileName,
                     content.NativeText,
                     content.OcrText,
-                    content.OcrPages),
+                    content.OcrPages)
+                {
+                    RelatedDiagnosticSessionId = content.DiagnosticSessionId,
+                },
                 _configurationService.Current.Ai,
                 cancellation.Token);
             if (!IsCurrentOperation(cancellation, version))
@@ -775,7 +818,9 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         !IsBusy && IsFileRenameVisible && RenameSuggestion is not null;
 
     private bool CanGenerateFolderStructure() =>
-        !IsBusy && IsFolderStructureVisible && _pageFiles.Count > 0;
+        !IsBusy &&
+        IsFolderStructureVisible &&
+        _pageFiles.Count is > 0 and <= AiPromptLimits.MaximumFolderStructureFiles;
 
     private bool CanReviewFolderStructure() =>
         !IsBusy && IsFolderStructureVisible && FolderStructurePlan is not null;

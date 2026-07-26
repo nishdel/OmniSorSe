@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Core.Diagnostics;
 
 namespace OpenSorSe.Core.Configuration;
 
@@ -16,6 +17,9 @@ public sealed class ApplicationSettings
     /// Gets or initializes the logging settings.
     /// </summary>
     public LoggingSettings Logging { get; init; } = new();
+
+    /// <summary>Gets or initializes the process-session advanced-diagnostics settings.</summary>
+    public DiagnosticsSettings Diagnostics { get; init; } = new();
 
     /// <summary>
     /// Gets or initializes the optional local AI-provider settings.
@@ -45,6 +49,7 @@ public sealed class ApplicationSettings
             FilesPageDetailsPanelWidthRatio = Features.FilesPageDetailsPanelWidthRatio,
         },
         Logging = Logging,
+        Diagnostics = Diagnostics,
         Ai = new AiSettings
         {
             Enabled = aiEnabled,
@@ -76,6 +81,7 @@ public sealed class ApplicationSettings
             FilesPageDetailsPanelWidthRatio = ratio,
         },
         Logging = Logging,
+        Diagnostics = Diagnostics,
         Ai = Ai,
         Catalog = Catalog,
         Content = Content,
@@ -104,6 +110,13 @@ public sealed class ApplicationSettings
 
         Logging.Validate();
 
+        if (Diagnostics is null)
+        {
+            throw new ConfigurationValidationException("Advanced diagnostics settings are required.");
+        }
+
+        Diagnostics.Validate();
+
         if (Ai is null)
         {
             throw new ConfigurationValidationException("AI settings are required.");
@@ -131,6 +144,64 @@ public sealed class ApplicationSettings
         }
 
         SemanticSearch.Validate();
+    }
+}
+
+/// <summary>Defines the master and per-category controls for process-session advanced diagnostics.</summary>
+public sealed class DiagnosticsSettings
+{
+    /// <summary>Gets or initializes whether any detailed diagnostic session may be collected.</summary>
+    public bool EnableDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes whether detailed AI sessions may be collected.</summary>
+    public bool AiDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes whether detailed OCR and extraction sessions may be collected.</summary>
+    public bool OcrAndTextExtractionDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes whether detailed scanning sessions may be collected.</summary>
+    public bool ScanningDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes the planned duplicate-detection category preference.</summary>
+    public bool DuplicateDetectionDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes the planned search and indexing category preference.</summary>
+    public bool SearchAndIndexingDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes the planned rules and organisation category preference.</summary>
+    public bool RulesAndOrganisationDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes the planned file-operation category preference.</summary>
+    public bool FileOperationDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes the planned performance category preference.</summary>
+    public bool PerformanceDiagnostics { get; init; }
+
+    /// <summary>Gets or initializes whether classified content may be retained without ordinary redaction.</summary>
+    public bool ShowUnredactedDiagnosticContent { get; init; }
+
+    /// <summary>Gets whether both the master switch and one category switch are enabled.</summary>
+    /// <param name="category">The category to evaluate.</param>
+    /// <returns>True only when detailed collection is authorized for the category.</returns>
+    public bool IsCategoryEnabled(DiagnosticCategory category) =>
+        EnableDiagnostics &&
+        DiagnosticCategoryRegistry.Get(category).IsInstrumented &&
+        category switch
+        {
+            DiagnosticCategory.Ai => AiDiagnostics,
+            DiagnosticCategory.OcrAndTextExtraction => OcrAndTextExtractionDiagnostics,
+            DiagnosticCategory.Scanning => ScanningDiagnostics,
+            DiagnosticCategory.DuplicateDetection => DuplicateDetectionDiagnostics,
+            DiagnosticCategory.SearchAndIndexing => SearchAndIndexingDiagnostics,
+            DiagnosticCategory.RulesAndOrganisation => RulesAndOrganisationDiagnostics,
+            DiagnosticCategory.FileOperations => FileOperationDiagnostics,
+            DiagnosticCategory.Performance => PerformanceDiagnostics,
+            _ => false,
+        };
+
+    /// <summary>Validates future-compatible settings.</summary>
+    public void Validate()
+    {
     }
 }
 
@@ -367,6 +438,9 @@ public sealed class AiSettings
             !Uri.TryCreate(Endpoint.Trim(), UriKind.Absolute, out var endpoint) ||
             endpoint.Scheme is not ("http" or "https") ||
             string.IsNullOrWhiteSpace(endpoint.Host) ||
+            !string.IsNullOrEmpty(endpoint.UserInfo) ||
+            !string.IsNullOrEmpty(endpoint.Query) ||
+            !string.IsNullOrEmpty(endpoint.Fragment) ||
             RequestTimeoutSeconds is < MinimumRequestTimeoutSeconds or > MaximumRequestTimeoutSeconds ||
             SelectedModel is { } model &&
             (model.Length > MaximumModelIdentifierLength || model.Any(char.IsControl)))

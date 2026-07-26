@@ -16,6 +16,7 @@ public sealed class JsonContentStore : IContentStore
     private readonly string _filePath;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
+    private readonly Dictionary<string, string> _diagnosticSessions = new(PathComparer);
 
     /// <summary>Initializes the content store at an explicit absolute application-data path.</summary>
     public JsonContentStore(string filePath, ILoggingService loggingService)
@@ -37,8 +38,9 @@ public sealed class JsonContentStore : IContentStore
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return (await LoadCoreAsync(cancellationToken).ConfigureAwait(false))
+            var record = (await LoadCoreAsync(cancellationToken).ConfigureAwait(false))
                 .FirstOrDefault(record => PathComparer.Equals(record.FullPath, normalizedPath));
+            return AttachDiagnosticSession(record);
         }
         finally
         {
@@ -52,7 +54,10 @@ public sealed class JsonContentStore : IContentStore
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return Order(await LoadCoreAsync(cancellationToken).ConfigureAwait(false));
+            return Order((await LoadCoreAsync(cancellationToken).ConfigureAwait(false))
+                .Select(AttachDiagnosticSession)
+                .Where(record => record is not null)
+                .Select(record => record!));
         }
         finally
         {
@@ -69,6 +74,10 @@ public sealed class JsonContentStore : IContentStore
         try
         {
             var records = await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(normalized.DiagnosticSessionId))
+            {
+                _diagnosticSessions[normalized.FullPath] = normalized.DiagnosticSessionId;
+            }
             var updated = records
                 .Where(candidate => !PathComparer.Equals(candidate.FullPath, normalized.FullPath))
                 .Append(normalized)
@@ -95,6 +104,10 @@ public sealed class JsonContentStore : IContentStore
         {
             var records = await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
             var remaining = records.Where(record => known.Contains(record.FullPath)).ToArray();
+            foreach (var path in _diagnosticSessions.Keys.Where(path => !known.Contains(path)).ToArray())
+            {
+                _diagnosticSessions.Remove(path);
+            }
             if (remaining.Length != records.Count)
             {
                 await SaveCoreAsync(remaining, cancellationToken).ConfigureAwait(false);
@@ -117,6 +130,7 @@ public sealed class JsonContentStore : IContentStore
             {
                 File.Delete(_filePath);
             }
+            _diagnosticSessions.Clear();
         }
         finally
         {
@@ -316,6 +330,11 @@ public sealed class JsonContentStore : IContentStore
     }
 
     private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
+
+    private ContentRecord? AttachDiagnosticSession(ContentRecord? record) =>
+        record is not null && _diagnosticSessions.TryGetValue(record.FullPath, out var sessionId)
+            ? record with { DiagnosticSessionId = sessionId }
+            : record;
 
     private static IReadOnlyList<ContentRecord> Order(IEnumerable<ContentRecord> records) =>
         Array.AsReadOnly(records.OrderBy(record => record.FullPath, PathComparer).ToArray());

@@ -49,8 +49,8 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
             using var requestCancellation = CreateTimeoutCancellation(settings.RequestTimeoutSeconds, cancellationToken);
             using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(endpoint, "api/version"));
             _diagnostics?.Capture(diagnosticRequestId, AiDiagnosticContentKind.RequestJson, """{"method":"GET","path":"/api/version","body":null}""");
-            _diagnostics?.ReportStage(diagnosticRequestId, "Request sent", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestCancellation.Token).ConfigureAwait(false);
+            _diagnostics?.ReportStage(diagnosticRequestId, "Request sent", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             _diagnostics?.ReportStage(diagnosticRequestId, "Response headers received", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             var elapsed = Stopwatch.GetElapsedTime(started);
             if (!response.IsSuccessStatusCode)
@@ -125,8 +125,8 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
             using var requestCancellation = CreateTimeoutCancellation(settings.RequestTimeoutSeconds, cancellationToken);
             using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(endpoint, "api/tags"));
             _diagnostics?.Capture(diagnosticRequestId, AiDiagnosticContentKind.RequestJson, """{"method":"GET","path":"/api/tags","body":null}""");
-            _diagnostics?.ReportStage(diagnosticRequestId, "Request sent", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestCancellation.Token).ConfigureAwait(false);
+            _diagnostics?.ReportStage(diagnosticRequestId, "Request sent", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             _diagnostics?.ReportStage(diagnosticRequestId, "Response headers received", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             var elapsed = Stopwatch.GetElapsedTime(started);
             if (!response.IsSuccessStatusCode)
@@ -207,6 +207,8 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
 
         var started = Stopwatch.GetTimestamp();
         var normalizedEndpoint = endpoint.AbsoluteUri.TrimEnd('/');
+        var serializedRequest = string.Empty;
+        var receivedEnvelope = string.Empty;
         try
         {
             using var requestCancellation = CreateTimeoutCancellation(request.Timeout, cancellationToken);
@@ -218,22 +220,22 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
                 false,
                 AiStructuredOutputContracts.GetSchema(request.Kind),
                 "5m",
-                new GenerateOptions(0.1));
-            var requestJson = JsonSerializer.Serialize(payload);
+                new GenerateOptions(0.0));
+            serializedRequest = JsonSerializer.Serialize(payload);
             _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.SystemPrompt, request.SystemPrompt);
             _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.UserPrompt, request.UserPrompt);
-            _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.RequestJson, requestJson);
+            _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.RequestJson, serializedRequest);
             _diagnostics?.ReportStage(request.DiagnosticRequestId, "Serializing Ollama request", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(endpoint, "api/generate"))
             {
-                Content = new StringContent(requestJson, Encoding.UTF8, "application/json"),
+                Content = new StringContent(serializedRequest, Encoding.UTF8, "application/json"),
             };
             _diagnostics?.ReportStage(request.DiagnosticRequestId, "Connecting to Ollama", AiDiagnosticState.Active, Stopwatch.GetElapsedTime(started));
             Report(request, AiRequestStage.SendingRequest, "Sending the bounded request to Ollama.", started);
             var sendTask = _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, requestCancellation.Token);
-            _diagnostics?.ReportStage(request.DiagnosticRequestId, "Request sent", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             Report(request, AiRequestStage.WaitingForModel, "Waiting for the selected model to respond.", started);
             using var response = await sendTask.ConfigureAwait(false);
+            _diagnostics?.ReportStage(request.DiagnosticRequestId, "Request sent", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             _diagnostics?.ReportStage(request.DiagnosticRequestId, "Response headers received", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             _diagnostics?.SetTransport(
                 request.DiagnosticRequestId,
@@ -245,8 +247,8 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
                 false);
             Report(request, AiRequestStage.ReceivingResponse, "Receiving the bounded Ollama response.", started);
             var responseBytes = await ReadBoundedContentAsync(response.Content, requestCancellation.Token).ConfigureAwait(false);
-            var rawEnvelope = Encoding.UTF8.GetString(responseBytes);
-            _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.RawHttpResponse, rawEnvelope);
+            receivedEnvelope = Encoding.UTF8.GetString(responseBytes);
+            _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.RawHttpResponse, receivedEnvelope);
             _diagnostics?.SetTransport(
                 request.DiagnosticRequestId,
                 (int)response.StatusCode,
@@ -259,16 +261,16 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
             var elapsed = Stopwatch.GetElapsedTime(started);
             if (!response.IsSuccessStatusCode)
             {
-                var failureKind = MapHttpFailure(response.StatusCode, rawEnvelope);
+                var failureKind = MapHttpFailure(response.StatusCode, receivedEnvelope);
                 _logger.LogWarning("Ollama {SuggestionKind} request for model {Model} returned HTTP {StatusCode} after {ElapsedMilliseconds} ms.", request.Kind, request.Model, (int)response.StatusCode, (long)elapsed.TotalMilliseconds);
                 return WithDiagnostics(
                     new AiProviderGenerationResult(null, failureKind, FailureMessage(failureKind, response.StatusCode)),
                     normalizedEndpoint,
                     response.StatusCode,
                     elapsed,
-                    rawEnvelope,
+                    receivedEnvelope,
                     string.Empty,
-                    requestJson,
+                    serializedRequest,
                     response.Content.Headers.ContentType?.ToString());
             }
 
@@ -281,15 +283,15 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
                     normalizedEndpoint,
                     response.StatusCode,
                     elapsed,
-                    rawEnvelope,
+                    receivedEnvelope,
                     payloadResponse?.Response ?? string.Empty,
-                    requestJson,
+                    serializedRequest,
                     response.Content.Headers.ContentType?.ToString());
             }
 
             _diagnostics?.Capture(request.DiagnosticRequestId, AiDiagnosticContentKind.ExtractedAssistantResponse, payloadResponse.Response);
             _diagnostics?.ReportStage(request.DiagnosticRequestId, "Extracting assistant content", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
-            _diagnostics?.ReportStage(request.DiagnosticRequestId, "Removing permitted formatting wrappers", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
+            _diagnostics?.ReportStage(request.DiagnosticRequestId, "Preserving exact assistant content", AiDiagnosticState.Succeeded, Stopwatch.GetElapsedTime(started));
             _diagnostics?.ReportStage(request.DiagnosticRequestId, "Parsing structured JSON", AiDiagnosticState.Active, Stopwatch.GetElapsedTime(started));
             _logger.LogInformation("Ollama {SuggestionKind} request for model {Model} succeeded after {ElapsedMilliseconds} ms.", request.Kind, request.Model, (long)elapsed.TotalMilliseconds);
             return WithDiagnostics(
@@ -297,39 +299,69 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
                 normalizedEndpoint,
                 response.StatusCode,
                 elapsed,
-                rawEnvelope,
+                receivedEnvelope,
                 payloadResponse.Response,
-                requestJson,
+                serializedRequest,
                 response.Content.Headers.ContentType?.ToString());
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
-            return WithDiagnostics(new AiProviderGenerationResult(null, AiProviderFailureKind.Cancelled, "The suggestion request was cancelled."), normalizedEndpoint, null, elapsed, string.Empty);
+            return WithDiagnostics(
+                new AiProviderGenerationResult(null, AiProviderFailureKind.Cancelled, "The suggestion request was cancelled."),
+                normalizedEndpoint,
+                null,
+                elapsed,
+                receivedEnvelope,
+                requestJson: serializedRequest);
         }
         catch (OperationCanceledException)
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
             _logger.LogWarning("Ollama {SuggestionKind} request for model {Model} timed out after {ElapsedMilliseconds} ms.", request.Kind, request.Model, (long)elapsed.TotalMilliseconds);
-            return WithDiagnostics(new AiProviderGenerationResult(null, AiProviderFailureKind.Timeout, $"The Ollama suggestion request timed out after {(int)request.Timeout.TotalSeconds} seconds."), normalizedEndpoint, null, elapsed, string.Empty);
+            return WithDiagnostics(
+                new AiProviderGenerationResult(null, AiProviderFailureKind.Timeout, $"The Ollama suggestion request timed out after {(int)request.Timeout.TotalSeconds} seconds."),
+                normalizedEndpoint,
+                null,
+                elapsed,
+                receivedEnvelope,
+                requestJson: serializedRequest);
         }
         catch (HttpRequestException exception)
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
             _logger.LogWarning(exception, "Ollama {SuggestionKind} request for model {Model} could not reach the configured endpoint after {ElapsedMilliseconds} ms.", request.Kind, request.Model, (long)elapsed.TotalMilliseconds);
-            return WithDiagnostics(new AiProviderGenerationResult(null, AiProviderFailureKind.Unavailable, "Ollama is unavailable at the configured endpoint. Confirm that Ollama is running."), normalizedEndpoint, null, elapsed, string.Empty);
+            return WithDiagnostics(
+                new AiProviderGenerationResult(null, AiProviderFailureKind.Unavailable, "Ollama is unavailable at the configured endpoint. Confirm that Ollama is running."),
+                normalizedEndpoint,
+                null,
+                elapsed,
+                receivedEnvelope,
+                requestJson: serializedRequest);
         }
         catch (JsonException exception)
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
             _logger.LogWarning(exception, "Ollama {SuggestionKind} response for model {Model} was malformed after {ElapsedMilliseconds} ms.", request.Kind, request.Model, (long)elapsed.TotalMilliseconds);
-            return WithDiagnostics(new AiProviderGenerationResult(null, AiProviderFailureKind.InvalidResponse, "Ollama returned malformed response data."), normalizedEndpoint, null, elapsed, string.Empty);
+            return WithDiagnostics(
+                new AiProviderGenerationResult(null, AiProviderFailureKind.InvalidResponse, "Ollama returned malformed response data."),
+                normalizedEndpoint,
+                null,
+                elapsed,
+                receivedEnvelope,
+                requestJson: serializedRequest);
         }
         catch (InvalidDataException exception)
         {
             var elapsed = Stopwatch.GetElapsedTime(started);
             _logger.LogWarning(exception, "Ollama {SuggestionKind} response for model {Model} exceeded the supported size after {ElapsedMilliseconds} ms.", request.Kind, request.Model, (long)elapsed.TotalMilliseconds);
-            return WithDiagnostics(new AiProviderGenerationResult(null, AiProviderFailureKind.InvalidResponse, "Ollama returned an oversized response."), normalizedEndpoint, null, elapsed, string.Empty);
+            return WithDiagnostics(
+                new AiProviderGenerationResult(null, AiProviderFailureKind.InvalidResponse, "Ollama returned an oversized response."),
+                normalizedEndpoint,
+                null,
+                elapsed,
+                receivedEnvelope,
+                requestJson: serializedRequest);
         }
     }
 

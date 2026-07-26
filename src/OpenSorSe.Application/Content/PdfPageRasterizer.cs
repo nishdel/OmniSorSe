@@ -34,6 +34,20 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
                 "PDF page rendering is unavailable on this platform."));
         }
 
+        try
+        {
+            EnsureTemporaryRootSafe();
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return Task.FromResult(new PdfRasterizerCapability(
+                false,
+                RasterizerIdentifier,
+                null,
+                "PDF page rendering is unavailable because a safe local OCR workspace could not be created."));
+        }
+
         var version = typeof(Conversion).Assembly.GetName().Version?.ToString();
         return Task.FromResult(new PdfRasterizerCapability(
             true,
@@ -80,9 +94,17 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
 
         var normalizedWorkspace = ValidateOwnedWorkspace(workspacePath);
         Directory.CreateDirectory(normalizedWorkspace);
+        EnsureDirectoryIsNotReparsePoint(normalizedWorkspace);
         var outputPath = Path.Combine(
             normalizedWorkspace,
             $"page-{pageNumber.ToString("D4", System.Globalization.CultureInfo.InvariantCulture)}.png");
+        if (File.Exists(outputPath) || Directory.Exists(outputPath))
+        {
+            throw new InvalidOperationException("The isolated OCR page output already exists.");
+        }
+
+        var renderedWidth = 0;
+        var renderedHeight = 0;
         cancellationToken.ThrowIfCancellationRequested();
         await Task.Run(
             () =>
@@ -105,6 +127,8 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
                     targetWidth = Math.Max(1, (int)Math.Floor(targetWidth * scale));
                     targetHeight = Math.Max(1, (int)Math.Floor(targetHeight * scale));
                 }
+                renderedWidth = targetWidth;
+                renderedHeight = targetHeight;
 
                 var options = new RenderOptions
                 {
@@ -133,15 +157,20 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
             throw new InvalidDataException("The local PDF renderer returned no page image.");
         }
 
-        return new RenderedPdfPage(pageNumber, output.FullName, output.Length);
+        return new RenderedPdfPage(pageNumber, output.FullName, output.Length)
+        {
+            Width = renderedWidth > 0 ? renderedWidth : null,
+            Height = renderedHeight > 0 ? renderedHeight : null,
+        };
     }
 
     /// <inheritdoc />
     public string CreateWorkspace()
     {
-        Directory.CreateDirectory(_temporaryRoot);
+        EnsureTemporaryRootSafe();
         var path = Path.Combine(_temporaryRoot, $"{WorkspacePrefix}{Guid.NewGuid():N}");
         Directory.CreateDirectory(path);
+        EnsureDirectoryIsNotReparsePoint(path);
         return path;
     }
 
@@ -149,10 +178,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
     public void DeleteWorkspace(string workspacePath)
     {
         var normalized = ValidateOwnedWorkspace(workspacePath);
-        if (Directory.Exists(normalized))
-        {
-            Directory.Delete(normalized, recursive: true);
-        }
+        DeleteOwnedWorkspace(normalized);
     }
 
     private static FileStream OpenPdf(string fullPath) => new(
@@ -194,7 +220,53 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
             throw new InvalidOperationException("Only an isolated OpenSorSe OCR workspace may be deleted or written.");
         }
 
+        if (Directory.Exists(normalized))
+        {
+            EnsureDirectoryIsNotReparsePoint(normalized);
+        }
+
         return normalized;
+    }
+
+    private void EnsureTemporaryRootSafe()
+    {
+        Directory.CreateDirectory(_temporaryRoot);
+        EnsureDirectoryIsNotReparsePoint(_temporaryRoot);
+    }
+
+    private static void EnsureDirectoryIsNotReparsePoint(string path)
+    {
+        if (File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint))
+        {
+            throw new InvalidOperationException("OCR temporary storage cannot use a symbolic link, junction, or reparse point.");
+        }
+    }
+
+    private static void DeleteOwnedWorkspace(string normalizedWorkspace)
+    {
+        if (!Directory.Exists(normalizedWorkspace))
+        {
+            return;
+        }
+
+        EnsureDirectoryIsNotReparsePoint(normalizedWorkspace);
+        foreach (var entry in Directory.EnumerateFileSystemEntries(
+                     normalizedWorkspace,
+                     "*",
+                     SearchOption.TopDirectoryOnly))
+        {
+            var attributes = File.GetAttributes(entry);
+            if (attributes.HasFlag(FileAttributes.Directory) ||
+                attributes.HasFlag(FileAttributes.ReparsePoint))
+            {
+                throw new InvalidOperationException(
+                    "The isolated OCR workspace contained an unexpected directory or reparse point.");
+            }
+
+            File.Delete(entry);
+        }
+
+        Directory.Delete(normalizedWorkspace, recursive: false);
     }
 
     private void CleanupStaleWorkspaces()
@@ -207,12 +279,14 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
         string[] directories;
         try
         {
+            EnsureDirectoryIsNotReparsePoint(_temporaryRoot);
             directories = Directory.GetDirectories(
                 _temporaryRoot,
                 $"{WorkspacePrefix}*",
                 SearchOption.TopDirectoryOnly);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             return;
         }
@@ -224,7 +298,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
                 var normalized = ValidateOwnedWorkspace(directory);
                 if (Directory.GetLastWriteTimeUtc(normalized) < DateTime.UtcNow.AddDays(-1))
                 {
-                    Directory.Delete(normalized, recursive: true);
+                    DeleteOwnedWorkspace(normalized);
                 }
             }
             catch (Exception exception) when (

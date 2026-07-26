@@ -79,11 +79,79 @@ public sealed class AiLiveDiagnosticsTests
     public void Inspect_InvalidReasonObject_ReportsActualType()
     {
         var inspected = AiDiagnosticValidationInspector.Inspect(
-            """{"taskId":"file-rename-v1","status":"suggestion","reason":{"text":"clearer"}}""",
+            """{"taskId":"file-rename-v2","status":"suggestion","reason":{"text":"clearer"}}""",
             AiPromptBuilder.FileRenameTaskId);
 
         var reason = Assert.Single(inspected.Checks, check => check.PropertyName == "reason");
         Assert.False(reason.Passed);
         Assert.Contains("received object", reason.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Safe validation explanations remain visible in redacted mode while actual model values do not.</summary>
+    [Fact]
+    public void SetValidation_RedactedMode_KeepsSafeFailureExplanation()
+    {
+        var collector = new AiDiagnosticsCollector();
+        collector.Configure(true, false);
+        var id = collector.Begin(
+            AiSuggestionKind.FileRename,
+            "model",
+            "http://127.0.0.1:11434")!;
+        collector.SetValidation(
+            id,
+            """{"suggestedStem":"private-invoice"}""",
+            [
+                new AiDiagnosticValidation(
+                    "reason",
+                    true,
+                    "string",
+                    null,
+                    "object",
+                    """{"private":"content"}""",
+                    false,
+                    "Expected `reason` to be a string, but received object."),
+            ],
+            ["Expected `reason` to be a string, but received object."]);
+
+        var session = Assert.Single(collector.GetRecent());
+        Assert.Contains(
+            session.Errors,
+            value => value.Contains("received object", StringComparison.Ordinal));
+        Assert.DoesNotContain("private-invoice", session.ParsedStructuredResponse, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            session.Validation,
+            value => value.ActualValue.Contains("private", StringComparison.Ordinal));
+    }
+
+    /// <summary>Prompt task, template, and schema identities remain visible without exposing content.</summary>
+    [Fact]
+    public void SetContract_RetainsSafeVersionMetadataInRedactedMode()
+    {
+        var common = new OpenSorSe.Core.Diagnostics.InMemoryDiagnosticsCollector();
+        var collector = new AiDiagnosticsCollector(common);
+        collector.Configure(true, false);
+        var id = collector.Begin(
+            AiSuggestionKind.FileRename,
+            "model",
+            "http://127.0.0.1:11434")!;
+
+        collector.SetContract(
+            id,
+            AiPromptBuilder.FileRenameTaskId,
+            AiPromptTemplates.FileRenamePromptVersion,
+            AiStructuredOutputContracts.GetSchemaSha256(AiSuggestionKind.FileRename));
+
+        var contract = Assert.Single(
+            common.Get(id)!.Events,
+            item => item.Stage == "Prompt contract");
+        Assert.Equal(
+            AiPromptBuilder.FileRenameTaskId,
+            contract.Fields.Single(field => field.Name == "Task ID").Value);
+        Assert.Equal(
+            AiPromptTemplates.FileRenamePromptVersion,
+            contract.Fields.Single(field => field.Name == "Prompt version").Value);
+        Assert.Equal(
+            64,
+            contract.Fields.Single(field => field.Name == "Schema SHA-256").Value.Length);
     }
 }

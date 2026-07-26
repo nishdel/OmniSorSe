@@ -188,7 +188,7 @@ public sealed class LoggingServiceTests
         Assert.Equal(DiagnosticEventLimits.MaximumRetainedEvents, events.Count);
         Assert.Equal("final failure", events[0].Summary);
         Assert.Equal("InvalidOperationException", events[0].ExceptionType);
-        Assert.Equal("safe exception summary", events[0].ExceptionSummary);
+        Assert.Null(events[0].ExceptionSummary);
         Assert.Equal("BoundedCategory", events[0].Category);
         Assert.True(events.Zip(events.Skip(1), (newer, older) => newer.Sequence > older.Sequence).All(value => value));
     }

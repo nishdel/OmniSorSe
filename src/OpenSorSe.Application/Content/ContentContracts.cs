@@ -95,7 +95,11 @@ public sealed record OcrCapability(
 public sealed record PdfPageText(
     int PageNumber,
     string? NativeText,
-    bool HasReliableNativeText);
+    bool HasReliableNativeText)
+{
+    /// <summary>Gets bounded embedded text before normalization, when the extractor exposes it.</summary>
+    public string? RawNativeText { get; init; }
+}
 
 /// <summary>Identifies the source retained for one page in a document OCR result.</summary>
 public enum OcrPageTextSource
@@ -121,7 +125,29 @@ public sealed record OcrPageResult(
     OcrStatus Status,
     string? Text,
     double? Confidence,
-    string Message);
+    string Message)
+{
+    /// <summary>Gets bounded engine output before normalization.</summary>
+    public string? RawText { get; init; }
+
+    /// <summary>Gets the normalized page text retained downstream.</summary>
+    public string? NormalizedText { get; init; }
+
+    /// <summary>Gets the configured render DPI for an OCR-rendered PDF page.</summary>
+    public int? RenderDpi { get; init; }
+
+    /// <summary>Gets the rendered page width when available.</summary>
+    public int? RenderedWidth { get; init; }
+
+    /// <summary>Gets the rendered page height when available.</summary>
+    public int? RenderedHeight { get; init; }
+
+    /// <summary>Gets truthful preprocessing steps applied before recognition.</summary>
+    public IReadOnlyList<string> PreprocessingSteps { get; init; } = [];
+
+    /// <summary>Gets the bounded page processing duration when measured.</summary>
+    public TimeSpan? ProcessingDuration { get; init; }
+}
 
 /// <summary>Contains the bounded context for one local OCR request.</summary>
 public sealed record OcrRequest(
@@ -149,6 +175,9 @@ public sealed record OcrRequest(
 
     /// <summary>Gets whether all PDF pages should be OCRed instead of preferring reliable native text.</summary>
     public bool ForceReprocessAllPages { get; init; }
+
+    /// <summary>Gets an existing extraction diagnostic session that OCR should enrich.</summary>
+    public string? DiagnosticSessionId { get; init; }
 }
 
 /// <summary>Contains one controlled OCR outcome.</summary>
@@ -173,6 +202,18 @@ public sealed record OcrResult(
 
     /// <summary>Gets the rasterizer used for PDF pages, when applicable.</summary>
     public string? RasterizerIdentifier { get; init; }
+
+    /// <summary>Gets bounded OCR engine output before normalization.</summary>
+    public string? RawExtractedText { get; init; }
+
+    /// <summary>Gets the distinct normalized OCR value.</summary>
+    public string? NormalizedText { get; init; }
+
+    /// <summary>Gets the exact bounded value supplied to downstream indexing.</summary>
+    public string? DownstreamText { get; init; }
+
+    /// <summary>Gets whether page, text, output, or storage bounds truncated the attempt.</summary>
+    public bool WasTruncated { get; init; }
 }
 
 /// <summary>Represents one normalized metadata value and its provenance.</summary>
@@ -192,6 +233,15 @@ public sealed record MetadataExtractionResult(
 {
     /// <summary>Gets bounded PDF-native text and quality state per page.</summary>
     public IReadOnlyList<PdfPageText> PdfPages { get; init; } = [];
+
+    /// <summary>Gets bounded embedded text before pipeline normalization, when exposed by an extractor.</summary>
+    public string? RawNativeText { get; init; }
+
+    /// <summary>Gets the concrete extractor strategy names that contributed to the result.</summary>
+    public IReadOnlyList<string> ExtractionStrategies { get; init; } = [];
+
+    /// <summary>Gets whether any native text, page, field, or warning retention bound was reached.</summary>
+    public bool WasTruncated { get; init; }
 }
 
 /// <summary>Contains one bounded, reusable local content record.</summary>
@@ -218,6 +268,10 @@ public sealed record ContentRecord(
 
     /// <summary>Gets bounded page-level OCR/native provenance for PDF content.</summary>
     public IReadOnlyList<OcrPageResult> OcrPages { get; init; } = [];
+
+    /// <summary>Gets the session-only extraction diagnostic identity; it is never persisted.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? DiagnosticSessionId { get; init; }
 }
 
 /// <summary>Describes the local PDF rendering capability.</summary>
@@ -231,7 +285,14 @@ public sealed record PdfRasterizerCapability(
 public sealed record RenderedPdfPage(
     int PageNumber,
     string ImagePath,
-    long EncodedBytes);
+    long EncodedBytes)
+{
+    /// <summary>Gets the rendered pixel width when reported by the rasterizer.</summary>
+    public int? Width { get; init; }
+
+    /// <summary>Gets the rendered pixel height when reported by the rasterizer.</summary>
+    public int? Height { get; init; }
+}
 
 /// <summary>Renders bounded individual PDF pages without modifying the source document.</summary>
 public interface IPdfPageRasterizer

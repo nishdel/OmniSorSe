@@ -46,6 +46,41 @@ public sealed class OllamaSuggestionProviderTests
         Assert.Empty(result.Models);
     }
 
+    /// <summary>Verifies connection diagnostics preserve the provider's exact bounded response facts.</summary>
+    [Fact]
+    public async Task CheckConnectionAsync_DiagnosticsEnabled_CapturesActualTransportFacts()
+    {
+        const string body = """{"version":"0.9.0"}""";
+        var collector = new AiDiagnosticsCollector();
+        collector.Configure(true, true);
+        var id = collector.Begin(
+            AiSuggestionKind.ConnectionTest,
+            string.Empty,
+            "http://127.0.0.1:11434")!;
+        using var client = new HttpClient(new StubHandler(_ =>
+        {
+            var response = Json(HttpStatusCode.OK, body);
+            response.Headers.Server.ParseAdd("Ollama/Test");
+            return response;
+        }));
+        var provider = new OllamaSuggestionProvider(client, new LoggingService(), collector);
+
+        var result = await provider.CheckConnectionAsync(
+            EnabledSettings(),
+            id,
+            CancellationToken.None);
+
+        var session = Assert.Single(collector.GetRecent());
+        Assert.Equal(AiAvailabilityState.Connected, result.State);
+        Assert.Equal(body, session.RawHttpResponse);
+        Assert.Equal(HttpStatusCode.OK, (HttpStatusCode?)session.HttpStatusCode);
+        Assert.Equal("application/json; charset=utf-8", session.ContentType);
+        Assert.Equal(Encoding.UTF8.GetByteCount(body), session.ResponseSizeBytes);
+        Assert.True(session.ResponseComplete);
+        Assert.False(session.WasStreaming);
+        Assert.Equal("Ollama/Test", session.SafeResponseHeaders["Server"]);
+    }
+
     /// <summary>Verifies provider-controlled model names cannot inject controls or unbounded text into UI and logs.</summary>
     [Fact]
     public async Task GetConnectionAsync_InvalidModelIdentifiers_AreExcluded()
@@ -148,8 +183,18 @@ public sealed class OllamaSuggestionProviderTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal("{\"fileName\":null}", result.StructuredJson);
-        Assert.Contains("\"system\":", result.Diagnostics!.RequestJson, StringComparison.Ordinal);
-        Assert.Contains("\"format\":{\"type\":\"object\"", result.Diagnostics.RequestJson, StringComparison.Ordinal);
+        using var requestDocument = JsonDocument.Parse(result.Diagnostics!.RequestJson);
+        var requestRoot = requestDocument.RootElement;
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSystemPrompt(AiSuggestionKind.FileRename),
+            requestRoot.GetProperty("system").GetString());
+        Assert.Equal("redacted test prompt", requestRoot.GetProperty("prompt").GetString());
+        Assert.False(requestRoot.GetProperty("stream").GetBoolean());
+        Assert.Equal("5m", requestRoot.GetProperty("keep_alive").GetString());
+        Assert.Equal(0.0, requestRoot.GetProperty("options").GetProperty("temperature").GetDouble());
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSchemaJson(AiSuggestionKind.FileRename),
+            requestRoot.GetProperty("format").GetRawText());
         Assert.Equal("""{"response":"{\"fileName\":null}"}""", result.Diagnostics.RawHttpResponse);
         Assert.Equal("{\"fileName\":null}", result.Diagnostics.ExtractedAssistantResponse);
     }
@@ -167,12 +212,13 @@ public sealed class OllamaSuggestionProviderTests
         using var client = new HttpClient(new StubHandler(async (request, cancellationToken) =>
         {
             sent = await request.Content!.ReadAsStringAsync(cancellationToken);
-            return Json(HttpStatusCode.OK, """{"response":"{\"taskId\":\"file-rename-v1\",\"status\":\"no_suggestion\",\"reason\":\"No change\"}"}""");
+            return Json(HttpStatusCode.OK, """{"response":"{\"taskId\":\"file-rename-v2\",\"status\":\"no_suggestion\",\"reason\":\"No change\"}"}""");
         }));
         var provider = new OllamaSuggestionProvider(client, logging, collector);
         var request = new AiProviderGenerationRequest(
             AiSuggestionKind.FileRename, "http://127.0.0.1:11434", "model", """{"input":"final"}""",
-            TimeSpan.FromSeconds(AiSettings.MinimumRequestTimeoutSeconds)) { DiagnosticRequestId = id };
+            TimeSpan.FromSeconds(AiSettings.MinimumRequestTimeoutSeconds))
+        { DiagnosticRequestId = id };
 
         var result = await provider.GenerateAsync(request, CancellationToken.None);
 

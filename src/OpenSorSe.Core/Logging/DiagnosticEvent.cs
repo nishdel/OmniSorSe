@@ -25,6 +25,4 @@ public static class DiagnosticEventLimits
     /// <summary>Maximum user-facing event summary length.</summary>
     public const int MaximumSummaryLength = 1000;
 
-    /// <summary>Maximum safe exception-summary length.</summary>
-    public const int MaximumExceptionSummaryLength = 500;
 }

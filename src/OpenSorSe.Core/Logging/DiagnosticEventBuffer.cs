@@ -21,7 +21,7 @@ internal sealed class DiagnosticEventBuffer
                 eventId.Id,
                 string.IsNullOrWhiteSpace(eventId.Name) ? null : Sanitize(eventId.Name, 128),
                 exception?.GetType().Name,
-                exception is null ? null : Sanitize(exception.Message, DiagnosticEventLimits.MaximumExceptionSummaryLength));
+                null);
 
             lock (_syncRoot)
             {

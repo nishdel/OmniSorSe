@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Desktop.ViewModels;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -295,6 +296,30 @@ public sealed class SettingsViewModelTests
         await viewModel.SaveCommand.ExecuteAsync(null);
         Assert.False(collector.IsEnabled);
         Assert.Empty(collector.GetRecent());
+    }
+
+    /// <summary>Saving the common master switch applies every category and clears retained content when disabled.</summary>
+    [Fact]
+    public async Task SaveAsync_CommonDiagnosticsMaster_DisablingClearsHistory()
+    {
+        var configuration = new TestConfigurationService(settings: AiAdvancedSettings());
+        var collector = new InMemoryDiagnosticsCollector();
+        using var viewModel = new SettingsViewModel(
+            configuration,
+            diagnosticsCollector: collector);
+        viewModel.Draft.DiagnosticsEnabled = true;
+        viewModel.Draft.ScanningDiagnosticsEnabled = true;
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.NotNull(collector.BeginSession(DiagnosticCategory.Scanning, "Scan"));
+        Assert.Single(collector.GetRecent());
+
+        viewModel.Draft.DiagnosticsEnabled = false;
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(collector.IsEnabled);
+        Assert.Empty(collector.GetRecent());
+        Assert.Null(collector.BeginSession(DiagnosticCategory.Scanning, "Disabled"));
     }
 
     private static ApplicationSettings AiAdvancedSettings() => new()

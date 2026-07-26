@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Diagnostics;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
@@ -17,6 +18,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IAiSuggestionService? _aiSuggestionService;
     private readonly IAiRequestDiagnosticsStore? _aiRequestDiagnosticsStore;
     private readonly IAiDiagnosticsCollector? _aiDiagnosticsCollector;
+    private readonly IDiagnosticsCollector? _diagnosticsCollector;
     private readonly IContentStore? _contentStore;
     private readonly IOcrService? _ocrService;
     private readonly ObservableCollection<string> _availableAiModels = [];
@@ -46,25 +48,24 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="contentStore">The optional application-owned local content cache.</param>
     /// <param name="ocrService">The optional local OCR capability service.</param>
     /// <param name="aiDiagnosticsCollector">The optional live process-session diagnostics collector.</param>
+    /// <param name="diagnosticsCollector">The shared process-session advanced-diagnostics collector.</param>
     public SettingsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
         IAiRequestDiagnosticsStore? aiRequestDiagnosticsStore = null,
         IContentStore? contentStore = null,
         IOcrService? ocrService = null,
-        IAiDiagnosticsCollector? aiDiagnosticsCollector = null)
+        IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
+        IDiagnosticsCollector? diagnosticsCollector = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
         _aiRequestDiagnosticsStore = aiRequestDiagnosticsStore;
         _aiDiagnosticsCollector = aiDiagnosticsCollector;
+        _diagnosticsCollector = diagnosticsCollector;
         _contentStore = contentStore;
         _ocrService = ocrService;
-        _aiRequestDiagnosticsStore?.SetEnabled(
-            _configurationService.Current.Ai.Enabled &&
-            _configurationService.Current.Features.ShowAdvancedFeatures &&
-            _configurationService.Current.Ai.RequestDiagnosticsEnabled);
-        ConfigureLiveDiagnostics(_configurationService.Current);
+        ConfigureAdvancedDiagnostics(_configurationService.Current);
         _draft = SettingsDraft.FromSettings(_configurationService.Current);
         _draft.PropertyChanged += OnDraftPropertyChanged;
         _statusText = _configurationService.InitializationWarning ?? "Ready";
@@ -118,11 +119,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         Draft.AiEnabled = aiEnabled;
         Draft.ShowAdvancedFeatures = showAdvancedFeatures;
-        _aiRequestDiagnosticsStore?.SetEnabled(
-            aiEnabled && showAdvancedFeatures && Draft.AiRequestDiagnosticsEnabled);
-        _aiDiagnosticsCollector?.Configure(
-            aiEnabled && showAdvancedFeatures && Draft.AiRequestDiagnosticsEnabled,
-            Draft.ShowUnredactedAiDiagnosticContent);
     }
 
     /// <summary>Gets whether AI capability switches are visible in the editable hierarchy.</summary>
@@ -402,11 +398,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             var settings = Draft.ToSettings();
             settings.Validate();
             await _configurationService.SaveAsync(settings, CancellationToken.None);
-            _aiRequestDiagnosticsStore?.SetEnabled(
-                settings.Ai.Enabled &&
-                settings.Features.ShowAdvancedFeatures &&
-                settings.Ai.RequestDiagnosticsEnabled);
-            ConfigureLiveDiagnostics(settings);
+            ConfigureAdvancedDiagnostics(settings);
             RestartRequired = LoggingChanged(previous.Logging, settings.Logging);
             StatusText = RestartRequired
                 ? "Settings saved and feature visibility updated. Restart OpenSorSe to apply active logging changes."
@@ -431,12 +423,26 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void ConfigureLiveDiagnostics(ApplicationSettings settings) =>
-        _aiDiagnosticsCollector?.Configure(
+    private void ConfigureAdvancedDiagnostics(ApplicationSettings settings)
+    {
+        if (_diagnosticsCollector is not null)
+        {
+            _aiRequestDiagnosticsStore?.SetEnabled(false);
+            _diagnosticsCollector.Configure(settings.Diagnostics);
+            return;
+        }
+
+        var legacyAiEnabled =
             settings.Ai.Enabled &&
             settings.Features.ShowAdvancedFeatures &&
-            settings.Ai.RequestDiagnosticsEnabled,
-            settings.Ai.ShowUnredactedDiagnosticContent);
+            settings.Diagnostics.IsCategoryEnabled(DiagnosticCategory.Ai);
+        _aiRequestDiagnosticsStore?.SetEnabled(
+            legacyAiEnabled,
+            settings.Diagnostics.ShowUnredactedDiagnosticContent);
+        _aiDiagnosticsCollector?.Configure(
+            legacyAiEnabled,
+            settings.Diagnostics.ShowUnredactedDiagnosticContent);
+    }
 
     private void RestoreDefaults()
     {

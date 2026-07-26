@@ -6,14 +6,14 @@ using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application.Tests;
 
-/// <summary>Verifies deterministic, bounded, metadata-only capability prompts.</summary>
+/// <summary>Verifies deterministic, bounded, narrowly scoped small-model prompts.</summary>
 public sealed class AiPromptBuilderTests
 {
     private readonly AiPromptBuilder _builder = new();
 
-    /// <summary>Verifies rename prompts identify the task, schema, and mandatory safety boundary.</summary>
+    /// <summary>The rename prompt exposes only labelled minimum evidence and the exact schema.</summary>
     [Fact]
-    public void BuildFileRenamePrompt_IncludesStructuredSectionsAndEscapesInput()
+    public void BuildFileRenamePrompt_IsLabelledBoundedAndPathFree()
     {
         var file = CreateFile("file:1", "invoice \"draft\".pdf", "C:\\Private\\content-secret\\invoice.pdf");
 
@@ -23,24 +23,29 @@ public sealed class AiPromptBuilderTests
 
         using var document = JsonDocument.Parse(result.Prompt);
         var root = document.RootElement;
+        var input = root.GetProperty("input");
         Assert.Equal(AiPromptBuilder.FileRenameTaskId, result.TaskId);
-        Assert.Equal(AiPromptBuilder.FileRenameTaskId, root.GetProperty("taskIdentifier").GetString());
-        Assert.True(root.TryGetProperty("allowedReasoningScope", out _));
-        Assert.True(root.TryGetProperty("mandatoryRules", out _));
-        Assert.True(root.TryGetProperty("forbiddenBehaviors", out _));
-        Assert.True(root.TryGetProperty("requiredResponseSchema", out _));
-        Assert.True(root.TryGetProperty("noSuggestionBehavior", out _));
-        Assert.Contains("Do not wrap it in Markdown fences", root.GetProperty("outputInstruction").GetString(), StringComparison.Ordinal);
-        Assert.Equal("invoice \"draft\".pdf",
-            root.GetProperty("inputData").GetProperty("sourceFile").GetProperty("currentFileName").GetString());
-        Assert.Equal("item-001",
-            root.GetProperty("inputData").GetProperty("sourceFile").GetProperty("sourceFileId").GetString());
+        Assert.Equal(AiPromptBuilder.FileRenameTaskId, root.GetProperty("taskId").GetString());
+        Assert.Equal(AiPromptTemplates.FileRenamePromptVersion, root.GetProperty("promptVersion").GetString());
+        Assert.Equal("item-001", input.GetProperty("sourceFileId").GetString());
+        Assert.Equal("invoice \"draft\"", input.GetProperty("currentStem").GetString());
+        Assert.Equal(".pdf", input.GetProperty("preservedExtension").GetString());
+        Assert.Equal("-", input.GetProperty("separator").GetString());
+        Assert.Equal("yyyy-MM-dd", input.GetProperty("dateFormat").GetString());
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSchemaJson(AiSuggestionKind.FileRename),
+            root.GetProperty("responseSchema").GetRawText());
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSystemPrompt(AiSuggestionKind.FileRename),
+            result.SystemPrompt);
         Assert.Equal("file:1", Assert.Single(result.SourceMappings).KnownSourceId);
         Assert.DoesNotContain("content-secret", result.Prompt, StringComparison.Ordinal);
         Assert.DoesNotContain(file.FullPath, result.Prompt, StringComparison.Ordinal);
+        Assert.Contains("no_suggestion", result.Prompt, StringComparison.Ordinal);
+        Assert.Contains("no Markdown or prose", result.SystemPrompt, StringComparison.Ordinal);
     }
 
-    /// <summary>Verifies deterministically equivalent folder metadata produces byte-identical prompts.</summary>
+    /// <summary>Equivalent folder evidence produces byte-identical prompts and stable opaque identities.</summary>
     [Fact]
     public void BuildFolderStructurePrompt_ReorderedInputs_IsDeterministic()
     {
@@ -59,12 +64,11 @@ public sealed class AiPromptBuilderTests
         Assert.Equal(["a", "b"], first.IncludedSourceIds);
         Assert.Equal(["item-001", "item-002"], first.SourceMappings.Select(mapping => mapping.RequestSourceId));
         Assert.Equal(["a", "b"], first.SourceMappings.Select(mapping => mapping.KnownSourceId));
-        Assert.Contains("assign every supplied item exactly once", first.Prompt, StringComparison.Ordinal);
-        Assert.Contains(AiPromptBuilder.FolderStructureTaskId, first.Prompt, StringComparison.Ordinal);
+        Assert.Contains("assign every supplied opaque file ID", first.Prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("C:\\Private", first.Prompt, StringComparison.Ordinal);
     }
 
-    /// <summary>Verifies large contexts are deterministically bounded and reported.</summary>
+    /// <summary>Folder records and folder-name choices are deterministically bounded before transport.</summary>
     [Fact]
     public void BuildFolderStructurePrompt_LargeContext_IsBoundedAndStable()
     {
@@ -74,27 +78,56 @@ public sealed class AiPromptBuilderTests
             .ToArray();
         var folders = Enumerable.Range(0, 45).Select(index => $"Folder {index:D2}").ToArray();
 
-        var result = _builder.BuildFolderStructurePrompt(new AiFolderStructureRequest(files, folders), EmptyPreferences());
+        var result = _builder.BuildFolderStructurePrompt(
+            new AiFolderStructureRequest(files, folders),
+            EmptyPreferences());
 
         Assert.True(result.WasInputBounded);
         Assert.Equal(40, result.TotalInputCount);
-        Assert.Equal(25, result.IncludedInputCount);
-        Assert.Equal(15, result.OmittedInputCount);
-        Assert.Equal(AiPromptLimits.MaximumFolderStructureFiles, result.IncludedSourceIds.Count);
+        Assert.Equal(AiPromptLimits.MaximumFolderStructureFiles, result.IncludedInputCount);
+        Assert.Equal(40 - AiPromptLimits.MaximumFolderStructureFiles, result.OmittedInputCount);
         Assert.Equal("file:00", result.IncludedSourceIds[0]);
-        Assert.Equal("file:24", result.IncludedSourceIds[^1]);
+        Assert.Equal("file:11", result.IncludedSourceIds[^1]);
         using var document = JsonDocument.Parse(result.Prompt);
-        Assert.Equal(AiPromptLimits.MaximumFolderStructureFiles,
-            document.RootElement.GetProperty("inputData").GetProperty("files").GetArrayLength());
-        Assert.Equal(AiPromptLimits.MaximumExistingFolderNames,
-            document.RootElement.GetProperty("inputData").GetProperty("existingLogicalFolderNames").GetArrayLength());
+        var input = document.RootElement.GetProperty("input");
+        Assert.Equal(
+            AiPromptLimits.MaximumFolderStructureFiles,
+            input.GetProperty("files").GetArrayLength());
+        Assert.True(
+            input.GetProperty("allowedFolderNames").GetArrayLength() <=
+            AiPromptLimits.MaximumAllowedFolderNames);
+        Assert.Contains("Other", result.AllowedFolderNames, StringComparer.Ordinal);
+        Assert.Equal(AiResponseLimits.MaximumFolders, input.GetProperty("maximumFolders").GetInt32());
+        Assert.Equal(AiResponseLimits.MaximumFolderDepth, input.GetProperty("maximumDepth").GetInt32());
     }
 
-    /// <summary>Verifies sibling-name bounds cannot leak an unlimited nearby directory listing.</summary>
+    /// <summary>The uncertain-classification fallback is never displaced by a full allowed-name budget.</summary>
+    [Fact]
+    public void BuildFolderStructurePrompt_FullAllowedNameBudget_AlwaysIncludesOther()
+    {
+        var existing = Enumerable.Range(1, AiPromptLimits.MaximumExistingFolderNames)
+            .Select(index => $"Category {index:D2}")
+            .ToArray();
+        var preferred = Enumerable.Range(1, AiPromptLimits.MaximumPreferenceValues)
+            .Select(index => $"Preferred {index:D2}")
+            .ToArray();
+
+        var result = _builder.BuildFolderStructurePrompt(
+            new AiFolderStructureRequest([CreateFile("known:1", "invoice.pdf")], existing),
+            new AiPreferenceSummary([], preferred, [], []));
+
+        Assert.Contains("Other", result.AllowedFolderNames, StringComparer.Ordinal);
+        Assert.True(result.AllowedFolderNames.Count <= AiPromptLimits.MaximumAllowedFolderNames);
+    }
+
+    /// <summary>Nearby names are converted to bounded stems instead of leaking a directory listing.</summary>
     [Fact]
     public void BuildFileRenamePrompt_TooManySiblings_BoundsAndReportsInput()
     {
-        var siblings = Enumerable.Range(0, 50).Select(index => $"nearby-{index:D2}.pdf").Reverse().ToArray();
+        var siblings = Enumerable.Range(0, 50)
+            .Select(index => $"nearby-{index:D2}.pdf")
+            .Reverse()
+            .ToArray();
 
         var result = _builder.BuildFileRenamePrompt(
             new AiFileRenameRequest(CreateFile("file:1", "invoice.pdf"), siblings),
@@ -102,26 +135,53 @@ public sealed class AiPromptBuilderTests
 
         Assert.True(result.WasInputBounded);
         using var document = JsonDocument.Parse(result.Prompt);
-        var values = document.RootElement.GetProperty("inputData").GetProperty("siblingFileNames");
+        var values = document.RootElement.GetProperty("input").GetProperty("nearbyNameStems");
         Assert.Equal(AiPromptLimits.MaximumSiblingFileNames, values.GetArrayLength());
-        Assert.Equal("nearby-00.pdf", values[0].GetString());
+        Assert.Equal("nearby-00", values[0].GetString());
     }
 
-    /// <summary>Verifies deterministic per-value truncation is also disclosed to the review workflow.</summary>
+    /// <summary>Unsafe or overlong folder context is omitted and the bounding decision is disclosed.</summary>
     [Fact]
-    public void BuildFolderStructurePrompt_OverlongFolderContext_ReportsBoundedInput()
+    public void BuildFolderStructurePrompt_UnsafeFolderContext_IsNotSent()
     {
+        var unsafeName = new string('f', 300);
         var result = _builder.BuildFolderStructurePrompt(
-            new AiFolderStructureRequest([CreateFile("file:1", "invoice.pdf")], [new string('f', 300)]),
+            new AiFolderStructureRequest(
+                [CreateFile("file:1", "invoice.pdf")],
+                [unsafeName, "..", "C:\\Private"]),
             EmptyPreferences());
 
         Assert.True(result.WasInputBounded);
-        using var document = JsonDocument.Parse(result.Prompt);
-        Assert.Equal(255,
-            document.RootElement.GetProperty("inputData").GetProperty("existingLogicalFolderNames")[0].GetString()!.Length);
+        Assert.DoesNotContain(unsafeName, result.Prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:\\Private", result.Prompt, StringComparison.Ordinal);
+        Assert.Contains("Other", result.AllowedFolderNames);
     }
 
-    /// <summary>Verifies extracted text is bounded, provenance-labelled, and never includes a source path.</summary>
+    /// <summary>Repair contains the same task/schema, the exact concise error, and the bounded prior response.</summary>
+    [Fact]
+    public void BuildRepairPrompt_ContainsRequiredSameTaskInputs()
+    {
+        var original = _builder.BuildFileRenamePrompt(
+            new AiFileRenameRequest(CreateFile("file:1", "invoice.pdf"), []),
+            EmptyPreferences());
+
+        var repair = _builder.BuildRepairPrompt(
+            original,
+            "```json\n{}\n```",
+            "The response used Markdown.");
+
+        using var document = JsonDocument.Parse(repair.Prompt);
+        var input = document.RootElement.GetProperty("input");
+        Assert.Equal(original.TaskId, input.GetProperty("originalTaskId").GetString());
+        Assert.Equal("```json\n{}\n```", input.GetProperty("priorResponse").GetString());
+        Assert.Equal("The response used Markdown.", input.GetProperty("validationError").GetString());
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSchemaJson(AiSuggestionKind.FileRename),
+            document.RootElement.GetProperty("responseSchema").GetRawText());
+        Assert.Equal(AiStructuredOutputContracts.RepairSystemPrompt, repair.SystemPrompt);
+    }
+
+    /// <summary>Extracted document text remains bounded, provenance-labelled, and path-free.</summary>
     [Fact]
     public void BuildDocumentInterpretationPrompt_BoundsTextAndOmitsPath()
     {
@@ -146,14 +206,15 @@ public sealed class AiPromptBuilderTests
         Assert.Equal(AiPromptBuilder.DocumentInterpretationTaskId, result.TaskId);
         Assert.DoesNotContain("C:\\", result.Prompt, StringComparison.Ordinal);
         using var document = JsonDocument.Parse(result.Prompt);
-        var input = document.RootElement.GetProperty("inputData");
+        var input = document.RootElement.GetProperty("input");
         Assert.Equal("item-001", input.GetProperty("sourceFileId").GetString());
-        Assert.True(input.GetProperty("extractedTextPages").GetArrayLength() <= AiPromptLimits.MaximumDocumentTextPages);
+        Assert.True(
+            input.GetProperty("extractedTextPages").GetArrayLength() <=
+            AiPromptLimits.MaximumDocumentTextPages);
         Assert.Contains("Do not provide legal", result.Prompt, StringComparison.Ordinal);
     }
 
-    private static AiPreferenceSummary EmptyPreferences() =>
-        new([], [], [], []);
+    private static AiPreferenceSummary EmptyPreferences() => new([], [], [], []);
 
     private static ResultFile CreateFile(string id, string name, string? path = null) => new(
         id,

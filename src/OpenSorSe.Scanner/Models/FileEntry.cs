@@ -8,4 +8,8 @@ public sealed record FileEntry(
     FileMetadata? Metadata = null,
     FileHash? Hash = null,
     FileClassification? Classification = null,
-    DuplicateClassification? Duplicate = null);
+    DuplicateClassification? Duplicate = null)
+{
+    /// <summary>Gets the process-session scan diagnostic that discovered this file.</summary>
+    public string? ScanDiagnosticSessionId { get; init; }
+}

@@ -5,6 +5,8 @@ using OpenSorSe.Scanner.Models;
 using OpenSorSe.Application.Tags;
 using System.Security.Cryptography;
 using System.Text;
+using System.Diagnostics;
+using OpenSorSe.Core.Diagnostics;
 
 namespace OpenSorSe.Application.Content;
 
@@ -16,6 +18,7 @@ public sealed class ContentIndexingService : IContentIndexingService
     private readonly ILogger _logger;
     private readonly IMetadataExtractionPipeline _metadataPipeline;
     private readonly IOcrService _ocrService;
+    private readonly IDiagnosticsEventSink? _diagnostics;
 
     /// <summary>Initializes the local scan-content indexing stage.</summary>
     public ContentIndexingService(
@@ -23,7 +26,8 @@ public sealed class ContentIndexingService : IContentIndexingService
         IMetadataExtractionPipeline metadataPipeline,
         IOcrService ocrService,
         IContentStore contentStore,
-        ILoggingService loggingService)
+        ILoggingService loggingService,
+        IDiagnosticsEventSink? diagnostics = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _metadataPipeline = metadataPipeline ?? throw new ArgumentNullException(nameof(metadataPipeline));
@@ -31,6 +35,7 @@ public sealed class ContentIndexingService : IContentIndexingService
         _contentStore = contentStore ?? throw new ArgumentNullException(nameof(contentStore));
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(ContentIndexingService));
+        _diagnostics = DiagnosticsIsolation.Protect(diagnostics);
     }
 
     /// <inheritdoc />
@@ -58,6 +63,22 @@ public sealed class ContentIndexingService : IContentIndexingService
         foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var diagnosticStarted = Stopwatch.StartNew();
+            var sessionId = _diagnostics?.BeginSession(
+                DiagnosticCategory.OcrAndTextExtraction,
+                "Extract and index document text",
+                [
+                    new DiagnosticField("Source file", file.FullPath, DiagnosticDataClassification.Path),
+                    new DiagnosticField("File type", Path.GetExtension(file.FullPath).ToLowerInvariant()),
+                    new DiagnosticField("Metadata extraction enabled", settings.MetadataExtractionEnabled.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    new DiagnosticField("OCR enabled", settings.OcrEnabled.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                ],
+                string.IsNullOrWhiteSpace(file.ScanDiagnosticSessionId) ? null : [file.ScanDiagnosticSessionId]);
+            if (!string.IsNullOrWhiteSpace(sessionId) &&
+                !string.IsNullOrWhiteSpace(file.ScanDiagnosticSessionId))
+            {
+                _diagnostics?.Relate(file.ScanDiagnosticSessionId, sessionId);
+            }
             try
             {
                 var source = ReadSourceIdentity(file);
@@ -71,6 +92,22 @@ public sealed class ContentIndexingService : IContentIndexingService
                         StringComparison.Ordinal))
                 {
                     cacheHits++;
+                    _diagnostics?.Publish(
+                        sessionId,
+                        "Extraction strategy",
+                        DiagnosticStatus.Skipped,
+                        DiagnosticSeverity.Information,
+                        DiagnosticSection.Overview,
+                        "A valid bounded content-cache record was reused.",
+                        [
+                            new DiagnosticField("Strategy", "Validated content-cache reuse"),
+                            new DiagnosticField("Source length bytes", source.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        ]);
+                    _diagnostics?.Complete(
+                        sessionId,
+                        DiagnosticStatus.Skipped,
+                        diagnosticStarted.Elapsed,
+                        "Extraction was skipped because the compatible cached result is current.");
                     continue;
                 }
 
@@ -81,6 +118,46 @@ public sealed class ContentIndexingService : IContentIndexingService
                         settings.MaximumPagesPerDocument,
                         cancellationToken).ConfigureAwait(false)
                     : new MetadataExtractionResult([], null, false, null, []);
+                _diagnostics?.Publish(
+                    sessionId,
+                    "Native text extraction",
+                    DiagnosticStatus.Succeeded,
+                    metadata.Warnings.Count == 0 ? DiagnosticSeverity.Information : DiagnosticSeverity.Warning,
+                    DiagnosticSection.IntermediateResults,
+                    "Native metadata and text extraction completed.",
+                    [
+                        new DiagnosticField("Extraction strategy", metadata.ExtractionStrategies.Count == 0
+                            ? "No format-specific native text extractor"
+                            : string.Join(", ", metadata.ExtractionStrategies)),
+                        new DiagnosticField("Page count", metadata.PageCount?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty),
+                        new DiagnosticField("Raw native embedded text", metadata.RawNativeText ?? string.Empty, DiagnosticDataClassification.Content),
+                        new DiagnosticField("Normalized native text", metadata.NativeText ?? string.Empty, DiagnosticDataClassification.Content),
+                        new DiagnosticField("Raw native character count", metadata.RawNativeText?.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0"),
+                        new DiagnosticField("Normalized native character count", metadata.NativeText?.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0"),
+                        new DiagnosticField("Native extraction truncated", metadata.WasTruncated.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        new DiagnosticField("Native-text quality decision", metadata.HasReliableNativeText
+                            ? "Reliable native text is available for every required page."
+                            : "Native text is absent or insufficient for at least one required page."),
+                        new DiagnosticField("Metadata field count", metadata.Fields.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    ]);
+                foreach (var page in metadata.PdfPages.Take(DiagnosticLimits.MaximumPageRecords))
+                {
+                    _diagnostics?.Publish(
+                        sessionId,
+                        $"Native page {page.PageNumber}",
+                        page.HasReliableNativeText ? DiagnosticStatus.Succeeded : DiagnosticStatus.PartiallySucceeded,
+                        page.HasReliableNativeText ? DiagnosticSeverity.Information : DiagnosticSeverity.Warning,
+                        DiagnosticSection.IntermediateResults,
+                        page.HasReliableNativeText
+                            ? "Native page text passed the deterministic quality policy."
+                            : "Native page text did not pass the deterministic quality policy; OCR fallback may run.",
+                        [
+                            new DiagnosticField("Page number", page.PageNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                            new DiagnosticField("Raw native page text", page.RawNativeText ?? string.Empty, DiagnosticDataClassification.Content),
+                            new DiagnosticField("Normalized native page text", page.NativeText ?? string.Empty, DiagnosticDataClassification.Content),
+                            new DiagnosticField("Reliable native text", page.HasReliableNativeText.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        ]);
+                }
                 var ocr = await _ocrService.RecognizeAsync(
                     new OcrRequest(
                         file.FullPath,
@@ -95,6 +172,7 @@ public sealed class ContentIndexingService : IContentIndexingService
                         MaximumRasterDimension = settings.MaximumRasterDimension,
                         MaximumTextCharacters = settings.MaximumOcrTextCharacters,
                         MaximumTemporaryStorageBytes = settings.MaximumTemporaryStorageMiB * 1024L * 1024L,
+                        DiagnosticSessionId = sessionId,
                     },
                     cancellationToken).ConfigureAwait(false);
                 if (ocr.Status is OcrStatus.Completed or OcrStatus.PartiallyCompleted)
@@ -112,7 +190,7 @@ public sealed class ContentIndexingService : IContentIndexingService
                     $"{source.Length}:{source.LastWriteTimeUtc.UtcTicks}",
                     metadata.Fields,
                     metadata.NativeText,
-                    ocr.ExtractedText,
+                    ocr.DownstreamText ?? ocr.ExtractedText,
                     indexedAt);
                 var record = new ContentRecord(
                     Path.GetFullPath(file.FullPath),
@@ -121,7 +199,7 @@ public sealed class ContentIndexingService : IContentIndexingService
                     indexedAt,
                     metadata.Fields,
                     metadata.NativeText,
-                    ocr.ExtractedText,
+                    ocr.DownstreamText ?? ocr.ExtractedText,
                     ocr.Status,
                     ocr.EngineIdentifier,
                     Array.AsReadOnly(metadata.Warnings
@@ -132,6 +210,7 @@ public sealed class ContentIndexingService : IContentIndexingService
                         .ToArray()))
                 {
                     ExtractionFingerprint = extractionFingerprint,
+                    DiagnosticSessionId = sessionId,
                     OcrPages = ocr.Pages,
                     Tags = MergeTags(
                         generatedTags,
@@ -139,16 +218,84 @@ public sealed class ContentIndexingService : IContentIndexingService
                         $"{source.Length}:{source.LastWriteTimeUtc.UtcTicks}"),
                 };
                 await _contentStore.UpsertAsync(record, cancellationToken).ConfigureAwait(false);
+                _diagnostics?.Publish(
+                    sessionId,
+                    "Downstream text",
+                    ocr.Status is OcrStatus.Failed or OcrStatus.Unavailable
+                        ? DiagnosticStatus.PartiallySucceeded
+                        : DiagnosticStatus.Succeeded,
+                    ocr.Status is OcrStatus.Failed or OcrStatus.Unavailable
+                        ? DiagnosticSeverity.Warning
+                        : DiagnosticSeverity.Information,
+                    DiagnosticSection.Outputs,
+                    "Bounded text and metadata were supplied to local content indexing.",
+                    [
+                        new DiagnosticField("Native text supplied downstream", metadata.NativeText ?? string.Empty, DiagnosticDataClassification.Content),
+                        new DiagnosticField("OCR text supplied downstream", ocr.DownstreamText ?? ocr.ExtractedText ?? string.Empty, DiagnosticDataClassification.Content),
+                        new DiagnosticField("Metadata supplied downstream", string.Join(
+                            Environment.NewLine,
+                            metadata.Fields.Select(field => $"{field.Name}: {field.Value}")),
+                            DiagnosticDataClassification.Metadata),
+                        new DiagnosticField("Native downstream character count", metadata.NativeText?.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0"),
+                        new DiagnosticField("OCR downstream character count", (ocr.DownstreamText ?? ocr.ExtractedText)?.Length.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0"),
+                    ]);
+                var terminalStatus = ocr.Status switch
+                {
+                    OcrStatus.PartiallyCompleted or OcrStatus.TextNotIndexedDueToBounds =>
+                        DiagnosticStatus.PartiallySucceeded,
+                    OcrStatus.Failed or OcrStatus.Unavailable when
+                        !string.IsNullOrWhiteSpace(metadata.NativeText) || metadata.Fields.Count > 0 =>
+                        DiagnosticStatus.PartiallySucceeded,
+                    OcrStatus.Failed or OcrStatus.Unavailable => DiagnosticStatus.Failed,
+                    _ => DiagnosticStatus.Succeeded,
+                };
+                if (terminalStatus == DiagnosticStatus.Succeeded &&
+                    (metadata.WasTruncated || metadata.Warnings.Count > 0))
+                {
+                    terminalStatus = DiagnosticStatus.PartiallySucceeded;
+                }
+                _diagnostics?.Complete(
+                    sessionId,
+                    terminalStatus,
+                    diagnosticStarted.Elapsed,
+                    terminalStatus switch
+                    {
+                        DiagnosticStatus.PartiallySucceeded =>
+                            "Content extraction completed with a usable partial result.",
+                        DiagnosticStatus.Failed =>
+                            "Content extraction completed without usable native or OCR content.",
+                        _ => "Content extraction and downstream indexing completed.",
+                    },
+                    terminalStatus == DiagnosticStatus.Failed
+                        ? DiagnosticSeverity.Error
+                        : terminalStatus == DiagnosticStatus.PartiallySucceeded
+                            ? DiagnosticSeverity.Warning
+                            : DiagnosticSeverity.Information);
                 indexed++;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                _diagnostics?.Complete(
+                    sessionId,
+                    DiagnosticStatus.Cancelled,
+                    diagnosticStarted.Elapsed,
+                    "Content extraction was cancelled.",
+                    DiagnosticSeverity.Warning);
                 throw;
             }
             catch (Exception exception)
             {
                 failed++;
-                _logger.LogWarning(exception, "Local content extraction failed for one scanned file and the scan will continue.");
+                _diagnostics?.Complete(
+                    sessionId,
+                    DiagnosticStatus.Failed,
+                    diagnosticStarted.Elapsed,
+                    "Content extraction failed safely and the scan continued.",
+                    DiagnosticSeverity.Error,
+                    [new DiagnosticField("Error category", exception.GetType().Name)]);
+                _logger.LogWarning(
+                    "Local content extraction failed safely for one scanned file. Error category: {ErrorCategory}.",
+                    exception.GetType().Name);
             }
         }
 

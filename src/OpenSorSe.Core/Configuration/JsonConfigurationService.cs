@@ -64,6 +64,7 @@ public sealed class JsonConfigurationService : IConfigurationService
                     stream,
                     SerializerOptions,
                     cancellationToken).ConfigureAwait(false) ?? new ApplicationSettings();
+                settings = UpgradeLegacyDiagnostics(settings);
                 settings.Validate();
             }
             catch (Exception exception) when (exception is JsonException or ConfigurationValidationException or IOException or UnauthorizedAccessException)
@@ -149,6 +150,7 @@ public sealed class JsonConfigurationService : IConfigurationService
         return new ApplicationSettings
         {
             Features = settings.Features,
+            Diagnostics = settings.Diagnostics,
             Logging = new LoggingSettings
             {
                 MinimumLevel = minimumLevel,
@@ -158,6 +160,49 @@ public sealed class JsonConfigurationService : IConfigurationService
             },
             Ai = settings.Ai,
             Catalog = settings.Catalog,
+            Content = settings.Content,
+            SemanticSearch = settings.SemanticSearch,
+        };
+    }
+
+    private static ApplicationSettings UpgradeLegacyDiagnostics(ApplicationSettings settings)
+    {
+        var diagnostics = settings.Diagnostics ?? new DiagnosticsSettings();
+        if (!settings.Ai.RequestDiagnosticsEnabled ||
+            diagnostics.EnableDiagnostics ||
+            diagnostics.AiDiagnostics)
+        {
+            if (settings.Diagnostics is not null)
+            {
+                return settings;
+            }
+
+            return new ApplicationSettings
+            {
+                Features = settings.Features,
+                Logging = settings.Logging,
+                Diagnostics = diagnostics,
+                Ai = settings.Ai,
+                Catalog = settings.Catalog,
+                Content = settings.Content,
+                SemanticSearch = settings.SemanticSearch,
+            };
+        }
+
+        return new ApplicationSettings
+        {
+            Features = settings.Features,
+            Logging = settings.Logging,
+            Diagnostics = new DiagnosticsSettings
+            {
+                EnableDiagnostics = true,
+                AiDiagnostics = true,
+                ShowUnredactedDiagnosticContent = settings.Ai.ShowUnredactedDiagnosticContent,
+            },
+            Ai = settings.Ai,
+            Catalog = settings.Catalog,
+            Content = settings.Content,
+            SemanticSearch = settings.SemanticSearch,
         };
     }
 }

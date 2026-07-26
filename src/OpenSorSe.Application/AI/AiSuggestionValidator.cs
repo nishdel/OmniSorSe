@@ -10,6 +10,12 @@ namespace OpenSorSe.Application.AI;
 /// </summary>
 public static class AiSuggestionValidator
 {
+    /// <summary>Maximum model-supplied filename-stem length.</summary>
+    public const int MaximumFileStemLength = 120;
+
+    /// <summary>Maximum model-supplied folder-component length.</summary>
+    public const int MaximumFolderComponentLength = 64;
+
     private static readonly char[] PortableInvalidNameCharacters = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
     private static readonly HashSet<string> ReservedFileNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -81,6 +87,105 @@ public static class AiSuggestionValidator
         return true;
     }
 
+    /// <summary>Validates one model-supplied stem and appends the application-owned extension.</summary>
+    public static bool TryNormalizeFileStem(
+        string? proposedStem,
+        string currentExtension,
+        IReadOnlyList<string> siblingFileNames,
+        out string normalizedFileName,
+        out string error)
+    {
+        normalizedFileName = string.Empty;
+        error = string.Empty;
+        if (string.IsNullOrWhiteSpace(proposedStem))
+        {
+            error = "Expected `suggestedStem` to be a non-empty string. No suggestion was used.";
+            return false;
+        }
+
+        var stem = proposedStem.Trim();
+        if (stem.Length > MaximumFileStemLength ||
+            stem is "." or ".." ||
+            stem.StartsWith('-') ||
+            stem.EndsWith('-') ||
+            stem.Contains("--", StringComparison.Ordinal) ||
+            stem.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase) ||
+            stem.Any(character => !char.IsLetterOrDigit(character) && character != '-'))
+        {
+            error = "The AI rename response did not provide one safe extension-free hyphen-separated stem. No suggestion was used.";
+            return false;
+        }
+
+        if (ReservedFileNames.Contains(stem))
+        {
+            error = "The AI rename response used a reserved filename stem. No suggestion was used.";
+            return false;
+        }
+
+        var candidate = stem + currentExtension;
+        if (candidate.Length > 255 ||
+            siblingFileNames.Any(name =>
+                string.Equals(name?.Trim(), candidate, StringComparison.OrdinalIgnoreCase)))
+        {
+            error = candidate.Length > 255
+                ? "The AI rename response exceeded the supported final filename length. No suggestion was used."
+                : "The AI rename response conflicts with a known file in the same folder. No suggestion was used.";
+            return false;
+        }
+
+        normalizedFileName = candidate;
+        return true;
+    }
+
+    /// <summary>Checks that every suggested stem token is grounded in supplied deterministic evidence.</summary>
+    public static bool IsFileStemGrounded(
+        string proposedStem,
+        string currentFileName,
+        string classificationDisplay)
+    {
+        var evidence = Tokens(Path.GetFileNameWithoutExtension(currentFileName))
+            .Concat(Tokens(classificationDisplay))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return Tokens(proposedStem).All(evidence.Contains);
+    }
+
+    /// <summary>Checks that every model-produced interpretation value is grounded in supplied filename or text evidence.</summary>
+    public static bool AreDocumentInterpretationValuesGrounded(
+        AiDocumentTextRequest request,
+        string? documentType,
+        string? title,
+        IReadOnlyList<string> tags,
+        IReadOnlyList<string> dates,
+        string? issuer,
+        string? suggestedFolder)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(tags);
+        ArgumentNullException.ThrowIfNull(dates);
+        var evidence = Tokens(Path.GetFileNameWithoutExtension(request.DisplayFileName ?? string.Empty))
+            .Concat(Tokens(request.NativeText ?? string.Empty))
+            .Concat(Tokens(request.OcrText ?? string.Empty))
+            .Concat((request.Pages ?? [])
+                .Where(page => page is not null && !string.IsNullOrWhiteSpace(page.Text))
+                .SelectMany(page => Tokens(page.Text!)))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var candidates = new[] { documentType, title, issuer, suggestedFolder }
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .Concat(tags)
+            .Concat(dates);
+        foreach (var candidate in candidates)
+        {
+            var tokens = Tokens(candidate).ToArray();
+            if (tokens.Length == 0 || tokens.Any(token => !evidence.Contains(token)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Validates one logical folder-name component independently from host operating-system rules.
     /// </summary>
@@ -99,7 +204,7 @@ public static class AiSuggestionValidator
         }
 
         var candidate = value.Trim();
-        if (candidate.Length > 100 || candidate is "." or ".." || Path.IsPathRooted(candidate) ||
+        if (candidate.Length > MaximumFolderComponentLength || candidate is "." or ".." || Path.IsPathRooted(candidate) ||
             candidate.Contains("..", StringComparison.Ordinal) || candidate.IndexOfAny(PortableInvalidNameCharacters) >= 0 ||
             candidate.Any(char.IsControl) || candidate.EndsWith(' ') || candidate.EndsWith('.'))
         {
@@ -299,4 +404,34 @@ public static class AiSuggestionValidator
         tag = new SuggestedTag(display, normalized);
         return true;
     }
+
+    private static IEnumerable<string> Tokens(string value)
+    {
+        var builder = new StringBuilder();
+        foreach (var character in value.Normalize(NormalizationForm.FormKC))
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(char.ToLowerInvariant(character));
+                continue;
+            }
+
+            if (builder.Length > 0)
+            {
+                yield return NormalizeNumericToken(builder.ToString());
+                builder.Clear();
+            }
+        }
+
+        if (builder.Length > 0)
+        {
+            yield return NormalizeNumericToken(builder.ToString());
+        }
+    }
+
+    private static string NormalizeNumericToken(string value) =>
+        value.All(char.IsDigit) &&
+        long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+            ? number.ToString(CultureInfo.InvariantCulture)
+            : value;
 }

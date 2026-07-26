@@ -72,7 +72,11 @@ public sealed class OpenXmlMetadataExtractor : IMetadataExtractor
                 normalized.Length == 0 ? null : normalized,
                 normalized.Length >= ContentText.ReliableTextMinimumLength,
                 pageCount,
-                []));
+                [])
+            {
+                RawNativeText = text.Length == 0 ? null : text,
+                ExtractionStrategies = [$"Open XML {extension.TrimStart('.').ToUpperInvariant()} native text"],
+            });
         }
         catch (InvalidDataException)
         {

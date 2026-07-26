@@ -6,43 +6,33 @@ using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application.Tests;
 
-/// <summary>Verifies strict whole-response validation of untrusted AI JSON.</summary>
+/// <summary>Verifies exact whole-response validation of untrusted AI JSON.</summary>
 public sealed class AiResponseParserTests
 {
-    /// <summary>Reports a precise reason type mismatch instead of the historical generic warning.</summary>
-    [Fact]
-    public void ParseFileRename_ReasonObject_ReportsPreciseType()
-    {
-        var result = new AiResponseParser().ParseFileRename(
-            """{"taskId":"file-rename-v1","status":"suggestion","sourceFileId":"file:1","suggestedFileName":"new.pdf","reason":{"text":"clearer"}}""",
-            RenameRequest());
-
-        Assert.False(result.IsValid);
-        Assert.Contains("received object", result.Message, StringComparison.Ordinal);
-    }
     private readonly AiResponseParser _parser = new();
 
-    /// <summary>Verifies a complete rename response is accepted and unknown properties are ignored.</summary>
+    /// <summary>A grounded stem is accepted and the application appends the original extension.</summary>
     [Fact]
-    public void ParseFileRename_ValidResponseWithUnknownProperty_IsAccepted()
+    public void ParseFileRename_ValidStem_PreservesExtensionOutsideModel()
     {
         var result = _parser.ParseFileRename(
-            RenameJson("file:1", "April Invoice.pdf", confidence: "0.51", extra: ",\"futureField\":{\"value\":1}"),
+            RenameJson("file:1", "invoice-draft", "0.51"),
             RenameRequest());
 
         var value = Assert.IsType<AiParsedFileRename>(result.Value);
         Assert.True(result.IsValid);
         Assert.False(result.IsNoSuggestion);
-        Assert.Equal("April Invoice.pdf", value.SuggestedFileName);
+        Assert.Equal("invoice-draft", value.SuggestedStem);
+        Assert.Equal("invoice-draft.pdf", value.SuggestedFileName);
         Assert.Equal(0.51, value.Confidence);
     }
 
-    /// <summary>Verifies explicit no-suggestion output is a valid non-actionable result.</summary>
+    /// <summary>Explicit no-suggestion output is valid and non-actionable.</summary>
     [Fact]
     public void ParseFileRename_NoSuggestion_IsAcceptedWithoutValue()
     {
         var result = _parser.ParseFileRename(
-            """{"taskId":"file-rename-v1","status":"no_suggestion","reason":"The current name is already clear."}""",
+            """{"taskId":"file-rename-v2","status":"no_suggestion","reason":"The current name is already clear."}""",
             RenameRequest());
 
         Assert.True(result.IsValid);
@@ -50,58 +40,78 @@ public sealed class AiResponseParserTests
         Assert.Null(result.Value);
     }
 
-    /// <summary>Verifies malformed, fenced, empty, wrong-shape, and missing-field responses are rejected.</summary>
+    /// <summary>Malformed shapes are rejected and only diagnostic format failures are repairable.</summary>
     [Theory]
-    [InlineData("")]
-    [InlineData("{invalid")]
-    [InlineData("```json\n{}\n```")]
-    [InlineData("[]")]
-    [InlineData("{\"taskId\":\"file-rename-v1\",\"status\":\"suggestion\",\"reason\":\"why\"}")]
-    [InlineData("{\"taskId\":12,\"status\":\"suggestion\",\"reason\":\"why\"}")]
-    public void ParseFileRename_InvalidEnvelope_IsRejected(string json)
+    [InlineData("", false)]
+    [InlineData("{invalid", true)]
+    [InlineData("```json\n{}\n```", true)]
+    [InlineData("[]", true)]
+    [InlineData("{\"taskId\":\"file-rename-v2\",\"status\":\"suggestion\",\"reason\":\"why\"}", true)]
+    public void ParseFileRename_InvalidEnvelope_IsRejected(string json, bool repairable)
     {
         var result = _parser.ParseFileRename(json, RenameRequest());
 
         Assert.False(result.IsValid);
-        Assert.Null(result.Value);
+        Assert.Equal(repairable, result.CanRepair);
     }
 
-    /// <summary>Verifies source identity, filename, extension, collision, no-change, and confidence constraints.</summary>
+    /// <summary>Identity, path, grounding, extension, collision, no-change, and type failures close the whole response.</summary>
     [Theory]
-    [InlineData("other", "safe.pdf", "0.5")]
-    [InlineData("file:1", "../safe.pdf", "0.5")]
-    [InlineData("file:1", "C:\\safe.pdf", "0.5")]
-    [InlineData("file:1", "bad:name.pdf", "0.5")]
-    [InlineData("file:1", "NUL.pdf", "0.5")]
-    [InlineData("file:1", "safe.txt", "0.5")]
-    [InlineData("file:1", "invoice.pdf", "0.5")]
-    [InlineData("file:1", "existing.pdf", "0.5")]
-    [InlineData("file:1", "safe.pdf", "-0.1")]
-    [InlineData("file:1", "safe.pdf", "1.1")]
-    [InlineData("file:1", "safe.pdf", "\"high\"")]
-    public void ParseFileRename_UnsafeOrInconsistentValue_IsRejected(string sourceId, string name, string confidence)
+    [InlineData("other", "invoice-draft", "0.5", AiResponseFailureKind.UnsafeIdentity)]
+    [InlineData("file:1", "../invoice", "0.5", AiResponseFailureKind.UnsafePath)]
+    [InlineData("file:1", "C:\\invoice", "0.5", AiResponseFailureKind.UnsafePath)]
+    [InlineData("file:1", "invoice.pdf", "0.5", AiResponseFailureKind.ModelMisuse)]
+    [InlineData("file:1", "invented-subject", "0.5", AiResponseFailureKind.ModelMisuse)]
+    [InlineData("file:1", "draft-invoice", "0.5", AiResponseFailureKind.ModelMisuse)]
+    [InlineData("file:1", "invoice-draft", "\"high\"", AiResponseFailureKind.ModelMisuse)]
+    public void ParseFileRename_UnsafeOrInconsistentValue_IsRejected(
+        string sourceId,
+        string stem,
+        string confidence,
+        AiResponseFailureKind expected)
     {
         var result = _parser.ParseFileRename(
-            RenameJson(sourceId, name, confidence),
-            RenameRequest(["existing.pdf"]));
+            RenameJson(sourceId, stem, confidence),
+            RenameRequest(["invoice-draft.pdf"]));
 
         Assert.False(result.IsValid);
+        Assert.Equal(expected, result.FailureKind);
     }
 
-    /// <summary>Verifies a parent-child folder graph and known assignments produce deterministic logical paths.</summary>
+    /// <summary>Unknown properties are rejected so prompt, schema, DTO, and validator stay exact.</summary>
+    [Fact]
+    public void ParseFileRename_UnknownProperty_IsRejected()
+    {
+        var result = _parser.ParseFileRename(
+            RenameJson("file:1", "invoice-draft", "0.5", ",\"futureField\":\"x\""),
+            RenameRequest());
+
+        Assert.False(result.IsValid);
+        Assert.True(result.CanRepair);
+    }
+
+    /// <summary>A declared parent-child graph and exact opaque assignment produce deterministic paths.</summary>
     [Fact]
     public void ParseFolderStructure_ValidHierarchy_IsAccepted()
     {
-        var result = _parser.ParseFolderStructure(ValidFolderJson(), [CreateFile("file:1", "invoice.pdf")]);
+        var files = new[] { CreateFile("known:1", "invoice.pdf", "Invoice") };
+        var mappings = new[] { new AiPromptSourceMapping("item-001", "known:1", "invoice.pdf") };
+
+        var result = _parser.ParseFolderStructure(
+            ValidFolderJson(),
+            files,
+            mappings,
+            ["Finance", "Invoices", "Other"]);
 
         var value = Assert.IsType<AiParsedFolderStructure>(result.Value);
         Assert.Equal(["Finance", "Finance/Invoices"], value.Folders.Select(folder => folder.LogicalPath));
         Assert.Equal("Finance/Invoices", Assert.Single(value.Items).DestinationFolder);
+        Assert.Equal("known:1", Assert.Single(value.Items).FileId);
     }
 
-    /// <summary>Verifies request-local identities map back only after every included item is assigned exactly once.</summary>
+    /// <summary>Every supplied opaque ID must be assigned exactly once.</summary>
     [Fact]
-    public void ParseFolderStructure_RequestLocalMappings_RequireCompleteExactOnceAssignment()
+    public void ParseFolderStructure_MissingAssignment_IsRejected()
     {
         var files = new[]
         {
@@ -113,24 +123,25 @@ public sealed class AiResponseParserTests
             new AiPromptSourceMapping("item-001", "known:a", "a.pdf"),
             new AiPromptSourceMapping("item-002", "known:b", "b.pdf"),
         };
-        const string complete = """{"taskId":"folder-structure-v1","status":"suggestion","folders":[{"folderId":"f1","name":"Documents","parentFolderId":null,"reason":"Type","confidence":0.8}],"assignments":[{"sourceFileId":"item-001","folderId":"f1"},{"sourceFileId":"item-002","folderId":"f1"}],"reason":"Group documents."}""";
-        const string missing = """{"taskId":"folder-structure-v1","status":"suggestion","folders":[{"folderId":"f1","name":"Documents","parentFolderId":null,"reason":"Type","confidence":0.8}],"assignments":[{"sourceFileId":"item-001","folderId":"f1"}],"reason":"Group documents."}""";
+        const string missing =
+            """{"taskId":"folder-structure-v2","status":"suggestion","folders":[{"folderId":"folder-001","name":"Document","parentFolderId":null}],"assignments":[{"sourceFileId":"item-001","folderId":"folder-001"}],"reason":"Group documents."}""";
 
-        var accepted = _parser.ParseFolderStructure(complete, files, mappings);
-        var rejected = _parser.ParseFolderStructure(missing, files, mappings);
+        var result = _parser.ParseFolderStructure(
+            missing,
+            files,
+            mappings,
+            ["Document", "Other"]);
 
-        Assert.True(accepted.IsValid);
-        Assert.Equal(["known:a", "known:b"], accepted.Value!.Items.Select(item => item.FileId));
-        Assert.False(rejected.IsValid);
-        Assert.Null(rejected.Value);
+        Assert.False(result.IsValid);
+        Assert.False(result.CanRepair);
     }
 
-    /// <summary>Verifies a valid explicit folder no-suggestion response remains non-actionable.</summary>
+    /// <summary>A valid explicit folder no-suggestion response remains non-actionable.</summary>
     [Fact]
     public void ParseFolderStructure_NoSuggestion_IsAcceptedWithoutPlan()
     {
         var result = _parser.ParseFolderStructure(
-            """{"taskId":"folder-structure-v1","status":"no_suggestion","reason":"Not enough metadata."}""",
+            """{"taskId":"folder-structure-v2","status":"no_suggestion","reason":"Not enough metadata."}""",
             [CreateFile("file:1", "invoice.pdf")]);
 
         Assert.True(result.IsValid);
@@ -138,10 +149,10 @@ public sealed class AiResponseParserTests
         Assert.Null(result.Value);
     }
 
-    /// <summary>Verifies no-suggestion envelopes cannot smuggle actionable values past validation.</summary>
+    /// <summary>No-suggestion envelopes cannot smuggle actionable values past exact validation.</summary>
     [Theory]
-    [InlineData("{\"taskId\":\"file-rename-v1\",\"status\":\"no_suggestion\",\"reason\":\"No change.\",\"suggestedFileName\":\"other.pdf\"}", true)]
-    [InlineData("{\"taskId\":\"folder-structure-v1\",\"status\":\"no_suggestion\",\"reason\":\"No plan.\",\"folders\":[]}", false)]
+    [InlineData("{\"taskId\":\"file-rename-v2\",\"status\":\"no_suggestion\",\"reason\":\"No change.\",\"suggestedStem\":\"other\"}", true)]
+    [InlineData("{\"taskId\":\"folder-structure-v2\",\"status\":\"no_suggestion\",\"reason\":\"No plan.\",\"folders\":[]}", false)]
     public void ParseNoSuggestion_WithActionableProperties_IsRejected(string json, bool rename)
     {
         var isValid = rename
@@ -151,74 +162,42 @@ public sealed class AiResponseParserTests
         Assert.False(isValid);
     }
 
-    /// <summary>Verifies invented sources, unsafe names, unknown parents, and duplicate identities reject the whole response.</summary>
-    [Theory]
-    [MemberData(nameof(InvalidFolderResponses))]
-    public void ParseFolderStructure_InvalidGraphOrAssignment_IsRejected(string json)
-    {
-        var result = _parser.ParseFolderStructure(json, [CreateFile("file:1", "invoice.pdf")]);
-
-        Assert.False(result.IsValid);
-        Assert.Null(result.Value);
-    }
-
-    /// <summary>Verifies result-count limits are enforced before a proposal can be published.</summary>
+    /// <summary>Oversized responses are rejected without a repair request.</summary>
     [Fact]
-    public void ParseFolderStructure_ExcessiveFolderCount_IsRejected()
-    {
-        var folders = Enumerable.Range(0, AiResponseLimits.MaximumFolders + 1)
-            .Select(index => new { folderId = $"f{index}", name = $"Folder {index}", parentFolderId = (string?)null, reason = "why", confidence = 0.5 })
-            .ToArray();
-        var json = JsonSerializer.Serialize(new
-        {
-            taskId = AiPromptBuilder.FolderStructureTaskId,
-            status = "suggestion",
-            folders,
-            assignments = new[] { new { sourceFileId = "file:1", folderId = "f0" } },
-            reason = "why",
-        });
-
-        var result = _parser.ParseFolderStructure(json, [CreateFile("file:1", "invoice.pdf")]);
-
-        Assert.False(result.IsValid);
-    }
-
-    /// <summary>Verifies structured responses above the parser bound are rejected without deserialization.</summary>
-    [Fact]
-    public void ParseFileRename_OversizedResponse_IsRejected()
+    public void ParseFileRename_OversizedResponse_IsHardFailure()
     {
         var json = "{\"padding\":\"" + new string('x', AiResponseLimits.MaximumStructuredResponseBytes) + "\"}";
 
         var result = _parser.ParseFileRename(json, RenameRequest());
 
         Assert.False(result.IsValid);
-        Assert.Contains("large", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.CanRepair);
+        Assert.Equal(AiResponseFailureKind.HardBound, result.FailureKind);
     }
 
-    /// <summary>Verifies a complete document interpretation is validated and mapped to the known source.</summary>
+    /// <summary>A complete document interpretation is validated and mapped to the known source.</summary>
     [Fact]
     public void ParseDocumentInterpretation_ValidResponse_IsAccepted()
     {
         const string json = """
             {"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001",
-             "documentType":"Invoice","title":"Consulting invoice","tags":["Finance","Consulting"],
-             "dates":["2026-07-24"],"issuer":"Local Studio","suggestedFolder":"Invoices",
+             "documentType":"Invoice","title":"Invoice","tags":["Invoice"],
+             "dates":["2026-07-24"],"issuer":"Local Studio","suggestedFolder":"Invoice",
              "reason":"Explicit invoice fields are present.","confidence":0.71}
             """;
-        var request = DocumentRequest();
 
         var result = _parser.ParseDocumentInterpretation(
             json,
-            request,
+            DocumentRequest(),
             [new AiPromptSourceMapping("item-001", "known:1", "invoice.pdf")]);
 
         var value = Assert.IsType<AiParsedDocumentInterpretation>(result.Value);
         Assert.Equal("known:1", value.SourceFileId);
-        Assert.Equal("Invoices", value.SuggestedFolder);
-        Assert.Equal(["finance", "consulting"], value.Tags.Select(tag => tag.NormalizedValue));
+        Assert.Equal("Invoice", value.SuggestedFolder);
+        Assert.Equal(["invoice"], value.Tags.Select(tag => tag.NormalizedValue));
     }
 
-    /// <summary>Verifies unsafe folder, invalid date, unknown identity, and smuggled no-suggestion values fail closed.</summary>
+    /// <summary>Unsafe interpretation identity, date, path, and extra values fail closed.</summary>
     [Theory]
     [InlineData("""{"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"other","documentType":"Invoice","title":null,"tags":[],"dates":[],"issuer":null,"suggestedFolder":null,"reason":"why","confidence":0.5}""")]
     [InlineData("""{"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001","documentType":"Invoice","title":null,"tags":[],"dates":["24/07/2026"],"issuer":null,"suggestedFolder":null,"reason":"why","confidence":0.5}""")]
@@ -232,62 +211,54 @@ public sealed class AiResponseParserTests
             [new AiPromptSourceMapping("item-001", "known:1", "invoice.pdf")]);
 
         Assert.False(result.IsValid);
-        Assert.Null(result.Value);
     }
 
-    /// <summary>Provides invalid folder graphs, paths, identities, types, and confidence values.</summary>
-    public static IEnumerable<object[]> InvalidFolderResponses()
+    /// <summary>A reserved folder identity is a semantic safety rejection and cannot trigger repair.</summary>
+    [Fact]
+    public void ParseDocumentInterpretation_ReservedFolder_IsNotRepairable()
     {
-        yield return [FolderJson("../outside", null, "file:1", "f1")];
-        yield return [FolderJson("C:\\System", null, "file:1", "f1")];
-        yield return [FolderJson("NUL", null, "file:1", "f1")];
-        yield return [FolderJson("Windows", null, "file:1", "f1")];
-        yield return [FolderJson("Finance", "missing", "file:1", "f1")];
-        yield return [FolderJson("Finance", "f1", "file:1", "f1")];
-        yield return [FolderJson("Finance", null, "invented", "f1")];
-        yield return ["""{"taskId":"folder-structure-v1","status":"suggestion","folders":[],"assignments":[],"reason":"why"}"""];
-        yield return ["""{"taskId":"folder-structure-v1","status":"suggestion","folders":[{"folderId":"f1","name":"Finance","parentFolderId":null,"reason":"why","confidence":0.5},{"folderId":"f1","name":"Other","parentFolderId":null,"reason":"why","confidence":0.5}],"assignments":[{"sourceFileId":"file:1","folderId":"f1"}],"reason":"why"}"""];
-        yield return ["""{"taskId":"folder-structure-v1","status":"suggestion","folders":[{"folderId":"f1","name":"Finance","parentFolderId":null,"reason":"why","confidence":0.5},{"folderId":"f2","name":"finance","parentFolderId":null,"reason":"why","confidence":0.5}],"assignments":[{"sourceFileId":"file:1","folderId":"f1"}],"reason":"why"}"""];
-        yield return ["""{"taskId":"folder-structure-v1","status":"suggestion","folders":[{"folderId":"f1","name":"Finance","parentFolderId":null,"reason":"why","confidence":0.5}],"assignments":[{"sourceFileId":"file:1","folderId":"f1"},{"sourceFileId":"file:1","folderId":"f1"}],"reason":"why"}"""];
-        yield return ["""{"taskId":"folder-structure-v1","status":"suggestion","folders":[{"folderId":"f1","name":"Finance","parentFolderId":null,"reason":"why","confidence":2}],"assignments":[{"sourceFileId":"file:1","folderId":"f1"}],"reason":"why"}"""];
-        yield return ["""{"taskId":"folder-structure-v1","status":"suggestion","folders":"wrong","assignments":[],"reason":"why"}"""];
+        const string json =
+            """{"taskId":"document-text-interpretation-v1","status":"suggestion","sourceFileId":"item-001","documentType":"Invoice","title":null,"tags":[],"dates":[],"issuer":null,"suggestedFolder":"CON","reason":"why","confidence":0.5}""";
+
+        var result = _parser.ParseDocumentInterpretation(
+            json,
+            DocumentRequest(),
+            [new AiPromptSourceMapping("item-001", "known:1", "invoice.pdf")]);
+
+        Assert.False(result.IsValid);
+        Assert.False(result.CanRepair);
+        Assert.Equal(AiResponseFailureKind.ModelMisuse, result.FailureKind);
     }
 
-    private static string RenameJson(string sourceId, string name, string confidence, string extra = "")
+    private static string RenameJson(string sourceId, string stem, string confidence, string extra = "")
     {
-        var escaped = name.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
-        return $"{{\"taskId\":\"file-rename-v1\",\"status\":\"suggestion\",\"sourceFileId\":\"{sourceId}\",\"suggestedFileName\":\"{escaped}\",\"reason\":\"A bounded reason.\",\"confidence\":{confidence}{extra}}}";
+        var escaped = stem
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
+        return
+            $"{{\"taskId\":\"file-rename-v2\",\"status\":\"suggestion\",\"sourceFileId\":\"{sourceId}\",\"suggestedStem\":\"{escaped}\",\"reason\":\"A bounded reason.\",\"confidence\":{confidence}{extra}}}";
     }
 
     private static string ValidFolderJson() => """
         {
-          "taskId":"folder-structure-v1",
+          "taskId":"folder-structure-v2",
           "status":"suggestion",
           "folders":[
-            {"folderId":"f2","name":"Invoices","parentFolderId":"f1","reason":"Filename","confidence":0.7},
-            {"folderId":"f1","name":"Finance","parentFolderId":null,"reason":"Category","confidence":0.8}
+            {"folderId":"folder-002","name":"Invoices","parentFolderId":"folder-001"},
+            {"folderId":"folder-001","name":"Finance","parentFolderId":null}
           ],
-          "assignments":[{"sourceFileId":"file:1","folderId":"f2"}],
-          "reason":"A bounded plan reason."
+          "assignments":[{"sourceFileId":"item-001","folderId":"folder-002"}],
+          "reason":"Group the supplied invoice."
         }
         """;
 
-    private static string FolderJson(string name, string? parentId, string sourceId, string assignmentFolderId) => JsonSerializer.Serialize(new
-    {
-        taskId = AiPromptBuilder.FolderStructureTaskId,
-        status = "suggestion",
-        folders = new[] { new { folderId = "f1", name, parentFolderId = parentId, reason = "why", confidence = 0.5 } },
-        assignments = new[] { new { sourceFileId = sourceId, folderId = assignmentFolderId } },
-        reason = "why",
-    });
-
     private static AiFileRenameRequest RenameRequest(IReadOnlyList<string>? siblings = null) =>
-        new(CreateFile("file:1", "invoice.pdf"), siblings ?? []);
+        new(CreateFile("file:1", "draft-invoice.pdf", "Invoice"), siblings ?? []);
 
     private static AiDocumentTextRequest DocumentRequest() =>
         new("known:1", "invoice.pdf", "Invoice date 2026-07-24 and issuer Local Studio.", null, []);
 
-    private static ResultFile CreateFile(string id, string name) => new(
+    private static ResultFile CreateFile(string id, string name, string classification = "Document") => new(
         id,
         $"C:\\Private\\{name}",
         name,
@@ -295,7 +266,7 @@ public sealed class AiResponseParserTests
         10,
         DateTimeOffset.UnixEpoch,
         FileCategory.Document,
-        "Document",
+        classification,
         DuplicateStatus.Unique,
         null,
         false);

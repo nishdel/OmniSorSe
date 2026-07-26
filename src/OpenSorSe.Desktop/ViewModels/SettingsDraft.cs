@@ -14,12 +14,20 @@ public sealed class SettingsDraft : ViewModelBase
     private LogLevel _minimumLogLevel;
     private int _retainedFileCount;
     private bool _showAdvancedFeatures;
+    private bool _diagnosticsEnabled;
+    private bool _aiDiagnosticsEnabled;
+    private bool _ocrAndTextExtractionDiagnosticsEnabled;
+    private bool _scanningDiagnosticsEnabled;
+    private bool _duplicateDetectionDiagnosticsEnabled;
+    private bool _searchAndIndexingDiagnosticsEnabled;
+    private bool _rulesAndOrganisationDiagnosticsEnabled;
+    private bool _fileOperationDiagnosticsEnabled;
+    private bool _performanceDiagnosticsEnabled;
+    private bool _showUnredactedDiagnosticContent;
     private double _filesPageDetailsPanelWidthRatio = FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio;
     private bool _aiEnabled;
     private bool _fileRenameSuggestionsEnabled;
     private bool _folderStructureSuggestionsEnabled;
-    private bool _aiRequestDiagnosticsEnabled;
-    private bool _showUnredactedAiDiagnosticContent;
     private string _aiEndpoint = "http://127.0.0.1:11434";
     private string? _selectedAiModel;
     private int _aiRequestTimeoutSeconds = 30;
@@ -49,6 +57,88 @@ public sealed class SettingsDraft : ViewModelBase
     {
         get => _showAdvancedFeatures;
         set => SetProperty(ref _showAdvancedFeatures, value);
+    }
+
+    /// <summary>Gets or sets the master detailed-diagnostics switch.</summary>
+    public bool DiagnosticsEnabled
+    {
+        get => _diagnosticsEnabled;
+        set => SetProperty(ref _diagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether detailed AI sessions are collected.</summary>
+    public bool AiDiagnosticsEnabled
+    {
+        get => _aiDiagnosticsEnabled;
+        set
+        {
+            if (SetProperty(ref _aiDiagnosticsEnabled, value))
+            {
+                OnPropertyChanged(nameof(AiRequestDiagnosticsEnabled));
+            }
+        }
+    }
+
+    /// <summary>Gets or sets whether detailed OCR and text-extraction sessions are collected.</summary>
+    public bool OcrAndTextExtractionDiagnosticsEnabled
+    {
+        get => _ocrAndTextExtractionDiagnosticsEnabled;
+        set => SetProperty(ref _ocrAndTextExtractionDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether detailed scan sessions are collected.</summary>
+    public bool ScanningDiagnosticsEnabled
+    {
+        get => _scanningDiagnosticsEnabled;
+        set => SetProperty(ref _scanningDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets the planned duplicate-detection diagnostic preference.</summary>
+    public bool DuplicateDetectionDiagnosticsEnabled
+    {
+        get => _duplicateDetectionDiagnosticsEnabled;
+        set => SetProperty(ref _duplicateDetectionDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets the planned search-and-indexing diagnostic preference.</summary>
+    public bool SearchAndIndexingDiagnosticsEnabled
+    {
+        get => _searchAndIndexingDiagnosticsEnabled;
+        set => SetProperty(ref _searchAndIndexingDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets the planned rules-and-organisation diagnostic preference.</summary>
+    public bool RulesAndOrganisationDiagnosticsEnabled
+    {
+        get => _rulesAndOrganisationDiagnosticsEnabled;
+        set => SetProperty(ref _rulesAndOrganisationDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets the planned file-operation diagnostic preference.</summary>
+    public bool FileOperationDiagnosticsEnabled
+    {
+        get => _fileOperationDiagnosticsEnabled;
+        set => SetProperty(ref _fileOperationDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets the planned performance diagnostic preference.</summary>
+    public bool PerformanceDiagnosticsEnabled
+    {
+        get => _performanceDiagnosticsEnabled;
+        set => SetProperty(ref _performanceDiagnosticsEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether classified diagnostic content is retained without ordinary redaction.</summary>
+    public bool ShowUnredactedDiagnosticContent
+    {
+        get => _showUnredactedDiagnosticContent;
+        set
+        {
+            if (SetProperty(ref _showUnredactedDiagnosticContent, value))
+            {
+                OnPropertyChanged(nameof(ShowUnredactedAiDiagnosticContent));
+            }
+        }
     }
 
     /// <summary>Gets or sets the persisted Files-page details-panel proportion.</summary>
@@ -118,15 +208,23 @@ public sealed class SettingsDraft : ViewModelBase
     /// <summary>Gets or sets whether bounded raw AI request diagnostics are retained for this session.</summary>
     public bool AiRequestDiagnosticsEnabled
     {
-        get => _aiRequestDiagnosticsEnabled;
-        set => SetProperty(ref _aiRequestDiagnosticsEnabled, value);
+        get => AiDiagnosticsEnabled;
+        set
+        {
+            if (value)
+            {
+                DiagnosticsEnabled = true;
+            }
+
+            AiDiagnosticsEnabled = value;
+        }
     }
 
     /// <summary>Gets or sets whether the live diagnostics window may retain exact prompt and response text.</summary>
     public bool ShowUnredactedAiDiagnosticContent
     {
-        get => _showUnredactedAiDiagnosticContent;
-        set => SetProperty(ref _showUnredactedAiDiagnosticContent, value);
+        get => ShowUnredactedDiagnosticContent;
+        set => ShowUnredactedDiagnosticContent = value;
     }
 
     /// <summary>Gets or sets the user-configured Ollama-compatible endpoint.</summary>
@@ -311,12 +409,22 @@ public sealed class SettingsDraft : ViewModelBase
             MinimumLogLevel = settings.Logging.MinimumLevel,
             RetainedFileCount = settings.Logging.RetainedFileCount,
             ShowAdvancedFeatures = settings.Features.ShowAdvancedFeatures,
+            DiagnosticsEnabled = settings.Diagnostics.EnableDiagnostics || settings.Ai.RequestDiagnosticsEnabled,
+            AiDiagnosticsEnabled = settings.Diagnostics.AiDiagnostics || settings.Ai.RequestDiagnosticsEnabled,
+            OcrAndTextExtractionDiagnosticsEnabled = settings.Diagnostics.OcrAndTextExtractionDiagnostics,
+            ScanningDiagnosticsEnabled = settings.Diagnostics.ScanningDiagnostics,
+            DuplicateDetectionDiagnosticsEnabled = settings.Diagnostics.DuplicateDetectionDiagnostics,
+            SearchAndIndexingDiagnosticsEnabled = settings.Diagnostics.SearchAndIndexingDiagnostics,
+            RulesAndOrganisationDiagnosticsEnabled = settings.Diagnostics.RulesAndOrganisationDiagnostics,
+            FileOperationDiagnosticsEnabled = settings.Diagnostics.FileOperationDiagnostics,
+            PerformanceDiagnosticsEnabled = settings.Diagnostics.PerformanceDiagnostics,
+            ShowUnredactedDiagnosticContent =
+                settings.Diagnostics.ShowUnredactedDiagnosticContent ||
+                settings.Ai.ShowUnredactedDiagnosticContent,
             FilesPageDetailsPanelWidthRatio = settings.Features.FilesPageDetailsPanelWidthRatio,
             AiEnabled = settings.Ai.Enabled,
             FileRenameSuggestionsEnabled = settings.Ai.FileRenameSuggestionsEnabled,
             FolderStructureSuggestionsEnabled = settings.Ai.FolderStructureSuggestionsEnabled,
-            AiRequestDiagnosticsEnabled = settings.Ai.RequestDiagnosticsEnabled,
-            ShowUnredactedAiDiagnosticContent = settings.Ai.ShowUnredactedDiagnosticContent,
             AiEndpoint = settings.Ai.Endpoint,
             SelectedAiModel = settings.Ai.SelectedModel,
             AiRequestTimeoutSeconds = settings.Ai.RequestTimeoutSeconds,
@@ -356,59 +464,72 @@ public sealed class SettingsDraft : ViewModelBase
 
         return new ApplicationSettings
         {
-        Features = new FeatureSettings
-        {
-            ShowAdvancedFeatures = ShowAdvancedFeatures,
-            FilesPageDetailsPanelWidthRatio = FilesPageDetailsPanelWidthRatio,
-        },
-        Logging = new LoggingSettings
-        {
-            FileLoggingEnabled = FileLoggingEnabled,
-            LogDirectoryPath = string.IsNullOrWhiteSpace(LogDirectoryPath) ? null : LogDirectoryPath.Trim(),
-            MinimumLevel = MinimumLogLevel,
-            RetainedFileCount = RetainedFileCount,
-        },
-        Ai = new AiSettings
-        {
-            Enabled = AiEnabled,
-            FileRenameSuggestionsEnabled = FileRenameSuggestionsEnabled,
-            FolderStructureSuggestionsEnabled = FolderStructureSuggestionsEnabled,
-            RequestDiagnosticsEnabled = AiRequestDiagnosticsEnabled,
-            ShowUnredactedDiagnosticContent = ShowUnredactedAiDiagnosticContent,
-            Endpoint = AiEndpoint?.Trim() ?? string.Empty,
-            SelectedModel = string.IsNullOrWhiteSpace(SelectedAiModel) ? null : SelectedAiModel.Trim(),
-            RequestTimeoutSeconds = timeoutSeconds,
-            PreferenceAdaptationEnabled = PreferenceAdaptationEnabled,
-            DocumentTextInterpretationEnabled = DocumentTextInterpretationEnabled,
-        },
-        Catalog = new CatalogSettings
-        {
-            Enabled = CatalogEnabled,
-        },
-        Content = new ContentSettings
-        {
-            MetadataExtractionEnabled = MetadataExtractionEnabled,
-            OcrEnabled = OcrEnabled,
-            OcrOnlyWhenNativeTextUnavailable = OcrOnlyWhenNativeTextUnavailable,
-            MaximumPagesPerDocument = MaximumOcrPages,
-            MaximumFileSizeMiB = MaximumContentFileSizeMiB,
-            OcrLanguage = OcrLanguage.Trim(),
-            MaximumOcrDurationSeconds = MaximumOcrDurationSeconds,
-            PdfRasterizationDpi = PdfRasterizationDpi,
-            MaximumRasterDimension = MaximumRasterDimension,
-            MaximumOcrTextCharacters = MaximumOcrTextCharacters,
-            MaximumTemporaryStorageMiB = MaximumTemporaryStorageMiB,
-            TesseractExecutablePath = string.IsNullOrWhiteSpace(TesseractExecutablePath)
+            Features = new FeatureSettings
+            {
+                ShowAdvancedFeatures = ShowAdvancedFeatures,
+                FilesPageDetailsPanelWidthRatio = FilesPageDetailsPanelWidthRatio,
+            },
+            Logging = new LoggingSettings
+            {
+                FileLoggingEnabled = FileLoggingEnabled,
+                LogDirectoryPath = string.IsNullOrWhiteSpace(LogDirectoryPath) ? null : LogDirectoryPath.Trim(),
+                MinimumLevel = MinimumLogLevel,
+                RetainedFileCount = RetainedFileCount,
+            },
+            Diagnostics = new DiagnosticsSettings
+            {
+                EnableDiagnostics = DiagnosticsEnabled,
+                AiDiagnostics = AiDiagnosticsEnabled,
+                OcrAndTextExtractionDiagnostics = OcrAndTextExtractionDiagnosticsEnabled,
+                ScanningDiagnostics = ScanningDiagnosticsEnabled,
+                DuplicateDetectionDiagnostics = DuplicateDetectionDiagnosticsEnabled,
+                SearchAndIndexingDiagnostics = SearchAndIndexingDiagnosticsEnabled,
+                RulesAndOrganisationDiagnostics = RulesAndOrganisationDiagnosticsEnabled,
+                FileOperationDiagnostics = FileOperationDiagnosticsEnabled,
+                PerformanceDiagnostics = PerformanceDiagnosticsEnabled,
+                ShowUnredactedDiagnosticContent = ShowUnredactedDiagnosticContent,
+            },
+            Ai = new AiSettings
+            {
+                Enabled = AiEnabled,
+                FileRenameSuggestionsEnabled = FileRenameSuggestionsEnabled,
+                FolderStructureSuggestionsEnabled = FolderStructureSuggestionsEnabled,
+                RequestDiagnosticsEnabled = DiagnosticsEnabled && AiDiagnosticsEnabled,
+                ShowUnredactedDiagnosticContent = ShowUnredactedDiagnosticContent,
+                Endpoint = AiEndpoint?.Trim() ?? string.Empty,
+                SelectedModel = string.IsNullOrWhiteSpace(SelectedAiModel) ? null : SelectedAiModel.Trim(),
+                RequestTimeoutSeconds = timeoutSeconds,
+                PreferenceAdaptationEnabled = PreferenceAdaptationEnabled,
+                DocumentTextInterpretationEnabled = DocumentTextInterpretationEnabled,
+            },
+            Catalog = new CatalogSettings
+            {
+                Enabled = CatalogEnabled,
+            },
+            Content = new ContentSettings
+            {
+                MetadataExtractionEnabled = MetadataExtractionEnabled,
+                OcrEnabled = OcrEnabled,
+                OcrOnlyWhenNativeTextUnavailable = OcrOnlyWhenNativeTextUnavailable,
+                MaximumPagesPerDocument = MaximumOcrPages,
+                MaximumFileSizeMiB = MaximumContentFileSizeMiB,
+                OcrLanguage = OcrLanguage.Trim(),
+                MaximumOcrDurationSeconds = MaximumOcrDurationSeconds,
+                PdfRasterizationDpi = PdfRasterizationDpi,
+                MaximumRasterDimension = MaximumRasterDimension,
+                MaximumOcrTextCharacters = MaximumOcrTextCharacters,
+                MaximumTemporaryStorageMiB = MaximumTemporaryStorageMiB,
+                TesseractExecutablePath = string.IsNullOrWhiteSpace(TesseractExecutablePath)
                 ? null
                 : TesseractExecutablePath.Trim(),
-            BackgroundProcessingEnabled = BackgroundContentProcessingEnabled,
-        },
-        SemanticSearch = new SemanticSearchSettings
-        {
-            Enabled = SemanticSearchEnabled,
-            MaximumDocumentCount = MaximumSemanticDocuments,
-            MaximumResultCount = MaximumSemanticResults,
-        },
+                BackgroundProcessingEnabled = BackgroundContentProcessingEnabled,
+            },
+            SemanticSearch = new SemanticSearchSettings
+            {
+                Enabled = SemanticSearchEnabled,
+                MaximumDocumentCount = MaximumSemanticDocuments,
+                MaximumResultCount = MaximumSemanticResults,
+            },
         };
     }
 }
