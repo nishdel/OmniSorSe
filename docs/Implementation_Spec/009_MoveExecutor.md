@@ -8,6 +8,8 @@
 | Target Release | v0.1 |
 | Status | Draft |
 
+> v1.1 note: this historical v0.1 draft is not the production Desktop mutation contract. Stable v1.1 uses the user-reviewed Change Plan, `IChangePlanExecutionService`, `IFileSystemGateway`, and durable Operation Journal specified by [053](v1.1/053_Safe_File_Operations_and_Robustness.md).
+
 ---
 
 # Purpose

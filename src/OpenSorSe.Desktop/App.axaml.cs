@@ -14,11 +14,13 @@ using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.AI;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Core.Diagnostics;
+using OpenSorSe.Executor;
 
 namespace OpenSorSe.Desktop;
 
@@ -51,6 +53,10 @@ public partial class App : Avalonia.Application
             _serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
                 _serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
                     .Current.Diagnostics);
+            _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
+                .RecoverInterruptedAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
             _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
             var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
             desktop.MainWindow = new MainWindow(mainViewModel);
@@ -76,6 +82,30 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IRuleEngine, RuleEngine>();
         services.AddSingleton<IActionPlanner, ActionPlanner>();
         services.AddSingleton<IConflictResolver, ConflictResolver>();
+        services.AddSingleton<IFileSystemGateway, PhysicalFileSystemGateway>();
+        services.AddSingleton<IChangePlanValidator, ChangePlanValidator>();
+        services.AddSingleton<IChangePlanStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonChangePlanStore(
+                Path.Combine(settingsDirectory, "change-plans.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IOperationJournalStore>(serviceProvider =>
+        {
+            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
+            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
+                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+            return new JsonOperationJournalStore(
+                Path.Combine(settingsDirectory, "operation-journal.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+        });
+        services.AddSingleton<IChangePlanFactory, ChangePlanFactory>();
+        services.AddSingleton<IChangePlanExecutionService, ChangePlanExecutionService>();
+        services.AddSingleton<IOperationReportExporter, OperationReportExporter>();
+        services.AddSingleton<ISuggestionChangePlanFactory, SuggestionChangePlanFactory>();
         services.AddSingleton<IProcessingOrchestrator, ProcessingOrchestrator>();
         services.AddSingleton<IProcessingSessionManager, ProcessingSessionManager>();
         services.AddSingleton<IApplicationController, ApplicationController>();

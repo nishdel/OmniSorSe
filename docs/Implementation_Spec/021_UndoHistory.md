@@ -9,6 +9,8 @@
 | Target Release | v0.1 |
 | Status | Draft |
 
+> v1.1 note: the Desktop now implements persistent **Operation History**, action details, confirmed safe Undo, and debugging report copy over `operation-journal.json`. See [specification 053](v1.1/053_Safe_File_Operations_and_Robustness.md) and the [Operation History architecture](../Architecture/08_Gui/05_History_Page.md).
+
 ---
 
 # Purpose

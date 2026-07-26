@@ -1,17 +1,23 @@
-# OpenSorSe 1.0 Safety and Privacy
+# OpenSorSe 1.1 Safety and Privacy
 
 OpenSorSe is local-first and non-destructive by default. Scanning, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
-The only 1.0 workflow authorized to change source locations is deterministic folder restructuring. It is separate from AI and requires:
+> OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
+
+OpenSorSe 1.1 authorizes only rename file, move file, and create directory through the Change Plan execution boundary. The workflow requires:
 
 1. An explicit absolute root.
-2. A bounded metadata-only source snapshot.
-3. A reviewable relative-path proposal.
-4. A second confirmation tied to the exact preview identity.
-5. Revalidation that the root is unchanged.
-6. Validation of every source and destination before the first move.
+2. A proposal captured with stable action IDs and source identity/size/last-modified data.
+3. User review, editing, and action-level approval or rejection.
+4. Explicit **Validate Plan** and a concise final summary.
+5. A separate explicit **Apply Plan** confirmation.
+6. Immediate full-plan revalidation before the first mutation.
+7. A durable pending/running Operation Journal record before mutation.
+8. Action-level persistence, result verification, and inverse-operation preparation.
 
-The service rejects traversal, absolute destinations, unknown/missing sources, duplicate sources or destinations, reparse-point destinations, stale previews, overwrites, and more than 500 moves. It never deletes or overwrites a file. If a move fails or the operation is cancelled after work begins, completed moves are rolled back where possible; any rollback failure is recorded as partial and does not activate repeat protection.
+The service rejects out-of-root or linked destinations, unknown/missing/renamed/changed/locked sources, invalid filenames, duplicate sources or destinations, execution-order conflicts, stale scans, occupied destinations, and unsupported action types. It never overwrites or deletes a file. Case-only renames use a verified temporary sibling. Cancellation is observed at safe action boundaries. On a blocking failure, completed reversible actions are rolled back in reverse order; rollback failure remains explicit.
+
+Filesystem operations are transaction-like, not perfectly transactional. Power loss, storage failure, permission changes, or another process can prevent complete rollback. OpenSorSe never claims success, rollback, or Undo without verifying the corresponding paths and identities.
 
 ## AI boundary
 
@@ -21,9 +27,9 @@ The AI capabilities are separately enabled file-rename, logical folder-structure
 
 Document-text interpretation has its own default-off switch. It requires global AI, the capability, a valid endpoint/model, one explicitly selected known content record, and a direct **Generate** command. Its prompt contains bounded normalized extracted text with page/native/OCR provenance, never file bytes or an absolute path. A custom endpoint may be remote, so Settings warns before this switch is enabled. The prompt forbids exact/legal/financial transcription claims and any filesystem action.
 
-AI output is untrusted strict JSON. Rename models return only an extension-free stem; OpenSorSe preserves and appends the known extension. Folder models receive only opaque request-local IDs and prevalidated folder-name choices. Whole-response validation independently checks exact schema/casing, evidence grounding, identities, counts, assignments, filenames, path components, confidence, parent relationships, cycles, and hierarchy safety. Any safety or identity failure rejects the complete suggestion.
+AI output is untrusted strict JSON. Rename models return only an extension-free stem; OpenSorSe preserves and appends the known extension. Folder models receive only opaque request-local IDs and prevalidated folder-name choices. Whole-response validation independently checks exact schema/casing, evidence grounding, identities, counts, assignments, filenames, path components, confidence, parent relationships, cycles, and hierarchy safety. Any safety or identity failure rejects the complete suggestion. Accepted valid rename/folder output is converted into a non-mutating Change Plan. The approved persisted plan—not a later model response—is the only possible execution input.
 
-At most one structured-output repair request may follow malformed JSON or a schema-shape failure. It uses the same task/schema, the bounded prior response, and one concise validation error. Timeouts, cancellations, unsafe or unknown identities, path/traversal attempts, hard bounds, provider failures, and model misuse are never retried. Original and repair attempts remain separate related in-memory diagnostics sessions. Accept/edit/reject records a local review decision only. No AI output can invoke restructuring, the historical Executor library, or another file operation.
+At most one structured-output repair request may follow malformed JSON or a schema-shape failure. It uses the same task/schema, the bounded prior response, and one concise validation error. Timeouts, cancellations, unsafe or unknown identities, path/traversal attempts, hard bounds, provider failures, and model misuse are never retried. Original and repair attempts remain separate related in-memory diagnostics sessions. AI requests and retries remain read-only. The normal Operation Journal stores model/request correlation metadata where relevant, not prompt text or file contents.
 
 ## Advanced diagnostics
 
@@ -60,6 +66,8 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
+| Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
+| Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
 
 Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
 
@@ -77,12 +85,22 @@ Previewed, rejected, cancelled, failed, and partial records never mark a root or
 
 Clearing Structure history changes no user file, but removes the local record used for repeat protection.
 
-## Dormant generic executor
+## Execution boundary
 
-The repository retains historical `OpenSorSe.Executor` move/copy/rename/undo components and their tests. The Desktop does not register or expose that generic executor. The 1.0 restructuring service is a separate narrow application boundary with exact preview confirmation and its own history; AI services do not reference either executor.
+The Desktop registers `IChangePlanExecutionService` as the production user-file mutation boundary. `ChangePlanExecutionService` delegates low-level mutations only to `IFileSystemGateway`; ViewModels and AI services perform no raw file operations. The v1.0 deterministic restructuring compatibility workflow now converts its exact confirmed moves into a Change Plan and calls the same execution service.
+
+The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1 suggestions or organization workflows.
+
+## Undo
+
+Successful rename/move actions record the original/result paths and pre/post identities. Created directories are undoable only when OpenSorSe created them and they remain empty. Before an inverse action, OpenSorSe checks that the result still exists and is the same file, has not been materially modified, the original is unoccupied, and no later successful OpenSorSe operation depends on the path.
+
+Unsafe actions are marked blocked; they do not overwrite or destroy newer data. Other requested inverse actions may continue, but the operation is explicitly **Undo partially completed**. Whole-operation and selected-action Undo use the same validation and durable journal updates.
 
 ## Recovery
 
-Malformed or invalid settings are preserved while safe defaults are loaded. Existing v0.9.1 settings, catalog schemas 1/2, accepted tags, saved searches, and AI decisions remain readable. Missing 1.0 fields and stores are valid and receive conservative defaults.
+Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal stores are valid empty states. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
+
+At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 
 Deleting or clearing OpenSorSe-owned indexes/cache/history is not an undo operation and cannot restore source files. Use disposable data for manual restructuring verification and complete the documented checklist before release integration.

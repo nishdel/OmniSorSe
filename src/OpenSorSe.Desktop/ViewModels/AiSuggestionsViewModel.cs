@@ -2,8 +2,10 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
@@ -15,11 +17,13 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     private readonly IAiSuggestionService? _aiSuggestionService;
     private readonly IConfigurationService _configurationService;
     private readonly IContentStore? _contentStore;
+    private readonly ISuggestionChangePlanFactory? _changePlanFactory;
     private readonly ObservableCollection<AiFolderStructurePlanItem> _structureItems = [];
     private IReadOnlyList<string> _existingFolderNames = Array.Empty<string>();
     private IReadOnlyList<string> _siblingFileNames = Array.Empty<string>();
     private IReadOnlyList<ResultFile> _pageFiles = Array.Empty<ResultFile>();
     private ResultFile? _selectedFile;
+    private string? _sourceScanId;
     private AiFileRenameSuggestion? _renameSuggestion;
     private AiFolderStructurePlan? _folderStructurePlan;
     private AiDocumentInterpretationSuggestion? _documentInterpretation;
@@ -41,11 +45,13 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     public AiSuggestionsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
-        IContentStore? contentStore = null)
+        IContentStore? contentStore = null,
+        ISuggestionChangePlanFactory? changePlanFactory = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
         _contentStore = contentStore;
+        _changePlanFactory = changePlanFactory;
         StructureItems = new ReadOnlyObservableCollection<AiFolderStructurePlanItem>(_structureItems);
         GenerateSuggestionCommand = new AsyncRelayCommand(GenerateRenameAsync, CanGenerateRename);
         AcceptRenameCommand = new AsyncRelayCommand(() => RecordRenameAsync(AiSuggestionDecisionOutcome.Accepted), CanReviewRename);
@@ -63,6 +69,9 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         RetryConnectionCommand = new AsyncRelayCommand(RetryConnectionAsync, CanRetryConnection);
         RefreshFeatureAvailability();
     }
+
+    /// <summary>Occurs after an accepted suggestion becomes a non-mutating Change Plan.</summary>
+    public event EventHandler<ChangePlan>? ChangePlanCreated;
 
     /// <summary>Gets the selected completed-scan file currently available for review.</summary>
     public ResultFile? SelectedFile => _selectedFile;
@@ -439,6 +448,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         }
 
         HasContext = snapshot is not null;
+        _sourceScanId = snapshot?.SessionId;
         var fileChanged = !string.Equals(_selectedFile?.Id, selectedFile?.Id, StringComparison.Ordinal);
         _selectedFile = selectedFile;
         _pageFiles = pageFiles is null ? Array.Empty<ResultFile>() : Array.AsReadOnly(pageFiles.ToArray());
@@ -702,6 +712,33 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
             ? "The AI-generated rename suggestion was rejected. No file was changed."
             : result.Message;
         Status = PresentResult(result.State, StatusText);
+        if (outcome != AiSuggestionDecisionOutcome.Rejected &&
+            finalValue is not null &&
+            _changePlanFactory is not null &&
+            result.State == AiAvailabilityState.ModelSelected)
+        {
+            try
+            {
+                var changePlan = await _changePlanFactory.CreateRenamePlanAsync(
+                    _selectedFile,
+                    suggestion,
+                    finalValue,
+                    _sourceScanId,
+                    CancellationToken.None);
+                ChangePlanCreated?.Invoke(this, changePlan);
+                StatusText = "The reviewed rename is now a Change Plan. Review and validate it before applying.";
+                Status = StatusPresentation.Information(StatusText);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or
+                InvalidDataException or
+                IOException or
+                UnauthorizedAccessException)
+            {
+                StatusText = "The reviewed rename could not be converted into a safe Change Plan. No file was changed.";
+                Status = StatusPresentation.Error(StatusText);
+            }
+        }
     }
 
     private async Task GenerateDocumentInterpretationAsync()
@@ -805,6 +842,31 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
             ? "The AI-generated folder-structure suggestion was rejected. No folder or file was changed."
             : result.Message;
         Status = PresentResult(result.State, StatusText);
+        if (outcome != AiSuggestionDecisionOutcome.Rejected &&
+            _changePlanFactory is not null &&
+            result.State == AiAvailabilityState.ModelSelected)
+        {
+            try
+            {
+                var changePlan = await _changePlanFactory.CreateFolderStructurePlanAsync(
+                    _pageFiles,
+                    plan,
+                    _sourceScanId,
+                    CancellationToken.None);
+                ChangePlanCreated?.Invoke(this, changePlan);
+                StatusText = "The reviewed folder suggestion is now a Change Plan. Review and validate it before applying.";
+                Status = StatusPresentation.Information(StatusText);
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or
+                InvalidDataException or
+                IOException or
+                UnauthorizedAccessException)
+            {
+                StatusText = "The folder suggestion could not be converted into a safe Change Plan. No folder or file was changed.";
+                Status = StatusPresentation.Error(StatusText);
+            }
+        }
     }
 
     private bool CanGenerateRename() =>

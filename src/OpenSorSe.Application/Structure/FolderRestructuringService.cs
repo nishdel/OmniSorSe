@@ -1,4 +1,6 @@
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Executor;
+using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Application.Structure;
 
@@ -12,6 +14,9 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
     private readonly IFolderStructureSnapshotService _snapshotService;
     private readonly IStructureHistoryStore _historyStore;
     private readonly IConfigurationService _configurationService;
+    private readonly IChangePlanFactory _changePlanFactory;
+    private readonly IChangePlanValidator _changePlanValidator;
+    private readonly IChangePlanExecutionService _executionService;
 
     /// <summary>Initializes the service with bounded snapshot and history dependencies.</summary>
     public FolderRestructuringService(
@@ -22,6 +27,33 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
         _snapshotService = snapshotService ?? throw new ArgumentNullException(nameof(snapshotService));
         _historyStore = historyStore ?? throw new ArgumentNullException(nameof(historyStore));
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+        var fileSystem = new PhysicalFileSystemGateway();
+        var planStore = new InMemoryChangePlanStore();
+        var journal = new InMemoryOperationJournalStore();
+        _changePlanValidator = new ChangePlanValidator(fileSystem);
+        _changePlanFactory = new ChangePlanFactory(fileSystem, _changePlanValidator, planStore);
+        _executionService = new ChangePlanExecutionService(
+            fileSystem,
+            _changePlanValidator,
+            planStore,
+            journal);
+    }
+
+    /// <summary>Initializes production restructuring over the shared v1.1 Change Plan safety services.</summary>
+    public FolderRestructuringService(
+        IFolderStructureSnapshotService snapshotService,
+        IStructureHistoryStore historyStore,
+        IConfigurationService configurationService,
+        IChangePlanFactory changePlanFactory,
+        IChangePlanValidator changePlanValidator,
+        IChangePlanExecutionService executionService)
+    {
+        _snapshotService = snapshotService ?? throw new ArgumentNullException(nameof(snapshotService));
+        _historyStore = historyStore ?? throw new ArgumentNullException(nameof(historyStore));
+        _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+        _changePlanFactory = changePlanFactory ?? throw new ArgumentNullException(nameof(changePlanFactory));
+        _changePlanValidator = changePlanValidator ?? throw new ArgumentNullException(nameof(changePlanValidator));
+        _executionService = executionService ?? throw new ArgumentNullException(nameof(executionService));
     }
 
     /// <inheritdoc />
@@ -151,8 +183,6 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
                 CancellationToken.None).ConfigureAwait(false);
         }
 
-        var completedMoves = new List<(string Source, string Destination, RestructuringMove Move)>();
-        var createdDirectories = new HashSet<string>(FolderStructureSnapshotService.PathComparer);
         try
         {
             ValidatePlan(plan);
@@ -171,45 +201,90 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
             }
 
             var resolved = ResolveMoves(plan);
-            foreach (var item in resolved)
+            var changePlan = await _changePlanFactory.CreateAsync(
+                new ChangePlanCreationRequest(
+                    plan.RootPath,
+                    plan.OperationId,
+                    resolved.Select((item, index) => new ChangeActionProposal(
+                        ChangeActionType.MoveFile,
+                        item.Source,
+                        item.Destination,
+                        ChangeSuggestionSource.ExistingFolderStructureSuggestion,
+                        plan.Summary,
+                        index + 1)).ToArray()),
+                cancellationToken).ConfigureAwait(false);
+            changePlan = changePlan with
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var parent = Path.GetDirectoryName(item.Destination)
-                    ?? throw new InvalidDataException("A proposed destination has no parent folder.");
-                CreateSafeDirectories(plan.RootPath, parent, createdDirectories);
-                File.Move(item.Source, item.Destination, false);
-                completedMoves.Add(item);
+                Actions = Array.AsReadOnly(changePlan.Actions
+                    .Select(action => action with { ApprovalState = ChangeApprovalState.Approved })
+                    .ToArray()),
+                Status = ChangePlanStatus.Approved,
+            };
+            changePlan = (await _changePlanValidator.ValidateAsync(
+                changePlan,
+                ChangePlanValidationPhase.Review,
+                cancellationToken).ConfigureAwait(false)).Plan;
+            var execution = await _executionService.ExecuteAsync(
+                changePlan,
+                "Existing folder-structure suggestion",
+                null,
+                cancellationToken).ConfigureAwait(false);
+            foreach (var action in execution.Operation.Actions.Where(action =>
+                         action.ActionType == ChangeActionType.MoveFile))
+            {
+                var sourceRelative = Path.GetRelativePath(
+                    plan.RootPath,
+                    action.OriginalPath ?? plan.RootPath);
+                var destinationRelative = Path.GetRelativePath(
+                    plan.RootPath,
+                    action.IntendedDestinationPath);
                 outcomes.Add(new RestructuringItemOutcome(
-                    item.Move.SourceRelativePath,
-                    item.Move.DestinationRelativePath,
-                    RestructuringItemStatus.Succeeded,
-                    "Moved after explicit confirmation."));
+                    sourceRelative,
+                    destinationRelative,
+                    action.ExecutionResult switch
+                    {
+                        JournalActionResult.Succeeded => RestructuringItemStatus.Succeeded,
+                        JournalActionResult.RolledBack => RestructuringItemStatus.RolledBack,
+                        JournalActionResult.RollbackFailed => RestructuringItemStatus.RollbackFailed,
+                        JournalActionResult.Skipped => RestructuringItemStatus.Skipped,
+                        _ => RestructuringItemStatus.Failed,
+                    },
+                    action.ErrorDetails ?? execution.Summary));
             }
 
-            appliedSnapshot = await _snapshotService.CaptureAsync(
-                plan.RootPath,
-                cancellationToken).ConfigureAwait(false);
+            var restructuringStatus = execution.Operation.Status switch
+            {
+                OperationStatus.Succeeded => RestructuringStatus.Applied,
+                OperationStatus.Cancelled => RestructuringStatus.Cancelled,
+                OperationStatus.RollbackPartiallyFailed or OperationStatus.PartiallySucceeded =>
+                    RestructuringStatus.PartiallyApplied,
+                _ => RestructuringStatus.Failed,
+            };
+            if (restructuringStatus == RestructuringStatus.Applied)
+            {
+                appliedSnapshot = await _snapshotService.CaptureAsync(
+                    plan.RootPath,
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+
             return await RecordTerminalAsync(
                 plan,
                 approval,
-                RestructuringStatus.Applied,
+                restructuringStatus,
                 appliedSnapshot,
                 outcomes,
-                $"Applied {completedMoves.Count} reviewed move(s). No file was overwritten or deleted.",
+                execution.Summary,
                 CancellationToken.None).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            var rollbackComplete = RollBack(completedMoves, createdDirectories, outcomes);
             return await RecordTerminalAsync(
                 plan,
                 approval,
-                rollbackComplete ? RestructuringStatus.Cancelled : RestructuringStatus.PartiallyApplied,
+                RestructuringStatus.Cancelled,
                 null,
                 outcomes,
-                rollbackComplete
-                    ? "Apply was cancelled and completed moves were rolled back."
-                    : "Apply was cancelled, but at least one move could not be rolled back. Review the item outcomes.",
+                "Apply was cancelled at a safe action boundary. Review the shared Operation Journal for rollback details.",
                 CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception exception) when (
@@ -218,16 +293,13 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
             InvalidDataException or
             ArgumentException)
         {
-            var rollbackComplete = RollBack(completedMoves, createdDirectories, outcomes);
             return await RecordTerminalAsync(
                 plan,
                 approval,
-                rollbackComplete ? RestructuringStatus.Failed : RestructuringStatus.PartiallyApplied,
+                RestructuringStatus.Failed,
                 null,
                 outcomes,
-                rollbackComplete
-                    ? $"Apply stopped safely and completed moves were rolled back: {SafeMessage(exception)}"
-                    : "Apply stopped and at least one move could not be rolled back. Review the item outcomes.",
+                $"Apply stopped safely before an unjournalled mutation: {SafeMessage(exception)}",
                 CancellationToken.None).ConfigureAwait(false);
         }
     }
@@ -463,79 +535,6 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
         }
 
         return false;
-    }
-
-    private static void CreateSafeDirectories(
-        string rootPath,
-        string destinationParent,
-        ISet<string> createdDirectories)
-    {
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootPath));
-        var relative = Path.GetRelativePath(root, destinationParent);
-        var current = root;
-        foreach (var part in relative.Split(
-                     [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
-                     StringSplitOptions.RemoveEmptyEntries))
-        {
-            current = Path.Combine(current, part);
-            if (!Directory.Exists(current))
-            {
-                Directory.CreateDirectory(current);
-                createdDirectories.Add(current);
-            }
-        }
-    }
-
-    private static bool RollBack(
-        IReadOnlyList<(string Source, string Destination, RestructuringMove Move)> completedMoves,
-        IEnumerable<string> createdDirectories,
-        ICollection<RestructuringItemOutcome> outcomes)
-    {
-        var complete = true;
-        foreach (var completed in completedMoves.Reverse())
-        {
-            try
-            {
-                if (File.Exists(completed.Destination) && !File.Exists(completed.Source))
-                {
-                    File.Move(completed.Destination, completed.Source, false);
-                }
-
-                outcomes.Add(new RestructuringItemOutcome(
-                    completed.Move.SourceRelativePath,
-                    completed.Move.DestinationRelativePath,
-                    RestructuringItemStatus.RolledBack,
-                    "The completed move was rolled back."));
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                complete = false;
-                outcomes.Add(new RestructuringItemOutcome(
-                    completed.Move.SourceRelativePath,
-                    completed.Move.DestinationRelativePath,
-                    RestructuringItemStatus.RollbackFailed,
-                    "The completed move could not be rolled back."));
-            }
-        }
-
-        foreach (var directory in createdDirectories
-                     .OrderByDescending(path => path.Length))
-        {
-            try
-            {
-                if (Directory.Exists(directory) &&
-                    !Directory.EnumerateFileSystemEntries(directory).Any())
-                {
-                    Directory.Delete(directory);
-                }
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                complete = false;
-            }
-        }
-
-        return complete;
     }
 
     private static RestructuringHistoryRecord ToHistoryRecord(

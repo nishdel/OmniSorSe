@@ -1,4 +1,4 @@
-# OpenSorSe 1.0 Component Map
+# OpenSorSe 1.1 Component Map
 
 ```mermaid
 flowchart TB
@@ -11,7 +11,8 @@ flowchart TB
     Content["Content\nmetadata + OCR"]
     Semantic["Semantic\nlocal hybrid index"]
     Structure["Structure\nsnapshot + plan + history + compare"]
-    Executor["Executor\ndormant generic library"]
+    ChangePlan["Change Plan\nreview intent + validation"]
+    Executor["Executor\njournal + apply + rollback + Undo"]
 
     Desktop --> Application
     Desktop --> Core
@@ -20,9 +21,12 @@ flowchart TB
     Application --> Content
     Application --> Semantic
     Application --> Structure
+    Application --> ChangePlan
+    ChangePlan --> Executor
+    Desktop --> ChangePlan
     AI --> Application
     AI --> Core
-    Rules -. no Desktop registration .-> Executor
+    Structure --> Executor
 ```
 
 | Boundary | Enforcement |
@@ -32,7 +36,10 @@ flowchart TB
 | Content | Extractors and OCR use read-only, bounded, cancellable requests; `IContentStore` is independent of source files. |
 | Semantic | `ISemanticIndexer` and `ISemanticSearchService` use a local deterministic provider and versioned index store; disabled calls do no store/provider work. |
 | Structure | `IFolderRestructuringService` separates preview from exact confirmation and uses `IFolderStructureSnapshotService` plus `IStructureHistoryStore`. |
+| Change Plan | `IChangePlanFactory` captures source identity and `IChangePlanValidator` enforces complete read-only validation at creation, review, and pre-execution. |
+| Execution | `IChangePlanExecutionService` freezes approved actions, journals before mutation, verifies, rolls back, undoes, and recovers through `IFileSystemGateway`. |
+| Persistence | `IChangePlanStore` and `IOperationJournalStore` are independent bounded versioned atomic stores. |
 | UI | ViewModels own asynchronous state/commands; views contain layout and bindings, not filesystem business logic. |
-| Generic execution | `IActionExecutor`/`IUndoEngine` are not registered in the Desktop composition root. |
+| Legacy generic execution | `IActionExecutor`/`IUndoEngine` remain unregistered compatibility components; production organization uses `IChangePlanExecutionService`. |
 
 The production service provider validates every registration in automated tests.

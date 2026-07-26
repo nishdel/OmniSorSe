@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.1.0
+
+Safe File Operations and Robustness stable release.
+
+### Added
+
+- Persisted Change Plans with stable plan/action identities, source file identity snapshots, suggestion provenance, approval/validation state, warnings, conflicts, edit state, scan freshness, and forward-compatible action types.
+- Review Changes UI with approve-all-safe, deselect-all, per-action approve/reject, editable filename/destination, action/issue filters, counts, validation, final confirmation summary, explicit Apply, progress, result summary, and Undo.
+- Dedicated non-overwriting filesystem gateway and execution service for rename, move, and create-directory actions.
+- Durable versioned Operation Journal with pending/running/action/terminal writes, pre/post identities, safe error categories, rollback and Undo facts, AI correlation metadata, and bounded human-readable report export.
+- Immediate pre-execution revalidation, deterministic ordering, safe-boundary cancellation, result verification, reverse-order rollback, case-only rename handling, and startup Interrupted Operation inspection.
+- Conflict-aware whole-operation and individual-operation Undo, including external modification, occupied original, later-operation dependency, and non-empty created-directory protection.
+- `change-plans.json` and `operation-journal.json` atomic local application-data stores, legacy journal-array compatibility, and graceful corrupt-entry recovery.
+- Automated safety tests using isolated temporary directories for planning, stale state, collisions, execution, rollback failure, verification failure, cancellation, Unicode/spaces, case-only rename, persistence, migration, restart recovery, partial Undo, history, and ViewModel apply gating.
+- v1.1 user, safety, architecture, troubleshooting, manual-testing, and implementation documentation.
+
+### Changed
+
+- Accepted AI rename and folder-structure suggestions now create a Change Plan instead of ending at a decision record.
+- Deterministic folder restructuring now routes applied moves through the same Change Plan validator, journal, execution, rollback, and Undo boundary.
+- The advanced history destination is named **Operation History** and loads persistent journal records across restarts.
+- Product, assembly, informational, file, manifest, and About versions report `1.1.0` / `1.1.0.0`.
+
+### Safety
+
+- No AI generation, parsing, retry, acceptance, or diagnostic path performs a filesystem mutation.
+- Destinations are never overwritten and no automatic numeric suffix or implicit conflict resolution is used.
+- Approved actions are revalidated immediately before mutation and the executed action list is immutable for that operation.
+- Every attempted supported apply is journalled before mutation; successful actions carry verified inverse information.
+- Rollback and Undo are reported successful only after verification. Unsafe inverse actions are blocked and journalled instead of overwriting newer data.
+- Permanent deletion remains outside v1.1.
+
 ## v1.0.0
 
 Integrated local-understanding and structure-history release candidate.

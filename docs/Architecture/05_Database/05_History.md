@@ -4,7 +4,11 @@
 
 ## Implementation status
 
-This general document-lifecycle history component remains future architecture. The bounded catalog stores user-enabled historical snapshots, while 1.0's separate `structure-history.json` records source/proposed/applied structure snapshots and deterministic restructuring outcomes for review and repeat protection. Neither store is a relational audit log, live filesystem monitor, general operation timeline, or arbitrary undo system.
+The broader document-lifecycle/database design remains future architecture. OpenSorSe 1.1 implements a separate bounded local **Operation Journal** in `operation-journal.json`. It is an action-level audit and recovery record for attempted Change Plan mutations, rollback, interruption, and Undo—not a general document event database or live filesystem monitor.
+
+The existing catalog and `structure-history.json` remain separate and readable. Change Plans live in `change-plans.json`; they record proposed/review state, not actual attempts. The journal is versioned, atomically replaced after every state transition, accepts legacy raw-array/schema-0 data, and fails gracefully on corrupt or unsupported data.
+
+Each operation records source plan, timestamps, app version, initiating feature, root, status, cancellation, summary, and bounded actions with original/intended/actual paths, pre/post identity, suggestion source, validation/execution/error, rollback, Undo, and optional AI correlation fields. It excludes file contents, extracted text, prompt bodies, and raw AI responses.
 
 ---
 

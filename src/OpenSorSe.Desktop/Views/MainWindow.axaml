@@ -135,6 +135,9 @@
                 <Grid IsVisible="{Binding IsFilesAreaSelected}">
                     <views:ResultsView DataContext="{Binding Results}" />
                 </Grid>
+                <Grid IsVisible="{Binding IsReviewChangesSelected}">
+                    <views:ChangePlanReviewView DataContext="{Binding ReviewChanges}" />
+                </Grid>
                 <Grid IsVisible="{Binding IsSavedScansAreaSelected}" RowDefinitions="Auto,*" RowSpacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Spacing="3">

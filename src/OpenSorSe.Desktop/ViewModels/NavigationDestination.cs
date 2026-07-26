@@ -14,6 +14,9 @@ public enum NavigationDestination
     /// <summary>Displays processed file results.</summary>
     Results,
 
+    /// <summary>Reviews a non-mutating Change Plan before validation and explicit apply.</summary>
+    ReviewChanges,
+
     /// <summary>Displays exact duplicate review for the active scan.</summary>
     Duplicates,
 

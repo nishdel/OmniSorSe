@@ -1,10 +1,14 @@
-# History Page
+# Operation History Page
 
 > This document defines the History Page component, which presents the historical activity and lifecycle of documents processed by OpenSorSe.
 
 ## Implementation status
 
-This page is future design beyond a small v0.9 in-memory review foundation. The current **Operation history** destination shows an explicit empty state because the Desktop does not execute or undo file operations, does not load persisted sessions, and does not implement the database, timeline, filtering, or user-activity features described below. Saved scan snapshots belong to **Saved catalog**, not operation history.
+OpenSorSe 1.1 provides persistent **Operation History** backed by `IOperationJournalStore`. It loads attempts across restarts, selects the newest by default, shows summary and bounded action details, requires explicit Undo confirmation, refreshes after Undo, and copies a human-readable report through the clipboard service.
+
+The legacy in-process `UndoHistorySession` review API remains compatible, and deterministic structural snapshots remain on the separate **Folder plans** page. Saved scans remain separate.
+
+The page displays date/time, status, affected root, succeeded/failed/skipped/rolled-back counts, Undo availability, summary, and per-action original/result paths, suggestion source, validation, execution, error, rollback, and Undo details. Reports contain paths and correlation facts but no file content or AI prompts.
 
 ---
 

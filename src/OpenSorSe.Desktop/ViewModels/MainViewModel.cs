@@ -6,6 +6,7 @@ using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.CatalogSearch;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Features;
 using OpenSorSe.Application.Models;
@@ -16,6 +17,8 @@ using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Scanner.Models;
 using OpenSorSe.Desktop.Services;
+using OpenSorSe.Executor;
+using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
@@ -29,13 +32,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.Dashboard, "Home", FeatureRequirement.Regular, NavigationGroup.Primary, "⌂"),
         new(NavigationDestination.Scan, "Scan", FeatureRequirement.Regular, NavigationGroup.Primary, "⌕"),
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
+        new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
         new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Primary, "▣"),
         new(NavigationDestination.Settings, "Settings", FeatureRequirement.Regular, NavigationGroup.Primary, "⚙"),
         new(NavigationDestination.StructureHistory, "Folder plans", FeatureRequirement.Advanced, NavigationGroup.Advanced, "⌘"),
         new(NavigationDestination.Rules, "Sorting rules", FeatureRequirement.Advanced, NavigationGroup.Advanced, "≡"),
         new(NavigationDestination.Diagnostics, "System check", FeatureRequirement.Advanced, NavigationGroup.Advanced, "✓"),
-        new(NavigationDestination.History, "Activity details", FeatureRequirement.Advanced, NavigationGroup.Advanced, "↶"),
+        new(NavigationDestination.History, "Operation History", FeatureRequirement.Regular, NavigationGroup.Primary, "↶"),
         new(NavigationDestination.Help, "Help", FeatureRequirement.Regular, NavigationGroup.Footer, "?"),
         new(NavigationDestination.About, "About", FeatureRequirement.Regular, NavigationGroup.Footer, "i"),
     ]);
@@ -240,7 +244,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IStructureComparisonService? structureComparisonService = null,
         IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
         IDiagnosticsCollector? diagnosticsCollector = null,
-        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null)
+        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null,
+        ISuggestionChangePlanFactory? suggestionChangePlanFactory = null,
+        IChangePlanValidator? changePlanValidator = null,
+        IChangePlanExecutionService? changePlanExecutionService = null,
+        IChangePlanStore? changePlanStore = null,
+        IOperationJournalStore? operationJournalStore = null,
+        IOperationReportExporter? operationReportExporter = null)
         : this(
             configurationService,
             loggingService,
@@ -265,7 +275,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             structureComparisonService,
             aiDiagnosticsCollector,
             diagnosticsCollector,
-            advancedDiagnosticsWindowService)
+            advancedDiagnosticsWindowService,
+            suggestionChangePlanFactory,
+            changePlanValidator,
+            changePlanExecutionService,
+            changePlanStore,
+            operationJournalStore,
+            operationReportExporter)
     {
     }
 
@@ -293,7 +309,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IStructureComparisonService? structureComparisonService = null,
         IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
         IDiagnosticsCollector? diagnosticsCollector = null,
-        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null)
+        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null,
+        ISuggestionChangePlanFactory? suggestionChangePlanFactory = null,
+        IChangePlanValidator? changePlanValidator = null,
+        IChangePlanExecutionService? changePlanExecutionService = null,
+        IChangePlanStore? changePlanStore = null,
+        IOperationJournalStore? operationJournalStore = null,
+        IOperationReportExporter? operationReportExporter = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -308,7 +330,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             configurationService,
             aiSuggestionService,
             externalFileLauncher,
-            contentStore);
+            contentStore,
+            suggestionChangePlanFactory);
+        ReviewChanges = new ChangePlanReviewViewModel(
+            changePlanValidator,
+            changePlanExecutionService,
+            changePlanStore);
         Catalog = new CatalogViewModel(configurationService, catalogStore);
         CatalogSearch = new CatalogSearchViewModel(configurationService, catalogStore, savedSearchStore);
         SemanticSearch = new SemanticSearchViewModel(
@@ -353,7 +380,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             aiRequestDiagnosticsStore,
             diagnosticsCollector,
             advancedDiagnosticsWindowService);
-        UndoHistory = new UndoHistoryViewModel();
+        UndoHistory = new UndoHistoryViewModel(
+            operationJournalStore,
+            changePlanExecutionService,
+            operationReportExporter,
+            clipboardService);
         Help = new HelpViewModel();
         About = new AboutViewModel();
         Notifications = new NotificationCenterViewModel();
@@ -361,8 +392,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested += OnScanCancellationRequested;
         Results.PersistedTagsChanged += OnPersistedTagsChanged;
         Results.MeaningSearchRequested += OnMeaningSearchRequested;
+        Results.ChangePlanCreated += OnChangePlanCreated;
+        ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
+        ReviewChanges.PropertyChanged += OnHostedOperationPropertyChanged;
         SemanticSearch.PropertyChanged += OnHostedOperationPropertyChanged;
         Catalog.EntryOpened += OnCatalogEntryOpened;
         Catalog.CatalogChanged += OnCatalogChanged;
@@ -392,6 +426,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// Gets the immutable-result review state hosted by the shell.
     /// </summary>
     public ResultsViewModel Results { get; }
+
+    /// <summary>Gets the explicit Change Plan review and apply workflow.</summary>
+    public ChangePlanReviewViewModel ReviewChanges { get; }
 
     /// <summary>
     /// Gets the opt-in, application-owned saved results catalog state.
@@ -560,7 +597,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the status bar should show active progress.</summary>
     public bool IsGlobalOperationActive =>
-        IsProcessing || Results.AiSuggestions.IsBusy || SemanticSearch.IsBusy;
+        IsProcessing || Results.AiSuggestions.IsBusy || ReviewChanges.IsBusy || SemanticSearch.IsBusy;
 
     /// <summary>Gets whether the active global operation supports cancellation.</summary>
     public bool CanCancelCurrentOperation => IsGlobalOperationActive;
@@ -582,6 +619,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the most relevant concise status for the persistent status bar.</summary>
     public string GlobalStatusText => IsProcessing
         ? ScanProgress.StatusText
+        : ReviewChanges.IsBusy || IsReviewChangesSelected
+            ? ReviewChanges.StatusText
         : Results.AiSuggestions.IsBusy || IsResultsSelected || IsDuplicatesSelected
             ? Results.AiSuggestions.IsBusy ? Results.AiSuggestions.StatusText : StatusText
             : SemanticSearch.IsBusy || IsSemanticSearchSelected
@@ -591,6 +630,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the active item or stage shown in the persistent status bar.</summary>
     public string? GlobalStatusDetail => IsProcessing
         ? ScanProgress.CurrentFolder
+        : ReviewChanges.IsBusy
+            ? ReviewChanges.ProgressText
         : Results.AiSuggestions.IsBusy
             ? Results.AiSuggestions.ProgressText
             : null;
@@ -647,6 +688,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsDashboardSelected));
                 OnPropertyChanged(nameof(IsScanSelected));
                 OnPropertyChanged(nameof(IsResultsSelected));
+                OnPropertyChanged(nameof(IsReviewChangesSelected));
                 OnPropertyChanged(nameof(IsDuplicatesSelected));
                 OnPropertyChanged(nameof(IsFilesAreaSelected));
                 OnPropertyChanged(nameof(IsCatalogSelected));
@@ -675,6 +717,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Dashboard => "Home",
         NavigationDestination.Scan => "Scan",
         NavigationDestination.Results => "Files",
+        NavigationDestination.ReviewChanges => "Review Changes",
         NavigationDestination.Duplicates => "Duplicates",
         NavigationDestination.Catalog => "Saved scans",
         NavigationDestination.CatalogSearch => "Search saved scans",
@@ -684,7 +727,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Rules => "Sorting rules",
         NavigationDestination.Settings => "Settings",
         NavigationDestination.Diagnostics => "System check",
-        NavigationDestination.History => "Activity details",
+        NavigationDestination.History => "Operation History",
         NavigationDestination.Help => "Help",
         NavigationDestination.About => "About OpenSorSe",
         _ => throw new InvalidOperationException("The navigation destination is unsupported."),
@@ -740,6 +783,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// Gets whether the results-review page is currently selected.
     /// </summary>
     public bool IsResultsSelected => SelectedDestination == NavigationDestination.Results;
+
+    /// <summary>Gets whether Change Plan review is selected.</summary>
+    public bool IsReviewChangesSelected => SelectedDestination == NavigationDestination.ReviewChanges;
 
     /// <summary>Gets whether exact-duplicate review is selected.</summary>
     public bool IsDuplicatesSelected => SelectedDestination == NavigationDestination.Duplicates;
@@ -805,7 +851,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets whether a later feature-page destination is currently selected.
     /// </summary>
-    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsResultsSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
+    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
 
     /// <summary>
     /// Selects a documented application-shell destination.
@@ -832,6 +878,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (destination == NavigationDestination.CatalogComparison)
         {
             SelectedSavedScansSection = SavedScansSection.Compare;
+        }
+        else if (destination == NavigationDestination.History)
+        {
+            _ = UndoHistory.RefreshAsync();
         }
         else if (destination == NavigationDestination.Catalog)
         {
@@ -878,6 +928,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             await StructureHistory.RefreshAsync();
         }
+        else if (destination == NavigationDestination.History)
+        {
+            await UndoHistory.RefreshAsync();
+        }
     }
 
     /// <summary>
@@ -898,8 +952,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested -= OnScanCancellationRequested;
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
+        Results.ChangePlanCreated -= OnChangePlanCreated;
+        ReviewChanges.ReturnRequested -= OnReviewChangesReturnRequested;
         ScanProgress.PropertyChanged -= OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged -= OnHostedOperationPropertyChanged;
+        ReviewChanges.PropertyChanged -= OnHostedOperationPropertyChanged;
         SemanticSearch.PropertyChanged -= OnHostedOperationPropertyChanged;
         Catalog.EntryOpened -= OnCatalogEntryOpened;
         Catalog.CatalogChanged -= OnCatalogChanged;
@@ -909,6 +966,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Help.BackRequested -= OnHelpBackRequested;
         _processingCancellation?.Cancel();
         Results.Dispose();
+        ReviewChanges.Dispose();
         Catalog.Dispose();
         CatalogSearch.Dispose();
         SemanticSearch.Dispose();
@@ -938,6 +996,27 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Navigate(NavigationDestination.SemanticSearch);
     }
 
+    private async void OnChangePlanCreated(object? sender, ChangePlan plan)
+    {
+        try
+        {
+            await ReviewChanges.LoadAsync(plan);
+            Navigate(NavigationDestination.ReviewChanges);
+            StatusText = "A Change Plan is ready for review. No file has been changed.";
+        }
+        catch (Exception exception) when (
+            exception is IOException or
+            UnauthorizedAccessException or
+            InvalidDataException or
+            ArgumentException)
+        {
+            StatusText = "The Change Plan could not be opened safely. No file was changed.";
+        }
+    }
+
+    private void OnReviewChangesReturnRequested(object? sender, EventArgs eventArgs) =>
+        Navigate(NavigationDestination.Results);
+
     private void OnHostedOperationPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs) =>
         NotifyGlobalStatusChanged();
 
@@ -962,6 +1041,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (Results.AiSuggestions.IsBusy)
         {
             Results.AiSuggestions.CancelAiOperationCommand.Execute(null);
+        }
+        else if (ReviewChanges.IsBusy)
+        {
+            ReviewChanges.CancelOperationCommand.Execute(null);
         }
         else if (SemanticSearch.IsBusy)
         {
@@ -1023,6 +1106,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         FolderSelection.ConfigureHelp(HelpTopicId.ScanFolders, OpenHelp);
         ScanProgress.ConfigureHelp(HelpTopicId.ScanFolders, OpenHelp);
         Results.ConfigureHelp(HelpTopicId.Results, OpenHelp);
+        ReviewChanges.ConfigureHelp(HelpTopicId.ReviewChanges, OpenHelp);
         Results.DuplicateReview.ConfigureHelp(HelpTopicId.DuplicateView, OpenHelp);
         Results.AiSuggestions.ConfigureHelp(HelpTopicId.AiSuggestions, OpenHelp);
         Catalog.ConfigureHelp(HelpTopicId.SavedCatalog, OpenHelp);

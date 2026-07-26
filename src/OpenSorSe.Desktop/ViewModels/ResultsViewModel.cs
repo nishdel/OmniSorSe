@@ -2,10 +2,12 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
+using OpenSorSe.Executor.Models;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Desktop.ViewModels;
@@ -82,7 +84,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService,
         IExternalFileLauncher? externalFileLauncher,
-        IContentStore? contentStore = null)
+        IContentStore? contentStore = null,
+        ISuggestionChangePlanFactory? changePlanFactory = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         _configurationService = configurationService;
@@ -99,7 +102,12 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         DuplicateReview = new DuplicateReviewViewModel(externalFileLauncher);
         DuplicateReview.ShowGroupFilesRequested += OnShowGroupFilesRequested;
         DuplicateReview.BackToExplorerRequested += OnBackToExplorerRequested;
-        AiSuggestions = new AiSuggestionsViewModel(configurationService, aiSuggestionService, contentStore);
+        AiSuggestions = new AiSuggestionsViewModel(
+            configurationService,
+            aiSuggestionService,
+            contentStore,
+            changePlanFactory);
+        AiSuggestions.ChangePlanCreated += OnChangePlanCreated;
         ClearFiltersCommand = new RelayCommand(ClearFilters, CanClearFilters);
         ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
         PreviousPageCommand = new RelayCommand(GoToPreviousPage, () => CanGoPreviousPage);
@@ -130,6 +138,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Occurs when the user switches from name search to local Meaning Search.</summary>
     public event EventHandler? MeaningSearchRequested;
+
+    /// <summary>Occurs when a reviewed suggestion becomes a Change Plan.</summary>
+    public event EventHandler<ChangePlan>? ChangePlanCreated;
 
     /// <summary>Gets the immutable snapshot currently owned by this review surface.</summary>
     public ResultsSnapshot? Snapshot => _snapshot;
@@ -715,6 +726,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         contentCancellation?.Cancel();
         contentCancellation?.Dispose();
         AiSuggestions.Dispose();
+        AiSuggestions.ChangePlanCreated -= OnChangePlanCreated;
         _queryCancellation?.Cancel();
         _queryCancellation?.Dispose();
         _panelPreferenceSaveGate.Dispose();
@@ -866,6 +878,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             snapshot,
             Page.Items);
     }
+
+    private void OnChangePlanCreated(object? sender, ChangePlan plan) =>
+        ChangePlanCreated?.Invoke(this, plan);
 
     private async Task LoadContentDetailsAsync()
     {

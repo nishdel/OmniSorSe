@@ -11,6 +11,8 @@ public enum HelpTopicId
     ScanFolders,
     /// <summary>Results exploration guidance.</summary>
     Results,
+    /// <summary>Change Plan review, validation, apply, and Undo guidance.</summary>
+    ReviewChanges,
     /// <summary>Grouped duplicate-review guidance.</summary>
     DuplicateView,
     /// <summary>Saved-catalog guidance.</summary>
@@ -56,7 +58,7 @@ public sealed record HelpTopic(
     string SafetyNotes,
     IReadOnlyList<HelpTopicId> RelatedTopics);
 
-/// <summary>Owns the complete bounded OpenSorSe 1.0 internal Help catalog.</summary>
+/// <summary>Owns the complete bounded OpenSorSe 1.1 internal Help catalog.</summary>
 public static class HelpCatalog
 {
     private static readonly IReadOnlyList<HelpTopic> TopicsValue = Array.AsReadOnly(
@@ -87,8 +89,16 @@ public static class HelpCatalog
             "File content, names, locations, or timestamps.",
             ["Complete a scan or open a saved snapshot.", "Search or filter.", "Select a row for details.", "Open Duplicate View for grouped exact matches."],
             ["Search", "Filters", "Paging", "Duplicate View", "Tag controls"], "No rows means no snapshot or no rows match current filters.",
-            "Clear filters when a known file is not visible.", "All Results actions are review-only in 1.0.",
+            "Clear filters when a known file is not visible.", "Results analysis is read-only; accepted organization suggestions create a Change Plan.",
             [HelpTopicId.DuplicateView, HelpTopicId.AiSuggestions]),
+        Topic(HelpTopicId.ReviewChanges, "Review Changes", "Reviews, edits, validates, and explicitly applies a Change Plan.",
+            "The selected persisted Change Plan and live metadata needed for validation.", "Approval/edit state, Change Plan persistence, and—only after final confirmation—supported journalled file actions.",
+            "Rejected actions, unapproved actions, file contents, or occupied destinations.",
+            ["Inspect every action.", "Approve, reject, or edit.", "Validate Plan.", "Review the final summary.", "Explicitly confirm Apply Plan.", "Inspect the result or request Undo."],
+            ["Approve all safe", "Deselect all", "Validate Plan", "Apply Plan", "Confirm Apply Plan", "Cancel operation", "Undo"],
+            "No plan is normal until a suggestion is accepted.", "Blocking conflicts keep Apply disabled; edit or reject the action and revalidate.",
+            "Apply never overwrites. Undo is blocked when restoration could destroy newer data. Filesystems are not perfectly transactional.",
+            [HelpTopicId.Results, HelpTopicId.OperationHistory, HelpTopicId.AiSuggestions]),
         Topic(HelpTopicId.DuplicateView, "Duplicate View", "Groups files with matching supported SHA-256 hashes for comparison.",
             "Known members and metadata from the current immutable Results snapshot.", "Selection and external open requests only.",
             "Duplicate files; OpenSorSe never deletes, renames, or moves them.",
@@ -133,7 +143,7 @@ public static class HelpCatalog
             "Only successful applies activate repeat protection. Clearing history never changes files but removes that protection record.", [HelpTopicId.AdvancedFeatures, HelpTopicId.OperationHistory]),
         Topic(HelpTopicId.Rules, "Rules", "Reviews deterministic rule data supplied in memory.",
             "Rule names, conditions, and action previews.", "Only in-memory rule state exposed by the current surface.",
-            "Files; the 1.0 desktop does not execute rules.", ["Select a rule.", "Review its state and preview information."],
+            "Files; the 1.1 desktop does not execute raw rule actions directly.", ["Select a rule.", "Review its state and preview information."],
             ["Current rules", "Enable or disable", "Delete"], "No rules is a valid state.",
             "Unsupported or incomplete rule data is reported safely.", "Rule complexity does not grant file mutation authority.", [HelpTopicId.Results]),
         Topic(HelpTopicId.Settings, "Settings", "Controls persisted OpenSorSe preferences and optional features.",
@@ -150,11 +160,12 @@ public static class HelpCatalog
             ["Refresh", "Severity", "Category", "Copy diagnostic details", "Clear AI diagnostics"],
             "No events is a valid early-session state.", "Daily-log write failures do not prevent in-memory diagnostics.",
             "Ordinary details omit raw stacks; AI raw data is opt-in and may contain filenames.", [HelpTopicId.OperationHistory, HelpTopicId.AiSetup]),
-        Topic(HelpTopicId.OperationHistory, "Operation history", "Reviews operation records supplied to the application.",
-            "In-memory operation/undo session records.", "Selection only.",
-            "Files or current Results.", ["Select a supplied session.", "Review its record count and status."],
-            ["Operation-history sessions"], "No sessions is expected because 1.0 has no generic rule-execution workflow.",
-            "Unavailable records remain isolated.", "This page is not a duplicate of application Diagnostics.", [HelpTopicId.Diagnostics]),
+        Topic(HelpTopicId.OperationHistory, "Operation History", "Reviews persistent attempted actions, rollback, interruption, and Undo facts.",
+            "The bounded local Operation Journal.", "Selection, copied report text, or explicitly confirmed conflict-safe Undo.",
+            "File contents, AI prompt bodies, raw responses, or newer conflicting data.",
+            ["Refresh history.", "Select an operation.", "Review summary and every action.", "Copy a report if needed.", "Request and confirm Undo only after reviewing conflicts."],
+            ["Refresh history", "Copy operation report", "Undo", "Confirm Undo"], "No journal records is normal before the first v1.1 Apply attempt.",
+            "Interrupted, rollback-partial, and Undo-conflict states require action-level review.", "Undo never overwrites and is not a substitute for backups.", [HelpTopicId.ReviewChanges, HelpTopicId.Diagnostics]),
         Topic(HelpTopicId.AiSetup, "AI setup", "Connects optional Ollama-compatible local AI and selects an exact installed model.",
             "The configured endpoint, provider version/model metadata, and selected settings.", "OpenSorSe settings only after Save.",
             "Ollama installation, models, or user files.",
@@ -165,8 +176,8 @@ public static class HelpCatalog
         Topic(HelpTopicId.AiSuggestions, "AI suggestions", "Generates narrowly scoped rename, logical folder, or document-text interpretation proposals for review.",
             "Exact filenames and bounded metadata; extracted native/OCR text only when its separate switch is enabled and the user explicitly requests interpretation.", "Only in-memory proposals and optional local review decisions.",
             "Source files and folders. AI output never changes them automatically.",
-            ["Select eligible Results context.", "Generate one explicit request.", "Observe progress.", "Review the unverified validated proposal.", "Edit a rename if useful.", "Record, reject, dismiss, or cancel."],
-            ["Generate", "Interpret extracted text", "Cancel AI request", "Record accept or edit", "Reject", "Dismiss"],
+            ["Select eligible Results context.", "Generate one explicit request.", "Observe progress.", "Review the unverified validated proposal.", "Accept a rename/folder proposal to create a Change Plan, or reject/dismiss/cancel."],
+            ["Generate", "Interpret extracted text", "Cancel AI request", "Create Change Plan", "Reject", "Dismiss"],
             "No suggestion or no extracted text is a valid outcome.", "Unsafe, malformed, unknown-identity, duplicate, incomplete, or oversized responses are rejected as a whole.",
             "OCR text can be inaccurate. AI output is untrusted and never automatically reaches a file operation.", [HelpTopicId.Results, HelpTopicId.AiSetup]),
         Topic(HelpTopicId.AdvancedFeatures, "Advanced features", "Reveals specialist comparison, diagnostics, history, and troubleshooting controls.",

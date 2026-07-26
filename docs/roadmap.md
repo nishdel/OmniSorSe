@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.0 keeps scanning, extraction, page-aware OCR, indexing, duplicate review, diagrams, and AI suggestions non-mutating. Its only new source mutation is a deterministic, separately confirmed, root-confined restructuring plan. OCR Beta and Semantic Search Beta are local and independent of AI.
+OpenSorSe 1.1 keeps scanning, extraction, page-aware OCR, indexing, duplicate review, diagrams, and AI generation non-mutating. Accepted organization suggestions now enter a user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
 
 ## Completed releases
 
@@ -136,6 +136,21 @@ Release candidate; automated validation complete where the environment permits a
 - Versioned new stores and safe defaults preserve v0.9.1 settings, catalogs, tags, saved searches, and AI decisions.
 
 The release does not add plugins, broad localization, installers, cloud indexing, live monitoring, reports/export, autonomous AI file control, or generic rule execution.
+
+## v1.1 - Safe File Operations and Robustness
+
+Implemented as one stable release; automated validation complete and manual UI/platform verification pending.
+
+- Separate persisted Change Plan and Operation Journal domain models with forward-compatible action discriminators and schema versions.
+- Review Changes workflow for action-level approval/rejection, filename/destination editing, filters, counts, validation, final summary, explicit Apply, result, and Undo.
+- Supported file actions are rename file, move file, and create directory. Permanent deletion is not supported.
+- Validation at plan creation, after edits/on request, and immediately before execution detects missing, renamed, changed, locked, linked, conflicting, occupied, invalid, out-of-root, and stale paths.
+- Deterministic, non-overwriting execution through one filesystem gateway, with durable pending/running/action/terminal journal writes, result verification, safe-boundary cancellation, and reverse-order rollback.
+- Whole-operation and safe individual-operation Undo with identity, modification, occupancy, dependency, and empty-created-directory checks.
+- Startup recovery marks incomplete journal records as Interrupted Operations only after inspecting actual paths; ambiguous states remain explicit.
+- Persistent Operation History shows summary and action details and can copy a human-readable debugging report without file contents or AI prompt payloads.
+- Existing AI parsers remain suggestion-only. Accepted rename/folder output is captured as a Change Plan; the executed input is the reviewed plan, not a later model response.
+- Existing v1.0 application data remains readable. New bounded atomic stores are `change-plans.json` and `operation-journal.json`.
 
 ## Future release ideas
 

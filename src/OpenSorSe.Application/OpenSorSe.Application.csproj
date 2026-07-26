@@ -8,6 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenSorSe.Core\OpenSorSe.Core.csproj" />
+    <ProjectReference Include="..\OpenSorSe.Executor\OpenSorSe.Executor.csproj" />
     <ProjectReference Include="..\OpenSorSe.Scanner\OpenSorSe.Scanner.csproj" />
     <ProjectReference Include="..\OpenSorSe.Rules\OpenSorSe.Rules.csproj" />
   </ItemGroup>

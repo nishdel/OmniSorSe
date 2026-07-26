@@ -2,6 +2,10 @@
 
 > This document defines the Execution component, which is responsible for managing the lifecycle of rule execution within OpenSorSe.
 
+## v1.1 implementation boundary
+
+Raw rule execution remains outside the Desktop. Deterministic result proposals can be adapted into a Change Plan, but they receive no direct filesystem authority. Stable user-file mutation is defined by [v1.1 Change Plans and Operation Journal](07_v1.1_Change_Plans_and_Operation_Journal.md): review, approval, complete validation, explicit Apply, journal-before-mutation, verification, rollback, and conflict-aware Undo.
+
 ---
 
 ## Purpose
