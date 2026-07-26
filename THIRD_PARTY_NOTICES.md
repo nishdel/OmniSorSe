@@ -1,8 +1,6 @@
 # Third-Party Notices
 
-OpenSorSe is MIT licensed and uses free/open-source dependencies. The exact package/version inventory used for the final 1.0 validation is in [`docs/dependency-licenses.json`](docs/dependency-licenses.json). This engineering notice is not legal advice. A future binary distributor must include the full license texts and upstream notices applicable to the files it actually ships.
-
-No installer or packaged binary is produced by the OpenSorSe 1.0 implementation milestone.
+OpenSorSe is MIT licensed and uses free/open-source dependencies. The exact package/version inventory used for the final 1.0 validation is in [`docs/dependency-licenses.json`](docs/dependency-licenses.json). This engineering notice is not legal advice. The portable binary distribution includes this notice, the OpenSorSe license, and the dependency license/notice files applicable to its shipped runtime files.
 
 ## Avalonia
 

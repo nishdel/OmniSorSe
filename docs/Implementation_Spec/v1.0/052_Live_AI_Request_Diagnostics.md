@@ -9,7 +9,7 @@ Replace the existing completed-request summary with an opt-in, live, in-memory d
 - `AiSettings.RequestDiagnosticsEnabled` backs **Enable AI request diagnostics**.
 - `AiRequestDiagnosticsStore` retains at most 20 completed `AiRequestDiagnostic` records in a process-local queue.
 - Rename, folder-plan, and document-text requests flow through `AiSuggestionService` to `OllamaSuggestionProvider.GenerateAsync`; connection checks use `/api/version` and discovery uses `/api/tags`.
-- Generation currently posts to `/api/generate` with `model`, one `prompt`, `stream: false`, `format: "json"`, `keep_alive: "5m"`, and temperature `0.1`.
+- Generation posts to `/api/generate` with separate short `system` and labelled `prompt` values, `stream: false`, the exact capability JSON Schema in `format`, `keep_alive: "5m"`, and temperature `0.0`.
 - The successful raw Ollama envelope is discarded; only its extracted `response` property is retained.
 - `AiResponseParser.TryReadRequiredString` produces the generic invalid-`reason` warning when a model returns a non-string, empty, oversized, or control-containing value.
 - Prompts describe a schema, but the transport sends only `format: "json"`. This mismatch permits structurally valid JSON that violates the response DTO.
@@ -54,7 +54,9 @@ The collector lives in the Application layer and exposes immutable snapshots plu
 
 Redaction is display-retention only; it does not alter the outgoing request. Default redaction replaces sensitive string values in captured JSON and prompt data. Records are cleared when diagnostics are disabled and when the process exits. Normal logging continues to record only safe summaries, counts, status codes, and exception categories.
 
-Unknown response properties remain visible in parsed diagnostics but are ignored by application parsing for forward compatibility. Required fields, types, allowed statuses, bounds, source identities, filename/path safety, duplicates, and counts remain strict.
+Unknown or wrong-case response properties remain visible in diagnostics and reject the complete response. Required fields, types, allowed statuses, bounds, source identities, filename/path safety, assignments, hierarchy relationships, and counts remain strict.
+
+One optional structured-output repair is captured as a separate AI session related to the parent operation. The repair session retains its own exact system/user prompts, serialized request, raw/extracted response, validation, and final state. Unsafe identities, unknown source IDs, path attempts, model misuse, hard bounds, provider failures, timeouts, and cancellations do not create a repair session.
 
 ## Failure handling
 

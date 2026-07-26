@@ -12,11 +12,15 @@ It provides a centralized mechanism for constructing prompts, injecting document
 
 The Prompt Engine focuses solely on prompt construction. It does not execute AI requests or interpret AI responses.
 
-## v0.9.1 implementation status
+## v1.0 implementation status
 
-`IAiPromptBuilder` and `AiPromptBuilder` implement two English internal templates: `file-rename-v1` and `folder-structure-v1`. Each prompt serializes clearly named objective, input, allowed scope, mandatory rules, forbidden behavior, response schema, and no-suggestion sections. Context is deterministic and bounded to one rename target plus at most 20 nearby filenames, or at most 25 selected files and 30 existing folder names. Included files are deterministically assigned request-local `item-NNN` identities; the private prompt package retains the mapping to application identities. Folder prompts report total, included, and omitted counts and require each included item exactly once. Preference lists are independently bounded. Absolute paths and file contents are excluded.
+`IAiPromptBuilder` and `AiPromptBuilder` own short, deterministic, single-task templates for `file-rename-v2`, `folder-structure-v2`, and separately enabled `document-text-interpretation-v1`. Rename input is one opaque ID, one current stem, the application-owned extension, one deterministic document type, and at most 8 nearby/rejected stems. Folder input is capped at 12 deterministically ordered file records and 16 prevalidated folder-name choices. Files use request-local `item-NNN` identities; absolute paths and file contents are excluded from rename and folder requests.
 
-Templates are application-owned and provider-neutral rather than embedded in ViewModels or views. English is fixed for this patch release, while stable task identifiers and isolated builders leave room for later localization. User-editable templates are not shipped. Exact prompts and responses can be inspected only in the explicitly enabled, redacted, 20-record session diagnostic buffer.
+Each prompt contains labelled input, numbered rules, the exact response schema, explicit `no_suggestion` behavior, and a JSON-only output instruction. Ollama receives the same schema through `format`; generation uses temperature `0.0`. The model returns an extension-free rename stem or opaque folder assignments. Application validators append the known extension and independently reject unknown IDs, missing or duplicate assignments, invented names/evidence, unsafe components, traversal, absolute paths, cycles, excessive depth, and complete-response inconsistencies.
+
+One optional repair request is allowed only for JSON or schema-shape failures. It includes the original task ID, exact schema, bounded prior response, and concise validation error. Unsafe identities, unknown source IDs, path attempts, model misuse, hard bounds, provider failures, timeouts, and cancellations are never repaired. The original and repair requests are separate related Advanced Diagnostics sessions.
+
+Templates and schema strings are application-owned reviewable source. Snapshot tests fail on unapproved changes. See [Small-model Prompt Contracts](11_Small_Model_Prompt_Contracts.md) for versions, exact bounds, validators, and the unverified manual model matrix.
 
 ---
 
@@ -200,4 +204,5 @@ These enhancements should preserve the separation between prompt generation and 
 * [Model Providers](02_Model_Providers.md)
 * [Document Classification](04_Document_Classification.md)
 * [Summarization](05_Summarization.md)
+* [Small-model Prompt Contracts](11_Small_Model_Prompt_Contracts.md)
 

@@ -12,6 +12,8 @@ Integrated local-understanding and structure-history release candidate.
 - Optional OCR Beta through capability-detected local Tesseract CLI execution for images and rendered PDF pages, with PdfPig native page text, built-in PDFtoImage/PDFium rasterization, mixed-document page decisions, English/German language checks, and deterministic bounds.
 - Page-level OCR provenance, engine/rasterizer-aware cache fingerprints, owned temporary-workspace cleanup, and stale-compatible cache migration.
 - A separate default-off AI document-text interpretation capability with bounded page context, strict JSON validation, non-local endpoint warning, and an unverified review-only preview.
+- A unified, default-off Advanced Diagnostics framework with one bounded process-memory store, category/status filtering, seven shared viewer tabs, correlation, redaction, copy/export/clear actions, and fully instrumented AI, OCR/text-extraction, and scanning sessions.
+- Versioned small-model prompt contracts for rename, folder structure, and document interpretation, with exact Ollama JSON Schemas, deterministic DTO/property ordering, fail-closed grounding and identity validation, and snapshot tests.
 - Machine-readable resolved dependency/license inventory, third-party notices, and automated unknown/forbidden-license protection.
 - Provenance-aware confirmed, suggested, accepted, and rejected tags sourced from users, deterministic rules, file type/date/folder context, embedded metadata, local OCR, preferences, semantic inference, and optional AI review.
 - Default-off local Semantic Search Beta with deterministic feature-hashing vectors, hybrid exact/tag/metadata/native-text/OCR ranking, match explanations, incremental refresh, cancellation, stale-file removal, and clear/rebuild controls.
@@ -41,6 +43,8 @@ Integrated local-understanding and structure-history release candidate.
 - Advanced navigation now includes Structure history; Semantic Search Beta remains independently enabled and does not require AI or Advanced mode.
 - Existing v0.9.1 settings, catalog schemas, accepted tags, saved searches, and AI decisions remain readable with safe defaults for new settings.
 - English/German search normalization now folds diacritics, splits punctuation/extensions, retains ISO dates, and adds conservative suffix variants without a model.
+- Folder-structure suggestions now reject selections above the 12-file contract bound before contacting Ollama and state the exact count; no file is silently omitted and no partial plan is shown.
+- Updated test-only xUnit packages to remove the obsolete .NET Standard dependency chain flagged by the NuGet vulnerability audit; production dependencies and packaged runtime files are unchanged.
 
 ### Safety
 
@@ -48,6 +52,8 @@ Integrated local-understanding and structure-history release candidate.
 - AI remains default-off, capability-specific, untrusted, and suggestion-only; bounded extracted text can leave the process only through its separate opt-in and explicit one-file request, and no AI result enters a filesystem operation.
 - The only new source-file mutation is a deterministic restructuring plan applied after a separate exact-preview confirmation. It moves only listed files under one explicit root and never overwrites or deletes.
 - Raw OCR/document text and semantic vectors are excluded from ordinary logs.
+- Advanced diagnostic content is retained only in bounded process memory unless explicitly exported, is redacted by default, is cleared on disable/exit, and removes credential-like values even in unredacted mode.
+- The portable package now includes copied runtime dependency licence/notice files alongside the reviewed machine-readable dependency inventory.
 
 ### Fixed
 

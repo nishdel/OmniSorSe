@@ -17,6 +17,7 @@ OpenSorSe is a modern, open-source Windows desktop application for scanning, sea
 
 - [Installation](#installation)
 - [Features](#features)
+- [Known limitations](#known-limitations)
 - [Screenshots](#screenshots)
 - [Documentation](#documentation)
 - [Roadmap](#roadmap)
@@ -44,7 +45,7 @@ OpenSorSe is a modern, open-source Windows desktop application for scanning, sea
 | **OCR / Text Recognition** | Extracts native PDF/Open XML text and can use an externally installed local Tesseract engine for images and scanned PDF pages. |
 | **Saved scans** | Keeps optional bounded scan snapshots, accepted tags, searches, and comparisons in OpenSorSe application data. |
 | **Folder plans** | Previews deterministic, root-confined organization plans before a separate explicit confirmation. |
-| **Local AI support** | Connects to an explicitly configured Ollama-compatible endpoint; local Ollama is optional and externally managed. |
+| **Local AI support** | Uses compact versioned prompts, exact structured-output schemas, strict application validation, and one bounded shape-repair pass with an explicitly configured Ollama-compatible endpoint. |
 | **Dashboard** | Summarizes the latest scan and routes directly to common workflows. |
 | **Smart organization** | Combines tags, classifications, metadata, safe proposals, conflict checks, and structure history without silent changes. |
 
@@ -109,7 +110,7 @@ An installer is not currently provided. The portable package avoids unsigned MSI
 ### Optional components
 
 - **Ollama:** Required only for explicitly enabled File Assistant capabilities. Install and manage it separately, then select an installed model in OpenSorSe Settings.
-- **AI request diagnostics:** Advanced, default-off live inspection can show request stages, the Ollama payload, raw envelope, extracted response, parsed JSON, and validation. Display content is redacted unless the separate unredacted opt-in is enabled; all records remain memory-only.
+- **Advanced diagnostics:** A default-off, non-modal viewer unifies live AI, OCR/text-extraction, and scanning sessions with correlation, filters, copy/export, explicit bounds, and redacted display by default. Duplicate, search/indexing, rules/organisation, file-operation, and performance categories are visible as not yet instrumented. Records remain memory-only unless manually exported.
 - **Tesseract 5:** Required only for local OCR recognition. Native metadata and supported document text extraction work without it. English (`eng`) and/or German (`deu`) language data must match the configured languages.
 - **Developing from source:** Requires the .NET SDK version selected by [`global.json`](global.json).
 
@@ -123,14 +124,25 @@ OpenSorSe is local-first:
 - OCR runs through local libraries and an optional local Tesseract installation.
 - Meaning Search uses a local, rebuildable deterministic index.
 - AI is optional, disabled by default, and contacted only for explicit enabled requests.
+- File Assistant prompts target small local instruction models, but no model-size compatibility is claimed until the documented manual matrix is completed.
 - No cloud account is required.
 - Ordinary logs exclude raw document/OCR text, vectors, credentials, and raw model payloads.
+- Advanced diagnostics are independently gated, redacted by default, cleared when disabled or on exit, and never retain credentials even in unredacted mode.
 
 A custom Ollama-compatible endpoint can be remote. When configured that way, explicitly requested AI metadata—or separately enabled bounded document text—can leave the computer. OpenSorSe displays this distinction in Settings.
 
 AI output is always untrusted and suggestion-only. The only source-file mutation in v1.0 is a deterministic folder plan that is previewed, separately confirmed, root-confined, conflict checked, non-overwriting, and unrelated to AI output.
 
 Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
+
+## Known limitations
+
+- The provided v1.0 portable package targets Windows x64; other platforms are not release-validated.
+- Tesseract and its language data are external and required for image/scanned-page OCR. Rendered OCR page previews are not retained in diagnostics.
+- Real approximately 2B, 4B, and 7B/8B Ollama compatibility remains pending the documented manual matrix.
+- Folder-structure AI requests accept at most 12 selected files. Larger selections are rejected as a whole with the exact count shown; no file is silently omitted and no partial plan is generated.
+- Duplicate detection, search/indexing, rules/organisation, file-operation, and standalone performance diagnostic categories are registered extension points but are not instrumented in v1.0.
+- The portable executable is not code-signed, so Windows SmartScreen may warn.
 
 ## Build from source
 
@@ -157,6 +169,8 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
 - [Release status](docs/RELEASE_STATUS.md)
 - [v1.0 manual testing](docs/MANUAL_TESTING_v1.0.md)
 - [Safety and privacy](docs/SAFETY_AND_PRIVACY.md)
+- [Advanced diagnostics architecture](docs/Architecture/01_Core/10_Advanced_Diagnostics.md)
+- [Small-model AI prompt contracts](docs/Architecture/04_AI/11_Small_Model_Prompt_Contracts.md)
 - [Architecture](docs/Architecture/00_System/00_Overview.md)
 - [Implementation specifications](docs/Implementation_Spec/README.md)
 - [Changelog](docs/CHANGELOG.md)
@@ -172,7 +186,7 @@ See the detailed [roadmap](docs/roadmap.md).
 
 Contributions are welcome in focused, reviewable changes. Useful areas include:
 
-- Reproducing and documenting bugs with safe disposable test data.
+- Reproducing and documenting bugs with safe disposable test data. Prefer an explicitly exported redacted Advanced Diagnostic; inspect it before attaching it to an issue.
 - Improving accessibility, keyboard workflows, and high-DPI behavior.
 - Adding defensive parser, migration, and provider-failure tests.
 - Improving documentation and platform verification.
