@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.5.0
+
+Release name: **Cross-Platform Foundation and Linux Preview**<br>
+Release branch: `v1.5-cross-platform-foundation`.
+
+- Added focused platform contracts and capability reporting for path semantics,
+  application locations, file identity, filesystem checks, external tools, and
+  desktop integration.
+- Preserved the Windows local-data layout; added XDG configuration/data/state/
+  cache separation on Linux.
+- Added Windows volume/file-index and Linux device/inode identity with explicit
+  metadata fallback limitations.
+- Made Change Plan validation/execution, case handling, confinement, permission,
+  same-filesystem moves, rollback, recovery, and Undo platform-aware without
+  permitting overwrite or unreviewed mutation.
+- Added portable, Windows-compatible, and current-platform recipe filename
+  policies; existing recipes retain conservative portable behavior.
+- Added exact plugin runtime-identifier constraints for native dependencies.
+- Added configured-path and safe `PATH` discovery for Tesseract and explicit
+  Windows/Linux desktop-opening adapters.
+- Added Settings platform diagnostics, human-readable report export, platform
+  matrix, Linux build/manual/troubleshooting guidance, architecture maps, and a
+  Windows/Ubuntu CI matrix that publishes no artifacts.
+- Product/informational version is `1.5.0`; assembly/file/manifest version is
+  `1.5.0.0`; About displays `1.5`.
+- No v1.5 tag, installer, package, updater, or published release is created by
+  this implementation task.
+
 ## v1.4.0
 
 Plugin Foundation and Extension SDK.

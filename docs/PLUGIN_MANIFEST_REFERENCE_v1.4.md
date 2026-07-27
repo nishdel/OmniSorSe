@@ -1,5 +1,9 @@
 # OpenSorSe 1.4 Plugin Manifest Reference
 
+> v1.5 keeps manifest schema 1 and adds optional
+> `supportedRuntimeIdentifiers` and `containsNativeDependencies` members. See
+> [Plugin Platform Compatibility](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md).
+
 `plugin.json` is strict camel-case JSON. Comments, trailing commas, duplicate or
 unknown properties, excessive nesting, and files over 256 KiB are rejected.
 

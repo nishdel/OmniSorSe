@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the OpenSorSe 1.4 solution as it exists in source. It describes
+This guide maps the OpenSorSe 1.5 solution as it exists in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -64,12 +64,15 @@ reference cycles.
 
 - **Purpose:** Reusable infrastructure with no product-feature dependency.
 - **Owns:** Validated configuration, logging, diagnostics, lifecycle hosting,
-  event delivery, task/state abstractions, errors, and Core DI registration.
+  event delivery, task/state abstractions, errors, platform contracts/adapters,
+  application locations, filesystem identity/capabilities, external-tool
+  discovery, and Core DI registration.
 - **Must not own:** Scanning algorithms, workflows, plugins, Change Plans,
   filesystem mutation, AI transport, or presentation.
 - **Principal entry points:** `AddOpenSorSeCore`, `IApplicationHost`,
   `IConfigurationService`, `ILoggingService`, `IDiagnosticsCollector`,
-  `IEventBus`, and `ITaskManager`.
+  `IEventBus`, `ITaskManager`, `IPathSemantics`,
+  `IApplicationPathProvider`, and `IPlatformCapabilityProvider`.
 - **Dependencies:** No other production project.
 - **Reference rule:** All internal projects except the standalone SDK may use
   Core; Core must not reference them.

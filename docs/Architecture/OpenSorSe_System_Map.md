@@ -1,8 +1,38 @@
 # OpenSorSe system map
 
-These Mermaid diagrams model the v1.4 implementation. They emphasize
+These Mermaid diagrams model the v1.5 implementation. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
+
+## Platform capability and adapter map
+
+```mermaid
+flowchart TB
+    Capability["Platform capability provider"] --> Diagnostics["Settings diagnostics and report"]
+    Capability --> Gating["Explicit limited or unavailable states"]
+    PathContract["IPathSemantics"] --> WindowsPath["Windows case-insensitive and device-name policy"]
+    PathContract --> LinuxPath["Linux case-sensitive policy"]
+    IdentityContract["IFileIdentityProvider"] --> WindowsIdentity["Volume serial and file index"]
+    IdentityContract --> LinuxIdentity["Device and inode"]
+    IdentityContract --> Fallback["Metadata fallback"]
+    FsContract["IFileSystemCapabilities"] --> Link["Link and reparse inspection"]
+    FsContract --> Permission["Writable-access and free-space inspection"]
+    FsContract --> Mount["Same-filesystem verification"]
+    Paths["IApplicationPathProvider"] --> WindowsData["Existing LocalAppData layout"]
+    Paths --> LinuxData["XDG config, data, state, cache"]
+    Tool["IExternalToolLocator"] --> TesseractPath["Configured path or safe PATH discovery"]
+    DesktopContract["IDesktopIntegration"] --> WindowsDesktop["Windows desktop adapter"]
+    DesktopContract --> LinuxDesktop["Linux graphical desktop adapter"]
+    PackageBoundary["Build and packaging boundary"] --> WindowsManifest["Windows-conditioned manifest and icon"]
+    PackageBoundary --> LinuxPublish["Documented framework-dependent Linux publish"]
+    Gating --> Approval["Review and explicit approval boundary"]
+    Approval ==>|validated and journalled only| Mutation["Rename, same-filesystem move, create directory"]
+```
+
+Platform detection is contained in the platform implementation. Capability
+reporting does not itself authorize an operation: the normal plan validation,
+approval, immediate preflight, journal, execution, and verification route still
+controls every mutation.
 
 ## High-level communication map
 

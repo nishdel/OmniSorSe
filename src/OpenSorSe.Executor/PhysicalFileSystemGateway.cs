@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Executor;
@@ -6,9 +7,32 @@ namespace OpenSorSe.Executor;
 /// <summary>Implements conservative filesystem inspection and non-overwriting mutation.</summary>
 public sealed class PhysicalFileSystemGateway : IFileSystemGateway
 {
+    private readonly IPathSemantics _pathSemantics;
+    private readonly IFileIdentityProvider _identityProvider;
+    private readonly IFileSystemCapabilities _capabilities;
+
+    /// <summary>Creates a gateway with the current process platform services.</summary>
+    public PhysicalFileSystemGateway()
+        : this(
+            PlatformServices.CurrentPathSemantics,
+            FileIdentityProviderFactory.CreateCurrent(),
+            null)
+    {
+    }
+
+    /// <summary>Creates a gateway over explicit platform services.</summary>
+    public PhysicalFileSystemGateway(
+        IPathSemantics pathSemantics,
+        IFileIdentityProvider identityProvider,
+        IFileSystemCapabilities? capabilities = null)
+    {
+        _pathSemantics = pathSemantics ?? throw new ArgumentNullException(nameof(pathSemantics));
+        _identityProvider = identityProvider ?? throw new ArgumentNullException(nameof(identityProvider));
+        _capabilities = capabilities ?? new FileSystemCapabilities(identityProvider, pathSemantics);
+    }
+
     /// <inheritdoc />
-    public string NormalizePath(string path) =>
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+    public string NormalizePath(string path) => _pathSemantics.NormalizeAbsolutePath(path);
 
     /// <inheritdoc />
     public bool FileExists(string path) => File.Exists(path);
@@ -28,7 +52,7 @@ public sealed class PhysicalFileSystemGateway : IFileSystemGateway
             return false;
         }
 
-        return File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
+        return _capabilities.InspectLink(path).IsLink;
     }
 
     /// <inheritdoc />
@@ -70,8 +94,10 @@ public sealed class PhysicalFileSystemGateway : IFileSystemGateway
             hash = Convert.ToHexString(bytes).ToLowerInvariant();
         }
 
-        var identity = FormattableString.Invariant(
-            $"file:{info.Length}:{lastWrite.UtcTicks}:{creation.UtcTicks}:{hash ?? "-"}");
+        var platformIdentity = _identityProvider.Capture(path);
+        var identity = platformIdentity.Identity ?? FormattableString.Invariant(
+            $"file:{info.Length}:{lastWrite.UtcTicks}:{creation.UtcTicks}");
+        identity = $"{identity}:sha256:{hash ?? "-"}";
         return new FileIdentitySnapshot(identity, info.Length, lastWrite, creation, hash);
     }
 
@@ -112,6 +138,13 @@ public sealed class PhysicalFileSystemGateway : IFileSystemGateway
             return;
         }
 
+        var parent = Path.GetDirectoryName(path)
+            ?? throw new IOException("The directory path has no parent.");
+        if (!_capabilities.CanWriteDirectory(parent, out var explanation))
+        {
+            throw new UnauthorizedAccessException($"The directory cannot be created safely. {explanation}");
+        }
+
         Directory.CreateDirectory(path);
     }
 
@@ -121,6 +154,23 @@ public sealed class PhysicalFileSystemGateway : IFileSystemGateway
         if (File.Exists(destinationPath) || Directory.Exists(destinationPath))
         {
             throw new IOException("The destination already exists.");
+        }
+
+        var destinationDirectory = Path.GetDirectoryName(destinationPath)
+            ?? throw new IOException("The destination path has no parent directory.");
+        if (!_capabilities.CanWriteDirectory(destinationDirectory, out var permissionExplanation))
+        {
+            throw new UnauthorizedAccessException(
+                $"The destination directory cannot be written safely. {permissionExplanation}");
+        }
+
+        if (!_capabilities.AreOnSameFileSystem(
+                sourcePath,
+                destinationDirectory,
+                out var filesystemExplanation))
+        {
+            throw new IOException(
+                $"Cross-filesystem moves are not supported by the journalled rename boundary. {filesystemExplanation}");
         }
 
         File.Move(sourcePath, destinationPath, overwrite: false);
@@ -137,4 +187,3 @@ public sealed class PhysicalFileSystemGateway : IFileSystemGateway
         Directory.Delete(path, recursive: false);
     }
 }
-

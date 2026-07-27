@@ -163,11 +163,12 @@ public sealed class PluginPackageService : IPluginPackageService
 
                     var managed = await IsManagedAssemblyAsync(binary, cancellationToken).ConfigureAwait(false);
                     if (!managed &&
-                        !manifest.Capabilities.Contains(
-                            OpenSorSe.Extensions.Abstractions.PluginCapability.UseNativeLibraries))
+                        (!manifest.Capabilities.Contains(
+                             OpenSorSe.Extensions.Abstractions.PluginCapability.UseNativeLibraries) ||
+                         !manifest.ContainsNativeDependencies))
                     {
                         issues.Add(
-                            $"Native or unrecognized binary \"{SafeEntryName(binary.FullName)}\" requires the use-native-libraries capability.");
+                            $"Native or unrecognized binary \"{SafeEntryName(binary.FullName)}\" requires the use-native-libraries capability, an explicit native-dependency declaration, and supported runtime identifiers.");
                     }
                 }
             }
@@ -477,11 +478,12 @@ public sealed class PluginPackageService : IPluginPackageService
                      !string.Equals(file.FullName, entryPath, PathComparison)))
         {
             if (!await IsManagedAssemblyAsync(binary, cancellationToken).ConfigureAwait(false) &&
-                !manifest.Capabilities.Contains(
-                    OpenSorSe.Extensions.Abstractions.PluginCapability.UseNativeLibraries))
+                (!manifest.Capabilities.Contains(
+                     OpenSorSe.Extensions.Abstractions.PluginCapability.UseNativeLibraries) ||
+                 !manifest.ContainsNativeDependencies))
             {
                 issues.Add(
-                    $"Native or unrecognized binary \"{SafeEntryName(Path.GetRelativePath(root, binary.FullName))}\" requires the use-native-libraries capability.");
+                    $"Native or unrecognized binary \"{SafeEntryName(Path.GetRelativePath(root, binary.FullName))}\" requires the use-native-libraries capability, an explicit native-dependency declaration, and supported runtime identifiers.");
             }
         }
 
@@ -720,7 +722,7 @@ public sealed class PluginPackageService : IPluginPackageService
         candidate.StartsWith(root + Path.DirectorySeparatorChar, PathComparison);
 
     private static StringComparison PathComparison =>
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
 
     private static string SafeEntryName(string value) =>
         new(value.Where(character => !char.IsControl(character)).Take(256).ToArray());

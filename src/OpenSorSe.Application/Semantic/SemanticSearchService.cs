@@ -177,5 +177,5 @@ public sealed class SemanticSearchService : ISemanticSearchService
         IReadOnlyList<SemanticSearchHit> value) => new(state, message, value);
 
     private static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
 }

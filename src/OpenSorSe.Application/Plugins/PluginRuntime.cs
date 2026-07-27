@@ -147,7 +147,7 @@ public sealed class PluginRuntime : IPluginRuntime
                     plugin.DisplayName,
                     plugin.IsBuiltIn),
                 new HashSet<PluginCapability>(plugin.GrantedCapabilities),
-                "1.4.0");
+                "1.5.0");
             initialized = await instance.InitializeAsync(context, initializationCancellation.Token)
                 .WaitAsync(_initializationTimeout, cancellationToken)
                 .ConfigureAwait(false);
@@ -409,9 +409,7 @@ public sealed class PluginRuntime : IPluginRuntime
 
     private static bool IsWithin(string root, string candidate)
     {
-        var comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+        var comparison = OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
         return string.Equals(root, candidate, comparison) ||
                candidate.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }

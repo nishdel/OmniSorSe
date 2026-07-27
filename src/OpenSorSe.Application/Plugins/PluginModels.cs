@@ -12,6 +12,7 @@ public static class PluginLimits
     public const int MaximumPlugins = 256;
     public const int MaximumContributionsPerPlugin = 64;
     public const int MaximumDependenciesPerPlugin = 32;
+    public const int MaximumRuntimeIdentifiersPerPlugin = 32;
     public const int MaximumStringCharacters = 2_048;
     public const int MaximumIdentifierCharacters = 128;
     public const int MaximumPackageEntries = 1_024;
@@ -21,7 +22,7 @@ public static class PluginLimits
     public const int MaximumFailuresBeforeQuarantine = 3;
     public const int MaximumDiagnostics = 1_000;
     public static readonly TimeSpan InitializationTimeout = TimeSpan.FromSeconds(10);
-    public static readonly Version HostVersion = new(1, 4, 0);
+    public static readonly Version HostVersion = new(1, 5, 0);
 }
 
 public enum PluginOriginKind
@@ -55,6 +56,7 @@ public enum PluginCompatibilityState
     HostVersionTooOld,
     HostVersionTooNew,
     RuntimeIncompatible,
+    PlatformIncompatible,
     UnsupportedManifest,
 }
 
@@ -112,7 +114,17 @@ public sealed record PluginManifest(
     string? Homepage,
     string? SourceRepository,
     bool BuiltIn,
-    PluginManifestIntegrity? Integrity);
+    PluginManifestIntegrity? Integrity)
+{
+    /// <summary>
+    /// Gets the runtime identifiers on which this plugin may be loaded. An empty collection
+    /// means that the managed plugin is portable across host-supported platforms.
+    /// </summary>
+    public IReadOnlyList<string> SupportedRuntimeIdentifiers { get; init; } = [];
+
+    /// <summary>Gets whether the plugin payload contains platform-specific native dependencies.</summary>
+    public bool ContainsNativeDependencies { get; init; }
+}
 
 public sealed record PluginManifestContribution(
     string ContributionId,

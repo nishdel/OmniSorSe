@@ -10,9 +10,8 @@ namespace OpenSorSe.Desktop.ViewModels;
 public sealed class FolderSelectionViewModel : ViewModelBase
 {
     private const int RecentFolderLimit = 5;
-    private readonly StringComparer _pathComparer = OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
+    private readonly StringComparer _pathComparer =
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
     private readonly ObservableCollection<string> _recentFolders = [];
     private readonly ObservableCollection<string> _selectedFolders = [];
     private readonly ObservableCollection<WorkflowProfile> _workflowProfiles = [];

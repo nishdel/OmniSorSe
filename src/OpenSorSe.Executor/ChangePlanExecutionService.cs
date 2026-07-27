@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Executor;
@@ -1131,9 +1132,8 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         };
 
     private static bool IsCaseOnlyRename(string source, string destination) =>
-        OperatingSystem.IsWindows() &&
-        !string.Equals(source, destination, StringComparison.Ordinal) &&
-        string.Equals(source, destination, StringComparison.OrdinalIgnoreCase);
+        !PlatformServices.CurrentPathSemantics.IsCaseSensitive &&
+        PlatformServices.CurrentPathSemantics.IsCaseOnlyDifference(source, destination);
 
     private static string TemporaryRenamePath(string source, string operationId, string actionId)
     {

@@ -14,16 +14,27 @@ When multiple solutions are technically valid, these principles should help dete
 
 ## Current Release Boundary
 
-OpenSorSe 1.0 is a local-first, non-destructive-by-default analysis and organization application. AI and Advanced interface features remain independently disabled by default. AI is constrained to metadata-only rename/logical-folder proposals and a separately gated bounded extracted-text interpretation proposal; every response is strictly validated and suggestion-only. OCR Beta, metadata extraction, provenance tags, and Semantic Search Beta run locally and do not require AI.
+OpenSorSe 1.5 is a local-first, non-destructive-by-default analysis and
+organization application for verified Windows behavior and a conservatively
+reported Linux preview. AI and Advanced interface features remain independently
+disabled by default. AI is constrained to metadata-only rename/logical-folder
+proposals and a separately gated bounded extracted-text interpretation proposal;
+every response is strictly validated and suggestion-only. OCR Beta, metadata
+extraction, provenance tags, and Semantic Search Beta run locally and do not
+require AI.
 
-Scanning, extraction, indexing, comparisons, diagrams, duplicates, and AI never modify selected files. The sole new mutation boundary is a deterministic folder-restructuring plan that the user previews and confirms separately. It validates an unchanged explicit root, moves only the reviewed relative paths, rejects overwrite/traversal/conflicts, and records its outcome. Preview, failure, cancellation, and partial results never activate repeat protection.
+Scanning, watchers, workflows, plugins, extraction, indexing, comparisons,
+diagrams, duplicates, and AI never authorize or directly modify selected files.
+The sole supported mutation boundary is a reviewed Change Plan with immediate
+platform-aware validation, explicit confirmation, journal-before-mutation,
+result verification, recovery, rollback, and conflict-aware Undo.
 
-OpenSorSe 1.0 did not implement plugins, broad localization, packaged
-cross-platform releases, cloud indexing, live monitoring, report export,
-autonomous AI file control, or generic rule execution. v1.4 now implements a
-bounded local in-process plugin foundation for analysis/proposals/import/export,
-without marketplace downloads, sandbox claims, direct mutation, or approval
-bypass. The other broader automation references below remain future direction.
+v1.5 adds explicit path/filesystem/identity/storage/tool/desktop adapters, XDG
+persistence, plugin runtime constraints, capability diagnostics, and an Ubuntu
+CI target. It does not add broad localization, packaged cross-platform releases,
+cloud indexing, an online marketplace, a plugin sandbox, autonomous AI file
+control, or generic rule execution. Those broader automation references below
+remain future direction.
 
 ---
 

@@ -276,7 +276,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowRecipePlanService? workflowRecipePlanService = null,
         IWorkflowImportExportService? workflowImportExportService = null,
         IWorkflowTemplateEngine? workflowTemplateEngine = null,
-        IPluginManager? pluginManager = null)
+        IPluginManager? pluginManager = null,
+        OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
+        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null)
         : this(
             configurationService,
             loggingService,
@@ -316,7 +318,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             workflowRecipePlanService,
             workflowImportExportService,
             workflowTemplateEngine,
-            pluginManager)
+            pluginManager,
+            platformCapabilityProvider,
+            applicationPathProvider)
     {
     }
 
@@ -359,7 +363,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowRecipePlanService? workflowRecipePlanService = null,
         IWorkflowImportExportService? workflowImportExportService = null,
         IWorkflowTemplateEngine? workflowTemplateEngine = null,
-        IPluginManager? pluginManager = null)
+        IPluginManager? pluginManager = null,
+        OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
+        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -419,7 +425,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             ocrService,
             aiDiagnosticsCollector,
             diagnosticsCollector,
-            new PluginsViewModel(pluginManager, externalFileLauncher, watchedFolderCoordinator));
+            new PluginsViewModel(pluginManager, externalFileLauncher, watchedFolderCoordinator),
+            platformCapabilityProvider is not null && applicationPathProvider is not null
+                ? new PlatformDiagnosticsViewModel(
+                    platformCapabilityProvider,
+                    applicationPathProvider,
+                    clipboardService,
+                    externalFileLauncher)
+                : null);
         _enableAi = configurationService.Current.Ai.Enabled;
         _showAdvancedFeatures = configurationService.Current.Features.ShowAdvancedFeatures;
         NavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_navigationItems);
@@ -1590,9 +1603,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private static bool IsWithinRoot(string root, string candidate)
     {
-        var comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+        var comparison = OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
         var canonicalRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         var canonicalCandidate = Path.GetFullPath(candidate);
         return string.Equals(canonicalRoot, canonicalCandidate, comparison) ||

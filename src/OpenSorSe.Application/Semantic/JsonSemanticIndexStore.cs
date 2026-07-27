@@ -182,7 +182,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
     }
 
     private static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
 
     private sealed record SemanticEnvelope(int SchemaVersion, IReadOnlyList<SemanticIndexEntry>? Entries);
 }

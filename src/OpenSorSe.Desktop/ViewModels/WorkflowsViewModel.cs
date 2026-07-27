@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Desktop.ViewModels;
@@ -31,7 +32,8 @@ public sealed record SortingRecipeRow(SortingRecipe Recipe, WorkflowUsageInfo? U
     public string Description => Recipe.Description ?? "No description";
     public string OriginText => Recipe.IsBuiltIn ? "Built-in" : "User-created";
     public string StateText => Recipe.IsArchived ? "Archived" : Recipe.IsEnabled ? "Enabled" : "Disabled";
-    public string TemplateText => $"{Recipe.NamingTemplate} → {Recipe.DestinationTemplate}";
+    public string TemplateText =>
+        $"{Recipe.NamingTemplate} → {Recipe.DestinationTemplate} · {Recipe.FileNamePortability}";
     public string UsageText => Usage is null
         ? "Usage not loaded"
         : $"{Usage.ProfileIds.Count} profile(s), {Usage.WatchedFolderIds.Count} watched folder(s)";
@@ -160,6 +162,8 @@ public sealed class WorkflowsViewModel : ViewModelBase
         Enum.GetValues<WorkflowUncertaintyPolicy>();
     public IReadOnlyList<WorkflowImportConflictPolicy> ImportConflictPolicies { get; } =
         Enum.GetValues<WorkflowImportConflictPolicy>();
+    public IReadOnlyList<FileNamePortabilityMode> FileNamePortabilityModes { get; } =
+        Enum.GetValues<FileNamePortabilityMode>();
 
     public IAsyncRelayCommand RefreshCommand { get; }
     public IRelayCommand NewProfileCommand { get; }
@@ -410,6 +414,8 @@ public sealed class WorkflowsViewModel : ViewModelBase
         WorkflowInvalidCharacterPolicy.ReplaceWithUnderscore;
     public WorkflowMissingValuePolicy MissingValuePolicy { get; set; } = WorkflowMissingValuePolicy.UseFallback;
     public WorkflowCollisionPolicy CollisionPolicy { get; set; } = WorkflowCollisionPolicy.Block;
+    public FileNamePortabilityMode FileNamePortability { get; set; } =
+        FileNamePortabilityMode.Portable;
     public WorkflowUncertaintyPolicy RecipeUncertaintyPolicy { get; set; } =
         WorkflowUncertaintyPolicy.IncludeAsWarning;
     public string DefaultDateFormat { get; set; } = "yyyy-MM-dd";
@@ -732,6 +738,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
                 },
                 DefaultDateFormat = DefaultDateFormat,
                 CollisionPolicy = CollisionPolicy,
+                FileNamePortability = FileNamePortability,
                 UncertaintyPolicy = RecipeUncertaintyPolicy,
                 MaximumFileNameLength = MaximumFileNameLength,
                 PreserveExtension = PreserveExtension,
@@ -790,6 +797,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
                 },
                 DefaultDateFormat = DefaultDateFormat,
                 CollisionPolicy = CollisionPolicy,
+                FileNamePortability = FileNamePortability,
                 UncertaintyPolicy = RecipeUncertaintyPolicy,
                 MaximumFileNameLength = MaximumFileNameLength,
                 PreserveExtension = PreserveExtension,
@@ -931,7 +939,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
             {
                 Type = "OpenSorSeWorkflowDiagnostics",
                 SchemaVersion = 1,
-                ApplicationVersion = "1.4.0",
+                ApplicationVersion = "1.5.0",
                 ExportedAtUtc = DateTimeOffset.UtcNow,
                 _library.RecoveryMessage,
                 _library.PreservedCorruptCopyPath,
@@ -1040,6 +1048,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
         NormalizeUnicode = recipe.Normalization.NormalizeUnicode;
         DefaultDateFormat = recipe.DefaultDateFormat;
         CollisionPolicy = recipe.CollisionPolicy;
+        FileNamePortability = recipe.FileNamePortability;
         RecipeUncertaintyPolicy = recipe.UncertaintyPolicy;
         MaximumFileNameLength = recipe.MaximumFileNameLength;
         PreserveExtension = recipe.PreserveExtension;
@@ -1067,7 +1076,8 @@ public sealed class WorkflowsViewModel : ViewModelBase
                      nameof(NamingTemplate), nameof(DestinationTemplate), nameof(RequiredFields),
                      nameof(OptionalFields), nameof(FallbackValues), nameof(CasePolicy),
                      nameof(InvalidCharacterPolicy), nameof(MissingValuePolicy),
-                     nameof(CollisionPolicy), nameof(RecipeUncertaintyPolicy), nameof(DefaultDateFormat),
+                     nameof(CollisionPolicy), nameof(FileNamePortability),
+                     nameof(RecipeUncertaintyPolicy), nameof(DefaultDateFormat),
                      nameof(CollapseWhitespace), nameof(NormalizeUnicode),
                      nameof(MaximumFileNameLength), nameof(PreserveExtension),
                  })

@@ -1,13 +1,13 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the OpenSorSe 1.4 source
+This is the authoritative top-level architecture for the OpenSorSe 1.5 source
 tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
 
 ## Architectural shape
 
-OpenSorSe is a local-first Windows desktop application built with .NET 8,
+OpenSorSe is a local-first Windows desktop application with a Linux preview, built with .NET 8,
 Avalonia, MVVM, dependency injection, asynchronous bounded services, and
 user-local JSON persistence. Most of the application analyses data or creates
 proposals. A narrow, explicit Change Plan boundary separates those activities
@@ -38,6 +38,7 @@ internal services.
 | Validation and mutation | `ChangePlanValidator` performs non-mutating checks. `ChangePlanExecutionService` is the supported execution/recovery/Undo boundary and delegates mutation to `IFileSystemGateway`. |
 | Journalling and history | `JsonOperationJournalStore` persists attempted operations and action transitions. Operation History and Undo project that store; there is no second mutable history database. |
 | Diagnostics | Core `IDiagnosticsCollector`, AI request diagnostics, plugin diagnostics, and ordinary bounded logs are intentionally separate. |
+| Platform services | Core `IPathSemantics`, `IApplicationPathProvider`, `IFileIdentityProvider`, `IFileSystemCapabilities`, `IExternalToolLocator`, and `IPlatformCapabilityProvider`; Desktop owns `IDesktopIntegration` and platform presentation. |
 
 ## Manual scan and suggestion flow
 
@@ -64,7 +65,19 @@ The current plugin foundation exposes all eight bounded invocation surfaces.
 Workflow dependency checks and plugin recipe fields are integrated with
 Workflow/Profile resolution and recipe planning. Other extension-point adapters
 are host-callable through `IPluginExtensionHost`; broad insertion into every
-legacy scanner/content pipeline stage is deliberately not implied by v1.4.
+legacy scanner/content pipeline stage is deliberately not implied by v1.5.
+
+## Platform boundary
+
+Platform detection is contained in `OpenSorSe.Core.Platform`. Windows preserves
+the existing local-application-data layout, case-insensitive semantics, and
+volume/file-index identity. Linux uses XDG storage categories, case-sensitive
+semantics, device/inode identity, advisory Unix permission checks, and explicit
+watcher/desktop limitations. Business logic consumes contracts rather than
+detecting an OS. Failure to verify identity, links, permissions, or a
+same-filesystem move blocks mutation. The complete design and support claim are
+in [Platform Architecture](Architecture/00_System/08_v1.5_Platform_Architecture.md)
+and the [Capability Matrix](PLATFORM_COMPATIBILITY_MATRIX.md).
 
 ## Watched-folder flow
 
@@ -96,7 +109,7 @@ proposal. It does not suppress unrelated external changes.
    strict manifest shape, and optional integrity.
 3. Extraction occurs in a controlled staging directory. The staged tree and
    manifest are revalidated before an atomic directory move into
-   `%LOCALAPPDATA%\OpenSorSe\plugins\<id>\<version>`.
+   the platform-owned plugin root under `<id>/<version>`.
 4. `PluginDiscoveryService` performs bounded manifest-first discovery without
    executing code.
 5. `PluginDependencyResolver` resolves exact versions, required transitive

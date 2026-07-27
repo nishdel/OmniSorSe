@@ -4,6 +4,7 @@ using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Scanner.Models;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Scanner;
 
@@ -13,9 +14,8 @@ namespace OpenSorSe.Scanner;
 public sealed class FileScanner : IFileScanner
 {
     private const string LoggerCategory = "Scanner";
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer =
+        PlatformServices.CurrentPathSemantics.Comparer;
 
     private readonly IErrorHandler _errorHandler;
     private readonly ILogger _logger;

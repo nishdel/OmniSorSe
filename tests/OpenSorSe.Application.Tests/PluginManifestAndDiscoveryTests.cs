@@ -152,6 +152,32 @@ public sealed class PluginManifestTests
             issue.Code == "manifest.runtime" && !issue.IsBlocking);
     }
 
+    [Fact]
+    public void Parse_NativeDependenciesRequireBoundedRuntimeIdentifiers()
+    {
+        var missing = _parser.Parse(Serialize(Manifest() with
+        {
+            ContainsNativeDependencies = true,
+        }));
+        var duplicate = _parser.Parse(Serialize(Manifest() with
+        {
+            SupportedRuntimeIdentifiers = ["linux-x64", "LINUX-X64"],
+        }));
+
+        Assert.False(missing.IsValid);
+        Assert.Contains(missing.Issues, issue => issue.Code == "manifest.native-platform");
+        Assert.False(duplicate.IsValid);
+        Assert.Contains(duplicate.Issues, issue => issue.Code == "manifest.runtime-identifiers");
+
+        var matching = _parser.Parse(Serialize(Manifest() with
+        {
+            ContainsNativeDependencies = true,
+            SupportedRuntimeIdentifiers =
+                [System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier],
+        }));
+        Assert.True(matching.IsValid);
+    }
+
     internal static PluginManifest Manifest(
         string id = "example.plugin",
         string version = "1.0.0") =>
@@ -164,7 +190,7 @@ public sealed class PluginManifestTests
             "Example Publisher",
             "MIT",
             "1.4.0",
-            "1.4.99",
+            "1.5.99",
             "net8.0",
             "plugin.dll",
             "Example.Plugin.EntryPoint",
@@ -258,6 +284,24 @@ public sealed class PluginDiscoveryTests : IDisposable
         Assert.Equal(PluginIntegrityStatus.NotCalculated, plugin.IntegrityStatus);
         Assert.DoesNotContain(AppDomain.CurrentDomain.GetAssemblies(), assembly =>
             string.Equals(assembly.GetName().Name, "Example.Plugin", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Discover_PlatformConstrainedPlugin_FailsClosedOnRuntimeMismatch()
+    {
+        var root = Path.Combine(_workspace, "runtime-constrained");
+        Install(root, PluginManifestTests.Manifest() with
+        {
+            ContainsNativeDependencies = true,
+            SupportedRuntimeIdentifiers = ["unsupported-test-rid"],
+        });
+
+        var result = await Service(root).DiscoverAsync(CancellationToken.None);
+
+        var plugin = Assert.Single(result.Plugins);
+        Assert.Equal(PluginCompatibilityState.PlatformIncompatible, plugin.Compatibility);
+        Assert.Equal(PluginLifecycleState.Incompatible, plugin.LifecycleState);
+        Assert.False(plugin.IsEnabled);
     }
 
     [Fact]

@@ -1,23 +1,32 @@
 #pragma warning disable CS1591
 
-using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Win32.SafeHandles;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Application.Watching;
 
 public sealed class PhysicalWatchedFileSystem : IWatchedFileSystem
 {
     private readonly WatchedFolderPathPolicy _pathPolicy;
+    private readonly IFileIdentityProvider _fileIdentityProvider;
     private readonly ILogger _logger;
 
     public PhysicalWatchedFileSystem(WatchedFolderPathPolicy pathPolicy, ILoggingService loggingService)
+        : this(pathPolicy, loggingService, FileIdentityProviderFactory.CreateCurrent())
+    {
+    }
+
+    public PhysicalWatchedFileSystem(
+        WatchedFolderPathPolicy pathPolicy,
+        ILoggingService loggingService,
+        IFileIdentityProvider fileIdentityProvider)
     {
         _pathPolicy = pathPolicy ?? throw new ArgumentNullException(nameof(pathPolicy));
+        _fileIdentityProvider = fileIdentityProvider ??
+                                throw new ArgumentNullException(nameof(fileIdentityProvider));
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(PhysicalWatchedFileSystem));
     }
@@ -141,7 +150,7 @@ public sealed class PhysicalWatchedFileSystem : IWatchedFileSystem
             .ToArray());
     }
 
-    private static WatchedFileProbe ProbeFile(string path)
+    private WatchedFileProbe ProbeFile(string path)
     {
         var canonical = Path.GetFullPath(path);
         var info = new FileInfo(canonical);
@@ -180,29 +189,12 @@ public sealed class PhysicalWatchedFileSystem : IWatchedFileSystem
             $"directory:{NormalizeIdentity(canonical)}");
     }
 
-    private static string ReadStableFileId(string path, DateTimeOffset creationTimeUtc, long length)
+    private string ReadStableFileId(string path, DateTimeOffset creationTimeUtc, long length)
     {
-        if (OperatingSystem.IsWindows())
+        var identity = _fileIdentityProvider.Capture(path);
+        if (identity.Identity is not null)
         {
-            try
-            {
-                using var handle = File.OpenHandle(
-                    path,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.ReadWrite | FileShare.Delete,
-                    FileOptions.None);
-                if (GetFileInformationByHandle(handle, out var information))
-                {
-                    var index = ((ulong)information.FileIndexHigh << 32) | information.FileIndexLow;
-                    return $"windows:{information.VolumeSerialNumber:x8}:{index:x16}";
-                }
-            }
-            catch (Exception exception) when (
-                exception is IOException or UnauthorizedAccessException or Win32Exception)
-            {
-                // Fall through to the portable, rename-friendly best-effort identity.
-            }
+            return identity.Identity;
         }
 
         return $"portable:{creationTimeUtc.UtcTicks:x16}:{length:x16}";
@@ -237,7 +229,7 @@ public sealed class PhysicalWatchedFileSystem : IWatchedFileSystem
     }
 
     private static string NormalizeIdentity(string path) =>
-        OperatingSystem.IsWindows() ? path.ToLowerInvariant() : path;
+        PlatformServices.CurrentPathSemantics.IsCaseSensitive ? path : path.ToLowerInvariant();
 
     private static DateTimeOffset ToUtc(DateTime value) =>
         new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
@@ -245,26 +237,6 @@ public sealed class PhysicalWatchedFileSystem : IWatchedFileSystem
     private static bool IsRecoverable(Exception exception) => exception is
         IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or PathTooLongException;
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetFileInformationByHandle(
-        SafeFileHandle fileHandle,
-        out ByHandleFileInformation fileInformation);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct ByHandleFileInformation
-    {
-        public uint FileAttributes;
-        public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
-        public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
-        public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
-        public uint VolumeSerialNumber;
-        public uint FileSizeHigh;
-        public uint FileSizeLow;
-        public uint NumberOfLinks;
-        public uint FileIndexHigh;
-        public uint FileIndexLow;
-    }
 }
 
 public sealed class FileStabilityChecker : IFileStabilityChecker

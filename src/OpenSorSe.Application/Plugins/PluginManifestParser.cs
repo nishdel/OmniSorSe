@@ -40,6 +40,11 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
         RegexOptions.CultureInvariant)]
     private static partial Regex EntryTypeRegex();
 
+    [GeneratedRegex(
+        "^[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex RuntimeIdentifierRegex();
+
     public PluginManifestParseResult ParseFile(string manifestPath, bool expectedBuiltIn = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(manifestPath);
@@ -99,6 +104,8 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
             Contributions = Array.AsReadOnly(manifest.Contributions.ToArray()),
             Capabilities = Array.AsReadOnly(manifest.Capabilities.ToArray()),
             Dependencies = Array.AsReadOnly(manifest.Dependencies.ToArray()),
+            SupportedRuntimeIdentifiers = Array.AsReadOnly(
+                manifest.SupportedRuntimeIdentifiers.ToArray()),
         };
 
     public static bool TryVersion(string? value, out Version version)
@@ -191,7 +198,7 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
         {
             issues.Add(new PluginManifestIssue(
                 "manifest.runtime",
-                "The plugin runtime is incompatible with the v1.4 host.",
+                "The plugin runtime is incompatible with the v1.5 host.",
                 IsBlocking: false));
         }
 
@@ -222,16 +229,40 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
 
         if (manifest.Contributions is null ||
             manifest.Capabilities is null ||
-            manifest.Dependencies is null)
+            manifest.Dependencies is null ||
+            manifest.SupportedRuntimeIdentifiers is null)
         {
             Add(issues, "manifest.collections", "Manifest collections must be present.");
             return issues;
         }
 
         if (manifest.Contributions.Count is < 1 or > PluginLimits.MaximumContributionsPerPlugin ||
-            manifest.Dependencies.Count > PluginLimits.MaximumDependenciesPerPlugin)
+            manifest.Dependencies.Count > PluginLimits.MaximumDependenciesPerPlugin ||
+            manifest.SupportedRuntimeIdentifiers.Count > PluginLimits.MaximumRuntimeIdentifiersPerPlugin)
         {
             Add(issues, "manifest.bounds", "The manifest contains an excessive number of contributions or dependencies.");
+        }
+
+        if (manifest.SupportedRuntimeIdentifiers.Any(runtimeIdentifier =>
+                string.IsNullOrWhiteSpace(runtimeIdentifier) ||
+                !RuntimeIdentifierRegex().IsMatch(runtimeIdentifier)) ||
+            manifest.SupportedRuntimeIdentifiers
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() != manifest.SupportedRuntimeIdentifiers.Count)
+        {
+            Add(
+                issues,
+                "manifest.runtime-identifiers",
+                "Runtime identifiers must be bounded, valid, and unique.");
+        }
+
+        if (manifest.ContainsNativeDependencies &&
+            manifest.SupportedRuntimeIdentifiers.Count == 0)
+        {
+            Add(
+                issues,
+                "manifest.native-platform",
+                "A plugin with native dependencies must declare its supported runtime identifiers.");
         }
 
         foreach (var contribution in manifest.Contributions)

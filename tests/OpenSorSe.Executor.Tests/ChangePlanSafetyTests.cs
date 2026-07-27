@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Executor.Tests;
@@ -60,6 +61,53 @@ public sealed class ChangePlanSafetyTests
         Assert.Contains(plan.Actions.SelectMany(action => action.Conflicts), conflict =>
             conflict.Category == ChangeConflictCategory.ConflictingSourceActions);
         Assert.Equal(ChangePlanStatus.ValidationFailed, plan.Status);
+    }
+
+    [Fact]
+    public async Task PreExecution_PlatformChecksRejectUnwritableOrCrossFilesystemMove()
+    {
+        using var directory = new TemporaryDirectory();
+        var destinationDirectory = directory.PathOf("destination");
+        Directory.CreateDirectory(destinationDirectory);
+        var source = directory.File("source.txt", "source");
+        var gateway = new PhysicalFileSystemGateway();
+        var capabilities = new ControlledFileSystemCapabilities(
+            canWrite: false,
+            sameFileSystem: false);
+        var validator = new ChangePlanValidator(
+            gateway,
+            PlatformServices.CurrentPathSemantics,
+            capabilities);
+        var factory = new ChangePlanFactory(
+            gateway,
+            validator,
+            new InMemoryChangePlanStore());
+        var plan = await factory.CreateAsync(
+            Request(
+                directory.Path,
+                Proposal(
+                    ChangeActionType.MoveFile,
+                    source,
+                    Path.Combine(destinationDirectory, "source.txt"))),
+            CancellationToken.None);
+        var approved = plan with
+        {
+            Actions = Array.AsReadOnly(plan.Actions.Select(action =>
+                action with { ApprovalState = ChangeApprovalState.Approved }).ToArray()),
+        };
+
+        var result = await validator.ValidateAsync(
+            approved,
+            ChangePlanValidationPhase.PreExecution,
+            CancellationToken.None);
+
+        var conflicts = Assert.Single(result.Plan.Actions).Conflicts;
+        Assert.Contains(conflicts, conflict =>
+            conflict.Category == ChangeConflictCategory.PermissionDenied);
+        Assert.Contains(conflicts, conflict =>
+            conflict.Category == ChangeConflictCategory.InvalidAction &&
+            conflict.Message.Contains("Cross-filesystem", StringComparison.OrdinalIgnoreCase));
+        Assert.False(result.CanApply);
     }
 
     [Fact]
@@ -797,6 +845,33 @@ public sealed class ChangePlanSafetyTests
         IChangePlanExecutionService Executor,
         IChangePlanStore PlanStore,
         IOperationJournalStore Journal);
+
+    private sealed class ControlledFileSystemCapabilities(
+        bool canWrite,
+        bool sameFileSystem) : IFileSystemCapabilities
+    {
+        public FileLinkInspection InspectLink(string path) =>
+            new(false, null, null, "Not a link.");
+
+        public bool CanWriteDirectory(string path, out string explanation)
+        {
+            explanation = canWrite ? "Writable." : "Controlled permission denial.";
+            return canWrite;
+        }
+
+        public long? GetAvailableFreeSpace(string path) => 1_000_000;
+
+        public bool AreOnSameFileSystem(
+            string firstPath,
+            string secondPath,
+            out string explanation)
+        {
+            explanation = sameFileSystem
+                ? "Same controlled filesystem."
+                : "Different controlled filesystems.";
+            return sameFileSystem;
+        }
+    }
 
     private sealed class ControlledGateway(
         int? failMoveNumber = null,

@@ -5,13 +5,16 @@ reviewable, bounded, and explicit about their safety and privacy effects.
 
 ## Prerequisites
 
-- Windows 10 or later for the currently supported Desktop runtime.
+- Windows 10 or later for the verified Desktop runtime, or a Linux x64
+  graphical environment for the v1.5 preview.
 - The .NET SDK selected by [`global.json`](global.json).
 - Git.
 - Optional: Ollama for manual AI-provider testing.
 - Optional: Tesseract 5 with `eng` and/or `deu` data for manual OCR testing.
 
 Neither Ollama nor Tesseract is required for the automated test suite.
+Linux setup and framework-dependent launch details are in
+[Linux Build and Launch](docs/LINUX_BUILD_AND_LAUNCH.md).
 
 ## Restore, build, test, and run
 
@@ -55,6 +58,8 @@ project:
 - AI: concrete Ollama-compatible transport.
 - Desktop: Avalonia composition and presentation.
 - Extensions.Abstractions: stable plugin-author API only.
+- Core/Platform: path semantics, application locations, filesystem identity and
+  capability inspection, external-tool discovery, and platform reporting.
 
 Preserve the documented dependency direction. New cycles or an internal
 dependency in the standalone SDK are not acceptable.
@@ -76,6 +81,10 @@ These invariants are release blockers:
 - Paths must remain under the explicit approved root.
 - Reparse/link escapes and silent overwrites must remain forbidden.
 - Undo must block rather than overwrite externally changed data.
+- Platform-sensitive behavior belongs behind a focused adapter; do not scatter
+  OS checks through business logic.
+- No operation may elevate, run `sudo`, change ownership, broadly change user
+  permissions, or silently cross a filesystem boundary.
 
 Direct `File`/`Directory` writes outside Executor are allowed only for a
 clearly-owned application-data store, controlled plugin/package location, log,

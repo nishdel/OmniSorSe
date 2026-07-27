@@ -3,6 +3,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using OpenSorSe.Core.Platform;
 using static OpenSorSe.Application.Workflows.WorkflowValidationResults;
 
 namespace OpenSorSe.Application.Workflows;
@@ -18,6 +19,7 @@ namespace OpenSorSe.Application.Workflows;
 /// </remarks>
 public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
 {
+    private readonly IPathSemantics _pathSemantics;
     private static readonly IReadOnlySet<string> SupportedFields = new HashSet<string>(
     [
         "originalName",
@@ -43,15 +45,6 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         ["date", "createdDate", "modifiedDate"],
         StringComparer.OrdinalIgnoreCase);
 
-    private static readonly char[] WindowsInvalidCharacters = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
-    private static readonly IReadOnlySet<string> ReservedWindowsNames = new HashSet<string>(
-        [
-            "CON", "PRN", "AUX", "NUL",
-            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-        ],
-        StringComparer.OrdinalIgnoreCase);
-
     [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant)]
     private static partial Regex WhitespaceRegex();
 
@@ -59,6 +52,16 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         @"^plugin\.[a-z0-9](?:[a-z0-9.-]{0,126}[a-z0-9])?\.[a-z0-9](?:[a-z0-9.-]{0,126}[a-z0-9])?$",
         RegexOptions.CultureInvariant)]
     private static partial Regex PluginFieldRegex();
+
+    public WorkflowTemplateEngine()
+        : this(PlatformServices.CurrentPathSemantics)
+    {
+    }
+
+    public WorkflowTemplateEngine(IPathSemantics pathSemantics)
+    {
+        _pathSemantics = pathSemantics ?? throw new ArgumentNullException(nameof(pathSemantics));
+    }
 
     public WorkflowValidationResult ValidateRecipeTemplates(SortingRecipe recipe)
     {
@@ -178,7 +181,12 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
 
         var conflicts = new List<string>();
         var warnings = new List<string>();
-        var sanitizedName = SanitizeSegment(name, recipe.Normalization, sanitization, "filename");
+        var sanitizedName = SanitizeSegment(
+            name,
+            recipe.Normalization,
+            recipe.FileNamePortability,
+            sanitization,
+            "filename");
         if (recipe.PreserveExtension)
         {
             var extension = Path.GetExtension(context.OriginalPath);
@@ -189,7 +197,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
             }
         }
 
-        if (!IsSafeSegment(sanitizedName))
+        if (!IsSafeSegment(sanitizedName, recipe.FileNamePortability))
         {
             conflicts.Add("The proposed filename is empty, reserved, or otherwise unsafe.");
         }
@@ -223,10 +231,12 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
                         .Select(segment => SanitizeSegment(
                             segment,
                             recipe.Normalization,
+                            recipe.FileNamePortability,
                             sanitization,
                             "destination segment"))
                         .ToArray();
-                    if (safeSegments.Any(segment => !IsSafeSegment(segment)))
+                    if (safeSegments.Any(segment =>
+                            !IsSafeSegment(segment, recipe.FileNamePortability)))
                     {
                         conflicts.Add("The destination template produced an unsafe or reserved path segment.");
                     }
@@ -234,8 +244,8 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
                     {
                         destinationDirectory = Path.GetFullPath(Path.Combine([root, .. safeSegments]));
                         destinationPath = Path.GetFullPath(Path.Combine(destinationDirectory, sanitizedName));
-                        if (!IsWithinRoot(root, destinationDirectory) ||
-                            !IsWithinRoot(root, destinationPath))
+                        if (!_pathSemantics.IsWithinRoot(root, destinationDirectory) ||
+                            !_pathSemantics.IsWithinRoot(root, destinationPath))
                         {
                             conflicts.Add("The proposed destination escapes the approved organization root.");
                         }
@@ -365,7 +375,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         }
     }
 
-    private static string ResolveTemplate(
+    private string ResolveTemplate(
         string template,
         SortingRecipe recipe,
         IReadOnlyDictionary<string, RecipeFieldValue> suppliedValues,
@@ -418,7 +428,10 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
             var originalValue = fieldValue.Value;
             var value = FormatValue(token.Field, originalValue, token.Format ?? recipe.DefaultDateFormat);
             value = NormalizeValue(value, recipe.Normalization);
-            value = ReplaceUnsafeTokenCharacters(value, recipe.Normalization.InvalidCharacterPolicy);
+            value = ReplaceUnsafeTokenCharacters(
+                value,
+                recipe.Normalization.InvalidCharacterPolicy,
+                recipe.FileNamePortability);
             if (!string.Equals(originalValue, value, StringComparison.Ordinal))
             {
                 sanitization.Add($"The value for \"{token.Field}\" was formatted, normalized, or sanitized.");
@@ -468,17 +481,18 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         };
     }
 
-    private static string ReplaceUnsafeTokenCharacters(
+    private string ReplaceUnsafeTokenCharacters(
         string value,
-        WorkflowInvalidCharacterPolicy policy)
+        WorkflowInvalidCharacterPolicy policy,
+        FileNamePortabilityMode portabilityMode)
     {
         var builder = new StringBuilder(value.Length);
         foreach (var character in value)
         {
-            var invalid = char.IsControl(character) ||
-                          WindowsInvalidCharacters.Contains(character) ||
-                          character == Path.DirectorySeparatorChar ||
-                          character == Path.AltDirectorySeparatorChar;
+            var invalid = !_pathSemantics.IsValidFileName(
+                $"a{character}b",
+                portabilityMode,
+                out _);
             if (!invalid)
             {
                 builder.Append(character);
@@ -492,16 +506,25 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         return builder.ToString();
     }
 
-    private static string SanitizeSegment(
+    private string SanitizeSegment(
         string value,
         RecipeNormalizationOptions options,
+        FileNamePortabilityMode portabilityMode,
         List<string> changes,
         string label)
     {
         var normalized = NormalizeValue(value, options);
-        var sanitized = ReplaceUnsafeTokenCharacters(normalized, options.InvalidCharacterPolicy)
-            .Trim()
-            .TrimEnd('.', ' ');
+        var sanitized = ReplaceUnsafeTokenCharacters(
+                normalized,
+                options.InvalidCharacterPolicy,
+                portabilityMode)
+            .Trim();
+        if (portabilityMode is FileNamePortabilityMode.Portable or
+                FileNamePortabilityMode.WindowsCompatible ||
+            _pathSemantics.Platform == HostPlatformKind.Windows)
+        {
+            sanitized = sanitized.TrimEnd('.', ' ');
+        }
         if (!string.Equals(value, sanitized, StringComparison.Ordinal))
         {
             changes.Add($"The {label} was normalized or sanitized.");
@@ -510,33 +533,8 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         return sanitized;
     }
 
-    private static bool IsSafeSegment(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value) ||
-            value is "." or ".." ||
-            value.Any(char.IsControl) ||
-            value.IndexOfAny(WindowsInvalidCharacters) >= 0)
-        {
-            return false;
-        }
-
-        var baseName = value
-            .Split('.', 2, StringSplitOptions.TrimEntries)[0]
-            .TrimEnd('.', ' ');
-        return !ReservedWindowsNames.Contains(baseName);
-    }
-
-    private static bool IsWithinRoot(string root, string candidate)
-    {
-        var comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
-        var rootPrefix = Path.EndsInDirectorySeparator(root)
-            ? root
-            : root + Path.DirectorySeparatorChar;
-        return string.Equals(root, candidate, comparison) ||
-               candidate.StartsWith(rootPrefix, comparison);
-    }
+    private bool IsSafeSegment(string value, FileNamePortabilityMode portabilityMode) =>
+        _pathSemantics.IsValidFileName(value, portabilityMode, out _);
 
     private static bool IsValidDateFormat(string? format)
     {
@@ -838,6 +836,7 @@ public sealed class WorkflowValidator : IWorkflowValidator
         }
 
         if (!Enum.IsDefined(recipe.Origin.Kind) ||
+            !Enum.IsDefined(recipe.FileNamePortability) ||
             !Enum.IsDefined(recipe.Normalization.CasePolicy) ||
             !Enum.IsDefined(recipe.Normalization.InvalidCharacterPolicy) ||
             !Enum.IsDefined(recipe.Normalization.MissingValuePolicy) ||

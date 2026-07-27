@@ -602,5 +602,5 @@ public sealed class FolderRestructuringService : IFolderRestructuringService
     };
 
     private static StringComparison PathComparison =>
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
 }

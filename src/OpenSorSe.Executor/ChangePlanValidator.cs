@@ -1,19 +1,30 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Executor.Models;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Executor;
 
 /// <summary>Performs complete, non-mutating validation at creation, review, and pre-execution.</summary>
 public sealed class ChangePlanValidator : IChangePlanValidator
 {
-    private static readonly char[] PortableInvalidFileNameCharacters = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
-    private static readonly HashSet<string> WindowsReservedNames = BuildReservedNames();
     private readonly IFileSystemGateway _fileSystem;
+    private readonly IPathSemantics _pathSemantics;
+    private readonly IFileSystemCapabilities? _fileSystemCapabilities;
 
     public ChangePlanValidator(IFileSystemGateway fileSystem)
+        : this(fileSystem, PlatformServices.CurrentPathSemantics, null)
+    {
+    }
+
+    public ChangePlanValidator(
+        IFileSystemGateway fileSystem,
+        IPathSemantics pathSemantics,
+        IFileSystemCapabilities? fileSystemCapabilities = null)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        _pathSemantics = pathSemantics ?? throw new ArgumentNullException(nameof(pathSemantics));
+        _fileSystemCapabilities = fileSystemCapabilities;
     }
 
     /// <inheritdoc />
@@ -37,26 +48,26 @@ public sealed class ChangePlanValidator : IChangePlanValidator
             .Select(action => TryNormalizePath(action.SourcePath))
             .Where(path => path is not null)
             .Cast<string>()
-            .GroupBy(path => path, ChangePlanFactory.PathComparer)
+            .GroupBy(path => path, _pathSemantics.Comparer)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
-            .ToHashSet(ChangePlanFactory.PathComparer);
+            .ToHashSet(_pathSemantics.Comparer);
         var duplicateDestinations = normalizedCandidates
             .Where(item => item.Destination is not null)
-            .GroupBy(item => item.Destination!, ChangePlanFactory.PathComparer)
+            .GroupBy(item => item.Destination!, _pathSemantics.Comparer)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
-            .ToHashSet(ChangePlanFactory.PathComparer);
+            .ToHashSet(_pathSemantics.Comparer);
         var sourcePaths = normalizedCandidates
             .Where(item => item.Source is not null)
             .Select(item => item.Source!)
-            .ToHashSet(ChangePlanFactory.PathComparer);
+            .ToHashSet(_pathSemantics.Comparer);
         var plannedDirectories = normalizedCandidates
             .Where(item =>
                 item.Action.ActionType == ChangeActionType.CreateDirectory &&
                 item.Destination is not null)
             .Select(item => item.Destination!)
-            .ToHashSet(ChangePlanFactory.PathComparer);
+            .ToHashSet(_pathSemantics.Comparer);
 
         var validated = new List<ProposedChangeAction>(plan.Actions.Count);
         foreach (var action in plan.Actions)
@@ -84,6 +95,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
                 plannedDirectories,
                 conflicts,
                 warnings,
+                phase,
                 cancellationToken).ConfigureAwait(false);
             var state = StateFor(conflicts, warnings);
             validated.Add(action with
@@ -135,6 +147,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
         IReadOnlySet<string> plannedDirectories,
         ICollection<ChangeConflict> conflicts,
         ICollection<string> warnings,
+        ChangePlanValidationPhase phase,
         CancellationToken cancellationToken)
     {
         if (!Enum.IsDefined(action.ActionType))
@@ -159,7 +172,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
             Add(ChangeConflictCategory.PathTooLong, "The destination path exceeds the supported path length.", true);
         }
 
-        if (!ChangePlanFactory.IsWithinRoot(root, destination))
+        if (!_pathSemantics.IsWithinRoot(root, destination))
         {
             Add(ChangeConflictCategory.DestinationOutsideRoot, "The destination is outside the selected root folder.", true);
         }
@@ -206,7 +219,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
             return;
         }
 
-        if (!ChangePlanFactory.IsWithinRoot(root, source))
+        if (!_pathSemantics.IsWithinRoot(root, source))
         {
             Add(ChangeConflictCategory.SourceOutsideRoot, "The source file is outside the selected root folder.", true);
         }
@@ -216,13 +229,13 @@ public sealed class ChangePlanValidator : IChangePlanValidator
             Add(ChangeConflictCategory.ConflictingSourceActions, "The same source file has more than one action.", true);
         }
 
-        var samePathIgnoringCase = ChangePlanFactory.PathComparer.Equals(source, destination);
+        var samePlatformPath = _pathSemantics.Comparer.Equals(source, destination);
         var exactSamePath = string.Equals(source, destination, StringComparison.Ordinal);
         if (exactSamePath)
         {
             Add(ChangeConflictCategory.InvalidAction, "The source and destination paths are identical.", true);
         }
-        else if (samePathIgnoringCase)
+        else if (samePlatformPath)
         {
             if (action.ActionType != ChangeActionType.RenameFile)
             {
@@ -238,7 +251,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
             }
         }
 
-        if (sourcePaths.Contains(destination) && !samePathIgnoringCase)
+        if (sourcePaths.Contains(destination) && !samePlatformPath)
         {
             Add(
                 ChangeConflictCategory.ExecutionOrderConflict,
@@ -247,15 +260,21 @@ public sealed class ChangePlanValidator : IChangePlanValidator
         }
 
         if (action.ActionType == ChangeActionType.RenameFile &&
-            !ChangePlanFactory.PathComparer.Equals(Path.GetDirectoryName(source), Path.GetDirectoryName(destination)))
+            !_pathSemantics.Comparer.Equals(Path.GetDirectoryName(source), Path.GetDirectoryName(destination)))
         {
             Add(ChangeConflictCategory.InvalidAction, "A rename must remain in the same directory.", true);
         }
 
         var fileName = Path.GetFileName(destination);
-        if (!IsValidFileName(fileName))
+        if (!_pathSemantics.IsValidFileName(
+                fileName,
+                FileNamePortabilityMode.CurrentPlatform,
+                out var fileNameReason))
         {
-            Add(ChangeConflictCategory.InvalidFileName, "The proposed filename is invalid or reserved.", true);
+            Add(
+                ChangeConflictCategory.InvalidFileName,
+                $"The proposed filename is invalid under current-platform rules. {fileNameReason}",
+                true);
         }
 
         if (!_fileSystem.FileExists(source))
@@ -332,13 +351,40 @@ public sealed class ChangePlanValidator : IChangePlanValidator
             Add(ChangeConflictCategory.PermissionDenied, "The source file cannot be opened with the required access.", true);
         }
 
-        if (!samePathIgnoringCase &&
+        if (!samePlatformPath &&
             (_fileSystem.FileExists(destination) || _fileSystem.DirectoryExists(destination)))
         {
             Add(ChangeConflictCategory.DestinationOccupied, "The destination is already occupied. Overwrite is disabled.", true);
         }
 
         ValidateParent(destination, root, plannedDirectories, conflicts);
+        if (phase == ChangePlanValidationPhase.PreExecution &&
+            _fileSystemCapabilities is not null)
+        {
+            var existingParent = ExistingParent(destination, root);
+            if (existingParent is not null &&
+                !_fileSystemCapabilities.CanWriteDirectory(existingParent, out var permissionExplanation))
+            {
+                Add(
+                    ChangeConflictCategory.PermissionDenied,
+                    $"The destination directory is not safely writable. {permissionExplanation}",
+                    true);
+            }
+
+            if (action.ActionType == ChangeActionType.MoveFile &&
+                existingParent is not null &&
+                !_fileSystemCapabilities.AreOnSameFileSystem(
+                    source,
+                    existingParent,
+                    out var filesystemExplanation))
+            {
+                Add(
+                    ChangeConflictCategory.InvalidAction,
+                    $"Cross-filesystem moves are unavailable. {filesystemExplanation}",
+                    true);
+            }
+        }
+
         return;
 
         void Add(ChangeConflictCategory category, string message, bool blocking) =>
@@ -352,7 +398,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
         ICollection<ChangeConflict> conflicts)
     {
         var parent = Path.GetDirectoryName(destination);
-        if (string.IsNullOrWhiteSpace(parent) || !ChangePlanFactory.IsWithinRoot(root, parent))
+        if (string.IsNullOrWhiteSpace(parent) || !_pathSemantics.IsWithinRoot(root, parent))
         {
             conflicts.Add(new ChangeConflict(
                 ChangeConflictCategory.DestinationParentUnavailable,
@@ -363,7 +409,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
 
         var current = parent;
         while (!string.IsNullOrWhiteSpace(current) &&
-               ChangePlanFactory.IsWithinRoot(root, current))
+               _pathSemantics.IsWithinRoot(root, current))
         {
             if (_fileSystem.FileExists(current))
             {
@@ -398,6 +444,28 @@ public sealed class ChangePlanValidator : IChangePlanValidator
 
             current = Path.GetDirectoryName(current);
         }
+    }
+
+    private string? ExistingParent(string destination, string root)
+    {
+        var current = Path.GetDirectoryName(destination);
+        while (!string.IsNullOrWhiteSpace(current) &&
+               _pathSemantics.IsWithinRoot(root, current))
+        {
+            if (_fileSystem.DirectoryExists(current))
+            {
+                return current;
+            }
+
+            if (_fileSystem.FileExists(current))
+            {
+                return null;
+            }
+
+            current = Path.GetDirectoryName(current);
+        }
+
+        return null;
     }
 
     private async Task<bool> FindRenamedSourceAsync(
@@ -491,39 +559,6 @@ public sealed class ChangePlanValidator : IChangePlanValidator
         return warnings.Count > 0 || conflicts.Count > 0
             ? ChangeValidationState.Warning
             : ChangeValidationState.Valid;
-    }
-
-    private static bool IsValidFileName(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value) ||
-            value is "." or ".." ||
-            value.EndsWith(' ') ||
-            value.EndsWith('.') ||
-            value.Any(character =>
-                char.IsControl(character) ||
-                PortableInvalidFileNameCharacters.Contains(character) ||
-                Path.GetInvalidFileNameChars().Contains(character)))
-        {
-            return false;
-        }
-
-        var stem = Path.GetFileNameWithoutExtension(value);
-        return !WindowsReservedNames.Contains(stem);
-    }
-
-    private static HashSet<string> BuildReservedNames()
-    {
-        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "CON", "PRN", "AUX", "NUL",
-        };
-        for (var index = 1; index <= 9; index++)
-        {
-            names.Add($"COM{index}");
-            names.Add($"LPT{index}");
-        }
-
-        return names;
     }
 
     private static void ValidatePlanShape(ChangePlan plan)

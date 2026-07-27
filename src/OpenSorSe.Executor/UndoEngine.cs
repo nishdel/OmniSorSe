@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Executor.Models;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Executor;
 
@@ -67,12 +68,16 @@ public sealed class UndoEngine : IUndoEngine
         original = result = string.Empty; issue = null;
         try { original = Path.GetFullPath(record.OriginalPath); result = Path.GetFullPath(record.ResultPath); }
         catch (ArgumentException) { issue = new(record.UndoRecordId, UndoExecutionIssueKind.PathMismatch, "The record paths are invalid."); return false; }
-        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = PlatformServices.CurrentPathSemantics.Comparer;
         if (comparer.Equals(original, result)) { issue = new(record.UndoRecordId, UndoExecutionIssueKind.PathMismatch, "The record paths must differ."); return false; }
         return true;
     }
 
-    private static bool SameDirectory(string first, string second) => string.Equals(Path.GetDirectoryName(first), Path.GetDirectoryName(second), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    private static bool SameDirectory(string first, string second) =>
+        string.Equals(
+            Path.GetDirectoryName(first),
+            Path.GetDirectoryName(second),
+            PlatformServices.CurrentPathSemantics.Comparison);
     private static UndoExecutionOutcome Success(UndoRecord record) => new(record.UndoRecordId, record.OperationId, record.Kind, record.OriginalPath, record.ResultPath, UndoExecutionStatus.Succeeded, null);
     private static UndoExecutionOutcome Failure(UndoRecord record, UndoExecutionIssue issue) => new(record.UndoRecordId, record.OperationId, record.Kind, record.OriginalPath, record.ResultPath, UndoExecutionStatus.Failed, issue);
     private UndoExecutionOutcome LoggedFailure(UndoRecord record, UndoExecutionIssueKind kind, string message, Exception exception) { _logger.LogWarning(exception, "Undo issue {IssueKind}: {Message}", kind, message); return Failure(record, new(record.UndoRecordId, kind, message)); }

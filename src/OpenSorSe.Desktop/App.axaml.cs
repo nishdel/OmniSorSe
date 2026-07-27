@@ -23,6 +23,7 @@ using OpenSorSe.Application.Plugins;
 using OpenSorSe.AI;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Core.Diagnostics;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor;
 
 namespace OpenSorSe.Desktop;
@@ -90,15 +91,14 @@ public partial class App : Avalonia.Application
 
     private static ServiceProvider CreateServiceProvider()
     {
-        var settingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenSorSe",
-            "settings.json");
+        var applicationPaths = new ApplicationPathProvider();
+        applicationPaths.EnsureOwnedDirectories();
+        var settingsPath = applicationPaths.SettingsFilePath;
+        var paths = applicationPaths.Paths;
         var services = new ServiceCollection();
+        services.AddSingleton<IApplicationPathProvider>(applicationPaths);
         services.AddOpenSorSeCore(new OpenSorSeCoreOptions { ConfigurationFilePath = settingsPath });
-        var settingsDirectoryPath = Path.GetDirectoryName(settingsPath)
-            ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
-        var pluginRoot = Path.Combine(settingsDirectoryPath, "plugins");
+        var pluginRoot = paths.PluginDirectory;
         services.AddSingleton<IFileScanner, FileScanner>();
         services.AddSingleton<IFileMetadataReader, FileMetadataReader>();
         services.AddSingleton<IFileHasher, FileHasher>();
@@ -111,20 +111,14 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IChangePlanValidator, ChangePlanValidator>();
         services.AddSingleton<IChangePlanStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonChangePlanStore(
-                Path.Combine(settingsDirectory, "change-plans.json"),
+                Path.Combine(paths.StateDirectory, "change-plans.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IOperationJournalStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonOperationJournalStore(
-                Path.Combine(settingsDirectory, "operation-journal.json"),
+                Path.Combine(paths.StateDirectory, "operation-journal.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IChangePlanFactory, ChangePlanFactory>();
@@ -146,22 +140,16 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IOcrService, OcrService>();
         services.AddSingleton<IContentStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonContentStore(
-                Path.Combine(settingsDirectory, "content-index.json"),
+                Path.Combine(paths.CacheDirectory, "content-index.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
         services.AddSingleton<ISemanticIndexStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonSemanticIndexStore(
-                Path.Combine(settingsDirectory, "semantic-index.json"),
+                Path.Combine(paths.CacheDirectory, "semantic-index.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<ISemanticIndexer, SemanticIndexer>();
@@ -170,59 +158,43 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IStructureComparisonService, StructureComparisonService>();
         services.AddSingleton<IStructureHistoryStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonStructureHistoryStore(
-                Path.Combine(settingsDirectory, "structure-history.json"),
+                Path.Combine(paths.DataDirectory, "structure-history.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IFolderRestructuringService, FolderRestructuringService>();
         services.AddSingleton<ICatalogComparisonService, CatalogComparisonService>();
         services.AddSingleton<IResultsCatalogStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
-            return new JsonResultsCatalogStore(Path.Combine(settingsDirectory, "catalog.json"), serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+            return new JsonResultsCatalogStore(
+                Path.Combine(paths.DataDirectory, "catalog.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<WatchedFolderPathPolicy>();
         services.AddSingleton<IWatchedFolderConfigurationStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonWatchedFolderConfigurationStore(
-                Path.Combine(settingsDirectory, "watched-folders.json"),
+                Path.Combine(paths.ConfigurationDirectory, "watched-folders.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IWatchedFolderCatalogueStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonWatchedFolderCatalogueStore(
-                Path.Combine(settingsDirectory, "watched-catalogues.json"),
+                Path.Combine(paths.DataDirectory, "watched-catalogues.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IWatchedActivityStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonWatchedActivityStore(
-                Path.Combine(settingsDirectory, "watched-activity.json"),
+                Path.Combine(paths.StateDirectory, "watched-activity.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IWorkflowTemplateEngine, WorkflowTemplateEngine>();
         services.AddSingleton<IWorkflowValidator, WorkflowValidator>();
         services.AddSingleton<IWorkflowLibraryStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonWorkflowLibraryStore(
-                Path.Combine(settingsDirectory, "workflow-library.json"),
+                Path.Combine(paths.DataDirectory, "workflow-library.json"),
                 serviceProvider.GetRequiredService<IWorkflowValidator>(),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
@@ -251,7 +223,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IPluginManifestParser, PluginManifestParser>();
         services.AddSingleton<IPluginIntegrityService, PluginIntegrityService>();
         services.AddSingleton<IPluginStateStore>(
-            new JsonPluginStateStore(Path.Combine(settingsDirectoryPath, "plugins-state.json")));
+            new JsonPluginStateStore(Path.Combine(paths.StateDirectory, "plugins-state.json")));
         services.AddSingleton<IPluginDependencyResolver, PluginDependencyResolver>();
         services.AddSingleton<IPluginContributionRegistry, PluginContributionRegistry>();
         services.AddSingleton<IPluginContributionResolver, PluginContributionResolver>();
@@ -291,11 +263,8 @@ public partial class App : Avalonia.Application
                 serviceProvider.GetRequiredService<IPluginUsageInspector>()));
         services.AddSingleton<ISavedCatalogSearchStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
             return new JsonSavedCatalogSearchStore(
-                Path.Combine(settingsDirectory, "saved-catalog-searches.json"),
+                Path.Combine(paths.DataDirectory, "saved-catalog-searches.json"),
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
@@ -305,16 +274,16 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IAiRequestDiagnosticsStore, AiRequestDiagnosticsStore>();
         services.AddSingleton<IAiDiagnosticsCollector, AiDiagnosticsCollector>();
         services.AddSingleton<IClipboardService, AvaloniaClipboardService>();
+        services.AddSingleton<IDesktopIntegration>(_ => DesktopIntegrationFactory.Create());
         services.AddSingleton<IExternalFileLauncher, ExternalFileLauncher>();
         services.AddSingleton<AdvancedDiagnosticsWindowCoordinator>();
         services.AddSingleton<IAdvancedDiagnosticsWindowService>(serviceProvider =>
             serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>());
         services.AddSingleton<IDecisionHistoryStore>(serviceProvider =>
         {
-            var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
-            var settingsDirectory = Path.GetDirectoryName(settingsFilePath)
-                ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
-            return new JsonDecisionHistoryStore(Path.Combine(settingsDirectory, "decision-history.json"), serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+            return new JsonDecisionHistoryStore(
+                Path.Combine(paths.DataDirectory, "decision-history.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IAiSuggestionService, AiSuggestionService>();
         services.AddSingleton<MainViewModel>();

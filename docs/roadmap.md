@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.4 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
+OpenSorSe 1.5 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Platform adapters make Windows and Linux behavior explicit. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
 
 ## Completed releases
 
@@ -203,12 +203,34 @@ filesystem, hostile-package, runtime/unload, and platform verification pending.
 
 > Plugins analyze or propose; they do not grant mutation authority.
 
+## v1.5 - Cross-Platform Foundation and Linux Preview
+
+Source implementation complete; local Windows automated validation and manual
+Linux desktop/filesystem verification are tracked in Release Status.
+
+- Version: `v1.5`
+- Release name: **Cross-Platform Foundation and Linux Preview**
+- Git branch: `v1.5-cross-platform-foundation`
+- Small platform contracts and capability/limitation diagnostics.
+- Windows compatibility plus Linux XDG paths, case-sensitive semantics,
+  device/inode identity, permission diagnostics, watcher limitations, managed
+  plugins, OCR discovery, and desktop build/launch foundation.
+- Platform-aware non-overwriting Change Plan validation/execution/Undo.
+- Explicit workflow filename portability and plugin native RID constraints.
+- Windows/Ubuntu source CI with no package or release publishing.
+- macOS remains unverified; installers, updaters, distribution packages,
+  privileged services, and arbitrary shell execution are deferred.
+
+> Linux is a preview and every file mutation still requires explicit review,
+> confirmation, immediate validation, journalling, and verification.
+
 Release branches follow `v<version>-<primary-feature>`, for example:
 
 - `v1.1-safe-file-operations`
 - `v1.2-watched-folders`
 - `v1.3-workflow-profiles`
 - `v1.4-plugin-foundation`
+- `v1.5-cross-platform-foundation`
 
 ## Future release ideas
 

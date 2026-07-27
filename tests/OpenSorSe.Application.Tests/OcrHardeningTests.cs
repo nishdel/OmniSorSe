@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Content;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Core.Configuration;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
@@ -34,6 +35,24 @@ public sealed class OcrHardeningTests
         Assert.Equal(["deu", "eng"], capability.AvailableLanguages);
         Assert.Equal("fake-pdfium", capability.RasterizerIdentifier);
         Assert.Equal(2, runner.Calls.Count);
+    }
+
+    /// <summary>Verifies missing tool discovery stops before any process invocation.</summary>
+    [Fact]
+    public async Task Capability_MissingExecutableReportsDiscoveryReasonWithoutLaunching()
+    {
+        var runner = new FakeProcessRunner();
+        var engine = new TesseractCliOcrEngine(
+            new Configuration(),
+            new FakeRasterizer(1),
+            runner,
+            new MissingToolLocator());
+
+        var capability = await engine.DetectCapabilityAsync(CancellationToken.None);
+
+        Assert.False(capability.IsAvailable);
+        Assert.Contains("not installed", capability.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(runner.Calls);
     }
 
     /// <summary>Verifies a missing selected language pack prevents any recognition process.</summary>
@@ -205,7 +224,7 @@ public sealed class OcrHardeningTests
     private static TesseractCliOcrEngine CreateEngine(
         IPdfPageRasterizer rasterizer,
         ITesseractProcessRunner runner) =>
-        new(new Configuration(), rasterizer, runner);
+        new(new Configuration(), rasterizer, runner, new AvailableToolLocator());
 
     private static OcrRequest Request(string path) => new(
         path,
@@ -237,6 +256,18 @@ public sealed class OcrHardeningTests
             Current = settings;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class AvailableToolLocator : IExternalToolLocator
+    {
+        public ExternalToolLocation Locate(string commandName, string? configuredPath = null) =>
+            new(true, configuredPath ?? commandName, "Available for the controlled process-runner test.");
+    }
+
+    private sealed class MissingToolLocator : IExternalToolLocator
+    {
+        public ExternalToolLocation Locate(string commandName, string? configuredPath = null) =>
+            new(false, null, "The executable is not installed or not present on PATH.");
     }
 
     private sealed class FakeProcessRunner : ITesseractProcessRunner

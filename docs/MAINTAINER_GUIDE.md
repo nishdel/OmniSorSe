@@ -19,8 +19,14 @@ OpenSorSe release compatible, safe, and understandable.
    publish workflow. Source validation alone does not claim a release exists.
 
 The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains the
-packaging baseline. Apply the current [v1.4 manual checklist](MANUAL_TESTING_v1.4.md)
+packaging baseline. Apply the current [v1.5 manual checklist](MANUAL_TESTING_v1.5.md)
 and [Release Status](RELEASE_STATUS.md) in addition.
+
+For v1.5, record Windows and Linux results independently. A green local Windows
+run does not prove the Ubuntu workflow ran, and a successful Linux source build
+does not prove every distribution, desktop, mount, watcher limit, native
+dependency, or packaging format. Never turn an unobserved CI definition into a
+passed-CI claim.
 
 ## Version metadata locations
 

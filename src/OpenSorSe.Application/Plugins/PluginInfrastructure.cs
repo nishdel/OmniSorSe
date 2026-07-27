@@ -778,6 +778,21 @@ public sealed class PluginDiscoveryService : IPluginDiscoveryService
             return PluginCompatibilityState.RuntimeIncompatible;
         }
 
+        var currentRuntimeIdentifier = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        if (manifest.SupportedRuntimeIdentifiers.Count > 0 &&
+            !manifest.SupportedRuntimeIdentifiers.Contains(
+                currentRuntimeIdentifier,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return PluginCompatibilityState.PlatformIncompatible;
+        }
+
+        if (manifest.ContainsNativeDependencies &&
+            manifest.SupportedRuntimeIdentifiers.Count == 0)
+        {
+            return PluginCompatibilityState.PlatformIncompatible;
+        }
+
         _ = PluginManifestParser.TryVersion(manifest.MinimumOpenSorSeVersion, out var minimum);
         if (PluginLimits.HostVersion < minimum)
         {
@@ -820,9 +835,7 @@ public sealed class PluginDiscoveryService : IPluginDiscoveryService
     private static bool IsWithinDirectory(string directory, string candidate)
     {
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
-        var comparison = OperatingSystem.IsWindows()
-            ? StringComparison.OrdinalIgnoreCase
-            : StringComparison.Ordinal;
+        var comparison = OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
         return string.Equals(root, candidate, comparison) ||
                candidate.StartsWith(root + Path.DirectorySeparatorChar, comparison);
     }
@@ -848,7 +861,7 @@ public sealed class PluginDiscoveryService : IPluginDiscoveryService
     }
 
     private static StringComparison PathComparison =>
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
 
     private PluginDescriptor InvalidDescriptor(
         string pluginId,

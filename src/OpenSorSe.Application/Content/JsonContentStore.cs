@@ -12,7 +12,7 @@ public sealed class JsonContentStore : IContentStore
     private const long MaximumStoreBytes = 128L * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
     private static readonly StringComparer PathComparer =
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
     private readonly string _filePath;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);

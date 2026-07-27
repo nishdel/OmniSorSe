@@ -1,6 +1,7 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Executor.Models;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Executor;
 
@@ -175,17 +176,13 @@ public sealed class ChangePlanFactory : IChangePlanFactory
             : _fileSystem.NormalizePath(Path.Combine(root, destination));
 
     public static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        PlatformServices.CurrentPathSemantics.Comparer;
 
     public static StringComparison PathComparison =>
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        PlatformServices.CurrentPathSemantics.Comparison;
 
     public static bool IsWithinRoot(string root, string path)
-    {
-        var rootWithSeparator = $"{Path.TrimEndingDirectorySeparator(root)}{Path.DirectorySeparatorChar}";
-        return PathComparer.Equals(root, path) ||
-               path.StartsWith(rootWithSeparator, PathComparison);
-    }
+        => PlatformServices.CurrentPathSemantics.IsWithinRoot(root, path);
 
     private static string Bounded(string? value, int maximumLength)
     {

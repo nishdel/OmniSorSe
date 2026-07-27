@@ -50,6 +50,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="aiDiagnosticsCollector">The optional live process-session diagnostics collector.</param>
     /// <param name="diagnosticsCollector">The shared process-session advanced-diagnostics collector.</param>
     /// <param name="plugins">The optional local plugin-management presentation model.</param>
+    /// <param name="platformDiagnostics">The optional platform capability and location presentation model.</param>
     public SettingsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
@@ -58,7 +59,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IOcrService? ocrService = null,
         IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
         IDiagnosticsCollector? diagnosticsCollector = null,
-        PluginsViewModel? plugins = null)
+        PluginsViewModel? plugins = null,
+        PlatformDiagnosticsViewModel? platformDiagnostics = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
@@ -68,6 +70,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _contentStore = contentStore;
         _ocrService = ocrService;
         Plugins = plugins ?? new PluginsViewModel();
+        PlatformDiagnostics = platformDiagnostics;
         ConfigureAdvancedDiagnostics(_configurationService.Current);
         _draft = SettingsDraft.FromSettings(_configurationService.Current);
         _draft.PropertyChanged += OnDraftPropertyChanged;
@@ -116,6 +119,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets local plugin discovery, review, lifecycle, and package-management state.</summary>
     public PluginsViewModel Plugins { get; }
+
+    /// <summary>Gets current platform support, location, and limitation diagnostics.</summary>
+    public PlatformDiagnosticsViewModel? PlatformDiagnostics { get; }
+
+    /// <summary>Gets whether platform diagnostics were composed for this host.</summary>
+    public bool HasPlatformDiagnostics => PlatformDiagnostics is not null;
 
     /// <summary>
     /// Synchronizes the two globally visible shell switches into the editable Settings draft.

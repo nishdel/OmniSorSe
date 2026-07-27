@@ -2,12 +2,14 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the implemented
-v1.4 system and take precedence when an older document uses future-oriented
+v1.5 system and take precedence when an older document uses future-oriented
 language.
 
 ## Current implementation references
 
 - `00_System/00_Overview.md`: concise current component summary.
+- `00_System/08_v1.5_Platform_Architecture.md`: current Windows/Linux platform,
+  identity, filesystem, desktop, tool, and packaging boundaries.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
@@ -15,7 +17,7 @@ language.
 - `04_AI/11_Small_Model_Prompt_Contracts.md`: implemented provider contract and
   validation shape.
 - `05_Database/09_v1_Local_Content_Stores_and_Migrations.md`: implemented local
-  JSON-store boundary; despite the directory name, v1.4 does not use a
+  JSON-store boundary; despite the directory name, v1.5 does not use a
   relational database.
 - `06_Search/07_v1_Semantic_Index.md` and `08_v1_Tag_Provenance.md`: implemented
   local semantic/tag behavior.

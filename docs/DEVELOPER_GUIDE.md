@@ -13,8 +13,10 @@ git status --short --branch
 dotnet --info
 ```
 
-The supported Desktop target is currently Windows. The solution targets .NET 8
-and the exact SDK selection is in `global.json`.
+Windows is the locally verified Desktop target and Linux is the v1.5 preview
+target. The solution targets .NET 8 and the exact SDK selection is in
+`global.json`. Linux contributors should also read
+[Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
 
 ## 2. Restore and build
 
@@ -32,9 +34,10 @@ errors.
 dotnet run --project .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj
 ```
 
-OpenSorSe stores user-local state below `%LOCALAPPDATA%\OpenSorSe`. Use
-disposable scan roots for development. Do not test Change Plan Apply against
-important files.
+Windows stores user-local state below `%LOCALAPPDATA%\OpenSorSe`. Linux follows
+XDG configuration/data/state/cache locations. Settings → Platform diagnostics
+shows exact owned paths. Use disposable scan roots for development. Do not test
+Change Plan Apply against important files.
 
 ## 4. Run validation
 
@@ -49,6 +52,10 @@ git diff --check
 Repository documentation tests validate relative Markdown links, Mermaid fence
 shape, key entry points, SDK XML documentation, and the production project
 reference policy.
+
+GitHub Actions repeats restore, Debug/Release builds and complete tests,
+formatting, and documentation/dependency checks on `windows-latest` and
+`ubuntu-latest`. It does not publish artifacts.
 
 ## 5. Locate the major systems
 

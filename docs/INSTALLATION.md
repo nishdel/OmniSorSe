@@ -2,8 +2,8 @@
 
 ## Current release status
 
-OpenSorSe 1.4 is implemented and automatically validated in source, but this
-repository does not claim that a v1.4 binary package has been published. The
+OpenSorSe 1.5 is implemented in source, but this
+repository does not claim that a v1.5 binary package has been published. The
 previously produced portable package was v1.0 for Windows x64. Check the
 [Release Status](RELEASE_STATUS.md) and the repository's Releases page before
 expecting a newer download.
@@ -12,11 +12,11 @@ Do not download an `OpenSorSe` package from an unrelated site. A release archive
 should be accompanied by version notes and a SHA-256 checksum in the same
 official release.
 
-## Build and run v1.4 from source
+## Build and run v1.5 from source
 
 Prerequisites:
 
-- Windows 10 or later;
+- Windows 10 or later, or a Linux x64 graphical environment for the preview;
 - the .NET SDK selected by [`global.json`](../global.json);
 - Git if cloning the repository.
 
@@ -29,6 +29,8 @@ dotnet run --project .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj
 ```
 
 Use disposable folders when evaluating Change Plan Apply, recovery, or Undo.
+For Linux prerequisites, XDG locations, framework-dependent publish, launch,
+and limitations, follow [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
 
 ## Install an official portable release
 

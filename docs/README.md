@@ -1,6 +1,6 @@
 # OpenSorSe documentation
 
-This is the documentation entry point for OpenSorSe 1.4. Start with the section
+This is the documentation entry point for OpenSorSe 1.5. Start with the section
 that matches what you are trying to do. Documents with a version in their name
 describe that release; older versioned documents are retained as history and
 must not override the current architecture or safety documentation.
@@ -9,19 +9,21 @@ must not override the current architecture or safety documentation.
 
 | Audience | Start here | Then read |
 | --- | --- | --- |
-| User | [OpenSorSe README](../README.md) | [Installation](INSTALLATION.md), [v1.4 User Guide](USER_GUIDE_v1.4.md), and [Troubleshooting](TROUBLESHOOTING_v1.4.md) |
+| User | [OpenSorSe README](../README.md) | [Installation](INSTALLATION.md), [v1.5 User Guide](USER_GUIDE_v1.5.md), and [Troubleshooting](TROUBLESHOOTING_v1.5.md) |
 | Contributor | [Contributing](../CONTRIBUTING.md) | [Developer Guide](DEVELOPER_GUIDE.md), [Repository Structure](REPOSITORY_STRUCTURE.md), and [Architecture Overview](ARCHITECTURE_OVERVIEW.md) |
-| Plugin author | [Extension SDK](EXTENSION_SDK_v1.4.md) | [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md), [Manifest Reference](PLUGIN_MANIFEST_REFERENCE_v1.4.md), and [Local Packages](LOCAL_PLUGIN_PACKAGES_v1.4.md) |
+| Plugin author | [Extension SDK](EXTENSION_SDK_v1.4.md) | [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md), [Manifest Reference](PLUGIN_MANIFEST_REFERENCE_v1.4.md), and [v1.5 platform constraints](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md) |
 | Maintainer | [Maintainer Guide](MAINTAINER_GUIDE.md) | [Release Status](RELEASE_STATUS.md), [Safety and Privacy](SAFETY_AND_PRIVACY.md), and [Implementation Specifications](Implementation_Spec/README.md) |
 
 ## Users
 
 - [Installation and updates](INSTALLATION.md)
-- [OpenSorSe 1.4 User Guide](USER_GUIDE_v1.4.md)
-- [Manual verification checklist](MANUAL_TESTING_v1.4.md)
-- [Troubleshooting](TROUBLESHOOTING_v1.4.md)
+- [OpenSorSe 1.5 User Guide](USER_GUIDE_v1.5.md)
+- [Manual verification checklist](MANUAL_TESTING_v1.5.md)
+- [Troubleshooting](TROUBLESHOOTING_v1.5.md)
 - [Safety and Privacy](SAFETY_AND_PRIVACY.md)
-- [Version notes](VERSION_NOTES_v1.4.md)
+- [Version notes](VERSION_NOTES_v1.5.md)
+- [Platform capability matrix](PLATFORM_COMPATIBILITY_MATRIX.md)
+- [Linux build and launch](LINUX_BUILD_AND_LAUNCH.md)
 - [Known limitations and release readiness](RELEASE_STATUS.md)
 
 The user guide covers the first scan, Files, Watched Folders, Workflow Profiles,
@@ -55,6 +57,9 @@ designs are labelled by the [architecture index](Architecture/README.md).
 - [Watched Folders and incremental scanning](Architecture/02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md)
 - [Workflow Profiles and Sorting Recipes](Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
 - [Plugin Foundation](Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md)
+- [v1.5 platform architecture](Architecture/00_System/08_v1.5_Platform_Architecture.md)
+- [Workflow portability](WORKFLOW_PORTABILITY_v1.5.md)
+- [Watched Folders on Linux](WATCHED_FOLDERS_LINUX_v1.5.md)
 
 ## Extension SDK and plugins
 
@@ -62,7 +67,9 @@ designs are labelled by the [architecture index](Architecture/README.md).
 - [Plugin authoring](PLUGIN_AUTHOR_GUIDE_v1.4.md)
 - [Manifest schema](PLUGIN_MANIFEST_REFERENCE_v1.4.md)
 - [Local package lifecycle](LOCAL_PLUGIN_PACKAGES_v1.4.md)
+- [Plugin platform compatibility](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md)
 - [Plugin implementation specification](Implementation_Spec/v1.4/056_Plugin_Foundation_and_Extension_SDK.md)
+- [Cross-platform implementation specification](Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md)
 
 External plugins run in-process with the current user's permissions. A
 collectible assembly-load context is a dependency-isolation mechanism, not a
@@ -80,7 +87,7 @@ approval, the executor, credentials, or host dependency injection.
 - [Documentation inventory](DOCUMENTATION_INVENTORY.md)
 
 `RELEASE_CHECKLIST_v1.0.md` is historical and remains useful as the most recent
-packaging checklist. It is not by itself sufficient to publish v1.4; the v1.4
+packaging checklist. It is not by itself sufficient to publish v1.5; the v1.5
 manual checklist and maintainer guide identify the additional gates.
 
 ## Historical documentation

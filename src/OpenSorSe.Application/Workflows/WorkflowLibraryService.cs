@@ -215,7 +215,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 IsArchived = false,
                 Origin = profile.Origin.Kind == WorkflowOriginKind.Imported
                     ? profile.Origin
-                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.4.0"),
+                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.5.0"),
             });
             Validate(created);
             _profiles = Array.AsReadOnly(_profiles.Append(created).ToArray());
@@ -246,7 +246,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 Origin = new WorkflowProfileOrigin(
                     WorkflowOriginKind.Duplicated,
                     source.Id,
-                    "1.4.0"),
+                    "1.5.0"),
             });
             Validate(duplicate);
             _profiles = Array.AsReadOnly(_profiles.Append(duplicate).ToArray());
@@ -335,7 +335,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 IsArchived = false,
                 Origin = recipe.Origin.Kind == WorkflowOriginKind.Imported
                     ? recipe.Origin
-                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.4.0"),
+                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.5.0"),
             });
             Validate(created);
             _recipes = Array.AsReadOnly(_recipes.Append(created).ToArray());
@@ -366,7 +366,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 Origin = new WorkflowProfileOrigin(
                     WorkflowOriginKind.Duplicated,
                     source.Id,
-                    "1.4.0"),
+                    "1.5.0"),
             });
             Validate(duplicate);
             _recipes = Array.AsReadOnly(_recipes.Append(duplicate).ToArray());

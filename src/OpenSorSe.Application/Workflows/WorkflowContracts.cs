@@ -2,6 +2,7 @@
 
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Plugins;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Executor.Models;
 using OpenSorSe.Rules.Models;
@@ -242,6 +243,9 @@ public sealed record SortingRecipe(
     IReadOnlyList<RecipePreviewExample> PreviewExamples)
 {
     public IReadOnlyList<PluginContributionReference> PluginFieldContributions { get; init; } = [];
+
+    public FileNamePortabilityMode FileNamePortability { get; init; } =
+        FileNamePortabilityMode.Portable;
 }
 
 public sealed record WorkflowProfileOverride(

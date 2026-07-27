@@ -94,7 +94,7 @@ public sealed partial class RepositoryDocumentationTests
             "docs",
             "Architecture",
             "OpenSorSe_System_Map.md"));
-        Assert.Equal(4, MermaidBlockRegex().Matches(systemMap).Count);
+        Assert.Equal(5, MermaidBlockRegex().Matches(systemMap).Count);
         Assert.True(blockCount > 0);
         Assert.True(issues.Count == 0, $"Malformed Mermaid blocks:{Environment.NewLine}{string.Join(Environment.NewLine, issues)}");
     }
@@ -109,8 +109,10 @@ public sealed partial class RepositoryDocumentationTests
         {
             "../README.md",
             "../CONTRIBUTING.md",
-            "USER_GUIDE_v1.4.md",
-            "TROUBLESHOOTING_v1.4.md",
+            "USER_GUIDE_v1.5.md",
+            "TROUBLESHOOTING_v1.5.md",
+            "PLATFORM_COMPATIBILITY_MATRIX.md",
+            "LINUX_BUILD_AND_LAUNCH.md",
             "SAFETY_AND_PRIVACY.md",
             "ARCHITECTURE_OVERVIEW.md",
             "REPOSITORY_STRUCTURE.md",
@@ -119,6 +121,9 @@ public sealed partial class RepositoryDocumentationTests
             "Architecture/OpenSorSe_System_Map.md",
             "EXTENSION_SDK_v1.4.md",
             "PLUGIN_AUTHOR_GUIDE_v1.4.md",
+            "PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md",
+            "WORKFLOW_PORTABILITY_v1.5.md",
+            "WATCHED_FOLDERS_LINUX_v1.5.md",
             "Implementation_Spec/README.md",
         };
 

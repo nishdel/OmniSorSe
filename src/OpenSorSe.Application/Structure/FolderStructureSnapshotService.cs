@@ -103,10 +103,12 @@ public sealed class FolderStructureSnapshotService : IFolderStructureSnapshotSer
         relativePath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
     internal static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
 
     internal static string NormalizeForIdentity(string value) =>
-        OperatingSystem.IsWindows() ? value.ToUpperInvariant() : value;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.IsCaseSensitive
+            ? value
+            : value.ToUpperInvariant();
 
     internal static string Fingerprint(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));

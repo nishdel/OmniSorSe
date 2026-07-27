@@ -1,6 +1,9 @@
 # Documentation inventory
 
-This inventory records the v1.4 pre-commit documentation audit. Source
+This inventory records the v1.4 pre-commit documentation audit and the v1.5
+cross-platform addendum. The numerical inventory below is historical v1.4
+evidence; v1.5 link/structure tests enumerate the live tree instead of
+pretending those counts stayed fixed. Source
 documentation and the checked-in v1.0 distribution snapshot are counted
 separately so packaged copies do not masquerade as independent current
 documents. The audit read metadata and content from 237 source
@@ -77,7 +80,22 @@ product architecture.
 
 ## Current version-specific documentation
 
-These files are authoritative for v1.4 within their scope:
+These files are authoritative for v1.5 within their scope:
+
+- `docs/USER_GUIDE_v1.5.md`
+- `docs/TROUBLESHOOTING_v1.5.md`
+- `docs/MANUAL_TESTING_v1.5.md`
+- `docs/VERSION_NOTES_v1.5.md`
+- `docs/LINUX_BUILD_AND_LAUNCH.md`
+- `docs/PLATFORM_COMPATIBILITY_MATRIX.md`
+- `docs/PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md`
+- `docs/WORKFLOW_PORTABILITY_v1.5.md`
+- `docs/WATCHED_FOLDERS_LINUX_v1.5.md`
+- `docs/Architecture/00_System/08_v1.5_Platform_Architecture.md`
+- `docs/Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md`
+
+The v1.4 SDK and plugin documents remain authoritative for their stable
+contract and are extended, not replaced, by the v1.5 platform constraints:
 
 - `docs/USER_GUIDE_v1.4.md`
 - `docs/TROUBLESHOOTING_v1.4.md`

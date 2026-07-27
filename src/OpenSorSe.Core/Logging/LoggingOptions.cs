@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Core.Logging;
 
@@ -52,14 +53,6 @@ public sealed record LoggingOptions(
         }
     }
 
-    private static string GetDefaultLogDirectoryPath()
-    {
-        var localApplicationData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(localApplicationData))
-        {
-            localApplicationData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
-        }
-
-        return Path.Combine(localApplicationData, "OpenSorSe", "Logs");
-    }
+    private static string GetDefaultLogDirectoryPath() =>
+        new ApplicationPathProvider().Paths.DiagnosticsDirectory;
 }

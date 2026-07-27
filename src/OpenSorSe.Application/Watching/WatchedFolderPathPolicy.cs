@@ -2,11 +2,13 @@
 
 using System.Text;
 using System.Text.RegularExpressions;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Application.Watching;
 
 public sealed class WatchedFolderPathPolicy
 {
+    private readonly IPathSemantics _pathSemantics;
     private static readonly string[] BuiltInPatterns =
     [
         "~$*",
@@ -36,10 +38,20 @@ public sealed class WatchedFolderPathPolicy
     ];
 
     public static StringComparer PathComparer { get; } =
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        PlatformServices.CurrentPathSemantics.Comparer;
 
     public static StringComparison PathComparison { get; } =
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        PlatformServices.CurrentPathSemantics.Comparison;
+
+    public WatchedFolderPathPolicy()
+        : this(PlatformServices.CurrentPathSemantics)
+    {
+    }
+
+    public WatchedFolderPathPolicy(IPathSemantics pathSemantics)
+    {
+        _pathSemantics = pathSemantics ?? throw new ArgumentNullException(nameof(pathSemantics));
+    }
 
     public string CanonicalizeRoot(string path)
     {
@@ -49,10 +61,10 @@ public sealed class WatchedFolderPathPolicy
             throw new ArgumentException("A watched folder path must be absolute.", nameof(path));
         }
 
-        var fullPath = Path.GetFullPath(path.Trim());
+        var fullPath = _pathSemantics.NormalizeAbsolutePath(path.Trim());
         var pathRoot = Path.GetPathRoot(fullPath)
                        ?? throw new ArgumentException("A watched folder path must include a root.", nameof(path));
-        return PathComparer.Equals(fullPath, pathRoot)
+        return _pathSemantics.Comparer.Equals(fullPath, pathRoot)
             ? pathRoot
             : fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
@@ -61,7 +73,7 @@ public sealed class WatchedFolderPathPolicy
     {
         var canonicalRoot = CanonicalizeRoot(root);
         var canonicalCandidate = Path.GetFullPath(candidate);
-        if (PathComparer.Equals(canonicalRoot, canonicalCandidate))
+        if (_pathSemantics.Comparer.Equals(canonicalRoot, canonicalCandidate))
         {
             return true;
         }
@@ -70,7 +82,7 @@ public sealed class WatchedFolderPathPolicy
                      canonicalRoot.EndsWith(Path.AltDirectorySeparatorChar)
             ? canonicalRoot
             : canonicalRoot + Path.DirectorySeparatorChar;
-        return canonicalCandidate.StartsWith(prefix, PathComparison);
+        return canonicalCandidate.StartsWith(prefix, _pathSemantics.Comparison);
     }
 
     public bool Overlaps(string firstRoot, string secondRoot)
@@ -135,8 +147,10 @@ public sealed class WatchedFolderPathPolicy
             var candidate = Path.IsPathFullyQualified(ignoredPath)
                 ? Path.GetFullPath(ignoredPath)
                 : Path.GetFullPath(Path.Combine(canonicalRoot, ignoredPath));
-            if (PathComparer.Equals(candidate, canonicalPath) ||
-                canonicalPath.StartsWith(candidate.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, PathComparison))
+            if (_pathSemantics.Comparer.Equals(candidate, canonicalPath) ||
+                canonicalPath.StartsWith(
+                    candidate.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
+                    _pathSemantics.Comparison))
             {
                 return true;
             }
@@ -144,10 +158,15 @@ public sealed class WatchedFolderPathPolicy
 
         return BuiltInPatterns.Concat(configuration.IgnorePatterns)
             .Where(pattern => !string.IsNullOrWhiteSpace(pattern))
-            .Any(pattern => GlobMatches(pattern, relative) || GlobMatches(pattern, fileName));
+            .Any(pattern =>
+                GlobMatches(pattern, relative, !_pathSemantics.IsCaseSensitive) ||
+                GlobMatches(pattern, fileName, !_pathSemantics.IsCaseSensitive));
     }
 
-    public static bool GlobMatches(string pattern, string value)
+    public static bool GlobMatches(string pattern, string value) =>
+        GlobMatches(pattern, value, !PlatformServices.CurrentPathSemantics.IsCaseSensitive);
+
+    private static bool GlobMatches(string pattern, string value, bool ignoreCase)
     {
         if (string.IsNullOrWhiteSpace(pattern) || pattern.Length > WatchedFolderLimits.MaximumPatternLength)
         {
@@ -183,7 +202,9 @@ public sealed class WatchedFolderPathPolicy
         return Regex.IsMatch(
             normalizedValue,
             builder.ToString(),
-            OperatingSystem.IsWindows() ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant : RegexOptions.CultureInvariant,
+            ignoreCase
+                ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+                : RegexOptions.CultureInvariant,
             TimeSpan.FromMilliseconds(100));
     }
 }

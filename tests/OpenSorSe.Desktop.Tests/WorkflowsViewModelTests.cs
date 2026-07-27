@@ -2,6 +2,7 @@
 
 using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.ViewModels;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -119,6 +120,23 @@ public sealed class WorkflowsViewModelTests : IDisposable
         viewModel.ImportConflictPolicy = WorkflowImportConflictPolicy.Cancel;
         await viewModel.ImportCommand.ExecuteAsync(null);
         Assert.Contains("cancelled", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RecipeEditor_PersistsExplicitFilenamePortabilityPolicy()
+    {
+        var (viewModel, library) = CreateViewModel();
+        await viewModel.RefreshAsync();
+        viewModel.NewRecipeCommand.Execute(null);
+        viewModel.RecipeName = "Linux-local names";
+        viewModel.FileNamePortability = FileNamePortabilityMode.CurrentPlatform;
+
+        await viewModel.SaveRecipeCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(
+            await library.ListRecipesAsync(true, CancellationToken.None),
+            recipe => recipe.Name == "Linux-local names");
+        Assert.Equal(FileNamePortabilityMode.CurrentPlatform, saved.FileNamePortability);
     }
 
     [Fact]

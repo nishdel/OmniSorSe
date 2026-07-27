@@ -1,13 +1,35 @@
-# OpenSorSe 1.4 Safety and Privacy
+# OpenSorSe 1.5 Safety and Privacy
 
 OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe 1.4 continues to authorize only rename file, move file, and create
+OpenSorSe 1.5 continues to authorize only rename file, move file, and create
 directory through the v1.1 Change Plan execution boundary. Workflow and plugin
 features can contribute configuration, analysis, and proposals; they do not
 receive mutation authority.
+
+## Platform safety
+
+Platform-specific path comparison, filename rules, application locations,
+filesystem identity, link/permission/mount inspection, external-tool discovery,
+and desktop opening live behind focused adapters. Windows preserves the existing
+local-data layout. Linux uses XDG categories and never migrates or deletes
+Windows state.
+
+Scanning and reconciliation skip symbolic links/reparse points rather than
+following them outside an approved root. Plan validation remains lexical and
+fail-closed, and execution rechecks links and state immediately before mutation.
+A move requires a verified same filesystem and an unoccupied destination.
+Permission inspection is advisory; an actual operation failure is authoritative.
+OpenSorSe never elevates, runs `sudo`, changes ownership, broadly changes mode
+bits, or silently falls back to a less safe operation.
+
+Native volume/file-index and device/inode identities are bounded evidence, not
+permanent identity across copies, migrations, snapshots, network filesystems,
+containers, bind mounts, or identifier reuse. Fallback metadata is labelled
+weaker. Journal/rollback/Undo remain compensating filesystem operations rather
+than database transactions or universal durability guarantees.
 
 ## Workflow profiles and recipes
 

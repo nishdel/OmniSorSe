@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Desktop.Services;
 
@@ -7,6 +7,25 @@ namespace OpenSorSe.Desktop.Services;
 /// </summary>
 public sealed class ExternalFileLauncher : IExternalFileLauncher
 {
+    private readonly IDesktopIntegration _desktopIntegration;
+    private readonly IPathSemantics _pathSemantics;
+
+    /// <summary>Creates a launcher using the current platform adapters.</summary>
+    public ExternalFileLauncher()
+        : this(DesktopIntegrationFactory.Create(), PlatformServices.CurrentPathSemantics)
+    {
+    }
+
+    /// <summary>Creates a launcher with explicit desktop and path adapters.</summary>
+    public ExternalFileLauncher(
+        IDesktopIntegration desktopIntegration,
+        IPathSemantics pathSemantics)
+    {
+        _desktopIntegration = desktopIntegration ??
+                              throw new ArgumentNullException(nameof(desktopIntegration));
+        _pathSemantics = pathSemantics ?? throw new ArgumentNullException(nameof(pathSemantics));
+    }
+
     /// <inheritdoc />
     public Task<ExternalLaunchResult> OpenFileAsync(string fullPath, CancellationToken cancellationToken)
     {
@@ -21,7 +40,8 @@ public sealed class ExternalFileLauncher : IExternalFileLauncher
             return Task.FromResult(ExternalLaunchResult.Failure("The selected file is no longer available."));
         }
 
-        return Task.FromResult(TryStart(normalizedPath, "The selected file was opened."));
+        return Task.FromResult(
+            _desktopIntegration.OpenPath(normalizedPath, "The selected file was opened."));
     }
 
     /// <inheritdoc />
@@ -39,7 +59,8 @@ public sealed class ExternalFileLauncher : IExternalFileLauncher
             return Task.FromResult(ExternalLaunchResult.Failure("The containing folder is no longer available."));
         }
 
-        return Task.FromResult(TryStart(directory, "The containing folder was opened."));
+        return Task.FromResult(
+            _desktopIntegration.OpenPath(directory, "The containing folder was opened."));
     }
 
     /// <inheritdoc />
@@ -52,34 +73,11 @@ public sealed class ExternalFileLauncher : IExternalFileLauncher
             return Task.FromResult(ExternalLaunchResult.Failure("The selected folder is unavailable."));
         }
 
-        return Task.FromResult(TryStart(normalizedPath, "The selected folder was opened."));
+        return Task.FromResult(
+            _desktopIntegration.OpenPath(normalizedPath, "The selected folder was opened."));
     }
 
-    private static ExternalLaunchResult TryStart(string target, string successMessage)
-    {
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = target,
-                UseShellExecute = true,
-            });
-            return process is null
-                ? ExternalLaunchResult.Failure("The operating system did not open the selected item.")
-                : ExternalLaunchResult.Success(successMessage);
-        }
-        catch (Exception exception) when (
-            exception is InvalidOperationException
-            or System.ComponentModel.Win32Exception
-            or IOException
-            or UnauthorizedAccessException
-            or NotSupportedException)
-        {
-            return ExternalLaunchResult.Failure("The selected item could not be opened with the operating system.");
-        }
-    }
-
-    private static bool TryNormalizeAbsolutePath(string? fullPath, out string normalizedPath)
+    private bool TryNormalizeAbsolutePath(string? fullPath, out string normalizedPath)
     {
         normalizedPath = string.Empty;
         if (string.IsNullOrWhiteSpace(fullPath) || !Path.IsPathFullyQualified(fullPath))
@@ -89,7 +87,7 @@ public sealed class ExternalFileLauncher : IExternalFileLauncher
 
         try
         {
-            normalizedPath = Path.GetFullPath(fullPath);
+            normalizedPath = _pathSemantics.NormalizeAbsolutePath(fullPath);
             return Path.IsPathFullyQualified(normalizedPath);
         }
         catch (Exception exception) when (
