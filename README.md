@@ -11,7 +11,7 @@
 
 OpenSorSe is a modern, open-source Windows desktop application with a Linux preview for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, local meaning-based search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
 
-> OpenSorSe 1.5.0 adds explicit platform services, XDG persistence, Linux-safe core behavior, platform diagnostics, and Windows/Ubuntu validation while retaining preview-first, journalled file organization. Complete the [v1.5 manual checklist](docs/MANUAL_TESTING_v1.5.md) before making a binary release claim.
+> OpenSorSe 1.5.0 adds explicit platform services, XDG persistence, Linux-safe core behavior, platform diagnostics, and Windows/Ubuntu validation while retaining preview-first, journalled file organization.
 
 
 <img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
@@ -62,8 +62,7 @@ OpenSorSe is a modern, open-source Windows desktop application with a Linux prev
 
 ## Screenshots
 
-Screenshot files belong in [`docs/images/`](docs/images/README.md). The comments below already contain the intended relative Markdown links; uncomment each line after adding the corresponding real application capture.
-
+Screenshot files belong in [`docs/images/`](docs/images/README.md). The comments below already contain the intended relative Markdown links; 
 ### Home
 
 <!-- Home Screenshot: ![OpenSorSe Home dashboard](docs/images/home.png) -->
@@ -106,8 +105,7 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 This source tree does not claim a v1.5 package, installer, tag, or published
 release. The immutable historical v1.0 Windows package does not represent the
-current source. Build v1.5 from source and complete the platform-specific manual
-checklist before distributing a binary.
+current source. 
 
 ### Windows executable
 
