@@ -16,7 +16,7 @@ public sealed record LoggingOptions(
     int RetainedFileCount = 7)
 {
     /// <summary>
-    /// Gets the conservative v0.1 default local logging options.
+    /// Gets the conservative default local logging options.
     /// </summary>
     public static LoggingOptions Default { get; } = new(LogLevel.Information);
 

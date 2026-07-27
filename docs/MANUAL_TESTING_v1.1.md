@@ -50,4 +50,3 @@ Use only a disposable temporary directory containing copied test files. Never te
 - [ ] AI malformed response: no plan mutation and no filesystem work.
 - [ ] Duplicate review offers no deletion.
 - [ ] Check About reports 1.1.0 and executable properties report 1.1.0.0.
-

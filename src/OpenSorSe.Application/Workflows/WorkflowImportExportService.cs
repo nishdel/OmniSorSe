@@ -36,7 +36,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
         var envelope = new WorkflowExportEnvelope(
             WorkflowExportContentType.WorkflowProfile,
             WorkflowLibraryLimits.CurrentExportSchemaVersion,
-            "1.3.0",
+            "1.4.0",
             profile.Id,
             profile.Name,
             profile.Description,
@@ -59,7 +59,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
         var envelope = new WorkflowExportEnvelope(
             WorkflowExportContentType.SortingRecipe,
             WorkflowLibraryLimits.CurrentExportSchemaVersion,
-            "1.3.0",
+            "1.4.0",
             recipe.Id,
             recipe.Name,
             recipe.Description,
@@ -190,7 +190,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
             Origin = new WorkflowProfileOrigin(
                 WorkflowOriginKind.Imported,
                 imported.Id,
-                "1.3.0"),
+                "1.4.0"),
         }, cancellationToken).ConfigureAwait(false);
         return Success(created.Id, "Workflow profile imported as a validated user-created item.");
     }
@@ -251,7 +251,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
             Origin = new WorkflowProfileOrigin(
                 WorkflowOriginKind.Imported,
                 imported.Id,
-                "1.3.0"),
+                "1.4.0"),
         }, cancellationToken).ConfigureAwait(false);
         return Success(created.Id, "Sorting recipe imported as a validated declarative item.");
     }

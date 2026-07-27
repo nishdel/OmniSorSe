@@ -177,6 +177,6 @@ These enhancements should preserve the Themes component's primary responsibility
 
 * [GUI Overview](00_Overview.md)
 * [Main Window](01_Main_Window.md)
-* [Settings Page](06_Settings_Page.md)
+* [Settings Page](06_Settings_PAge.md)
 * [Notifications](09_Notifications.md)
 * [Dialogs](08_Dialogs.md)

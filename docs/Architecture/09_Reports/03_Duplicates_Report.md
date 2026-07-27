@@ -173,4 +173,4 @@ These enhancements should preserve the Duplicates Report's primary responsibilit
 * [Cleanup Report](02_Cleanup_Report.md)
 * [Statistics](01_Statistics.md)
 * [Duplicate Detection](../02_Scanner/05_Duplicate_Detection.md)
-* [Reports Page](../08_GUI/07_Reports_Page.md)
+* [Reports Page](../08_Gui/07_Reports_Page.md)

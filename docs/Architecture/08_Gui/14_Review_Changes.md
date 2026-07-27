@@ -30,4 +30,3 @@ Approval or editing returns the plan to review and clears prior validation. Appl
 ## Failure behavior
 
 Validation failures remain editable. Apply results expose the journal summary and verified Undo availability. Raw exceptions are not the only user message. Cancelling before execution changes no file; cancellation during execution is handled by the service at action boundaries and remains journalled.
-

@@ -7,6 +7,15 @@ using OpenSorSe.Core.Logging;
 
 namespace OpenSorSe.Application.Workflows;
 
+/// <summary>
+/// Persists user-owned Workflow Profiles and Sorting Recipes as one bounded versioned JSON library.
+/// </summary>
+/// <remarks>
+/// Canonical built-ins are supplied by code and are never written as user
+/// records. Writes serialize under a gate to a unique sibling before replacing
+/// the owned file. Malformed input is preserved with a diagnostic copy where
+/// possible so the library service can recover to safe built-ins.
+/// </remarks>
 public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -250,6 +259,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
             SelectedFileTypes = Array.AsReadOnly(value.Ai.SelectedFileTypes.ToArray()),
         },
         SortingRecipeIds = Array.AsReadOnly(value.SortingRecipeIds.ToArray()),
+        PluginContributions = Array.AsReadOnly(value.PluginContributions.ToArray()),
     };
 
     internal static SortingRecipe Clone(SortingRecipe value) => value with
@@ -269,6 +279,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
             Values = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
                 example.Values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase)),
         }).ToArray()),
+        PluginFieldContributions = Array.AsReadOnly(value.PluginFieldContributions.ToArray()),
     };
 
     private sealed record WorkflowLibraryEnvelope(

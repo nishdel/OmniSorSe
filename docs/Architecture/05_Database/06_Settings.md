@@ -188,4 +188,4 @@ These enhancements should preserve the Settings component's primary responsibili
 * [History](05_History.md)
 * [Scanner Overview](../02_Scanner/00_Overview.md)
 * [AI Overview](../04_AI/00_Overview.md)
-* [GUI Settings Page](../08_GUI/06_Settings_Page.md)
+* [GUI Settings Page](../08_Gui/06_Settings_PAge.md)

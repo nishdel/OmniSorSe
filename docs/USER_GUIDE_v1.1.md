@@ -53,4 +53,3 @@ By default the two v1.1 stores are:
 On startup, OpenSorSe inspects operations left Pending or Running. It marks them **Interrupted** and records only states supported by actual path and identity evidence. Ambiguous actions require manual review; OpenSorSe does not guess that a move or directory creation succeeded.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
-

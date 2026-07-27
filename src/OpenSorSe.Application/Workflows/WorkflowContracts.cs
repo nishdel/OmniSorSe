@@ -1,6 +1,7 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Plugins;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Executor.Models;
 using OpenSorSe.Rules.Models;
@@ -189,7 +190,10 @@ public sealed record WorkflowProfile(
     WorkflowChangePlanOptions ChangePlans,
     WorkflowNotificationOptions Notifications,
     WorkflowScanBehavior IncrementalScan,
-    WorkflowScanBehavior FullScan);
+    WorkflowScanBehavior FullScan)
+{
+    public IReadOnlyList<PluginContributionReference> PluginContributions { get; init; } = [];
+}
 
 public sealed record RecipeApplicability(
     IReadOnlyList<string> IncludedFileTypes,
@@ -235,7 +239,10 @@ public sealed record SortingRecipe(
     WorkflowUncertaintyPolicy UncertaintyPolicy,
     bool PreserveExtension,
     IReadOnlyList<FileRule> Rules,
-    IReadOnlyList<RecipePreviewExample> PreviewExamples);
+    IReadOnlyList<RecipePreviewExample> PreviewExamples)
+{
+    public IReadOnlyList<PluginContributionReference> PluginFieldContributions { get; init; } = [];
+}
 
 public sealed record WorkflowProfileOverride(
     long? MaximumFileSizeBytes = null,
@@ -259,7 +266,10 @@ public sealed record WorkflowConfigurationSnapshot(
     WorkflowNotificationOptions Notifications,
     WorkflowScanBehavior ScanBehavior,
     string ResolutionSource,
-    DateTimeOffset ResolvedAtUtc);
+    DateTimeOffset ResolvedAtUtc)
+{
+    public IReadOnlyList<ResolvedPluginContributionSnapshot> PluginContributions { get; init; } = [];
+}
 
 public sealed record WorkflowRecipeSnapshot(
     string RecipeId,
@@ -319,7 +329,15 @@ public sealed record WorkflowValidationResult(
 public sealed record RecipeFieldValue(
     string Value,
     string EvidenceSource,
-    bool IsAiDerived = false);
+    bool IsAiDerived = false)
+{
+    public string? PluginId { get; init; }
+    public string? PluginVersion { get; init; }
+    public string? ContributionId { get; init; }
+    public string? Reason { get; init; }
+    public string? Evidence { get; init; }
+    public double? Confidence { get; init; }
+}
 
 public sealed record RecipeEvaluationContext(
     string OrganizationRoot,
@@ -365,6 +383,7 @@ public sealed class WorkflowProfileUnavailableException : InvalidOperationExcept
     }
 }
 
+/// <summary>Persists the bounded versioned user workflow library atomically.</summary>
 public interface IWorkflowLibraryStore
 {
     Task<WorkflowLibraryLoadResult> LoadAsync(CancellationToken cancellationToken);
@@ -374,6 +393,7 @@ public interface IWorkflowLibraryStore
         CancellationToken cancellationToken);
 }
 
+/// <summary>Validates complete profiles and recipes independently of presentation input checks.</summary>
 public interface IWorkflowValidator
 {
     WorkflowValidationResult ValidateProfile(
@@ -383,11 +403,13 @@ public interface IWorkflowValidator
     WorkflowValidationResult ValidateRecipe(SortingRecipe recipe);
 }
 
+/// <summary>Finds known assignments and snapshots that protect workflow items from unsafe deletion.</summary>
 public interface IWorkflowUsageInspector
 {
     Task<WorkflowUsageInfo> InspectAsync(string itemId, CancellationToken cancellationToken);
 }
 
+/// <summary>Owns built-in and user Workflow Profile/Sorting Recipe lifecycle.</summary>
 public interface IWorkflowLibraryService
 {
     Task InitializeAsync(CancellationToken cancellationToken);
@@ -413,12 +435,14 @@ public interface IWorkflowLibraryService
     string? PreservedCorruptCopyPath { get; }
 }
 
+/// <summary>Validates and evaluates the constrained non-executable recipe template language.</summary>
 public interface IWorkflowTemplateEngine
 {
     WorkflowValidationResult ValidateRecipeTemplates(SortingRecipe recipe);
     RecipeEvaluationResult Evaluate(SortingRecipe recipe, RecipeEvaluationContext context);
 }
 
+/// <summary>Creates immutable fail-closed effective configurations for manual and watched scans.</summary>
 public interface IWorkflowConfigurationResolver
 {
     Task<WorkflowResolutionResult> ResolveForWatchedFolderAsync(
@@ -431,6 +455,7 @@ public interface IWorkflowConfigurationResolver
         CancellationToken cancellationToken);
 }
 
+/// <summary>Transfers bounded versioned workflow JSON through host validation and conflict policy.</summary>
 public interface IWorkflowImportExportService
 {
     Task<string> ExportProfileAsync(string profileId, CancellationToken cancellationToken);
@@ -441,6 +466,7 @@ public interface IWorkflowImportExportService
         CancellationToken cancellationToken);
 }
 
+/// <summary>Converts evaluated recipe proposals into pending provenance-rich Change Plans.</summary>
 public interface IWorkflowRecipePlanService
 {
     Task<WorkflowRecipePlanResult> CreatePlanAsync(

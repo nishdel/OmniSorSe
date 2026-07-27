@@ -184,5 +184,5 @@ These enhancements should extend extraction capabilities while preserving the co
 
 * [Readers Overview](00_Overview.md)
 * [Video Reader](07_Video.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Summarization](../04_AI/05_Summarization.md)

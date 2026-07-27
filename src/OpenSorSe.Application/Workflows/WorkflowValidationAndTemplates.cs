@@ -7,6 +7,15 @@ using static OpenSorSe.Application.Workflows.WorkflowValidationResults;
 
 namespace OpenSorSe.Application.Workflows;
 
+/// <summary>
+/// Parses and evaluates the constrained field/date template language used by Sorting Recipes.
+/// </summary>
+/// <remarks>
+/// Recipe text is data, never executable code. Evaluation performs one bounded
+/// substitution pass followed by portable filename sanitization, reserved-name
+/// checks, path normalization, root confinement, and collision policy. It does
+/// not create directories or move files.
+/// </remarks>
 public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
 {
     private static readonly IReadOnlySet<string> SupportedFields = new HashSet<string>(
@@ -46,6 +55,11 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
     [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant)]
     private static partial Regex WhitespaceRegex();
 
+    [GeneratedRegex(
+        @"^plugin\.[a-z0-9](?:[a-z0-9.-]{0,126}[a-z0-9])?\.[a-z0-9](?:[a-z0-9.-]{0,126}[a-z0-9])?$",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex PluginFieldRegex();
+
     public WorkflowValidationResult ValidateRecipeTemplates(SortingRecipe recipe)
     {
         ArgumentNullException.ThrowIfNull(recipe);
@@ -68,7 +82,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
                 .Concat(recipe.OptionalFields)
                 .Concat(recipe.FallbackValues.Keys)
                 .ToArray();
-            if (declaredFields.Any(field => !SupportedFields.Contains(field)))
+            if (declaredFields.Any(field => !IsSupportedField(field)))
             {
                 issues.Add(new WorkflowValidationIssue(
                     "template.declared-field",
@@ -331,7 +345,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
 
         foreach (var token in tokens.Where(token => token.Field is not null))
         {
-            if (!SupportedFields.Contains(token.Field!))
+            if (!IsSupportedField(token.Field!))
             {
                 issues.Add(new WorkflowValidationIssue(
                     "template.field",
@@ -544,6 +558,10 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         }
     }
 
+    private static bool IsSupportedField(string field) =>
+        SupportedFields.Contains(field) ||
+        field.Length <= 270 && PluginFieldRegex().IsMatch(field);
+
     private static bool TryParse(string template, out IReadOnlyList<TemplateToken> tokens)
     {
         var result = new List<TemplateToken>();
@@ -626,6 +644,14 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
     private sealed record TemplateToken(string? Literal, string? Field, string? Format);
 }
 
+/// <summary>
+/// Validates complete Workflow Profile and Sorting Recipe models before persistence, import, or resolution.
+/// </summary>
+/// <remarks>
+/// Validation is deliberately stricter than UI input checks so malformed or
+/// future data cannot bypass capability, dependency, template, path, or bound
+/// rules through direct JSON editing.
+/// </remarks>
 public sealed class WorkflowValidator : IWorkflowValidator
 {
     private readonly IWorkflowTemplateEngine _templateEngine;
@@ -672,7 +698,8 @@ public sealed class WorkflowValidator : IWorkflowValidator
 
         if (profile.Files.IncludedFileTypes is null ||
             profile.Files.ExcludedFileTypes is null ||
-            profile.Ai.SelectedFileTypes is null)
+            profile.Ai.SelectedFileTypes is null ||
+            profile.PluginContributions is null)
         {
             Add(issues, "profile.collections", "The workflow profile contains a missing typed collection.");
             return Result(issues);
@@ -704,6 +731,11 @@ public sealed class WorkflowValidator : IWorkflowValidator
         {
             Add(issues, "profile.file-types", "Included and excluded file-type lists cannot overlap.");
         }
+
+        ValidatePluginReferences(
+            profile.PluginContributions,
+            expectedPoint: null,
+            issues);
 
         if (profile.Origin.SourceId is { } sourceId &&
             !Bounded(sourceId, WorkflowLibraryLimits.MaximumIdentifierLength) ||
@@ -796,6 +828,7 @@ public sealed class WorkflowValidator : IWorkflowValidator
 
         if (recipe.Applicability.IncludedFileTypes is null ||
             recipe.Applicability.Categories is null ||
+            recipe.PluginFieldContributions is null ||
             recipe.PreviewExamples.Any(example =>
                 example is null ||
                 example.Values is null))
@@ -835,10 +868,10 @@ public sealed class WorkflowValidator : IWorkflowValidator
         }
 
         if (recipe.RequiredFields.Concat(recipe.OptionalFields)
-            .Any(field => !Bounded(field, 64)) ||
+            .Any(field => !ValidFieldName(field)) ||
             recipe.RequiredFields.Intersect(recipe.OptionalFields, StringComparer.OrdinalIgnoreCase).Any() ||
             recipe.FallbackValues.Any(pair =>
-                !Bounded(pair.Key, 64) ||
+                !ValidFieldName(pair.Key) ||
                 pair.Value is null ||
                 pair.Value.Length > 256 ||
                 pair.Value.Any(char.IsControl)) ||
@@ -846,6 +879,11 @@ public sealed class WorkflowValidator : IWorkflowValidator
         {
             Add(issues, "recipe.fields", "Recipe fields and fallbacks must be bounded and unambiguous.");
         }
+
+        ValidatePluginReferences(
+            recipe.PluginFieldContributions,
+            OpenSorSe.Extensions.Abstractions.ExtensionPointKind.RecipeFieldProvider,
+            issues);
 
         if (recipe.Rules.Any(rule => !IsValidRecipeRule(rule)) ||
             recipe.Rules
@@ -999,6 +1037,42 @@ public sealed class WorkflowValidator : IWorkflowValidator
         !string.IsNullOrWhiteSpace(value) &&
         value.Length <= maximum &&
         !value.Any(char.IsControl);
+
+    private static bool ValidFieldName(string? value) =>
+        Bounded(value, 64) ||
+        value is { Length: <= 270 } &&
+        value.StartsWith("plugin.", StringComparison.Ordinal) &&
+        value.All(character =>
+            char.IsAsciiLetterOrDigit(character) ||
+            character is '.' or '-');
+
+    private static void ValidatePluginReferences(
+        IReadOnlyList<OpenSorSe.Application.Plugins.PluginContributionReference> references,
+        OpenSorSe.Extensions.Abstractions.ExtensionPointKind? expectedPoint,
+        List<WorkflowValidationIssue> issues)
+    {
+        if (references.Count > WorkflowLibraryLimits.MaximumFields ||
+            references.Any(reference =>
+                reference is null ||
+                !Bounded(reference.PluginId, 128) ||
+                !Bounded(reference.ContributionId, 128) ||
+                reference.PluginVersion is null ||
+                !OpenSorSe.Application.Plugins.PluginManifestParser.TryVersion(
+                    reference.PluginVersion,
+                    out _) ||
+                !Enum.IsDefined(reference.ExtensionPoint) ||
+                expectedPoint is not null && reference.ExtensionPoint != expectedPoint) ||
+            references
+                .Select(reference => (reference.PluginId, reference.ContributionId, reference.ExtensionPoint))
+                .Distinct()
+                .Count() != references.Count)
+        {
+            Add(
+                issues,
+                "plugin.references",
+                "Plugin contribution references must be bounded, unique, versioned when specified, and use the expected extension point.");
+        }
+    }
 
     private static void Add(
         List<WorkflowValidationIssue> issues,

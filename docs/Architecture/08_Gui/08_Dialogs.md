@@ -175,5 +175,5 @@ These enhancements should preserve the Dialogs component's primary responsibilit
 * [GUI Overview](00_Overview.md)
 * [Main Window](01_Main_Window.md)
 * [Notifications](09_Notifications.md)
-* [Settings Page](06_Settings_Page.md)
+* [Settings Page](06_Settings_PAge.md)
 * [Results Page](04_Results_Page.md)

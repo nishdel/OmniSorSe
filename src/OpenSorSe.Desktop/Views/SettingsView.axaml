@@ -298,6 +298,10 @@
                 </StackPanel>
             </Border>
 
+            <Border Classes="card">
+                <views:PluginsView DataContext="{Binding Plugins}" />
+            </Border>
+
             <TextBlock Text="Restart required only to apply active logging changes."
                        IsVisible="{Binding RestartRequired}"
                        TextWrapping="Wrap" />

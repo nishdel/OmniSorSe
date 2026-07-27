@@ -16,10 +16,11 @@
 | v1.1 Safe File Operations and Robustness | Stable source implementation and automated validation complete; manual UI/platform/package verification pending | Exact restore, Debug/Release builds, and 659 automated tests passed with zero warnings/errors. | Persisted Change Plans, Review Changes, immediate preflight, non-overwriting rename/move/create, durable Operation Journal, verification, rollback, interruption recovery, conflict-aware Undo, Operation History, and report export. |
 | v1.2 Watched Folders and Incremental Scanning | Source implementation and automated validation complete; manual GUI/filesystem/platform/package verification pending | Debug/Release builds and 724 automated tests passed with zero failures/skips; `git diff --check` clean. | Persistent watched roots, bounded debounced hint queue, stability deferral/retry, incremental catalogue updates, offline/full reconciliation, canonical ignores, per-item optional AI retry state, v1.1 Change Plan reuse, self-event correlation, grouped activity, and Watched Folders UI. |
 | v1.3 Workflow Profiles and Recipe Library | Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending | Debug/Release builds and 761 automated tests passed with zero failures/skips; formatting and diff validation clean. | Persistent typed profiles/recipes, safe templates/previews, immutable resolution snapshots, watched/manual integration, Change Plan provenance, profile-aware AI gates, import/export/recovery, Workflows UI, and documentation. |
+| v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 
 ## Current product boundary
 
-OpenSorSe 1.3 is a safe, local-first desktop application for understanding, monitoring, and organizing explicitly selected folders. Reusable workflows configure scanning and analysis but do not grant mutation authority. AI and Advanced mode are independent and disabled by default. OCR and Semantic Search Beta are also separate local opt-ins and never activate AI.
+OpenSorSe 1.4 is a safe, local-first desktop application for understanding, monitoring, and organizing explicitly selected folders. Reusable workflows and plugin contributions configure scanning and analysis but do not grant mutation authority. AI and Advanced mode are independent and disabled by default. OCR and Semantic Search Beta are also separate local opt-ins and never activate AI.
 
 The current Desktop workflow does not:
 
@@ -36,33 +37,35 @@ Scanning, duplicate review, extraction, OCR, tagging, indexing/search, compariso
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.
 
+> Plugins analyze or propose; they do not grant mutation authority.
+
 Watcher APIs are treated as fallible hints. Enabled roots are reconciled on startup, resume, reconnect, overflow, at least daily while running, and on demand. Missing storage retains configuration/catalogue/history; overlapping roots are rejected.
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic semantic vectors, structure history, Change Plans, and the Operation Journal under local application data. Current persistence, mutation, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic semantic vectors, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
 
 ## Validation baseline
 
-The exact standard in-place restore completed successfully. Current-source Debug and Release builds both succeeded with zero warnings and zero errors. The full suite passed 761 tests in each configuration with none skipped: Core 46, Scanner 61, Rules 68, Executor 60, Application 354, and Desktop 172. Inherited v1.1/v1.2 coverage still validates the complete Change Plan/execution/journal/recovery/Undo boundary and watched-folder configuration, event, reconciliation, stability, AI, correlation, and presentation behavior. v1.3 adds lifecycle/migration/corruption/dependency tests, template traversal/root/reserved/collision/Unicode/AI-data safety, precedence and immutable history, review-only provenance, import hardening, profile-aware AI, manual selection, and management ViewModels.
+The exact standard in-place restore completed successfully. Current-source Debug and Release builds both succeeded with zero warnings and zero errors. The full suite passed 836 tests in each configuration with none skipped: Core 51, Scanner 61, Rules 68, Executor 60, Application 417, and Desktop 179. Inherited v1.1/v1.2/v1.3 coverage still validates the complete Change Plan/execution/journal/recovery/Undo boundary, watched folders, workflows, templates, import, AI gates, and presentation behavior. v1.4 adds malformed/oversized manifest and discovery coverage, dependencies/cycles/version/compatibility/integrity, hostile packages/upgrade/rollback/removal, external load-context behavior, lifecycle exception/timeout/cancellation/quarantine/conflicts, capability-gated registration, every extension point, workflow/watcher fail-closed resolution, immutable plugin provenance, template confinement, Change Plan state, Plugins ViewModel actions, repository dependency policy, case-correct documentation links, Mermaid structure, documentation entry points, and SDK XML-documentation coverage.
 
-Source and compiled assembly metadata report product/informational version `1.3.0` and assembly/file version `1.3.0.0`; About displays `1.3`. A v1.3 portable package, signature, installer, or interactive GUI validation is not claimed by this source implementation.
+Source and compiled assembly metadata report product/informational version `1.4.0` and assembly/file version `1.4.0.0`; About displays `1.4`. A v1.4 portable package, signature, installer, or interactive GUI validation is not claimed by this source implementation.
 
 Tesseract is not installed or discoverable in this development environment, so live recognition was not claimed. Automated tests cover version/language detection, argument construction, cancellation, timeout, empty/oversized output, missing languages, mixed-page coordination, cleanup, and provider isolation through fakes. The PDF renderer itself was exercised in process against a generated real PDF.
 
 ## Documentation status
 
-The architecture directory contains both current implementation documentation and longer-term design material. The 1.2/1.3 documents identify watched configuration/lifecycle, workflow profile/recipe persistence and resolution, template safety, immutable history, watcher hints/debounce/stability, incremental processing, reconciliation, ignore/backpressure/AI rules, self-event correlation, Change Plans, the Operation Journal, Review Changes, Operation History, safe execution/rollback/Undo/recovery, and the existing content/OCR/semantic/AI/structure components. Rich media/archive readers, relational database architecture, plugins, broad localization, cloud indexing, signed installers, and automated publishing remain design material unless a release specification explicitly marks them implemented.
+The architecture directory contains both current implementation documentation and longer-term design material. The 1.2/1.3/1.4 documents identify watched configuration/lifecycle, workflow profile/recipe persistence and resolution, plugin SDK/manifest/discovery/dependencies/integrity/lifecycle/packages, template safety, immutable history/provenance, reconciliation, AI rules, Change Plans, journal, review, execution/rollback/Undo/recovery, and existing content/OCR/semantic/AI/structure components. Rich media/archive readers, relational database architecture, online plugin services/sandbox/signing authority, broad localization, cloud indexing, signed installers, and automated publishing remain design material unless a release specification explicitly marks them implemented.
 
 ## Current release
 
-OpenSorSe 1.3 source implementation and automated validation are complete on `v1.3-workflow-profiles`. Release branches follow `v<version>-<primary-feature>`. Do not publish a stable binary until the inherited GUI/OCR/Ollama/platform, v1.1 execution/recovery, v1.2 watcher/filesystem, and v1.3 workflow/template/import checklists pass on disposable data. See the [user guide](USER_GUIDE_v1.3.md), [safety documentation](SAFETY_AND_PRIVACY.md), [implementation specification](Implementation_Spec/v1.3/055_Workflow_Profiles_and_Recipe_Library.md), and [manual checklist](MANUAL_TESTING_v1.3.md).
+OpenSorSe 1.4 source implementation and automated validation are complete on `v1.4-plugin-foundation`. Release branches follow `v<version>-<primary-feature>`. Do not publish a stable binary until the inherited GUI/OCR/Ollama/platform, v1.1 execution/recovery, v1.2 watcher/filesystem, v1.3 workflow/template/import, and v1.4 plugin/package/runtime checklists pass on disposable data. See the [user guide](USER_GUIDE_v1.4.md), [safety documentation](SAFETY_AND_PRIVACY.md), [implementation specification](Implementation_Spec/v1.4/056_Plugin_Foundation_and_Extension_SDK.md), and [manual checklist](MANUAL_TESTING_v1.4.md).
 
 ## Release identity
 
-- Version: `v1.3`
-- Release name: **Workflow Profiles and Recipe Library**
-- Git branch: `v1.3-workflow-profiles`
+- Version: `v1.4`
+- Release name: **Plugin Foundation and Extension SDK**
+- Git branch: `v1.4-plugin-foundation`
 - Status: source implementation and automated validation complete; manual validation pending.
 
-The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, and `v1.3-workflow-profiles`.
+The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, `v1.3-workflow-profiles`, and `v1.4-plugin-foundation`.

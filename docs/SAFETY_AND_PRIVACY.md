@@ -1,10 +1,13 @@
-# OpenSorSe 1.3 Safety and Privacy
+# OpenSorSe 1.4 Safety and Privacy
 
 OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe 1.3 continues to authorize only rename file, move file, and create directory through the v1.1 Change Plan execution boundary.
+OpenSorSe 1.4 continues to authorize only rename file, move file, and create
+directory through the v1.1 Change Plan execution boundary. Workflow and plugin
+features can contribute configuration, analysis, and proposals; they do not
+receive mutation authority.
 
 ## Workflow profiles and recipes
 
@@ -101,6 +104,9 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Watched-folder configurations | `watched-folders.json` | Up to 64 schema-versioned roots with scope, ignore, analysis, notification, quiet-period, lifecycle, and catalogue settings; atomically replaced. |
 | Watched catalogues | `watched-catalogues.json` | Up to 250,000 files per catalogue and 256 MiB total; stores metadata, stable/best-effort identity, derived results, AI retry state, directories, and reconciliation facts without file contents. |
 | Watched activity | `watched-activity.json` | Up to 1,000 grouped lifecycle/batch/scan/error/plan activities and 16 MiB total; raw watcher events are not persisted individually. |
+| Workflow Profiles and Sorting Recipes | `workflow-library.json` | Bounded schema-versioned user items with atomic replacement; canonical built-ins are application-owned and corrupt user data is preserved where possible before safe recovery. |
+| Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
+| Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
 
 Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
 
@@ -122,7 +128,38 @@ Clearing Structure history changes no user file, but removes the local record us
 
 The Desktop registers `IChangePlanExecutionService` as the production user-file mutation boundary. `ChangePlanExecutionService` delegates low-level mutations only to `IFileSystemGateway`; ViewModels, watched-folder services, scanners, rules, and AI services perform no raw file operations. The v1.0 deterministic restructuring compatibility workflow converts its exact confirmed moves into a Change Plan and calls the same execution service.
 
-The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1/v1.2/v1.3 suggestions or organization workflows.
+The repository still contains the pre-v1.1 `IActionExecutor`/`IUndoEngine` compatibility library and its regression tests. It is not registered or exposed by the Desktop and is not used by v1.1/v1.2/v1.3/v1.4 suggestions or organization workflows.
+
+## Plugin boundary
+
+v1.4 plugins receive immutable, bounded requests through the standalone
+Extension SDK. They do not receive the Desktop service provider, mutation
+gateway, Change Plan execution service, Operation Journal, settings store,
+credential store, or global AI controls. Plugin metadata, extraction,
+classification, duplicate signals, workflow values, and recipe fields are
+analysis inputs. Import extensions return proposals for host validation; export
+extensions return bounded bytes and the host chooses whether and where to
+write them.
+
+External plugins are disabled until explicit enable and capability grant.
+Strict manifests, controlled discovery, deterministic dependencies, output
+validation, timeouts, exception containment, repeated-failure quarantine, and
+installed-content hashes reduce accidental and operational risk. Missing,
+changed, incompatible, conflicting, or quarantined capabilities fail closed.
+
+These controls do not make third-party code safe. Plugins execute in the
+OpenSorSe process with the current user's operating-system permissions. A
+collectible assembly load context is dependency/unload isolation, not an OS
+sandbox. SHA-256 detects content change but does not authenticate a publisher.
+v1.4 has no signature authority, marketplace, download/automatic update,
+package script, arbitrary UI injection, or supported direct file-mutation
+extension point. Install only trusted plugins and grant the least capability
+set.
+
+Any plugin-influenced organization output remains a Pending Change Plan with
+exact plugin/version/contribution/value provenance. It must pass the existing
+review, approval, live preflight, explicit Apply, durable journal,
+verification, recovery, rollback, history, and conflict-aware Undo path.
 
 ## Undo
 
@@ -132,7 +169,7 @@ Unsafe actions are marked blocked; they do not overwrite or destroy newer data. 
 
 ## Recovery
 
-Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, and v1.3 workflow-library stores are valid empty states. Corrupt workflow data preserves the original and attempts a diagnostic copy before built-ins-only recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
+Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, v1.3 workflow-library, and v1.4 plugin-state stores are valid empty states. Corrupt workflow data preserves the original and attempts a diagnostic copy before built-ins-only recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Invalid plugin state or installed content cannot activate an external contribution. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
 
 At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 

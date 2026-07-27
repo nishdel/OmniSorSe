@@ -215,7 +215,7 @@ public sealed class ChangePlanFactory : IChangePlanFactory
         {
             ValuesUsed = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(
                 provenance.ValuesUsed.ToDictionary(
-                    pair => Bounded(pair.Key, 128),
+                    pair => Bounded(pair.Key, 512),
                     pair => Bounded(pair.Value, 512),
                     StringComparer.OrdinalIgnoreCase)),
             EvidenceSources = Array.AsReadOnly(provenance.EvidenceSources
@@ -226,7 +226,23 @@ public sealed class ChangePlanFactory : IChangePlanFactory
                 .Select(value => Bounded(value, 1_024))
                 .ToArray()),
             UnresolvedFields = Array.AsReadOnly(provenance.UnresolvedFields
-                .Select(value => Bounded(value, 128))
+                .Select(value => Bounded(value, 512))
+                .ToArray()),
+            PluginContributions = Array.AsReadOnly(provenance.PluginContributions
+                .Select(value => value with
+                {
+                    PluginId = Bounded(value.PluginId, 128),
+                    PluginVersion = Bounded(value.PluginVersion, 64),
+                    ContributionId = Bounded(value.ContributionId, 128),
+                    ExtensionPoint = Bounded(value.ExtensionPoint, 64),
+                    Reason = Bounded(value.Reason, 1_024),
+                    Evidence = BoundedOrNull(value.Evidence, 1_024),
+                    Confidence = value.Confidence is { } confidence &&
+                                 double.IsFinite(confidence) &&
+                                 confidence is >= 0 and <= 1
+                        ? confidence
+                        : null,
+                })
                 .ToArray()),
         };
     }

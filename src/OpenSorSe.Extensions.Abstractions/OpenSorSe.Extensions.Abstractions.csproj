@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Description>Stable, versioned extension contracts for OpenSorSe plugin authors.</Description>
+  </PropertyGroup>
+</Project>

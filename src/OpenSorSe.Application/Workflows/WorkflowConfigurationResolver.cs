@@ -1,29 +1,49 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.Plugins;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Rules.Models;
 
 namespace OpenSorSe.Application.Workflows;
 
+/// <summary>
+/// Resolves a profile, recipe selection, application settings, and plugin dependencies into one immutable effective configuration.
+/// </summary>
+/// <remarks>
+/// Resolution is conjunctive: application-wide safety switches are ceilings,
+/// while profile, watched-root, and one-time settings can only narrow them.
+/// Exact plugin-version dependencies must be active and compatible. Missing or
+/// unavailable capabilities fail closed; unrelated profiles are never used as
+/// a silent fallback.
+/// </remarks>
 public sealed class WorkflowConfigurationResolver : IWorkflowConfigurationResolver
 {
     private readonly IWorkflowLibraryService _library;
     private readonly IConfigurationService _configurationService;
     private readonly IOcrService? _ocrService;
+    private readonly IPluginContributionResolver? _pluginResolver;
+    private readonly IPluginContributionRegistry? _pluginRegistry;
     private readonly TimeProvider _timeProvider;
+    private readonly IPluginDiagnostics? _pluginDiagnostics;
 
     public WorkflowConfigurationResolver(
         IWorkflowLibraryService library,
         IConfigurationService configurationService,
         IOcrService? ocrService = null,
-        TimeProvider? timeProvider = null)
+        IPluginContributionResolver? pluginResolver = null,
+        IPluginContributionRegistry? pluginRegistry = null,
+        TimeProvider? timeProvider = null,
+        IPluginDiagnostics? pluginDiagnostics = null)
     {
         _library = library ?? throw new ArgumentNullException(nameof(library));
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _ocrService = ocrService;
+        _pluginResolver = pluginResolver;
+        _pluginRegistry = pluginRegistry;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _pluginDiagnostics = pluginDiagnostics;
     }
 
     public async Task<WorkflowResolutionResult> ResolveForWatchedFolderAsync(
@@ -164,6 +184,44 @@ public sealed class WorkflowConfigurationResolver : IWorkflowConfigurationResolv
             recipes.Add(recipe);
         }
 
+        var pluginReferences = profile.PluginContributions
+            .Concat(recipes.SelectMany(recipe => recipe.PluginFieldContributions))
+            .Distinct()
+            .ToArray();
+        if (pluginReferences.Length > 0)
+        {
+            var diagnosticKind = resolutionSource == "manual scan"
+                ? PluginDiagnosticKind.WorkflowResolution
+                : PluginDiagnosticKind.WatchedFolderResolution;
+            if (_pluginResolver is null)
+            {
+                _pluginDiagnostics?.Record(
+                    diagnosticKind,
+                    "host",
+                    "Required plugin contributions could not be resolved because the registry is unavailable.",
+                    "plugin.resolver-unavailable");
+                return Unavailable(
+                    "Plugin capability unavailable — review workflow profile. Plugin resolution is not configured.",
+                    profileId);
+            }
+
+            var pluginResolution = _pluginResolver.Resolve(Array.AsReadOnly(pluginReferences));
+            if (!pluginResolution.Succeeded)
+            {
+                _pluginDiagnostics?.Record(
+                    diagnosticKind,
+                    profile.Id,
+                    "A required plugin contribution was unavailable; workflow resolution failed closed.",
+                    "plugin.contribution-unavailable");
+                return Unavailable(pluginResolution.Message, profileId);
+            }
+
+            _pluginDiagnostics?.Record(
+                diagnosticKind,
+                profile.Id,
+                $"Resolved {pluginReferences.Length} exact plugin contribution reference(s).");
+        }
+
         var warnings = new List<string>();
         var files = profile.Files;
         var extraction = profile.Extraction;
@@ -260,6 +318,18 @@ public sealed class WorkflowConfigurationResolver : IWorkflowConfigurationResolv
             .ThenBy(recipe => recipe.Id, StringComparer.Ordinal)
             .Select(JsonWorkflowLibraryStore.Clone)
             .ToArray();
+        var resolvedPluginSnapshots = pluginReferences
+            .Select(reference => _pluginRegistry?.Find(
+                reference.PluginId,
+                reference.ContributionId,
+                reference.ExtensionPoint))
+            .Where(registration => registration is not null)
+            .Select(registration => new ResolvedPluginContributionSnapshot(
+                registration!.PluginId,
+                registration.PluginVersion,
+                registration.ContributionId,
+                registration.ExtensionPoint))
+            .ToArray();
         var snapshot = new WorkflowConfigurationSnapshot(
             profile.Id,
             profile.Name,
@@ -284,7 +354,10 @@ public sealed class WorkflowConfigurationResolver : IWorkflowConfigurationResolv
             profile.Notifications,
             scanBehavior,
             resolutionSource,
-            _timeProvider.GetUtcNow().ToUniversalTime());
+            _timeProvider.GetUtcNow().ToUniversalTime())
+        {
+            PluginContributions = Array.AsReadOnly(resolvedPluginSnapshots),
+        };
         var resolved = new ResolvedWorkflowConfiguration(
             JsonWorkflowLibraryStore.Clone(profile),
             Array.AsReadOnly(orderedRecipes),

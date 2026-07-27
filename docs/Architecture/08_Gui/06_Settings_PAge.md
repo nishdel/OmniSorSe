@@ -16,7 +16,13 @@ The Settings Page presents and modifies configuration but does not implement app
 
 The delivered page follows the existing explicit-save model. General controls include the opt-in catalog, **Enable AI features**, and **Show advanced features**, all default off. When the editable AI master is on, endpoint, connection check, exact model discovery/selection, a text-validated 5-300 second timeout, independent rename and folder-structure capabilities, preference adaptation, cancellation, connection status, and separately confirmed decision-history reset appear immediately. Detailed logging requires advanced mode. Raw AI request diagnostics require AI, advanced mode, and a separate default-off opt-in.
 
-Saving publishes the central feature state to navigation and Results. If an advanced page is currently selected when advanced mode is saved off, the shell safely selects Dashboard. Hidden settings are preserved rather than reset, although the session-only raw diagnostic records are cleared whenever any required visibility gate becomes inactive. The shell keeps one Settings ViewModel and view instance. The view captures and restores the nearest valid scroll offset around visibility-driven layout changes so focus-driven `BringIntoView` does not produce a jump. The ViewModel delegates provider work and persistence to application services; it contains no HTTP transport or filesystem business logic. Import/export, localization, provider plugins, and the broader categories below remain future design.
+Saving publishes the central feature state to navigation and Results. If an advanced page is currently selected when advanced mode is saved off, the shell safely selects Dashboard. Hidden settings are preserved rather than reset, although the session-only raw diagnostic records are cleared whenever any required visibility gate becomes inactive. The shell keeps one Settings ViewModel and view instance. The view captures and restores the nearest valid scroll offset around visibility-driven layout changes so focus-driven `BringIntoView` does not produce a jump. The ViewModel delegates provider work and persistence to application services; it contains no HTTP transport, plugin discovery/loading, archive extraction, dependency resolution, or filesystem business logic.
+
+v1.4 embeds a Plugins panel for manifest/runtime inspection, selective capability
+grant, refresh, enable/disable, local package install/upgrade/removal, controlled
+folder opening, and diagnostic export. The ViewModel calls application services
+only. Online installation, automatic updates, arbitrary plugin UI injection,
+and AI-provider plugins remain outside v1.4.
 
 ---
 

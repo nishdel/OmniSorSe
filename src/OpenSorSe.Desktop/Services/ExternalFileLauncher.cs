@@ -42,6 +42,19 @@ public sealed class ExternalFileLauncher : IExternalFileLauncher
         return Task.FromResult(TryStart(directory, "The containing folder was opened."));
     }
 
+    /// <inheritdoc />
+    public Task<ExternalLaunchResult> OpenFolderAsync(string fullPath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!TryNormalizeAbsolutePath(fullPath, out var normalizedPath) ||
+            !Directory.Exists(normalizedPath))
+        {
+            return Task.FromResult(ExternalLaunchResult.Failure("The selected folder is unavailable."));
+        }
+
+        return Task.FromResult(TryStart(normalizedPath, "The selected folder was opened."));
+    }
+
     private static ExternalLaunchResult TryStart(string target, string successMessage)
     {
         try

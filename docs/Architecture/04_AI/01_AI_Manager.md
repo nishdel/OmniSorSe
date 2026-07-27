@@ -178,7 +178,7 @@ These enhancements should build upon the existing orchestration model without ch
 * [AI Overview](00_Overview.md)
 * [Model Providers](02_Model_Providers.md)
 * [Prompt Engine](03_Prompt_Engine.md)
-* [Document Classification](04_Document_Classification.md)
+* [Document Classification](04_Document_classification.md)
 * [Summarization](05_Summarization.md)
 * [Embeddings](08_Embeddings.md)
 * [Caching](10_Caching.md)

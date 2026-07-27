@@ -23,4 +23,3 @@ Product version is `1.1.0`; file/assembly version is `1.1.0.0`. Existing v1.0 se
 Permanent deletion, unattended organization, live monitoring, cloud AI/synchronization, learning from decisions, and collaborative catalogs remain outside this release. Filesystems are not perfectly transactional. Undo can be blocked by later external or OpenSorSe changes, and partial rollback/manual recovery remains possible.
 
 No v1.1 packaged binary, signature, installer, or interactive platform validation is claimed by these source notes until the manual release checklist is completed.
-

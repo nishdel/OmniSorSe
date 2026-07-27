@@ -198,6 +198,13 @@ The architecture should support future enhancements, including:
 
 These enhancements should integrate with the existing architecture while preserving subsystem boundaries.
 
+OpenSorSe v1.4 does not ship an AI-provider plugin adapter. Although the SDK
+defines an `AiProviderIntegration` capability for future host-mediated use, a
+plugin cannot access credentials or bypass the global AI switch, provider
+readiness, endpoint/model selection, per-capability/per-item policy, privacy
+controls, request bounds, validation, cancellation, diagnostics, or
+suggestion-only Change Plan boundary.
+
 ---
 
 # Related Documents
@@ -205,7 +212,7 @@ These enhancements should integrate with the existing architecture while preserv
 * [AI Manager](01_AI_Manager.md)
 * [Model Providers](02_Model_Providers.md)
 * [Prompt Engine](03_Prompt_Engine.md)
-* [Document Classification](04_Document_Classification.md)
+* [Document Classification](04_Document_classification.md)
 * [Summarization](05_Summarization.md)
 * [Renaming](06_Renaming.md)
 * [Folder Suggestions](07_Folder_Suggestions.md)

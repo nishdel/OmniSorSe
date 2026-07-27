@@ -164,6 +164,6 @@ These enhancements should preserve the component's primary responsibility of gen
 
 * [AI Overview](00_Overview.md)
 * [Prompt Engine](03_Prompt_Engine.md)
-* [Document Classification](04_Document_Classification.md)
+* [Document Classification](04_Document_classification.md)
 * [Renaming](06_Renaming.md)
 * [Search Overview](../06_Search/00_Overview.md)

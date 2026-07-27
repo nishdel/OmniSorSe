@@ -12,6 +12,16 @@ using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application.Watching;
 
+/// <summary>
+/// Reconciles one watched root against its dedicated catalogue and analyses only verified stable changes.
+/// </summary>
+/// <remarks>
+/// Processing is staged: discover actual state, apply path/ignore policy,
+/// observe stability, enrich changed files, update the catalogue, and create
+/// optional suggestions. Deterministic catalogue changes survive optional AI
+/// failure. This service owns no watcher lifetime and cannot approve or execute
+/// a Change Plan.
+/// </remarks>
 public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
 {
     private readonly IWatchedFolderCatalogueStore _catalogueStore;

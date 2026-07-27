@@ -7,6 +7,7 @@
     <PackageReference Include="PdfPig" Version="0.1.15" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\OpenSorSe.Extensions.Abstractions\OpenSorSe.Extensions.Abstractions.csproj" />
     <ProjectReference Include="..\OpenSorSe.Core\OpenSorSe.Core.csproj" />
     <ProjectReference Include="..\OpenSorSe.Executor\OpenSorSe.Executor.csproj" />
     <ProjectReference Include="..\OpenSorSe.Scanner\OpenSorSe.Scanner.csproj" />

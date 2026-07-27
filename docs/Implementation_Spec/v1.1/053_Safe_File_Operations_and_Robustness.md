@@ -49,4 +49,3 @@ Tests use unique temporary directories and cover suggestion conversion, plan dec
 ## Honest limitations
 
 Real filesystems do not provide a portable multi-action transaction. External processes, permissions, storage, hardware, or power failures can prevent rollback. Identity uses portable file metadata plus an optional content hash, not a persistent OS file handle. Manual recovery can be required and remains explicit in Operation Details.
-

@@ -2,7 +2,7 @@
 
 namespace OpenSorSe.Executor.Models;
 
-/// <summary>Defines the persisted Change Plan schema used by OpenSorSe 1.1.</summary>
+/// <summary>Defines the persisted Change Plan schema introduced in 1.1 and retained by OpenSorSe 1.4.</summary>
 public static class ChangePlanSchema
 {
     /// <summary>Current backwards-compatible Change Plan schema version.</summary>
@@ -138,7 +138,22 @@ public sealed record ChangeWorkflowProvenance(
     IReadOnlyList<string> EvidenceSources,
     bool IsAiAssisted,
     IReadOnlyList<string> Warnings,
-    IReadOnlyList<string> UnresolvedFields);
+    IReadOnlyList<string> UnresolvedFields)
+{
+    /// <summary>Gets immutable plugin contribution provenance used by this proposal.</summary>
+    public IReadOnlyList<ChangePluginProvenance> PluginContributions { get; init; } = [];
+}
+
+/// <summary>Captures immutable plugin contribution provenance without exposing a plugin instance.</summary>
+public sealed record ChangePluginProvenance(
+    string PluginId,
+    string PluginVersion,
+    string ContributionId,
+    string ExtensionPoint,
+    bool IsAiAssisted,
+    string Reason,
+    string? Evidence,
+    double? Confidence);
 
 /// <summary>Represents one immutable proposed action inside a Change Plan.</summary>
 public sealed record ProposedChangeAction(

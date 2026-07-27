@@ -1,23 +1,36 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Plugins;
 using OpenSorSe.Executor;
 using OpenSorSe.Executor.Models;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application.Workflows;
 
+/// <summary>
+/// Evaluates selected Sorting Recipes and captures their output as a non-mutating Change Plan.
+/// </summary>
+/// <remarks>
+/// Plugin fields are resolved as bounded typed data and copied into action
+/// provenance with the exact plugin/version/contribution. The template engine
+/// remains responsible for sanitization and confinement; this service never
+/// applies a generated name or path.
+/// </remarks>
 public sealed class WorkflowRecipePlanService : IWorkflowRecipePlanService
 {
     private readonly IWorkflowTemplateEngine _templateEngine;
     private readonly IChangePlanFactory _changePlanFactory;
+    private readonly IPluginRecipeFieldService? _pluginFields;
 
     public WorkflowRecipePlanService(
         IWorkflowTemplateEngine templateEngine,
-        IChangePlanFactory changePlanFactory)
+        IChangePlanFactory changePlanFactory,
+        IPluginRecipeFieldService? pluginFields = null)
     {
         _templateEngine = templateEngine ?? throw new ArgumentNullException(nameof(templateEngine));
         _changePlanFactory = changePlanFactory ?? throw new ArgumentNullException(nameof(changePlanFactory));
+        _pluginFields = pluginFields;
     }
 
     public async Task<WorkflowRecipePlanResult> CreatePlanAsync(
@@ -65,7 +78,39 @@ public sealed class WorkflowRecipePlanService : IWorkflowRecipePlanService
                     $"{Path.GetFileName(file.FullPath)} matched {matching.Length} recipes; \"{selected.Name}\" won by explicit priority and stable ID order.");
             }
 
-            var values = BuildValues(file);
+            var values = new Dictionary<string, RecipeFieldValue>(
+                BuildValues(file),
+                StringComparer.OrdinalIgnoreCase);
+            if (selected.PluginFieldContributions.Count > 0)
+            {
+                if (_pluginFields is null)
+                {
+                    warnings.Add(
+                        $"{Path.GetFileName(file.FullPath)}: required plugin recipe fields are unavailable.");
+                }
+                else
+                {
+                    var resolvedFields = await _pluginFields.ResolveAsync(
+                        selected.PluginFieldContributions,
+                        file,
+                        cancellationToken).ConfigureAwait(false);
+                    foreach (var field in resolvedFields)
+                    {
+                        values[field.FieldName] = new RecipeFieldValue(
+                            field.SerializedValue,
+                            $"plugin {field.PluginId} {field.PluginVersion} / {field.ContributionId}",
+                            field.Derivation == OpenSorSe.Extensions.Abstractions.ExtensionDerivationKind.AiAssisted)
+                        {
+                            PluginId = field.PluginId,
+                            PluginVersion = field.PluginVersion,
+                            ContributionId = field.ContributionId,
+                            Reason = field.Reason,
+                            Evidence = field.Evidence,
+                            Confidence = field.Confidence,
+                        };
+                    }
+                }
+            }
             var destinationsForFile = new HashSet<string>(
                 occupied.Where(path => !ChangePlanFactory.PathComparer.Equals(path, file.FullPath))
                     .Concat(generated),
@@ -138,7 +183,25 @@ public sealed class WorkflowRecipePlanService : IWorkflowRecipePlanService
                 Array.AsReadOnly(evidence),
                 evaluation.RequiresAiDerivedValues,
                 evaluation.Warnings,
-                evaluation.MissingValues);
+                evaluation.MissingValues)
+            {
+                PluginContributions = Array.AsReadOnly(values
+                    .Where(pair =>
+                        evaluation.ValuesUsed.ContainsKey(pair.Key) &&
+                        pair.Value.PluginId is not null &&
+                        pair.Value.PluginVersion is not null &&
+                        pair.Value.ContributionId is not null)
+                    .Select(pair => new ChangePluginProvenance(
+                        pair.Value.PluginId!,
+                        pair.Value.PluginVersion!,
+                        pair.Value.ContributionId!,
+                        "recipeFieldProvider",
+                        pair.Value.IsAiDerived,
+                        pair.Value.Reason ?? "Plugin recipe field.",
+                        pair.Value.Evidence,
+                        pair.Value.Confidence))
+                    .ToArray()),
+            };
             var reason =
                 $"Workflow profile \"{configuration.Profile.Name}\" r{configuration.Profile.Revision}; " +
                 $"recipe \"{selected.Name}\" r{selected.Revision}; " +

@@ -19,6 +19,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Application.Plugins;
 using OpenSorSe.AI;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Core.Diagnostics;
@@ -29,6 +30,13 @@ namespace OpenSorSe.Desktop;
 /// <summary>
 /// Provides the Avalonia application entry point and desktop lifetime configuration.
 /// </summary>
+/// <remarks>
+/// This is the production composition root. Startup deliberately completes
+/// Core initialization and interrupted-operation inspection before activating
+/// plugins, then initializes workflows before Watched Folders so an exact
+/// plugin/profile dependency cannot race the watcher. Feature behavior belongs
+/// in Application/domain services rather than this registration method.
+/// </remarks>
 public partial class App : Avalonia.Application
 {
     private ServiceProvider? _serviceProvider;
@@ -59,6 +67,10 @@ public partial class App : Avalonia.Application
                 .RecoverInterruptedAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
+            _serviceProvider.GetRequiredService<IPluginManager>()
+                .InitializeAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
             _serviceProvider.GetRequiredService<IWorkflowLibraryService>()
                 .InitializeAsync(CancellationToken.None)
                 .GetAwaiter()
@@ -84,6 +96,9 @@ public partial class App : Avalonia.Application
             "settings.json");
         var services = new ServiceCollection();
         services.AddOpenSorSeCore(new OpenSorSeCoreOptions { ConfigurationFilePath = settingsPath });
+        var settingsDirectoryPath = Path.GetDirectoryName(settingsPath)
+            ?? throw new InvalidOperationException("The OpenSorSe settings path must include a directory.");
+        var pluginRoot = Path.Combine(settingsDirectoryPath, "plugins");
         services.AddSingleton<IFileScanner, FileScanner>();
         services.AddSingleton<IFileMetadataReader, FileMetadataReader>();
         services.AddSingleton<IFileHasher, FileHasher>();
@@ -228,6 +243,52 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IWatchedExecutionCorrelation, OperationJournalWatchedExecutionCorrelation>();
         services.AddSingleton<IWatchedFolderProcessor, WatchedFolderProcessor>();
         services.AddSingleton<IWatchedFolderCoordinator, WatchedFolderCoordinator>();
+        foreach (var definition in BuiltInPluginCatalog.Definitions)
+        {
+            services.AddSingleton(definition);
+        }
+        services.AddSingleton<IPluginDiagnostics, PluginDiagnostics>();
+        services.AddSingleton<IPluginManifestParser, PluginManifestParser>();
+        services.AddSingleton<IPluginIntegrityService, PluginIntegrityService>();
+        services.AddSingleton<IPluginStateStore>(
+            new JsonPluginStateStore(Path.Combine(settingsDirectoryPath, "plugins-state.json")));
+        services.AddSingleton<IPluginDependencyResolver, PluginDependencyResolver>();
+        services.AddSingleton<IPluginContributionRegistry, PluginContributionRegistry>();
+        services.AddSingleton<IPluginContributionResolver, PluginContributionResolver>();
+        services.AddSingleton<IPluginExtensionHost, PluginExtensionHost>();
+        services.AddSingleton<IPluginRecipeFieldService, PluginRecipeFieldService>();
+        services.AddSingleton<IPluginUsageInspector, PluginUsageInspector>();
+        services.AddSingleton<IPluginDiscoveryService>(serviceProvider =>
+            new PluginDiscoveryService(
+                pluginRoot,
+                serviceProvider.GetRequiredService<IPluginManifestParser>(),
+                serviceProvider.GetRequiredService<IPluginStateStore>(),
+                serviceProvider.GetRequiredService<IPluginIntegrityService>(),
+                serviceProvider.GetRequiredService<IPluginDependencyResolver>(),
+                serviceProvider.GetRequiredService<IPluginDiagnostics>(),
+                serviceProvider.GetServices<BuiltInPluginDefinition>()));
+        services.AddSingleton<IPluginPackageService>(serviceProvider =>
+            new PluginPackageService(
+                pluginRoot,
+                serviceProvider.GetRequiredService<IPluginManifestParser>(),
+                serviceProvider.GetRequiredService<IPluginIntegrityService>(),
+                serviceProvider.GetRequiredService<IPluginUsageInspector>(),
+                serviceProvider.GetRequiredService<IPluginDiagnostics>()));
+        services.AddSingleton<IPluginRuntime>(serviceProvider =>
+            new PluginRuntime(
+                serviceProvider.GetRequiredService<IPluginContributionRegistry>(),
+                serviceProvider.GetRequiredService<IPluginDiagnostics>(),
+                serviceProvider.GetServices<BuiltInPluginDefinition>()));
+        services.AddSingleton<IPluginManager>(serviceProvider =>
+            new PluginManager(
+                pluginRoot,
+                serviceProvider.GetRequiredService<IPluginDiscoveryService>(),
+                serviceProvider.GetRequiredService<IPluginStateStore>(),
+                serviceProvider.GetRequiredService<IPluginIntegrityService>(),
+                serviceProvider.GetRequiredService<IPluginRuntime>(),
+                serviceProvider.GetRequiredService<IPluginPackageService>(),
+                serviceProvider.GetRequiredService<IPluginDiagnostics>(),
+                serviceProvider.GetRequiredService<IPluginUsageInspector>()));
         services.AddSingleton<ISavedCatalogSearchStore>(serviceProvider =>
         {
             var settingsFilePath = serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath;
@@ -268,6 +329,7 @@ public partial class App : Avalonia.Application
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
         _serviceProvider?.GetService<IWatchedFolderCoordinator>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _serviceProvider?.GetService<IPluginManager>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll();
         _applicationHost?.ShutdownAsync().GetAwaiter().GetResult();
         _serviceProvider?.Dispose();

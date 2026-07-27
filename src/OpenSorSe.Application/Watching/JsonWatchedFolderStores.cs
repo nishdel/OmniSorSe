@@ -8,6 +8,14 @@ using OpenSorSe.Application.Workflows;
 
 namespace OpenSorSe.Application.Watching;
 
+/// <summary>
+/// Shares bounded atomic JSON mechanics for the three independent watched-folder stores.
+/// </summary>
+/// <remarks>
+/// A complete validated document is written to a unique sibling and moved over
+/// only the owned target. Cancellation or serialization failure removes only
+/// that temporary file. The helpers never touch watched user files.
+/// </remarks>
 internal static class WatchedStoreJson
 {
     public static JsonSerializerOptions Options { get; } = new()

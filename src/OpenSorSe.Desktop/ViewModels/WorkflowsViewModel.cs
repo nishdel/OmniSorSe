@@ -931,7 +931,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
             {
                 Type = "OpenSorSeWorkflowDiagnostics",
                 SchemaVersion = 1,
-                ApplicationVersion = "1.3.0",
+                ApplicationVersion = "1.4.0",
                 ExportedAtUtc = DateTimeOffset.UtcNow,
                 _library.RecoveryMessage,
                 _library.PreservedCorruptCopyPath,

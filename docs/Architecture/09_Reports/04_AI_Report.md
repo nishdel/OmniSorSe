@@ -174,4 +174,4 @@ These enhancements should preserve the AI Report's primary responsibility of rep
 * [Statistics](01_Statistics.md)
 * [AI Overview](../04_AI/00_Overview.md)
 * [AI Manager](../04_AI/01_AI_Manager.md)
-* [Reports Page](../08_GUI/07_Reports_Page.md)
+* [Reports Page](../08_Gui/07_Reports_Page.md)

@@ -235,13 +235,28 @@ public sealed class JsonChangePlanStore : IChangePlanStore
                provenance.ValuesUsed is not null &&
                provenance.ValuesUsed.Count <= 64 &&
                provenance.ValuesUsed.All(pair =>
-                   IsBounded(pair.Key, 128) &&
+                   IsBounded(pair.Key, 512) &&
                    pair.Value is not null &&
                    pair.Value.Length <= 512 &&
                    !pair.Value.Any(char.IsControl)) &&
                IsBoundedList(provenance.EvidenceSources, 128, 256) &&
                IsBoundedList(provenance.Warnings, 128, 1_024) &&
-               IsBoundedList(provenance.UnresolvedFields, 64, 128);
+               IsBoundedList(provenance.UnresolvedFields, 64, 512) &&
+               provenance.PluginContributions is not null &&
+               provenance.PluginContributions.Count <= 64 &&
+               provenance.PluginContributions.All(value =>
+                   value is not null &&
+                   IsBounded(value.PluginId, 128) &&
+                   IsBounded(value.PluginVersion, 64) &&
+                   IsBounded(value.ContributionId, 128) &&
+                   IsBounded(value.ExtensionPoint, 64) &&
+                   IsBounded(value.Reason, 1_024) &&
+                   (value.Evidence is null ||
+                    value.Evidence.Length <= 1_024 &&
+                    !value.Evidence.Any(char.IsControl)) &&
+                   (value.Confidence is null ||
+                    double.IsFinite(value.Confidence.Value) &&
+                    value.Confidence.Value is >= 0 and <= 1));
     }
 
     private static bool IsBoundedList(IReadOnlyList<string>? values, int count, int length) =>

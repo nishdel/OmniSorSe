@@ -177,6 +177,6 @@ These enhancements should preserve the Dashboard's primary responsibility of pro
 
 * [GUI Overview](00_Overview.md)
 * [Main Window](01_Main_Window.md)
-* [Scanner Page](03_Scanner_Page.md)
+* [Scanner Page](03_Scanner_page.md)
 * [Reports Page](07_Reports_Page.md)
 * [Notifications](09_Notifications.md)

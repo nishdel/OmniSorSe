@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.4.0
+
+Plugin Foundation and Extension SDK.
+
+Release branch: `v1.4-plugin-foundation`.
+
+### Added
+
+- Standalone immutable, asynchronous, cancellation-aware Extension SDK with
+  eight bounded analysis/proposal/import/export extension points.
+- Strict manifest parsing, controlled manifest-first discovery, runtime and
+  host compatibility, deterministic dependency graphs, integrity-change
+  lockout, diagnostics, quarantine, and conflict-safe contribution registry.
+- Dedicated collectible assembly-load contexts for external plugins with
+  bounded initialization/stop, exception containment, and restart reporting.
+- Explicit external enable/capability grants and four built-in reference
+  plugins for metadata, classification, recipe fields, and JSON export.
+- Transactional local ZIP install, fully validated upgrade with previous
+  version preservation, dependency-aware confirmed removal, and archive
+  traversal/link/native/bounds defenses.
+- Exact plugin/version/contribution references in profiles and recipes,
+  immutable resolution snapshots, recipe value/action provenance, watched
+  fail-closed behavior, and import/export host boundaries.
+- Settings > Plugins management, redacted diagnostics export, SDK/author/
+  manifest/package documentation, and adversarial/runtime/workflow/UI tests.
+- Audience-oriented documentation index, repository/developer/maintainer guides,
+  authoritative architecture overview, and four-part Mermaid system map.
+- Deterministic repository tests for case-correct relative documentation links,
+  Mermaid structure, documentation entry points, production dependency policy,
+  and public Extension SDK XML documentation.
+
+### Changed
+
+- Product/informational version is `1.4.0`; assembly/file/manifest version is
+  `1.4.0.0`; About displays `1.4`.
+- Workflow import/export schema identity advances to 1.4 and preserves exact
+  plugin contribution references.
+- Current installation/safety guidance, SDK call contracts, subsystem
+  lifecycle/invariant comments, and legacy architecture link casing were
+  corrected without changing product behavior.
+
+### Safety
+
+- Plugins can analyze, suggest, parse import proposals, or return export bytes;
+  they cannot directly mutate user files, approve/apply Change Plans, write the
+  journal, or receive the host service container.
+- External plugins are disabled until explicit enable and capability grant.
+- Missing, incompatible, changed, conflicting, failed, or quarantined
+  capabilities fail closed with no silent workflow fallback.
+- External code remains in-process with the current user's OS permissions.
+  Assembly-load-context isolation is not a sandbox and SHA-256 integrity does
+  not authenticate publishers.
+
 ## v1.3.0
 
 Workflow Profiles and Recipe Library.

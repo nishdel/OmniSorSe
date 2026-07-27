@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.3 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, recipe preview, and AI generation non-mutating. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
+OpenSorSe 1.4 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
 
 ## Completed releases
 
@@ -183,11 +183,32 @@ Source implementation and automated validation complete; manual GUI/filesystem/p
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.
 
+## v1.4 - Plugin Foundation and Extension SDK
+
+Source implementation and automated validation complete; manual GUI,
+filesystem, hostile-package, runtime/unload, and platform verification pending.
+
+- Version: `v1.4`
+- Release name: **Plugin Foundation and Extension SDK**
+- Git branch: `v1.4-plugin-foundation`
+- Stable standalone contracts for eight bounded extension points.
+- Strict local manifests/discovery, compatibility, dependencies, integrity,
+  lifecycle isolation, diagnostics, quarantine, and explicit capability grants.
+- Transactional local packages, upgrade/rollback preservation, safe removal,
+  four built-in reference plugins, and Settings management.
+- Exact workflow/recipe/watcher references and Change Plan provenance with
+  fail-closed resolution.
+- No marketplace, downloads, automatic updates, scripts, OS sandbox, publisher
+  authority, direct file mutation, or approval bypass.
+
+> Plugins analyze or propose; they do not grant mutation authority.
+
 Release branches follow `v<version>-<primary-feature>`, for example:
 
 - `v1.1-safe-file-operations`
 - `v1.2-watched-folders`
 - `v1.3-workflow-profiles`
+- `v1.4-plugin-foundation`
 
 ## Future release ideas
 
@@ -198,7 +219,8 @@ The following are longer-term ideas, not current capabilities or committed relea
 - Learned or external semantic embedding models and GPU acceleration.
 - Database-backed scan catalogs, tags, and search indexes.
 - Generic rule execution and undo integration beyond the narrow restructuring apply workflow.
-- Plugin system.
+- Out-of-process plugin sandboxing, publisher signatures, and an optional
+  reviewed marketplace/download service.
 - Exportable reports and rename inference.
 
 Any future feature that could modify user files requires a separate safety design covering explicit authorization, live preflight, preview, failure handling, and recovery expectations.

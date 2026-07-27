@@ -1,12 +1,12 @@
 # Plugins Overview
 
-> This document provides an overview of the Plugins subsystem, which enables third-party developers to extend OpenSorSe with additional functionality while preserving the integrity of the core application.
+> OpenSorSe v1.4 implements the bounded foundation documented in [06_v1.4_Plugin_Foundation.md](06_v1.4_Plugin_Foundation.md). Broader capabilities described below remain design material unless that document includes them.
 
 ---
 
 ## Implementation Status
 
-The Plugins subsystem is future architecture only. v0.3 has no plugin API, discovery mechanism, loading mechanism, or extension sandbox. The design below is not a shipped feature set or release commitment.
+The original overview below predates v1.4. The implemented release includes a stable SDK, strict local discovery/packages, compatibility/dependencies/integrity, in-process load contexts, lifecycle containment, eight bounded extension points, workflow provenance, and Settings management. It does not include an OS sandbox, marketplace/download service, automatic updates, arbitrary UI injection, or direct file-mutation APIs.
 
 ---
 
@@ -189,4 +189,4 @@ These enhancements should preserve the Plugins subsystem's primary responsibilit
 * [Loading](03_Loading.md)
 * [Lifecycle](04_Lifecycle.md)
 * [Security](05_Security.md)
-* [GUI Overview](../08_GUI/00_Overview.md)
+* [GUI Overview](../08_Gui/00_Overview.md)

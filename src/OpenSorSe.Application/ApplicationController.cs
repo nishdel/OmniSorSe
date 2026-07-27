@@ -2,7 +2,7 @@ using OpenSorSe.Application.Models;
 
 namespace OpenSorSe.Application;
 
-/// <summary>Provides the narrow v0.1 UI-to-session routing boundary without filesystem behavior.</summary>
+/// <summary>Provides the narrow UI-to-processing-session routing boundary without filesystem behavior.</summary>
 public sealed class ApplicationController : IApplicationController
 {
     private readonly IProcessingSessionManager _sessionManager;

@@ -1,7 +1,7 @@
 namespace OpenSorSe.Rules.Models;
 
 /// <summary>
-/// Identifies a deterministic metadata condition supported by the v0.1 rule engine.
+/// Identifies a deterministic metadata condition supported by the rule engine.
 /// </summary>
 public enum RuleConditionKind
 {

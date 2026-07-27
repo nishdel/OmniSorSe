@@ -176,5 +176,5 @@ These enhancements should preserve the Metadata component's primary responsibili
 * [Database Overview](00_Overview.md)
 * [Schema](02_Schema.md)
 * [History](05_History.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Readers Overview](../03_Readers/00_Overview.md)

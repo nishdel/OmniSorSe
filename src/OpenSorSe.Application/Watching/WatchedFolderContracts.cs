@@ -331,24 +331,28 @@ public sealed record WatchedFolderRuntimeSnapshot(
     WatchedFolderConfiguration Configuration,
     IReadOnlyList<WatchedActivityEntry> RecentActivity);
 
+/// <summary>Persists opt-in watched-root configuration independently of catalogue state.</summary>
 public interface IWatchedFolderConfigurationStore
 {
     Task<IReadOnlyList<WatchedFolderConfiguration>> LoadAsync(CancellationToken cancellationToken);
     Task SaveAsync(IReadOnlyList<WatchedFolderConfiguration> configurations, CancellationToken cancellationToken);
 }
 
+/// <summary>Persists reconciled per-root filesystem and analysis state.</summary>
 public interface IWatchedFolderCatalogueStore
 {
     Task<WatchedFolderCatalogue?> GetAsync(string catalogueId, CancellationToken cancellationToken);
     Task UpsertAsync(WatchedFolderCatalogue catalogue, CancellationToken cancellationToken);
 }
 
+/// <summary>Persists bounded grouped watcher activity rather than raw operating-system events.</summary>
 public interface IWatchedActivityStore
 {
     Task<IReadOnlyList<WatchedActivityEntry>> ListAsync(string? configurationId, int maximumCount, CancellationToken cancellationToken);
     Task AppendAsync(WatchedActivityEntry activity, CancellationToken cancellationToken);
 }
 
+/// <summary>Owns validated watched-root configuration lifecycle and runtime status updates.</summary>
 public interface IWatchedFolderManager
 {
     event EventHandler? ConfigurationsChanged;
@@ -364,6 +368,7 @@ public interface IWatchedFolderManager
         CancellationToken cancellationToken);
 }
 
+/// <summary>Adapts operating-system notifications into untrusted watcher hints.</summary>
 public interface IWatchedFolderEventSource : IDisposable
 {
     event EventHandler<WatchedFolderHint>? HintReceived;
@@ -378,6 +383,7 @@ public interface IWatchedFolderEventSourceFactory
     IWatchedFolderEventSource Create(WatchedFolderConfiguration configuration);
 }
 
+/// <summary>Provides the read-only filesystem probes used to verify watcher hints.</summary>
 public interface IWatchedFileSystem
 {
     bool DirectoryExists(string path);
@@ -396,6 +402,7 @@ public sealed record WatchedFileProbe(
     FileAttributes Attributes,
     string StableId);
 
+/// <summary>Observes a file across bounded probes before content processing.</summary>
 public interface IFileStabilityChecker
 {
     Task<FileStabilityResult> WaitForStableAsync(
@@ -407,6 +414,7 @@ public interface IFileStabilityChecker
 
 public sealed record FileStabilityResult(bool IsStable, int Attempts, string Message, WatchedFileProbe? Probe);
 
+/// <summary>Resolves configured Sorting Recipes into deterministic proposal rules.</summary>
 public interface IWatchedSortingRecipeResolver
 {
     Task<IReadOnlyList<FileRule>> ResolveAsync(string? recipeId, CancellationToken cancellationToken);
@@ -433,6 +441,7 @@ public interface IWatchedSortingRecipeResolver
     }
 }
 
+/// <summary>Creates optional non-mutating Change Plans from a verified watched batch.</summary>
 public interface IWatchedSuggestionService
 {
     Task<WatchedSuggestionResult> CreateSuggestionsAsync(
@@ -453,6 +462,7 @@ public sealed record WatchedSuggestionResult(
     public IReadOnlySet<string> FailedAiFileIds { get; init; } = new HashSet<string>(StringComparer.Ordinal);
 }
 
+/// <summary>Classifies verified hints caused by a recorded OpenSorSe operation.</summary>
 public interface IWatchedExecutionCorrelation
 {
     Task<bool> IsOpenSorSeGeneratedAsync(
@@ -478,6 +488,7 @@ public interface IWatchedExecutionCorrelation
     }
 }
 
+/// <summary>Reconciles and analyses one verified watched batch without execution authority.</summary>
 public interface IWatchedFolderProcessor
 {
     Task<WatchedFolderProcessResult> ProcessAsync(
@@ -486,6 +497,7 @@ public interface IWatchedFolderProcessor
         CancellationToken cancellationToken);
 }
 
+/// <summary>Owns watcher lifetimes, bounded debounce/queueing, reconciliation, and review events.</summary>
 public interface IWatchedFolderCoordinator : IAsyncDisposable
 {
     event EventHandler<WatchedFolderRuntimeSnapshot>? StateChanged;

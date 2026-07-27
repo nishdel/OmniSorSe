@@ -11,7 +11,13 @@ using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application;
 
-/// <summary>Runs v0.1 pipeline stages sequentially while leaving domain behavior to each stage service.</summary>
+/// <summary>Runs the manual read-only processing pipeline while leaving domain behavior to each stage service.</summary>
+/// <remarks>
+/// Stage ordering is intentional because later immutable results depend on
+/// earlier enrichment. Optional content indexing is failure-isolated from the
+/// core scan. The orchestrator may produce rule/planning data, but it does not
+/// create approval, invoke the Change Plan executor, or mutate source files.
+/// </remarks>
 public sealed class ProcessingOrchestrator : IProcessingOrchestrator
 {
     private const string LoggerCategory = "ProcessingOrchestrator";

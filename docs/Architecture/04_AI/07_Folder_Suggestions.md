@@ -191,7 +191,7 @@ These enhancements should preserve the component's primary responsibility of gen
 # Related Documents
 
 * [AI Overview](00_Overview.md)
-* [Document Classification](04_Document_Classification.md)
+* [Document Classification](04_Document_classification.md)
 * [Renaming](06_Renaming.md)
 * [Rules Overview](../07-Rules/00_Overview.md)
 * [User Rules](../07-Rules/05_User_Rules.md)

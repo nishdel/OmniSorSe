@@ -176,4 +176,4 @@ These enhancements should preserve the Statistics component's primary responsibi
 * [Cleanup Report](02_Cleanup_Report.md)
 * [Duplicates Report](03_Duplicates_Report.md)
 * [AI Report](04_AI_Report.md)
-* [Reports Page](../08_GUI/07_Reports_Page.md)
+* [Reports Page](../08_Gui/07_Reports_Page.md)

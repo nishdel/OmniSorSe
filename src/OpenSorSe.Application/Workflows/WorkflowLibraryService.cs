@@ -78,6 +78,15 @@ public sealed class WatchedWorkflowUsageInspector : IWorkflowUsageInspector
             : profileId;
 }
 
+/// <summary>
+/// Owns the in-memory workflow library lifecycle and all user-item mutations.
+/// </summary>
+/// <remarks>
+/// The service serializes mutations, clones records at its boundary, protects
+/// canonical built-ins, checks known usage before destructive operations, and
+/// delegates durable atomic storage to <see cref="IWorkflowLibraryStore"/>.
+/// It configures analysis but has no approval or execution authority.
+/// </remarks>
 public sealed class WorkflowLibraryService : IWorkflowLibraryService
 {
     private readonly IWorkflowLibraryStore _store;
@@ -206,7 +215,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 IsArchived = false,
                 Origin = profile.Origin.Kind == WorkflowOriginKind.Imported
                     ? profile.Origin
-                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.3.0"),
+                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.4.0"),
             });
             Validate(created);
             _profiles = Array.AsReadOnly(_profiles.Append(created).ToArray());
@@ -237,7 +246,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 Origin = new WorkflowProfileOrigin(
                     WorkflowOriginKind.Duplicated,
                     source.Id,
-                    "1.3.0"),
+                    "1.4.0"),
             });
             Validate(duplicate);
             _profiles = Array.AsReadOnly(_profiles.Append(duplicate).ToArray());
@@ -326,7 +335,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 IsArchived = false,
                 Origin = recipe.Origin.Kind == WorkflowOriginKind.Imported
                     ? recipe.Origin
-                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.3.0"),
+                    : new WorkflowProfileOrigin(WorkflowOriginKind.UserCreated, SourceApplicationVersion: "1.4.0"),
             });
             Validate(created);
             _recipes = Array.AsReadOnly(_recipes.Append(created).ToArray());
@@ -357,7 +366,7 @@ public sealed class WorkflowLibraryService : IWorkflowLibraryService
                 Origin = new WorkflowProfileOrigin(
                     WorkflowOriginKind.Duplicated,
                     source.Id,
-                    "1.3.0"),
+                    "1.4.0"),
             });
             Validate(duplicate);
             _recipes = Array.AsReadOnly(_recipes.Append(duplicate).ToArray());

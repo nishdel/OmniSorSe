@@ -37,4 +37,3 @@ The journal normally lives at `%LOCALAPPDATA%\OpenSorSe\operation-journal.json`.
 ## Report privacy
 
 The copied report includes source/destination paths, timestamps, identities, safe error details, and optional model/request correlation IDs. It excludes contents, extracted text, AI prompt bodies, raw responses, and credentials. Inspect paths before sharing.
-

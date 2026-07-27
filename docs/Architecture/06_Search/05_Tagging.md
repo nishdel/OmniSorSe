@@ -177,5 +177,5 @@ These enhancements should preserve the component's primary responsibility of man
 * [Search Overview](00_Overview.md)
 * [Filtering](03_Filtering.md)
 * [Database Metadata](../05_Database/04_Metadata.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Rules Overview](../07-Rules/00_Overview.md)

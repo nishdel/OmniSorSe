@@ -5,6 +5,12 @@ using OpenSorSe.Core.Logging;
 namespace OpenSorSe.Application;
 
 /// <summary>Tracks non-persistent sequential processing sessions without owning pipeline logic.</summary>
+/// <remarks>
+/// Session transitions are protected by a private lock and published as
+/// immutable snapshots. Caller cancellation is passed to the orchestrator and
+/// recorded as a cancelled session rather than success; no session record is a
+/// persistence or file-operation authorization.
+/// </remarks>
 public sealed class ProcessingSessionManager : IProcessingSessionManager
 {
     private readonly IProcessingOrchestrator _orchestrator;

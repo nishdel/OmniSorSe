@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>OpenSorSe</AssemblyName>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\opensorse-app-icon.ico</ApplicationIcon>
@@ -37,5 +37,6 @@
     <ProjectReference Include="..\OpenSorSe.Executor\OpenSorSe.Executor.csproj" />
     <ProjectReference Include="..\OpenSorSe.Application\OpenSorSe.Application.csproj" />
     <ProjectReference Include="..\OpenSorSe.AI\OpenSorSe.AI.csproj" />
+    <ProjectReference Include="..\OpenSorSe.Extensions.Abstractions\OpenSorSe.Extensions.Abstractions.csproj" />
   </ItemGroup>
 </Project>

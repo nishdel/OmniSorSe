@@ -94,7 +94,7 @@ public sealed class UndoHistoryViewModel : ViewModelBase
     /// <summary>
     /// Gets the current-release explanation shown when no operation history exists.
     /// </summary>
-    public string EmptyStateMessage => "No v1.1 Operation Journal entries exist yet. OpenSorSe 1.0 does not expose generic rule execution or undo; legacy Structure history and Saved catalog records remain separate and readable.";
+    public string EmptyStateMessage => "No Operation Journal entries exist yet. Apply a reviewed Change Plan before Operation History or conflict-aware Undo is available; Structure history and Saved scans remain separate.";
 
     /// <summary>
     /// Gets or sets the session currently selected for review.

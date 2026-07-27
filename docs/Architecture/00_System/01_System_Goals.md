@@ -1,4 +1,4 @@
-# OpenSorSe 1.3 System Goals
+# OpenSorSe 1.4 System Goals
 
 ## Goals
 
@@ -13,21 +13,26 @@
 9. Keep every watched-folder suggestion behind the existing reviewable Change Plan, explicit approval, live revalidation, journalled execution, and conflict-aware Undo boundary.
 10. Make scan/analysis policy reusable, persistent, inspectable, versioned, and historically truthful through workflow profiles and immutable resolution snapshots.
 11. Make deterministic naming/destination composition approachable without adding an executable language, root escape, overwrite, or hidden ordering.
+12. Support bounded local extensions through a stable SDK, strict manifests, explicit capability grants, deterministic dependency resolution, integrity checks, lifecycle containment, and inspectable diagnostics.
+13. Preserve exact plugin/version/contribution provenance in workflows and plans, and fail closed when a referenced capability is unavailable.
 
 ## Non-goals
 
-OpenSorSe 1.3 does not provide:
+OpenSorSe 1.4 does not provide:
 
 - Autonomous or AI-driven filesystem control.
 - Duplicate deletion or automatic cleanup.
 - Generic rule execution/undo from the Desktop.
 - Bundled Tesseract executables/language data, GPU acceleration, or externally learned embeddings.
-- Plugins, broad localization, packaging overhaul, monitoring while the application is closed, cloud indexing, or automated publishing.
+- An online plugin marketplace, downloads, automatic plugin updates, an OS sandbox, publisher authentication/signing authority, broad localization, packaging overhaul, monitoring while the application is closed, cloud indexing, or automated publishing.
 - Claims of cross-platform packaging validation beyond portable architecture and current Windows build/test validation.
 - Arbitrary recipe scripts or expressions, unattended workflow execution, cloud workflow synchronization, or a recipe marketplace.
+- Plugin direct file mutation, Change Plan approval, unrestricted DI/storage/credential access, script execution, or safety-policy bypass.
 
 ## Safety invariant
 
 No operation may infer mutation authority from scanning, watching, reconciliation, indexing, an AI response, a suggestion, a preview, or a history record. Only an explicitly reviewed, approved, revalidated, and confirmed Change Plan grants bounded authority for that one operation.
 
 Workflow profiles automate configuration and analysis, not approval or file modification.
+
+Plugins analyze or propose; they do not grant mutation authority.

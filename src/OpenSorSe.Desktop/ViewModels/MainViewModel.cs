@@ -14,6 +14,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Application.Plugins;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Diagnostics;
@@ -25,8 +26,15 @@ using OpenSorSe.Executor.Models;
 namespace OpenSorSe.Desktop.ViewModels;
 
 /// <summary>
-/// Represents the presentation state for the application's initial shell window.
+/// Coordinates the process-lifetime Desktop shell, navigation, and manual scan presentation.
 /// </summary>
+/// <remarks>
+/// The shell owns feature ViewModels, global busy/cancellation presentation,
+/// and routing between user commands and Application services. It does not own
+/// scanning algorithms, persistence schemas, or file mutation. Suggestions are
+/// routed to <see cref="ChangePlanReviewViewModel"/>; approved mutation remains
+/// behind the executor injected into that feature ViewModel.
+/// </remarks>
 public sealed class MainViewModel : ViewModelBase, IDisposable
 {
     private static readonly IReadOnlyList<NavigationItem> AllNavigationItems = Array.AsReadOnly<NavigationItem>(
@@ -267,7 +275,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowConfigurationResolver? workflowConfigurationResolver = null,
         IWorkflowRecipePlanService? workflowRecipePlanService = null,
         IWorkflowImportExportService? workflowImportExportService = null,
-        IWorkflowTemplateEngine? workflowTemplateEngine = null)
+        IWorkflowTemplateEngine? workflowTemplateEngine = null,
+        IPluginManager? pluginManager = null)
         : this(
             configurationService,
             loggingService,
@@ -306,7 +315,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             workflowConfigurationResolver,
             workflowRecipePlanService,
             workflowImportExportService,
-            workflowTemplateEngine)
+            workflowTemplateEngine,
+            pluginManager)
     {
     }
 
@@ -348,7 +358,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowConfigurationResolver? workflowConfigurationResolver = null,
         IWorkflowRecipePlanService? workflowRecipePlanService = null,
         IWorkflowImportExportService? workflowImportExportService = null,
-        IWorkflowTemplateEngine? workflowTemplateEngine = null)
+        IWorkflowTemplateEngine? workflowTemplateEngine = null,
+        IPluginManager? pluginManager = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -407,7 +418,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             contentStore,
             ocrService,
             aiDiagnosticsCollector,
-            diagnosticsCollector);
+            diagnosticsCollector,
+            new PluginsViewModel(pluginManager, externalFileLauncher, watchedFolderCoordinator));
         _enableAi = configurationService.Current.Ai.Enabled;
         _showAdvancedFeatures = configurationService.Current.Features.ShowAdvancedFeatures;
         NavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_navigationItems);

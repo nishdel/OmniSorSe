@@ -58,7 +58,7 @@ public sealed record HelpTopic(
     string SafetyNotes,
     IReadOnlyList<HelpTopicId> RelatedTopics);
 
-/// <summary>Owns the complete bounded OpenSorSe 1.1 internal Help catalog.</summary>
+/// <summary>Owns the complete bounded built-in Help catalog.</summary>
 public static class HelpCatalog
 {
     private static readonly IReadOnlyList<HelpTopic> TopicsValue = Array.AsReadOnly(
@@ -164,7 +164,7 @@ public static class HelpCatalog
             "The bounded local Operation Journal.", "Selection, copied report text, or explicitly confirmed conflict-safe Undo.",
             "File contents, AI prompt bodies, raw responses, or newer conflicting data.",
             ["Refresh history.", "Select an operation.", "Review summary and every action.", "Copy a report if needed.", "Request and confirm Undo only after reviewing conflicts."],
-            ["Refresh history", "Copy operation report", "Undo", "Confirm Undo"], "No journal records is normal before the first v1.1 Apply attempt.",
+            ["Refresh history", "Copy operation report", "Undo", "Confirm Undo"], "No journal records is normal before the first Apply attempt.",
             "Interrupted, rollback-partial, and Undo-conflict states require action-level review.", "Undo never overwrites and is not a substitute for backups.", [HelpTopicId.ReviewChanges, HelpTopicId.Diagnostics]),
         Topic(HelpTopicId.AiSetup, "AI setup", "Connects optional Ollama-compatible local AI and selects an exact installed model.",
             "The configured endpoint, provider version/model metadata, and selected settings.", "OpenSorSe settings only after Save.",

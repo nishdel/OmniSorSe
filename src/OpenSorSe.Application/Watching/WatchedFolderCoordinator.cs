@@ -10,6 +10,16 @@ using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Application.Watching;
 
+/// <summary>
+/// Owns the process-lifetime watcher registrations, debounce queue, reconciliation triggers, and grouped activity.
+/// </summary>
+/// <remarks>
+/// Operating-system events are untrusted hints. The coordinator root-checks and
+/// batches them through a bounded channel, marks reconciliation on overflow or
+/// backpressure, and serializes lifecycle changes with a semaphore. It can
+/// publish a reviewable Change Plan, but never invokes the execution service.
+/// Dispose cancels the lifetime token, stops sources, and drains owned tasks.
+/// </remarks>
 public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDisposable
 {
     private static readonly TimeSpan PeriodicReconciliationInterval = TimeSpan.FromHours(24);
