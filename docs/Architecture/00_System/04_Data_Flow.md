@@ -1,4 +1,4 @@
-# OpenSorSe 1.0 Data Flow
+# OpenSorSe 1.1 Data Flow
 
 ```mermaid
 flowchart LR
@@ -15,13 +15,17 @@ flowchart LR
     Index --> Search["Explained Semantic Search Beta"]
     Results --> Catalog["Optional saved catalog"]
     Results --> Duplicate["Duplicate drawer"]
-    Roots --> Preview["Structure snapshot + proposal"]
-    Preview --> History["Preview history"]
-    Preview --> Confirm{"Exact explicit confirmation?"}
-    Confirm -- No --> Review["No source mutation"]
-    Confirm -- Yes --> Guard["Revalidate root + every move"]
-    Guard --> Apply["Bounded in-root moves"]
-    Apply --> History
+    Results --> Suggestions["AI/rule suggestions (read-only)"]
+    Suggestions --> Plan["Persisted Change Plan"]
+    Plan --> Review["Review/edit/approve/reject"]
+    Review --> Validate["Validate Plan"]
+    Validate --> Confirm{"Explicit Apply Plan?"}
+    Confirm -- No --> Plan
+    Confirm -- Yes --> Guard["Immediate immutable revalidation"]
+    Guard --> Journal["Persist pending/running journal"]
+    Journal --> Apply["Rename/move/create through gateway"]
+    Apply --> Verify["Verify + action journal"]
+    Verify --> History["Operation History / Undo"]
 ```
 
 ## Ownership and lifetime
@@ -35,8 +39,10 @@ flowchart LR
 | Semantic terms/vectors | Bounded rebuildable `semantic-index.json`. |
 | AI review decisions | Bounded metadata-only `decision-history.json`. |
 | Structure source/proposed/applied snapshots and outcomes | Bounded `structure-history.json`; file contents are not stored. |
+| Reviewable Change Plans | Bounded versioned `change-plans.json`; paths, portable identities, reasons, decisions, and validation only. |
+| Attempted operations, rollback, interruption, and Undo | Durable bounded `operation-journal.json`; no file contents or AI prompt bodies. |
 | Comparison rows, diagram filters, current structure capture | In memory and capped for presentation. |
 
 ## Failure isolation
 
-Malformed documents, OCR unavailability, semantic-index corruption, AI provider failure, catalog I/O, and structure-history corruption return controlled states and do not break scanning or unrelated workflows. Only a validated, separately confirmed restructuring apply can reach `File.Move`; every other flow is read-only with respect to source files.
+Malformed documents, OCR unavailability, semantic-index corruption, AI provider failure, catalog I/O, and optional-store corruption return controlled states and do not break scanning or unrelated workflows. Only a validated, separately confirmed Change Plan can reach `IFileSystemGateway`; every AI generation/parsing flow is read-only with respect to source files.

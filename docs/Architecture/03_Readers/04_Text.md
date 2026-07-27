@@ -190,5 +190,5 @@ These enhancements should improve extraction capabilities while preserving the c
 
 * [Readers Overview](00_Overview.md)
 * [Image Reader](05_Images.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Semantic Search](../06_Search/02_Semantic_Search.md)

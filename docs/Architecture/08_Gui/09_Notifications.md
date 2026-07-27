@@ -177,5 +177,5 @@ These enhancements should preserve the Notifications component's primary respons
 * [GUI Overview](00_Overview.md)
 * [Dialogs](08_Dialogs.md)
 * [History Page](05_History_Page.md)
-* [Scanner Page](03_Scanner_Page.md)
+* [Scanner Page](03_Scanner_page.md)
 * [Rules Overview](../07-Rules/00_Overview.md)

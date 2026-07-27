@@ -162,5 +162,5 @@ public sealed class SemanticIndexer : ISemanticIndexer
     }
 
     private static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
 }

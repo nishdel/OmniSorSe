@@ -120,12 +120,12 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
             var activeFileExists = dailyFiles.Any(filePath => string.Equals(
                 Path.GetFileName(filePath),
                 activeFileName,
-                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
+                Platform.PlatformServices.CurrentPathSemantics.Comparison));
             var retainedFiles = dailyFiles
                 .Where(filePath => !string.Equals(
                     Path.GetFileName(filePath),
                     activeFileName,
-                    OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                    Platform.PlatformServices.CurrentPathSemantics.Comparison))
                 .Skip(Math.Max(0, _options.RetainedFileCount - (activeFileExists ? 1 : 0)))
                 .ToArray();
             foreach (var retainedFile in retainedFiles)

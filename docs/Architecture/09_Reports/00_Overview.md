@@ -170,4 +170,4 @@ These enhancements should preserve the Reports subsystem's primary responsibilit
 * [Duplicates Report](03_Duplicates_Report.md)
 * [AI Report](04_AI_Report.md)
 * [Export](05_Export.md)
-* [Reports Page](../08_GUI/07_Reports_Page.md)
+* [Reports Page](../08_Gui/07_Reports_Page.md)

@@ -87,7 +87,7 @@ public sealed class UndoHistoryViewModelTests
     }
 
     /// <summary>
-    /// Verifies v0.1 does not fabricate scan history when no file operation session has been supplied.
+    /// Verifies the empty state explains the review/Apply boundary without fabricating operation history.
     /// </summary>
     [Fact]
     public void Constructor_ExplainsReviewOnlyEmptyOperationHistory()
@@ -96,9 +96,10 @@ public sealed class UndoHistoryViewModelTests
 
         Assert.True(viewModel.IsEmpty);
         Assert.False(viewModel.HasSessions);
-        Assert.Contains("does not expose generic rule execution or undo", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Apply a reviewed Change Plan", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("conflict-aware Undo", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Structure history", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Saved catalog", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Saved scans", viewModel.EmptyStateMessage, StringComparison.OrdinalIgnoreCase);
         Assert.False(viewModel.RequestUndoCommand.CanExecute(null));
     }
 

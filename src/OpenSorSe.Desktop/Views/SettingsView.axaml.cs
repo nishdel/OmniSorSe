@@ -6,7 +6,7 @@ using OpenSorSe.Desktop.ViewModels;
 namespace OpenSorSe.Desktop.Views;
 
 /// <summary>
-/// Displays supported v0.1 application settings.
+/// Displays the current application settings surface.
 /// </summary>
 public partial class SettingsView : UserControl
 {

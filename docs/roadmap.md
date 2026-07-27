@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.0 keeps scanning, extraction, page-aware OCR, indexing, duplicate review, diagrams, and AI suggestions non-mutating. Its only new source mutation is a deterministic, separately confirmed, root-confined restructuring plan. OCR Beta and Semantic Search Beta are local and independent of AI.
+OpenSorSe 1.5 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Platform adapters make Windows and Linux behavior explicit. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
 
 ## Completed releases
 
@@ -137,6 +137,101 @@ Release candidate; automated validation complete where the environment permits a
 
 The release does not add plugins, broad localization, installers, cloud indexing, live monitoring, reports/export, autonomous AI file control, or generic rule execution.
 
+## v1.1 - Safe File Operations and Robustness
+
+Implemented as one stable release; automated validation complete and manual UI/platform verification pending.
+
+- Separate persisted Change Plan and Operation Journal domain models with forward-compatible action discriminators and schema versions.
+- Review Changes workflow for action-level approval/rejection, filename/destination editing, filters, counts, validation, final summary, explicit Apply, result, and Undo.
+- Supported file actions are rename file, move file, and create directory. Permanent deletion is not supported.
+- Validation at plan creation, after edits/on request, and immediately before execution detects missing, renamed, changed, locked, linked, conflicting, occupied, invalid, out-of-root, and stale paths.
+- Deterministic, non-overwriting execution through one filesystem gateway, with durable pending/running/action/terminal journal writes, result verification, safe-boundary cancellation, and reverse-order rollback.
+- Whole-operation and safe individual-operation Undo with identity, modification, occupancy, dependency, and empty-created-directory checks.
+- Startup recovery marks incomplete journal records as Interrupted Operations only after inspecting actual paths; ambiguous states remain explicit.
+- Persistent Operation History shows summary and action details and can copy a human-readable debugging report without file contents or AI prompt payloads.
+- Existing AI parsers remain suggestion-only. Accepted rename/folder output is captured as a Change Plan; the executed input is the reviewed plan, not a later model response.
+- Existing v1.0 application data remains readable. New bounded atomic stores are `change-plans.json` and `operation-journal.json`.
+
+## v1.2 - Watched Folders and Incremental Scanning
+
+Implemented on branch `v1.2-watched-folders`; automated validation complete and manual GUI/filesystem/platform verification pending.
+
+- Persistent watched roots with pause/resume, subfolder scope, exact/pattern ignores, scan profile, optional current-session sorting recipe, separate deterministic/AI choices, notification settings, quiet period, size/hidden policy, status, timestamps, summaries, and catalogue identity.
+- Versioned bounded atomic configuration, catalogue, and grouped activity stores.
+- Replaceable operating-system watcher adapters feed bounded, debounced hint batches; actual canonical root-confined filesystem state remains authoritative.
+- Stable Windows identity and portable fallback support incremental create/modify/rename/move/delete calculation.
+- Unchanged analysis is preserved. Content/OCR/hash/classification rerun only for content-affected files; duplicate groups and affected deterministic rules are updated from retained data.
+- Startup, paused, reconnected, overflow, daily, user-triggered, and no-change reconciliation workflows.
+- Optional per-folder AI remains default-off, uses existing readiness/schema/retry/cancellation contracts, batches at most 12 affected files, and cannot fail the deterministic catalogue update.
+- Deterministic and AI suggestions reuse v1.1 Change Plans. Operation Journal correlation suppresses recursive suggestions from explicitly applied OpenSorSe changes.
+- Overlapping roots are rejected to avoid duplicate ownership.
+
+> Watched folders automate detection and analysis, not file modification.
+
+## v1.3 - Workflow Profiles and Recipe Library
+
+Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending.
+
+- Version: `v1.3`
+- Release name: **Workflow Profiles and Recipe Library**
+- Git branch: `v1.3-workflow-profiles`
+- Typed persistent profiles and recipes with immutable built-ins, lifecycle, revisions, dependency protection, atomic migration/recovery, and human-inspectable import/export.
+- Constrained deterministic templates with previews, sanitization/explanations, traversal/root/reserved-name/length/collision blocking, and no executable expressions.
+- Explicit global/profile/folder/manual precedence with immutable historical configuration snapshots.
+- Persistent watched assignments, multiple permitted recipes, clear unavailable state, manual-scan selection/one-time narrowing, and Workflows management UI.
+- Existing v1.1 Change Plan provenance/review/preflight/execution/journal/recovery/Undo reuse and conjunctive global/profile/item AI policy.
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
+
+## v1.4 - Plugin Foundation and Extension SDK
+
+Source implementation and automated validation complete; manual GUI,
+filesystem, hostile-package, runtime/unload, and platform verification pending.
+
+- Version: `v1.4`
+- Release name: **Plugin Foundation and Extension SDK**
+- Git branch: `v1.4-plugin-foundation`
+- Stable standalone contracts for eight bounded extension points.
+- Strict local manifests/discovery, compatibility, dependencies, integrity,
+  lifecycle isolation, diagnostics, quarantine, and explicit capability grants.
+- Transactional local packages, upgrade/rollback preservation, safe removal,
+  four built-in reference plugins, and Settings management.
+- Exact workflow/recipe/watcher references and Change Plan provenance with
+  fail-closed resolution.
+- No marketplace, downloads, automatic updates, scripts, OS sandbox, publisher
+  authority, direct file mutation, or approval bypass.
+
+> Plugins analyze or propose; they do not grant mutation authority.
+
+## v1.5 - Cross-Platform Foundation and Linux Preview
+
+Source implementation complete; local Windows automated validation and manual
+Linux desktop/filesystem verification are tracked in Release Status.
+
+- Version: `v1.5`
+- Release name: **Cross-Platform Foundation and Linux Preview**
+- Git branch: `v1.5-cross-platform-foundation`
+- Small platform contracts and capability/limitation diagnostics.
+- Windows compatibility plus Linux XDG paths, case-sensitive semantics,
+  device/inode identity, permission diagnostics, watcher limitations, managed
+  plugins, OCR discovery, and desktop build/launch foundation.
+- Platform-aware non-overwriting Change Plan validation/execution/Undo.
+- Explicit workflow filename portability and plugin native RID constraints.
+- Windows/Ubuntu source CI with no package or release publishing.
+- macOS remains unverified; installers, updaters, distribution packages,
+  privileged services, and arbitrary shell execution are deferred.
+
+> Linux is a preview and every file mutation still requires explicit review,
+> confirmation, immediate validation, journalling, and verification.
+
+Release branches follow `v<version>-<primary-feature>`, for example:
+
+- `v1.1-safe-file-operations`
+- `v1.2-watched-folders`
+- `v1.3-workflow-profiles`
+- `v1.4-plugin-foundation`
+- `v1.5-cross-platform-foundation`
+
 ## Future release ideas
 
 The following are longer-term ideas, not current capabilities or committed release scope:
@@ -146,8 +241,8 @@ The following are longer-term ideas, not current capabilities or committed relea
 - Learned or external semantic embedding models and GPU acceleration.
 - Database-backed scan catalogs, tags, and search indexes.
 - Generic rule execution and undo integration beyond the narrow restructuring apply workflow.
-- Plugin system.
-- Live filesystem monitoring or scheduled comparisons.
+- Out-of-process plugin sandboxing, publisher signatures, and an optional
+  reviewed marketplace/download service.
 - Exportable reports and rename inference.
 
 Any future feature that could modify user files requires a separate safety design covering explicit authorization, live preflight, preview, failure handling, and recovery expectations.

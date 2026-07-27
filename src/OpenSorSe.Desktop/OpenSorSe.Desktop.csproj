@@ -3,10 +3,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>OpenSorSe</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.5.0</Version>
     <Nullable>enable</Nullable>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Assets\opensorse-app-icon.ico</ApplicationIcon>
+    <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">Assets\opensorse-app-icon.ico</ApplicationIcon>
     <Title>OpenSorSe</Title>
     <Product>OpenSorSe</Product>
     <Description>Local-first file organization, search, duplicate review, OCR, and optional AI-assisted suggestions.</Description>
@@ -37,5 +37,6 @@
     <ProjectReference Include="..\OpenSorSe.Executor\OpenSorSe.Executor.csproj" />
     <ProjectReference Include="..\OpenSorSe.Application\OpenSorSe.Application.csproj" />
     <ProjectReference Include="..\OpenSorSe.AI\OpenSorSe.AI.csproj" />
+    <ProjectReference Include="..\OpenSorSe.Extensions.Abstractions\OpenSorSe.Extensions.Abstractions.csproj" />
   </ItemGroup>
 </Project>

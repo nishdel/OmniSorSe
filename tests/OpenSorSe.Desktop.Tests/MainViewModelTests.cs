@@ -33,9 +33,10 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(NavigationDestination.CatalogComparison, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.StructureHistory, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.Diagnostics, viewModel.Destinations);
-        Assert.DoesNotContain(NavigationDestination.History, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.History, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Scan, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Results, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.ReviewChanges, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Catalog, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Duplicates, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.CatalogSearch, viewModel.Destinations);
@@ -135,8 +136,11 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
         Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
         Assert.Equal(
-            ["Home", "Scan", "Files", "Duplicates", "Saved scans", "Settings"],
+            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
+        Assert.Contains(
+            viewModel.NavigationItems,
+            item => item.Destination == NavigationDestination.History && item.Label == "Operation History");
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Label == nameof(NavigationDestination.CatalogComparison));
 
         viewModel.Navigate(NavigationDestination.CatalogSearch);

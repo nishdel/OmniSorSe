@@ -42,7 +42,8 @@ public sealed class RuleEditorViewModelTests
         Assert.NotEmpty(validation.Errors);
         Assert.Empty(viewModel.Rules);
         Assert.True(viewModel.IsEmpty);
-        Assert.Contains("does not create, persist, or execute rules", viewModel.EmptyStateMessage, StringComparison.Ordinal);
+        Assert.Contains("Rules produce proposals", viewModel.EmptyStateMessage, StringComparison.Ordinal);
+        Assert.Contains("no rule directly executes a file change", viewModel.EmptyStateMessage, StringComparison.Ordinal);
     }
 
     /// <summary>

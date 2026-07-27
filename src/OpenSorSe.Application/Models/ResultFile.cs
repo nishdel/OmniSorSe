@@ -16,4 +16,8 @@ public sealed record ResultFile(
     string ClassificationDisplay,
     DuplicateStatus DuplicateStatus,
     string? DuplicateGroupId,
-    bool HasPlannedOperation);
+    bool HasPlannedOperation)
+{
+    /// <summary>Gets the filesystem creation timestamp when metadata extraction made it available.</summary>
+    public DateTimeOffset? CreationTimeUtc { get; init; }
+}

@@ -174,5 +174,5 @@ These enhancements should preserve the component's primary responsibility while 
 
 * [Readers Overview](00_Overview.md)
 * [OCR](09_OCR.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Scanner Overview](../02_Scanner/00_Overview.md)

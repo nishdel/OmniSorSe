@@ -1,5 +1,6 @@
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Scanner.Models;
@@ -295,6 +296,57 @@ public sealed class AiSuggestionsViewModelTests
         Assert.Equal(AiReadinessState.Ready, viewModel.ReadinessState);
     }
 
+    /// <summary>Verifies a historical workflow snapshot can narrow global AI without being bypassed by the results UI.</summary>
+    [Fact]
+    public async Task WorkflowProfileWithAiDisabled_BlocksGloballyEnabledRequests()
+    {
+        var configuration = new MutableConfigurationService(Settings(rename: true, folder: true));
+        var service = new RecordingService();
+        using var viewModel = new AiSuggestionsViewModel(configuration, service);
+        var file = CreateFile();
+        var snapshot = CreateSnapshot(file) with
+        {
+            Workflow = WorkflowSnapshot(
+                new WorkflowAiOptions(false, WorkflowAiInvocationPolicy.Disabled, [])),
+        };
+
+        viewModel.SetContext(file, snapshot, [file]);
+        await viewModel.GenerateSuggestionCommand.ExecuteAsync(null);
+        await viewModel.GenerateFolderStructureCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsVisible);
+        Assert.Contains("disables AI", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, service.RenameCallCount);
+        Assert.Equal(0, service.FolderCallCount);
+    }
+
+    /// <summary>Verifies item-level profile policy is applied before any optional provider call.</summary>
+    [Fact]
+    public async Task WorkflowMissingClassificationPolicy_FiltersDeterministicallyClassifiedItems()
+    {
+        var configuration = new MutableConfigurationService(Settings(rename: true, folder: true));
+        var service = new RecordingService();
+        using var viewModel = new AiSuggestionsViewModel(configuration, service);
+        var classified = CreateFile();
+        var snapshot = CreateSnapshot(classified) with
+        {
+            Workflow = WorkflowSnapshot(
+                new WorkflowAiOptions(
+                    true,
+                    WorkflowAiInvocationPolicy.MissingDeterministicClassificationOnly,
+                    [".pdf"])),
+        };
+
+        viewModel.SetContext(classified, snapshot, [classified]);
+        await viewModel.GenerateSuggestionCommand.ExecuteAsync(null);
+        await viewModel.GenerateFolderStructureCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.GenerateSuggestionCommand.CanExecute(null));
+        Assert.False(viewModel.GenerateFolderStructureCommand.CanExecute(null));
+        Assert.Equal(0, service.RenameCallCount);
+        Assert.Equal(0, service.FolderCallCount);
+    }
+
     private static ApplicationSettings Settings(bool rename, bool folder, string? model = "local-model") => new()
     {
         Ai = new AiSettings
@@ -330,6 +382,27 @@ public sealed class AiSuggestionsViewModelTests
         [],
         new ResultsSnapshotStatistics(1, 1, 0, 0, 0, 0, 0),
         true);
+
+    private static WorkflowConfigurationSnapshot WorkflowSnapshot(WorkflowAiOptions ai)
+    {
+        var profile = BuiltInWorkflowLibrary.Profiles[0];
+        return new WorkflowConfigurationSnapshot(
+            profile.Id,
+            profile.Name,
+            profile.Revision,
+            profile.ModifiedAtUtc,
+            [],
+            profile.Files,
+            profile.Extraction,
+            profile.Analysis,
+            ai,
+            profile.UncertaintyPolicy,
+            profile.ChangePlans,
+            profile.Notifications,
+            profile.FullScan,
+            "test",
+            DateTimeOffset.UnixEpoch);
+    }
 
     private sealed class MutableConfigurationService(ApplicationSettings settings) : IConfigurationService
     {

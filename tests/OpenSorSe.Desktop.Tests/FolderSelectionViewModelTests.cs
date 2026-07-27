@@ -1,4 +1,5 @@
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Application.Workflows;
 
 namespace OpenSorSe.Desktop.Tests;
 
@@ -26,6 +27,33 @@ public sealed class FolderSelectionViewModelTests : IDisposable
         {
             Directory.Delete(_temporaryDirectory, recursive: true);
         }
+    }
+
+    /// <summary>Verifies manual scans capture the chosen profile and session-only narrowing without mutating the profile.</summary>
+    [Fact]
+    public void RequestScan_CapturesSelectedWorkflowAndOneTimeOverride()
+    {
+        var viewModel = new FolderSelectionViewModel();
+        Assert.True(viewModel.AddFolder(_temporaryDirectory));
+        Assert.True(viewModel.SelectProfile(BuiltInWorkflowIds.Photos));
+        viewModel.UseOneTimeOverride = true;
+        viewModel.OverrideDuplicateAnalysisEnabled = false;
+        viewModel.OverrideAiEnabled = false;
+        viewModel.OverrideOcrEnabled = false;
+        viewModel.OverrideMaximumFileSizeMiB = 25;
+        ScanRequest? request = null;
+        viewModel.ScanRequested += (_, value) => request = value;
+
+        viewModel.RequestScan();
+
+        Assert.NotNull(request);
+        Assert.Equal(BuiltInWorkflowIds.Photos, request.ProfileId);
+        Assert.Equal(25 * 1024 * 1024, request.OneTimeOverride!.MaximumFileSizeBytes);
+        Assert.False(request.OneTimeOverride.DuplicateAnalysisEnabled);
+        Assert.Equal(
+            1024L * 1024 * 1024,
+            BuiltInWorkflowLibrary.Profiles.Single(profile => profile.Id == BuiltInWorkflowIds.Photos)
+                .Files.MaximumFileSizeBytes);
     }
 
     /// <summary>

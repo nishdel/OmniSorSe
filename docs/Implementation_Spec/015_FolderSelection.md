@@ -113,9 +113,9 @@ The implementation is complete when:
  Selected Folders
 
  ----------------------------------------------------------
- | C:\Users\John\Documents                                 |
- | D:\Photos                                               |
- | E:\Downloads                                            |
+ | %USERPROFILE%\Documents                                 |
+ | X:\Example\Photos                                       |
+ | X:\Example\Downloads                                    |
  ----------------------------------------------------------
 
  [ Add Folder ]

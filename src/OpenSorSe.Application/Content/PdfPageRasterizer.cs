@@ -1,4 +1,5 @@
 using PDFtoImage;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Application.Content;
 
@@ -64,7 +65,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
         return await Task.Run(
             () =>
             {
-                if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+                if (!IsSupportedDesktopPlatform())
                 {
                     throw new PlatformNotSupportedException("PDF page rendering is unavailable on this platform.");
                 }
@@ -109,7 +110,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
         await Task.Run(
             () =>
             {
-                if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+                if (!IsSupportedDesktopPlatform())
                 {
                     throw new PlatformNotSupportedException("PDF page rendering is unavailable on this platform.");
                 }
@@ -190,7 +191,8 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
         FileOptions.SequentialScan);
 
     private static bool IsSupportedDesktopPlatform() =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsLinux() || OperatingSystem.IsMacOS();
+        PlatformServices.CurrentPlatform is
+            HostPlatformKind.Windows or HostPlatformKind.Linux or HostPlatformKind.MacOS;
 
     private static void ValidatePdfPath(string fullPath)
     {
@@ -212,7 +214,8 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
         var normalized = Path.GetFullPath(workspacePath);
         var parent = Path.GetDirectoryName(normalized);
         var name = Path.GetFileName(normalized);
-        if (!string.Equals(parent, _temporaryRoot, StringComparison.OrdinalIgnoreCase) ||
+        if (parent is null ||
+            !PlatformServices.CurrentPathSemantics.PathsEqual(parent, _temporaryRoot) ||
             !name.StartsWith(WorkspacePrefix, StringComparison.Ordinal) ||
             name.Length != WorkspacePrefix.Length + 32 ||
             !Guid.TryParseExact(name[WorkspacePrefix.Length..], "N", out _))

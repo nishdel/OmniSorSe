@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.PluginsView"
+             x:DataType="vm:PluginsViewModel">
+    <StackPanel Spacing="10">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="3">
+                <TextBlock Text="Plugins" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="Locally installed, versioned extensions for analysis and report formats. A plugin requesting NetworkAccess is not offline or local-only. New external plugins stay disabled until reviewed."
+                           TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="Refresh discovery" Command="{Binding RefreshCommand}" />
+        </Grid>
+
+        <TextBlock Text="External plugins run in-process with your operating-system permissions. AssemblyLoadContext improves dependency separation and unloadability, but is not a security sandbox. SHA-256 integrity detects file changes; it does not prove publisher identity."
+                   TextWrapping="Wrap" />
+
+        <Grid ColumnDefinitions="1.05*,1.25*" ColumnSpacing="10">
+            <ListBox ItemsSource="{Binding Plugins}"
+                     SelectedItem="{Binding SelectedPlugin, Mode=TwoWay}"
+                     MinHeight="220">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PluginRow">
+                        <StackPanel Margin="4" Spacing="2">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding PluginId}" FontSize="11" />
+                            <TextBlock Text="{Binding Version, StringFormat='Version {0}'}" />
+                            <TextBlock Text="{Binding Origin}" />
+                            <TextBlock Text="{Binding State}" />
+                            <TextBlock Text="{Binding Integrity}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock Text="Selected plugin" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding InspectionText}" TextWrapping="Wrap" />
+                <TextBlock Text="Capabilities to grant (comma separated; remove any capability you do not approve):"
+                           TextWrapping="Wrap" />
+                <TextBox Text="{Binding CapabilityGrantText, Mode=TwoWay}"
+                         PlaceholderText="Leave empty to grant none" />
+                <WrapPanel>
+                    <Button Margin="0,0,6,6" Content="Inspect" Command="{Binding InspectCommand}" />
+                    <Button Margin="0,0,6,6" Content="Enable and grant requested capabilities" Command="{Binding EnableCommand}" />
+                    <Button Margin="0,0,6,6" Content="Disable" Command="{Binding DisableCommand}" />
+                    <Button Margin="0,0,6,6" Content="Remove" Command="{Binding RequestRemoveCommand}" />
+                </WrapPanel>
+                <StackPanel IsVisible="{Binding RemovalConfirmationPending}" Spacing="4">
+                    <TextBlock Text="Removal is blocked while active workflows, recipes, or watched folders depend on the plugin. Historical provenance and user documents are retained."
+                               TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button Margin="0,0,6,0" Content="Confirm removal" Command="{Binding ConfirmRemoveCommand}" />
+                        <Button Content="Cancel" Command="{Binding CancelRemoveCommand}" />
+                    </WrapPanel>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <Border Padding="10"
+                BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                BorderThickness="1">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Local package installation and upgrade" FontWeight="SemiBold" />
+                <TextBlock Text="Enter an absolute path to a local .zip plugin package. Packages are validated and staged before installation. Existing versions are never overwritten silently."
+                           TextWrapping="Wrap" />
+                <TextBox PlaceholderText="C:\path\plugin-package.zip"
+                         Text="{Binding PackagePath, Mode=TwoWay}" />
+                <WrapPanel>
+                    <Button Margin="0,0,6,0" Content="Install local package" Command="{Binding InstallCommand}" />
+                    <Button Margin="0,0,6,0" Content="Upgrade from local package" Command="{Binding UpgradeCommand}" />
+                    <Button Content="Open controlled plugin folder" Command="{Binding OpenPluginFolderCommand}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Padding="10"
+                BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                BorderThickness="1">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Diagnostic export" FontWeight="SemiBold" />
+                <TextBox PlaceholderText="Absolute path for a new diagnostic text file"
+                         Text="{Binding DiagnosticExportPath, Mode=TwoWay}" />
+                <Button HorizontalAlignment="Left"
+                        Content="Export plugin diagnostics"
+                        Command="{Binding ExportDiagnosticsCommand}" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

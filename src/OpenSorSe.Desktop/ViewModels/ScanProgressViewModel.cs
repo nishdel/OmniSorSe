@@ -85,6 +85,7 @@ public sealed class ScanProgressViewModel : ViewModelBase
         ScanProgressStage.Scanning => _stageText ?? "Scanning...",
         ScanProgressStage.Completed => _stageText ?? "Scan completed.",
         ScanProgressStage.Cancelled => _stageText ?? "Scan cancelled.",
+        ScanProgressStage.Failed => _stageText ?? "Scan failed.",
         _ => throw new InvalidOperationException("The scan progress stage is unsupported."),
     };
 
@@ -127,6 +128,17 @@ public sealed class ScanProgressViewModel : ViewModelBase
             ScanStatus.Cancelled => ScanProgressStage.Cancelled,
             _ => throw new ArgumentOutOfRangeException(nameof(status), "The scan status is unsupported."),
         };
+    }
+
+    /// <summary>
+    /// Marks the presentation as failed without manufacturing a scanner terminal status.
+    /// </summary>
+    /// <param name="message">A concise, user-safe failure description.</param>
+    public void Fail(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        _stageText = message;
+        Stage = ScanProgressStage.Failed;
     }
 
     /// <summary>

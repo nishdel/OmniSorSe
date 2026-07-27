@@ -18,6 +18,12 @@ Folder-structure suggestions are disabled by default and require both the global
 
 The response is one logical hierarchy plus source-to-folder assignments, a bounded reason, and optional confidence. Validation rejects unknown or duplicate identities, duplicate folder IDs or paths, missing parents, cycles, unsafe/reserved/system directory names, traversal, absolute paths, excessive counts, and invalid confidence. It derives display-only relative logical paths after the whole response is valid. Reviewing or accepting the plan cannot create a directory or move a file.
 
+## v1.1 apply boundary
+
+The AI capability still generates only a logical suggestion. Accepting a fully validated exact-file mapping creates a non-mutating Change Plan: each assignment becomes a `MoveFile` action and required parents become explicit `CreateDirectory` actions. The AI reason/model/request correlation are preserved for review; prompt text is not copied to the normal Operation Journal.
+
+Users can reject or edit actions and must validate and explicitly confirm Apply. Duplicate destinations, invalid/out-of-root paths, missing or changed sources, and occupied destinations block execution. The immutable approved plan—not model output—is the execution input. Partial, unknown, or duplicate identities are rejected before plan creation.
+
 ---
 
 # Responsibilities
@@ -185,7 +191,7 @@ These enhancements should preserve the component's primary responsibility of gen
 # Related Documents
 
 * [AI Overview](00_Overview.md)
-* [Document Classification](04_Document_Classification.md)
+* [Document Classification](04_Document_classification.md)
 * [Renaming](06_Renaming.md)
 * [Rules Overview](../07-Rules/00_Overview.md)
 * [User Rules](../07-Rules/05_User_Rules.md)

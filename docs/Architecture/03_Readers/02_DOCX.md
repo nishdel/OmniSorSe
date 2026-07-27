@@ -167,5 +167,5 @@ These enhancements should expand extraction capabilities while preserving the co
 
 * [Readers Overview](00_Overview.md)
 * [Excel Reader](03_Excel.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Summarization](../04_AI/05_Summarization.md)

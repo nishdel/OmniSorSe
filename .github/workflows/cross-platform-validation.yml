@@ -1,0 +1,51 @@
+name: Cross-platform validation
+
+on:
+  push:
+    branches:
+      - v1.5-cross-platform-foundation
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use repository .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore OpenSorSe.sln
+
+      - name: Build Debug
+        run: dotnet build OpenSorSe.sln --configuration Debug --no-restore
+
+      - name: Test Debug
+        run: dotnet test OpenSorSe.sln --configuration Debug --no-build --no-restore
+
+      - name: Build Release
+        run: dotnet build OpenSorSe.sln --configuration Release --no-restore
+
+      - name: Test Release
+        run: dotnet test OpenSorSe.sln --configuration Release --no-build --no-restore
+
+      - name: Verify formatting
+        run: dotnet format OpenSorSe.sln --verify-no-changes --no-restore
+
+      - name: Verify documentation and dependency policy
+        run: dotnet test tests/OpenSorSe.Core.Tests/OpenSorSe.Core.Tests.csproj --configuration Release --no-build --no-restore --filter FullyQualifiedName~RepositoryDocumentationTests

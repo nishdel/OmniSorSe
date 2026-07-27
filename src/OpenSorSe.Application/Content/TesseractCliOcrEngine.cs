@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Application.Content;
 
@@ -13,6 +14,7 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
     private readonly IConfigurationService _configurationService;
     private readonly IPdfPageRasterizer _rasterizer;
     private readonly ITesseractProcessRunner _processRunner;
+    private readonly IExternalToolLocator _toolLocator;
     private OcrCapability? _cachedCapability;
 
     /// <summary>Initializes the local engine with current settings and the bounded PDF renderer.</summary>
@@ -20,10 +22,25 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
         IConfigurationService configurationService,
         IPdfPageRasterizer rasterizer,
         ITesseractProcessRunner processRunner)
+        : this(
+            configurationService,
+            rasterizer,
+            processRunner,
+            new ExternalToolLocator())
+    {
+    }
+
+    /// <summary>Initializes the local engine with explicit cross-platform tool discovery.</summary>
+    public TesseractCliOcrEngine(
+        IConfigurationService configurationService,
+        IPdfPageRasterizer rasterizer,
+        ITesseractProcessRunner processRunner,
+        IExternalToolLocator toolLocator)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _rasterizer = rasterizer ?? throw new ArgumentNullException(nameof(rasterizer));
         _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
+        _toolLocator = toolLocator ?? throw new ArgumentNullException(nameof(toolLocator));
     }
 
     /// <inheritdoc />
@@ -42,7 +59,13 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
                 return _cachedCapability;
             }
 
-            var executable = GetExecutable();
+            var location = LocateExecutable();
+            if (!location.IsAvailable || string.IsNullOrWhiteSpace(location.ExecutablePath))
+            {
+                return Unavailable($"Tesseract is unavailable: {location.Explanation}");
+            }
+
+            var executable = location.ExecutablePath;
             try
             {
                 var versionResult = await _processRunner.ExecuteAsync(
@@ -498,9 +521,16 @@ public sealed class TesseractCliOcrEngine : IOcrEngine
 
     private string GetExecutable()
     {
-        var configured = _configurationService.Current.Content.TesseractExecutablePath;
-        return string.IsNullOrWhiteSpace(configured) ? "tesseract" : Path.GetFullPath(configured);
+        var location = LocateExecutable();
+        return location.IsAvailable && !string.IsNullOrWhiteSpace(location.ExecutablePath)
+            ? location.ExecutablePath
+            : throw new InvalidOperationException(location.Explanation);
     }
+
+    private ExternalToolLocation LocateExecutable() =>
+        _toolLocator.Locate(
+            "tesseract",
+            _configurationService.Current.Content.TesseractExecutablePath);
 
     internal static IReadOnlyList<string> ParseLanguages(string? output) =>
         Array.AsReadOnly((output ?? string.Empty)

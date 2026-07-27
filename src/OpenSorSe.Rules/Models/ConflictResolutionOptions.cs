@@ -7,7 +7,7 @@ namespace OpenSorSe.Rules.Models;
 public sealed record ConflictResolutionOptions(ConflictResolutionStrategy Strategy)
 {
     /// <summary>
-    /// Gets the default v0.1 keep-first strategy.
+    /// Gets the conservative default keep-first strategy.
     /// </summary>
     public static ConflictResolutionOptions Default { get; } = new(ConflictResolutionStrategy.KeepFirst);
 }

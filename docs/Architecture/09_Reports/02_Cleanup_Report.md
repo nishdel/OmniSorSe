@@ -175,5 +175,5 @@ These enhancements should preserve the Cleanup Report's primary responsibility o
 * [Statistics](01_Statistics.md)
 * [Duplicates Report](03_Duplicates_Report.md)
 * [AI Report](04_AI_Report.md)
-* [Reports Page](../08_GUI/07_Reports_Page.md)
+* [Reports Page](../08_Gui/07_Reports_Page.md)
 * [Rules Overview](../07-Rules/00_Overview.md)

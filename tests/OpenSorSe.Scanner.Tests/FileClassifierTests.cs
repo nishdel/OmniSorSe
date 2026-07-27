@@ -11,10 +11,17 @@ public sealed class FileClassifierTests
 {
     /// <summary>Verifies every built-in category has a representative mapping.</summary>
     [Theory]
-    [InlineData(".txt", FileCategory.Document)] [InlineData(".csv", FileCategory.Spreadsheet)] [InlineData(".ppt", FileCategory.Presentation)]
-    [InlineData(".jpg", FileCategory.Image)] [InlineData(".mp3", FileCategory.Audio)] [InlineData(".mp4", FileCategory.Video)]
-    [InlineData(".zip", FileCategory.Archive)] [InlineData(".cs", FileCategory.Code)] [InlineData(".db", FileCategory.Data)]
-    [InlineData(".exe", FileCategory.Executable)] [InlineData(".ttf", FileCategory.Font)]
+    [InlineData(".txt", FileCategory.Document)]
+    [InlineData(".csv", FileCategory.Spreadsheet)]
+    [InlineData(".ppt", FileCategory.Presentation)]
+    [InlineData(".jpg", FileCategory.Image)]
+    [InlineData(".mp3", FileCategory.Audio)]
+    [InlineData(".mp4", FileCategory.Video)]
+    [InlineData(".zip", FileCategory.Archive)]
+    [InlineData(".cs", FileCategory.Code)]
+    [InlineData(".db", FileCategory.Data)]
+    [InlineData(".exe", FileCategory.Executable)]
+    [InlineData(".ttf", FileCategory.Font)]
     public async Task ClassifyAsync_ClassifiesBuiltInExtensions(string extension, FileCategory category)
     {
         var result = await CreateClassifier().ClassifyAsync(new[] { Entry("sample" + extension) });

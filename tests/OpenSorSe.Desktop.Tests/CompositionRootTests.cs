@@ -1,4 +1,5 @@
 using System.Reflection;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop;
 using OpenSorSe.Desktop.ViewModels;
 
@@ -19,7 +20,11 @@ public sealed class CompositionRootTests
 
         try
         {
-            Assert.IsType<MainViewModel>(provider.GetService(typeof(MainViewModel)));
+            var main = Assert.IsType<MainViewModel>(provider.GetService(typeof(MainViewModel)));
+            Assert.NotNull(main.Settings.PlatformDiagnostics);
+            Assert.Equal(
+                Enum.GetValues<PlatformCapabilityKind>().Length,
+                main.Settings.PlatformDiagnostics.Capabilities.Count);
         }
         finally
         {

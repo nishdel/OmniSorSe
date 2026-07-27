@@ -20,4 +20,8 @@ public interface IExternalFileLauncher
 
     /// <summary>Asks the operating system to open the existing folder containing one known file.</summary>
     Task<ExternalLaunchResult> OpenContainingFolderAsync(string fullPath, CancellationToken cancellationToken);
+
+    /// <summary>Asks the operating system to open one explicit existing directory.</summary>
+    Task<ExternalLaunchResult> OpenFolderAsync(string fullPath, CancellationToken cancellationToken) =>
+        Task.FromResult(ExternalLaunchResult.Failure("Opening a directory is not supported by this launcher."));
 }

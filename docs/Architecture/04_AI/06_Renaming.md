@@ -18,6 +18,12 @@ Rename suggestions are disabled by default and require both the global AI switch
 
 Validation preserves the original extension exactly and rejects paths, separators, traversal, control or portable-invalid characters, reserved names, empty/no-change results, overly long values, and known sibling conflicts. Unknown JSON properties are ignored for forward compatibility, but all required fields and safety rules remain strict. Markdown-fenced or partially valid output is not accepted. The user may review, edit, accept, or reject the proposal; these actions do not rename the file.
 
+## v1.1 apply boundary
+
+The AI capability remains suggestion-only and performs no file operation. After the user accepts a validated rename suggestion, `SuggestionChangePlanFactory` captures the known result, reviewed filename, reason, model/request correlation, and current filesystem identity as a non-mutating `RenameFile` Change Plan action.
+
+The user must separately approve or edit the action, select **Validate Plan**, review the final summary, and explicitly select **Apply Plan**. Immediate pre-execution validation and the generic execution service operate on that approved plan; no later or hidden AI response participates. Invalid/malformed model output, retries, rejection, or provider failure cannot mutate an existing plan or file.
+
 ---
 
 # Responsibilities

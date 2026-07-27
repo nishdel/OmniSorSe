@@ -183,6 +183,6 @@ These enhancements should improve extraction capabilities while preserving the c
 
 * [Readers Overview](00_Overview.md)
 * [Image Reader](05_Images.md)
-* [PDF Reader](01_PDF.md)
-* [Document Classification](../04_AI/04_Document_Classification.md)
+* [PDF Reader](01_pdf.md)
+* [Document Classification](../04_AI/04_Document_classification.md)
 * [Summarization](../04_AI/05_Summarization.md)

@@ -1,4 +1,4 @@
-# OpenSorSe 1.0 System Overview
+# OpenSorSe 1.5 System Overview
 
 OpenSorSe is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, and versioned local JSON stores.
 
@@ -6,31 +6,40 @@ OpenSorSe is a local-first Avalonia desktop application for understanding select
 
 Scanning, exact-duplicate review, metadata extraction, OCR Beta, tag generation, Semantic Search Beta, catalog/history comparison, diagrams, and optional AI suggestions are non-mutating. AI is disabled by default, capability-specific, untrusted, and suggestion-only. Rename/folder requests are metadata-only; bounded extracted text requires a separate opt-in and explicit one-document action.
 
-OpenSorSe 1.0 adds one narrow mutation boundary: a deterministic folder-restructuring proposal can be applied only after a second exact-preview confirmation. The service revalidates the unchanged explicit root, rejects traversal/reparse/conflict/overwrite/missing-source cases, moves at most 500 listed files, attempts rollback on interruption, and persists outcomes. It does not consume AI output.
+OpenSorSe 1.2 added watched roots, v1.3 typed workflows/recipes, and v1.4 the local plugin host/SDK. v1.5 adds explicit Windows/Linux platform semantics, identity, persistence locations, capability diagnostics, external-tool discovery, and desktop adapters. Watcher events, workflow settings, plugin output, and platform capability reports are analysis inputs, not authorization or filesystem truth. Suggestions remain non-mutating and reuse the v1.1 persisted **Change Plan**, separate **Operation Journal**, review, preflight, explicit confirmation, verified execution, rollback, recovery, and conflict-aware Undo boundary.
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
 
 ## Implemented components
 
 | Project | Responsibility |
 | --- | --- |
-| `OpenSorSe.Core` | Validated settings, logging, lifecycle, events, state, tasks, and dependency-injection support. |
+| `OpenSorSe.Extensions.Abstractions` | Stable immutable plugin SDK contracts; no reference to Application, Desktop, DI, persistence, credentials, or execution. |
+| `OpenSorSe.Core` | Validated settings, logging, lifecycle, events, state, tasks, platform contracts/implementations, application locations, capability reporting, and dependency-injection support. |
 | `OpenSorSe.Scanner` | Read-only traversal, filesystem metadata, hashing, deterministic classification, and exact duplicate detection. |
 | `OpenSorSe.Rules` | Deterministic rule evaluation/planning and conflict resolution; no Desktop execution workflow. |
-| `OpenSorSe.Executor` | Historical generic executor/undo library retained for tests; not registered by the Desktop. |
-| `OpenSorSe.Application` | Processing orchestration, Results projection, AI gates/contracts, catalog/search/comparison, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
+| `OpenSorSe.Executor` | v1.1 Change Plan factory/validator/stores, durable journal, filesystem gateway, deterministic execution, rollback, Undo, restart recovery, and report export; historical generic components remain unregistered. |
+| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
 | `OpenSorSe.AI` | Optional Ollama-compatible HTTP transport and bounded AI review-decision persistence. |
-| `OpenSorSe.Desktop` | Avalonia shell, global feature controls, MVVM pages, preview/review workflows, Help, diagnostics, and explicit restructuring confirmation. |
+| `OpenSorSe.Desktop` | Avalonia shell, Windows/Linux desktop adapters, platform diagnostics, global feature controls, Workflows/profile/recipe management and preview, manual profile selection, Watched Folders management/status/actions/activity, MVVM pages, Review Changes, Operation History/details/report/Undo, Help, diagnostics, and explicit confirmation. |
 
 ```mermaid
 flowchart LR
     UI["Avalonia Desktop / MVVM"] --> App["Application services"]
+    Watch["OS watcher hints"] --> Queue["Bounded debounce queue"]
+    Queue --> App
     App --> Scanner["Read-only Scanner"]
     App --> Rules["Rules planning"]
     App --> Content["Metadata + OCR cache"]
     Content --> Tags["Provenance tags"]
     Content --> Semantic["Local Semantic index"]
     App --> Catalog["Saved catalog"]
-    App --> Structure["Structure preview/history"]
-    Structure -->|exact confirmed plan only| Files["In-root file moves"]
+    App --> Watched["Watched configuration / catalogue / activity"]
+    App --> Plan["Change Plan factory + validation"]
+    Structure --> Plan
+    Plan -->|review + explicit Apply| Executor["Journalled executor"]
+    Executor --> Files["Rename / move / create directory"]
+    Executor --> Journal["Operation Journal"]
     UI --> AI["Optional Ollama transport"]
     AI --> App
     Scanner --> Results["Immutable Results"]
@@ -39,11 +48,11 @@ flowchart LR
 
 ## Local stores
 
-Settings, logs, AI decisions, saved catalog/searches, extracted content, semantic index, and structure history live in separate bounded OpenSorSe application-data files. Missing optional stores are valid empty states. Corrupt optional caches/index/history fail closed and cannot activate a file operation.
+Settings, logs, AI decisions, saved catalog/searches, extracted content, semantic index, structure history, workflow library, plugin state/packages, watched configurations/catalogues/grouped activity, Change Plans, and the Operation Journal live in separate bounded OpenSorSe application-owned files. Windows preserves the existing LocalApplicationData root; Linux separates XDG configuration/data/state/cache. Missing v1.1/v1.2/v1.3/v1.4 stores are valid empty states. Corrupt stores fail closed and cannot activate a file operation.
 
 ## Deferred
 
-Plugins, broad localization, installers/release automation, cloud indexing, live monitoring, report export, autonomous AI actions, learned/external embedding models, bundled PDF rasterization, and generic rule execution remain post-1.0 work.
+An online plugin marketplace/download/update service, out-of-process plugin sandbox, publisher signature authority, broad localization, installers/updaters/distribution packages, full macOS support, cloud indexing/synchronization, background-service monitoring while OpenSorSe is closed, automatic moved-root discovery, autonomous AI actions, permanent deletion, arbitrary recipe scripting, learned/external embedding models, and generic rule execution remain future work.
 
 ## Related documents
 
@@ -51,4 +60,13 @@ Plugins, broad localization, installers/release automation, cloud indexing, live
 - [Data Flow](04_Data_Flow.md)
 - [User Flow](06_User_Flow.md)
 - [Safety and Privacy](../../SAFETY_AND_PRIVACY.md)
-- [v1.0 specification](../../Implementation_Spec/v1.0/048_v1.0_Integrated_Release.md)
+- [v1.1 safety architecture](../07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md)
+- [v1.1 specification](../../Implementation_Spec/v1.1/053_Safe_File_Operations_and_Robustness.md)
+- [v1.2 watched-folder architecture](../02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md)
+- [v1.2 specification](../../Implementation_Spec/v1.2/054_Watched_Folders_and_Incremental_Scanning.md)
+- [v1.3 workflow architecture](../07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
+- [v1.3 specification](../../Implementation_Spec/v1.3/055_Workflow_Profiles_and_Recipe_Library.md)
+- [v1.4 plugin architecture](../10_Plugins/06_v1.4_Plugin_Foundation.md)
+- [v1.4 specification](../../Implementation_Spec/v1.4/056_Plugin_Foundation_and_Extension_SDK.md)
+- [v1.5 platform architecture](08_v1.5_Platform_Architecture.md)
+- [v1.5 specification](../../Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md)

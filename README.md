@@ -9,9 +9,9 @@
   Find clarity in your files.
 </p>
 
-OpenSorSe is a modern, open-source Windows desktop application for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, local meaning-based search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
+OpenSorSe is a modern, open-source Windows desktop application with a Linux preview for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, local meaning-based search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
 
-> OpenSorSe 1.0.0 is a final manual-validation candidate. Complete the [release checklist](docs/RELEASE_CHECKLIST_v1.0.md) before treating it as a production release.
+> OpenSorSe 1.5.0 adds explicit platform services, XDG persistence, Linux-safe core behavior, platform diagnostics, and Windows/Ubuntu validation while retaining preview-first, journalled file organization. Complete the [v1.5 manual checklist](docs/MANUAL_TESTING_v1.5.md) before making a binary release claim.
 
 
 <img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
@@ -43,12 +43,19 @@ OpenSorSe is a modern, open-source Windows desktop application for scanning, sea
 | Feature | What it provides |
 | --- | --- |
 | **Fast folder scanning** | Recursively scans selected folders with progress, cancellation, recoverable error isolation, metadata classification, and exact duplicate detection. |
+| **Watched Folders** | Persists selected roots, debounces filesystem hints, verifies real state, incrementally analyses changed files, reconciles offline/missed changes, and produces grouped activity without automatic file modification. |
+| **Workflows** | Manages versioned scan/analysis profiles and constrained sorting recipes with deterministic previews, assignments, imports/exports, and historical revision snapshots. |
+| **Local plugins** | Discovers and inspects bounded local extensions for metadata, extraction, classification, recipe fields, duplicate evidence, workflow capabilities, imports, and exports; external plugins require explicit enable/capability grants. |
 | **Duplicate Detective** | Groups byte-identical files, shows potential reclaimable space, and supports review without offering automatic deletion. |
 | **Meaning Search (Beta)** | Builds a bounded local index and finds related filenames, tags, metadata, native text, and OCR text with match explanations. |
 | **File Assistant** | Produces validated, review-only rename and folder-structure suggestions for explicitly selected files and metadata. |
 | **OCR / Text Recognition** | Extracts native PDF/Open XML text and can use an externally installed local Tesseract engine for images and scanned PDF pages. |
 | **Saved scans** | Keeps optional bounded scan snapshots, accepted tags, searches, and comparisons in OpenSorSe application data. |
 | **Folder plans** | Previews deterministic, root-confined organization plans before a separate explicit confirmation. |
+| **Review Changes** | Converts accepted rename, folder, and deterministic organization suggestions into one editable Change Plan; each action can be approved or rejected before validation and explicit Apply. |
+| **Safe file operations** | Renames files, performs verified same-filesystem moves, and creates required folders without overwrite; every attempted apply is journalled and verified. |
+| **Platform diagnostics** | Reports Windows/Linux capability states, runtime, application locations, OCR/tool availability, identity, watchers, plugins, desktop integration, and known limitations. |
+| **Operation History and Undo** | Persists action-level results, rollback and interruption details, supports a human-readable report, and offers conflict-aware Undo while resulting files remain unchanged. |
 | **Local AI support** | Uses compact versioned prompts, exact structured-output schemas, strict application validation, and one bounded shape-repair pass with an explicitly configured Ollama-compatible endpoint. |
 | **Dashboard** | Summarizes the latest scan and routes directly to common workflows. |
 | **Smart organization** | Combines tags, classifications, metadata, safe proposals, conflict checks, and structure history without silent changes. |
@@ -95,13 +102,12 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 ## Installation
 
-### Portable ZIP
+### Binary availability
 
-1. Download `OpenSorSe-v1.0.0-win-x64.zip` from the GitHub release.
-2. Extract the entire archive to a writable folder.
-3. Run `OpenSorSe.exe`.
-
-The Windows x64 package is self-contained; users do not need to install the .NET runtime separately. Keep all extracted runtime files beside the executable.
+This source tree does not claim a v1.5 package, installer, tag, or published
+release. The immutable historical v1.0 Windows package does not represent the
+current source. Build v1.5 from source and complete the platform-specific manual
+checklist before distributing a binary.
 
 ### Windows executable
 
@@ -117,8 +123,10 @@ An installer is not currently provided. The portable package avoids unsigned MSI
 - **Advanced diagnostics:** A default-off, non-modal viewer unifies live AI, OCR/text-extraction, and scanning sessions with correlation, filters, copy/export, explicit bounds, and redacted display by default. Duplicate, search/indexing, rules/organisation, file-operation, and performance categories are visible as not yet instrumented. Records remain memory-only unless manually exported.
 - **Tesseract 5:** Required only for local OCR recognition. Native metadata and supported document text extraction work without it. English (`eng`) and/or German (`deu`) language data must match the configured languages.
 - **Developing from source:** Requires the .NET SDK version selected by [`global.json`](global.json).
+- **Local plugins:** Optional external plugins are local ZIP packages. OpenSorSe does not download or automatically update them. They run in-process as the current user and must be trusted.
 
-See the complete [Windows installation guide](docs/INSTALLATION.md).
+See [Installation](docs/INSTALLATION.md) and
+[Linux build and launch](docs/LINUX_BUILD_AND_LAUNCH.md).
 
 ## Privacy
 
@@ -135,17 +143,35 @@ OpenSorSe is local-first:
 
 A custom Ollama-compatible endpoint can be remote. When configured that way, explicitly requested AI metadata—or separately enabled bounded document text—can leave the computer. OpenSorSe displays this distinction in Settings.
 
-AI output is always untrusted and suggestion-only. The only source-file mutation in v1.0 is a deterministic folder plan that is previewed, separately confirmed, root-confined, conflict checked, non-overwriting, and unrelated to AI output.
+AI output is always untrusted and suggestion-only. Accepting a rename or folder suggestion creates a non-mutating Change Plan; it never invokes the filesystem. Only the reviewed, approved, validated, and explicitly confirmed plan can reach the dedicated execution service.
+
+> OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
+
+> Watched folders automate detection and analysis, not file modification.
+
+> Workflow profiles automate configuration and analysis, not approval or file modification.
+
+> Plugins provide analysis, suggestions, imports, and exports. They have no supported direct file-mutation or Change Plan approval path.
+
+Watched-folder AI is separately disabled by default. Ignored files never enter AI analysis; requests contain at most 12 files, one cycle attempts at most 120 items, and per-file state makes retry select pending/failed work without repeating completed AI. Changes made while OpenSorSe is closed, paused, or disconnected are compared with the dedicated watched catalogue during startup/resume/reconnect reconciliation.
 
 Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
 
 ## Known limitations
 
-- The provided v1.0 portable package targets Windows x64; other platforms are not release-validated.
+- The previously produced v1.0 portable package targets Windows x64. No v1.5 package, installer, or updater is claimed.
 - Tesseract and its language data are external and required for image/scanned-page OCR. Rendered OCR page previews are not retained in diagnostics.
 - Real approximately 2B, 4B, and 7B/8B Ollama compatibility remains pending the documented manual matrix.
 - Folder-structure AI requests accept at most 12 selected files. Larger selections are rejected as a whole with the exact count shown; no file is silently omitted and no partial plan is generated.
-- Duplicate detection, search/indexing, rules/organisation, file-operation, and standalone performance diagnostic categories are registered extension points but are not instrumented in v1.0.
+- Watcher APIs can duplicate, reorder, omit, or overflow events. OpenSorSe treats them as hints and reconciles on startup, resume, reconnect, overflow, at least daily while running, and on demand.
+- Watching runs only while OpenSorSe is open. A root renamed externally is shown as unavailable; v1.5 does not guess its new location.
+- Linux watcher delivery depends on inotify descriptors/queues and reconciliation; network, FUSE, removable, and disconnected filesystems can provide weaker behavior.
+- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.5.
+- The legacy recipe ID `current` is not silently persisted; affected watched folders require a deliberate persistent replacement.
+- Workflow transfer uses versioned JSON in the Workflows area. There is no cloud library, synchronization, marketplace, or arbitrary scripting.
+- Plugins are in-process. Assembly-load-context isolation and SHA-256 integrity checking are not an OS sandbox, code review, signature authority, or publisher authentication. Native plugins require an exact supported runtime identifier.
+- Filesystem work is transaction-like, not a true filesystem transaction. OpenSorSe revalidates, journals, verifies, and attempts reverse-order rollback, but hardware, permission, or external-process failures can require manual recovery.
+- Undo is blocked rather than overwriting when a result was moved, replaced, materially modified, used by a later OpenSorSe operation, or when the original path became occupied.
 - The portable executable is not code-signed, so Windows SmartScreen may warn.
 
 ## Build from source
@@ -164,25 +190,50 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
   --configuration Release `
   --runtime win-x64 `
   --self-contained true `
-  --output .\release\OpenSorSe-v1.0.0
+  --output $env:TEMP\OpenSorSe-v1.5.0-win-x64
 ```
+
+For Linux framework-dependent validation, use the
+[Linux build guide](docs/LINUX_BUILD_AND_LAUNCH.md). These commands create
+local build output only; they do not publish a release.
 
 ## Documentation
 
+- [Documentation index](docs/README.md)
 - [Installation](docs/INSTALLATION.md)
 - [Release status](docs/RELEASE_STATUS.md)
-- [v1.0 manual testing](docs/MANUAL_TESTING_v1.0.md)
+- [v1.5 user guide](docs/USER_GUIDE_v1.5.md)
+- [v1.5 manual testing](docs/MANUAL_TESTING_v1.5.md)
+- [v1.5 version notes](docs/VERSION_NOTES_v1.5.md)
+- [v1.5 troubleshooting](docs/TROUBLESHOOTING_v1.5.md)
+- [Platform compatibility matrix](docs/PLATFORM_COMPATIBILITY_MATRIX.md)
+- [Linux build and launch](docs/LINUX_BUILD_AND_LAUNCH.md)
+- [Extension SDK](docs/EXTENSION_SDK_v1.4.md)
+- [Plugin author guide](docs/PLUGIN_AUTHOR_GUIDE_v1.4.md)
+- [Plugin manifest reference](docs/PLUGIN_MANIFEST_REFERENCE_v1.4.md)
+- [Local plugin packages](docs/LOCAL_PLUGIN_PACKAGES_v1.4.md)
+- [Plugin architecture](docs/Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md)
+- [Plugin platform compatibility](docs/PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md)
+- [Workflow portability](docs/WORKFLOW_PORTABILITY_v1.5.md)
+- [Watched Folders on Linux](docs/WATCHED_FOLDERS_LINUX_v1.5.md)
+- [Platform architecture](docs/Architecture/00_System/08_v1.5_Platform_Architecture.md)
+- [Workflow architecture](docs/Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
 - [Safety and privacy](docs/SAFETY_AND_PRIVACY.md)
 - [Advanced diagnostics architecture](docs/Architecture/01_Core/10_Advanced_Diagnostics.md)
 - [Small-model AI prompt contracts](docs/Architecture/04_AI/11_Small_Model_Prompt_Contracts.md)
-- [Architecture](docs/Architecture/00_System/00_Overview.md)
+- [Architecture overview](docs/ARCHITECTURE_OVERVIEW.md)
+- [System map](docs/Architecture/OpenSorSe_System_Map.md)
+- [Repository structure](docs/REPOSITORY_STRUCTURE.md)
+- [Developer guide](docs/DEVELOPER_GUIDE.md)
+- [Maintainer guide](docs/MAINTAINER_GUIDE.md)
+- [Contributing](CONTRIBUTING.md)
 - [Implementation specifications](docs/Implementation_Spec/README.md)
 - [Changelog](docs/CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## Roadmap
 
-After v1.0, likely areas include signed Windows distribution, packaging automation, broader platform verification, localization, accessibility refinement, index-quality improvements, export/report workflows, and carefully scoped extension points. Autonomous AI file management and unrestricted filesystem control are not roadmap goals.
+**v1.5 — Cross-Platform Foundation and Linux Preview** is implemented in source on `v1.5-cross-platform-foundation`; exact automated and manual completion status is tracked in the release documentation. Autonomous AI file management and unrestricted filesystem control are not roadmap goals.
 
 See the detailed [roadmap](docs/roadmap.md).
 
@@ -197,6 +248,9 @@ Contributions are welcome in focused, reviewable changes. Useful areas include:
 - Proposing bounded local-first features that preserve the safety model.
 
 Before submitting a change, run the complete Debug and Release test suites, avoid committing generated `bin`/`obj` output, and explain any effect on privacy or source-file mutation boundaries.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the dependency, safety,
+documentation, test, and pull-request requirements.
 
 ## License
 

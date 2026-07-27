@@ -29,6 +29,51 @@
                 </StackPanel>
             </Border>
 
+            <Border Classes="card"
+                    IsVisible="{Binding HasPlatformDiagnostics}">
+                <StackPanel DataContext="{Binding PlatformDiagnostics}" Spacing="8">
+                    <TextBlock Text="Platform diagnostics" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Support is capability-specific. Limited or unavailable features remain disabled or fail closed with an explanation."
+                               TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="Auto,*"
+                          RowDefinitions="Auto,Auto,Auto"
+                          ColumnSpacing="12"
+                          RowSpacing="4">
+                        <TextBlock Text="Operating system" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Text="{Binding OperatingSystem}" TextWrapping="Wrap" />
+                        <TextBlock Grid.Row="1" Text="Architecture" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Architecture}" />
+                        <TextBlock Grid.Row="2" Text="Runtime" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Runtime}" TextWrapping="Wrap" />
+                    </Grid>
+                    <TextBlock Text="Application-owned locations" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ApplicationLocations}"
+                               FontFamily="Consolas, monospace"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding LinkPolicy}" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Capabilities}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PlatformCapabilityPresentation">
+                                <Grid ColumnDefinitions="180,180,*" ColumnSpacing="8" Margin="0,2">
+                                    <TextBlock Text="{Binding Capability}" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="1" Text="{Binding State}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Explanation}" TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <WrapPanel>
+                        <Button Margin="0,0,8,8"
+                                Content="Copy platform report"
+                                Command="{Binding CopyReportCommand}" />
+                        <Button Margin="0,0,8,8"
+                                Content="Open diagnostics folder"
+                                Command="{Binding OpenDiagnosticsFolderCommand}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <Border Classes="card">
                 <StackPanel Spacing="7">
                     <TextBlock Text="Meaning Search (Beta)" FontSize="18" FontWeight="SemiBold" />
@@ -296,6 +341,10 @@
                         <Button Margin="0,0,8,8" IsVisible="{Binding IsPreferenceHistoryResetPending}" Content="Cancel reset" Command="{Binding CancelPreferenceHistoryResetCommand}" />
                     </WrapPanel>
                 </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <views:PluginsView DataContext="{Binding Plugins}" />
             </Border>
 
             <TextBlock Text="Restart required only to apply active logging changes."

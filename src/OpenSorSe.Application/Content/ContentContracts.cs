@@ -328,6 +328,16 @@ public sealed record ContentIndexingSummary(
     int OcrCompletedCount,
     int OcrSkippedCount);
 
+/// <summary>Constrains one profile-driven content pass without changing global settings.</summary>
+public sealed record ContentIndexingOptions(
+    bool MetadataEnabled,
+    bool TextEnabled,
+    bool OcrEnabled,
+    bool OcrOnlyWhenTextUnavailable,
+    string OcrLanguage,
+    int MaximumPagesPerDocument,
+    long MaximumFileSizeBytes);
+
 /// <summary>Abstracts one concrete local OCR engine.</summary>
 public interface IOcrEngine
 {
@@ -407,4 +417,11 @@ public interface IContentIndexingService
     Task<ContentIndexingSummary> IndexAsync(
         IReadOnlyCollection<FileEntry> files,
         CancellationToken cancellationToken);
+
+    /// <summary>Indexes with an effective workflow that can only narrow global capabilities.</summary>
+    Task<ContentIndexingSummary> IndexAsync(
+        IReadOnlyCollection<FileEntry> files,
+        ContentIndexingOptions? options,
+        CancellationToken cancellationToken) =>
+        IndexAsync(files, cancellationToken);
 }

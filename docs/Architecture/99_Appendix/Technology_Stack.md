@@ -37,7 +37,13 @@ The 1.0 release does not use the following as implemented product capabilities:
 
 ## Future technology considerations
 
-Richer readers, additional AI providers, database indexes, learned embeddings, reports, packaging, localization, and plugins are future architectural ideas. The bounded 1.0 extractors, PDF rasterization, local OCR integration, deterministic semantic index, and JSON structure history are implemented. A technology named in a future architecture document is not a dependency until a release specification and code add it.
+Richer readers, additional AI providers, database indexes, learned embeddings,
+packaging, localization, and online/out-of-process plugin services are future
+architectural ideas. The bounded 1.0 extractors, PDF rasterization, local OCR
+integration, deterministic semantic index, JSON structure history, and v1.4
+in-process plugin foundation/SDK are implemented. A technology named in a
+future architecture document is not a dependency until a release specification
+and code add it.
 
 Future technology selection should continue to prioritize local-first privacy, user control, maintainability, and explicit safety boundaries for any feature that could affect user files.
 

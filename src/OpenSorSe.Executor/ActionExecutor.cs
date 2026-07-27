@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Executor.Models;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules.Models;
 
 namespace OpenSorSe.Executor;
@@ -111,7 +112,7 @@ public sealed class ActionExecutor : IActionExecutor
         if (operation.File is null || string.IsNullOrWhiteSpace(operation.SourcePath) || string.IsNullOrWhiteSpace(operation.DestinationPath) || !Path.IsPathRooted(operation.SourcePath) || !Path.IsPathRooted(operation.DestinationPath)) { issue = new(operation.OperationId, ActionExecutionIssueKind.InvalidOperation, "The operation contains invalid paths."); return false; }
         string source, file, destination;
         try { source = Path.GetFullPath(operation.SourcePath); file = Path.GetFullPath(operation.File.FullPath); destination = Path.GetFullPath(operation.DestinationPath); } catch (ArgumentException) { issue = new(operation.OperationId, ActionExecutionIssueKind.InvalidOperation, "The operation contains invalid paths."); return false; }
-        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = PlatformServices.CurrentPathSemantics.Comparer;
         if (!comparer.Equals(source, file) || comparer.Equals(source, destination)) { issue = new(operation.OperationId, ActionExecutionIssueKind.InvalidOperation, "The source and destination are invalid."); return false; }
         if (Directory.Exists(source)) { issue = new(operation.OperationId, ActionExecutionIssueKind.SourceTypeUnsupported, "The source is not a supported regular file."); return false; }
         if (!File.Exists(source)) { issue = new(operation.OperationId, ActionExecutionIssueKind.SourceUnavailable, "The source file is unavailable."); return false; }
@@ -145,7 +146,11 @@ public sealed class ActionExecutor : IActionExecutor
         finally { ArrayPool<byte>.Shared.Return(buffer, clearArray: true); }
     }
 
-    private static bool SameDirectory(string source, string destination) => string.Equals(Path.GetDirectoryName(source), Path.GetDirectoryName(destination), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    private static bool SameDirectory(string source, string destination) =>
+        string.Equals(
+            Path.GetDirectoryName(source),
+            Path.GetDirectoryName(destination),
+            PlatformServices.CurrentPathSemantics.Comparison);
     private static ExecutionAttempt Success(PlannedOperation op, int index, UndoOperationKind kind, long bytes) { var id = $"undo:{index}"; return new(new(op.OperationId, op.Kind, op.SourcePath, op.DestinationPath, ActionExecutionStatus.Succeeded, id, null), new(id, op.OperationId, kind, op.SourcePath, op.DestinationPath!, DateTimeOffset.UtcNow), bytes, false); }
     private static ExecutionAttempt Failure(PlannedOperation op, ActionExecutionStatus status, ActionExecutionIssueKind kind, string message, bool cancelled = false) => new(new(op.OperationId, op.Kind, op.SourcePath, op.DestinationPath, status, null, new(op.OperationId, kind, message)), null, 0, cancelled);
     private ExecutionAttempt LoggedFailure(PlannedOperation op, ActionExecutionIssueKind kind, string message, Exception exception) { _logger.LogWarning(exception, "Execution issue {IssueKind}: {Message}", kind, message); return Failure(op, ActionExecutionStatus.Failed, kind, message); }

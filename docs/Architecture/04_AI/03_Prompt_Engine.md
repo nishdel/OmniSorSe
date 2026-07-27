@@ -202,7 +202,6 @@ These enhancements should preserve the separation between prompt generation and 
 * [AI Overview](00_Overview.md)
 * [AI Manager](01_AI_Manager.md)
 * [Model Providers](02_Model_Providers.md)
-* [Document Classification](04_Document_Classification.md)
+* [Document Classification](04_Document_classification.md)
 * [Summarization](05_Summarization.md)
 * [Small-model Prompt Contracts](11_Small_Model_Prompt_Contracts.md)
-

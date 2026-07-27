@@ -185,8 +185,8 @@ These enhancements should preserve the Main Window's primary responsibility of h
 
 * [GUI Overview](00_Overview.md)
 * [Dashboard](02_Dashboard.md)
-* [Scanner Page](03_Scanner_Page.md)
+* [Scanner Page](03_Scanner_page.md)
 * [Results Page](04_Results_Page.md)
 * [History Page](05_History_Page.md)
-* [Settings Page](06_Settings_Page.md)
+* [Settings Page](06_Settings_PAge.md)
 * [Reports Page](07_Reports_Page.md)

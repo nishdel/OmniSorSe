@@ -1,7 +1,7 @@
 namespace OpenSorSe.Scanner.Models;
 
 /// <summary>
-/// Describes the single v0.1 category assigned to a file.
+/// Describes the primary deterministic category assigned to a file.
 /// </summary>
 public enum FileCategory
 {

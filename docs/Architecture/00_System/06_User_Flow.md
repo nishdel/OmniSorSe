@@ -1,4 +1,4 @@
-# OpenSorSe 1.0 User Flow
+# OpenSorSe 1.1 User Flow
 
 ```mermaid
 flowchart LR
@@ -9,12 +9,14 @@ flowchart LR
     Results --> Catalog["Optionally save/search/compare snapshots"]
     Scan --> Content["Local metadata/OCR indexing"]
     Content --> Semantic["Build/search Semantic Search Beta"]
-    Launch --> Structure["Open advanced Structure history"]
-    Structure --> Preview["Preview proposal + diagrams"]
-    Preview --> Decision{"Apply exact reviewed plan?"}
+    Results --> Suggest["Generate/accept rename or folder suggestion"]
+    Suggest --> Preview["Create Change Plan"]
+    Preview --> Review["Review/edit/approve actions"]
+    Review --> Validate["Validate Plan"]
+    Validate --> Decision{"Apply exact reviewed plan?"}
     Decision -- No --> Dismiss["Dismiss; no source change"]
-    Decision -- Yes --> Apply["Validated bounded in-root moves"]
-    Apply --> History["Review applied/current history"]
+    Decision -- Yes --> Apply["Revalidate + journal + apply + verify"]
+    Apply --> History["Operation History / result / Undo"]
 ```
 
 ## Primary actions
@@ -27,9 +29,11 @@ flowchart LR
 | Catalog/search/comparison | Reads/writes bounded OpenSorSe-owned historical metadata only. |
 | OCR/metadata | Locally reads supported files under bounds; source files remain unchanged. |
 | Semantic build/search/clear | Writes or removes only the local rebuildable semantic index. |
-| AI generate/review | Sends bounded metadata only after explicit enablement; accept/edit/reject remains a local decision. |
+| AI generate/review | Sends bounded metadata only after explicit enablement; accepting creates a non-mutating Change Plan. |
+| Review Changes | Approves/rejects/edits actions, validates, shows final summary, and requires explicit Apply. |
 | Structure preview/diagram/current capture | Reads metadata and writes preview history only. |
-| Structure apply | After a separate exact confirmation, moves only listed files under one root after full revalidation. |
+| Apply Plan | After separate confirmation and immediate revalidation, journals and verifies approved rename/move/create-directory actions without overwrite. |
+| Operation History / Undo | Reads persistent attempts and performs only verified, conflict-safe inverse operations. |
 | Clear structure history | Removes only OpenSorSe history; does not undo or modify files. |
 
 Global AI and Advanced switches remain visible from every page. Disabling a switch hides affected pages and safely returns stale hidden navigation to Dashboard without resetting saved dependent values.

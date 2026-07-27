@@ -130,7 +130,7 @@ Scanning Files
 
 Current Folder
 
-C:\Users\John\Documents\Projects
+%USERPROFILE%\Documents\Projects
 
 ------------------------------------------------------------
 

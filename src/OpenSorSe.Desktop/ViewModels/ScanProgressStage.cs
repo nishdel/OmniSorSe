@@ -24,4 +24,9 @@ public enum ScanProgressStage
     /// A scan stopped after cancellation.
     /// </summary>
     Cancelled,
+
+    /// <summary>
+    /// A scan could not start or complete safely.
+    /// </summary>
+    Failed,
 }

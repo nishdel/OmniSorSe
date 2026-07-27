@@ -11,8 +11,17 @@ public enum NavigationDestination
     /// <summary>Displays scan-related controls.</summary>
     Scan,
 
+    /// <summary>Manages persistent watched folders and review-only incremental analysis.</summary>
+    WatchedFolders,
+
+    /// <summary>Manages persistent workflow profiles and declarative sorting recipes.</summary>
+    Workflows,
+
     /// <summary>Displays processed file results.</summary>
     Results,
+
+    /// <summary>Reviews a non-mutating Change Plan before validation and explicit apply.</summary>
+    ReviewChanges,
 
     /// <summary>Displays exact duplicate review for the active scan.</summary>
     Duplicates,

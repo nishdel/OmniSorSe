@@ -1,5 +1,190 @@
 # Changelog
 
+## v1.5.0
+
+Release name: **Cross-Platform Foundation and Linux Preview**<br>
+Release branch: `v1.5-cross-platform-foundation`.
+
+- Added focused platform contracts and capability reporting for path semantics,
+  application locations, file identity, filesystem checks, external tools, and
+  desktop integration.
+- Preserved the Windows local-data layout; added XDG configuration/data/state/
+  cache separation on Linux.
+- Added Windows volume/file-index and Linux device/inode identity with explicit
+  metadata fallback limitations.
+- Made Change Plan validation/execution, case handling, confinement, permission,
+  same-filesystem moves, rollback, recovery, and Undo platform-aware without
+  permitting overwrite or unreviewed mutation.
+- Added portable, Windows-compatible, and current-platform recipe filename
+  policies; existing recipes retain conservative portable behavior.
+- Added exact plugin runtime-identifier constraints for native dependencies.
+- Added configured-path and safe `PATH` discovery for Tesseract and explicit
+  Windows/Linux desktop-opening adapters.
+- Added Settings platform diagnostics, human-readable report export, platform
+  matrix, Linux build/manual/troubleshooting guidance, architecture maps, and a
+  Windows/Ubuntu CI matrix that publishes no artifacts.
+- Product/informational version is `1.5.0`; assembly/file/manifest version is
+  `1.5.0.0`; About displays `1.5`.
+- No v1.5 tag, installer, package, updater, or published release is created by
+  this implementation task.
+
+## v1.4.0
+
+Plugin Foundation and Extension SDK.
+
+Release branch: `v1.4-plugin-foundation`.
+
+### Added
+
+- Standalone immutable, asynchronous, cancellation-aware Extension SDK with
+  eight bounded analysis/proposal/import/export extension points.
+- Strict manifest parsing, controlled manifest-first discovery, runtime and
+  host compatibility, deterministic dependency graphs, integrity-change
+  lockout, diagnostics, quarantine, and conflict-safe contribution registry.
+- Dedicated collectible assembly-load contexts for external plugins with
+  bounded initialization/stop, exception containment, and restart reporting.
+- Explicit external enable/capability grants and four built-in reference
+  plugins for metadata, classification, recipe fields, and JSON export.
+- Transactional local ZIP install, fully validated upgrade with previous
+  version preservation, dependency-aware confirmed removal, and archive
+  traversal/link/native/bounds defenses.
+- Exact plugin/version/contribution references in profiles and recipes,
+  immutable resolution snapshots, recipe value/action provenance, watched
+  fail-closed behavior, and import/export host boundaries.
+- Settings > Plugins management, redacted diagnostics export, SDK/author/
+  manifest/package documentation, and adversarial/runtime/workflow/UI tests.
+- Audience-oriented documentation index, repository/developer/maintainer guides,
+  authoritative architecture overview, and four-part Mermaid system map.
+- Deterministic repository tests for case-correct relative documentation links,
+  Mermaid structure, documentation entry points, production dependency policy,
+  and public Extension SDK XML documentation.
+
+### Changed
+
+- Product/informational version is `1.4.0`; assembly/file/manifest version is
+  `1.4.0.0`; About displays `1.4`.
+- Workflow import/export schema identity advances to 1.4 and preserves exact
+  plugin contribution references.
+- Current installation/safety guidance, SDK call contracts, subsystem
+  lifecycle/invariant comments, and legacy architecture link casing were
+  corrected without changing product behavior.
+
+### Safety
+
+- Plugins can analyze, suggest, parse import proposals, or return export bytes;
+  they cannot directly mutate user files, approve/apply Change Plans, write the
+  journal, or receive the host service container.
+- External plugins are disabled until explicit enable and capability grant.
+- Missing, incompatible, changed, conflicting, failed, or quarantined
+  capabilities fail closed with no silent workflow fallback.
+- External code remains in-process with the current user's OS permissions.
+  Assembly-load-context isolation is not a sandbox and SHA-256 integrity does
+  not authenticate publishers.
+
+## v1.3.0
+
+Workflow Profiles and Recipe Library.
+
+Release branch: `v1.3-workflow-profiles`.
+
+### Added
+
+- Typed, versioned workflow profiles and declarative sorting recipes with stable IDs, revisions, origins, capability/file/extraction/analysis/AI/plan/notification/scan policies, applicability, templates, fallbacks, normalization, collision/uncertainty policy, and preview examples.
+- Five immutable duplicable profile defaults and four immutable duplicable recipe defaults.
+- Bounded atomic `workflow-library.json` persistence with schema migration, corruption preservation/diagnostic copy, safe built-in recovery, lifecycle operations, dependency protection, usage inspection, and diagnostic export.
+- Constrained field/date template parser and deterministic evaluator with Unicode/case/whitespace policy, portable invalid-character sanitization, reserved-device/length/root/traversal/collision checks, and full preview explanations.
+- Immutable effective configuration resolution and historical workflow snapshots for manual scans, saved scans, watched cycles, and watched catalogues.
+- Persistent watched-folder profile resolution, multiple permitted recipe selection, constrained overrides, configuration-change reconciliation, and explicit profile-unavailable state.
+- Manual scan profile selection, capability/intensity summary, one-time narrowing, and save-adjusted-as-new-profile flow.
+- Workflow/recipe provenance on Change Plan actions, including inferred directories, with profile/recipe revisions, values, evidence, deterministic/AI state, warnings, and unresolved fields.
+- Versioned human-inspectable profile/recipe import/export with explicit conflict policy and size/depth/schema/dependency/template/capability validation.
+- Dedicated Workflows profile/recipe/editor/preview/import/export UI with search, file/origin/capability/archive filters, usage, lifecycle actions, scan/watch routing, and diagnostics export.
+- Comprehensive workflow persistence, migration, recovery, template safety, precedence, historical snapshot, Change Plan, AI-gate, transfer, and ViewModel tests.
+
+### Changed
+
+- Watched configuration/catalogue schemas advance to 3/2 for recipe lists, overrides, and workflow revision snapshots.
+- v1.2 `default` maps explicitly to General Documents; session-only `current` recipes require deliberate replacement.
+- Processing stages honor effective extraction, classification, duplicate, rule, AI, file-selection, and Change Plan settings.
+- Product/informational version is `1.3.0`; assembly/file/manifest version is `1.3.0.0`; About displays `1.3`.
+
+### Safety
+
+- Workflow profiles automate configuration and analysis, not approval or file modification.
+- Imported recipes cannot execute code, contain destructive recipe rules, escape an approved root, or overwrite a destination.
+- Profiles cannot bypass global OCR/AI gates; item-level AI policy is checked before provider requests.
+- All mutations continue through v1.1 review, approval, preflight, explicit Apply, journaling, verification, recovery, rollback, history, and Undo.
+
+## v1.2.0
+
+Watched Folders and Incremental Scanning.
+
+Release branch: `v1.2-watched-folders`.
+
+### Added
+
+- Persistent watched-folder configurations with stable IDs, availability/status, subfolder scope, exact/pattern ignores, scan profile, sorting recipe, deterministic/AI switches, notification preferences, quiet period, size/hidden policy, timestamps, queue state, summaries, pending plans, and associated catalogue identity.
+- Versioned atomic `watched-folders.json`, `watched-catalogues.json`, and grouped `watched-activity.json` stores with bounds, corruption preservation, schema migration, and missing-store compatibility.
+- Replaceable `FileSystemWatcher` event source, canonical event/root validation, per-folder quiet-period debounce, duplicate burst grouping, directory/overflow escalation, and a bounded 256-batch single-reader queue with backpressure.
+- Stable Windows file identity and portable best-effort identity, real-filesystem probes, file-stability observations, deferral/retry, and root-confined reparse-safe enumeration.
+- Targeted incremental processing that preserves unchanged analysis and selectively reuses metadata, content/OCR cache, SHA-256, classification, duplicate, and rule infrastructure.
+- Startup, pause/resume, reconnect, overflow, daily, user-triggered incremental, and full reconciliation workflows.
+- Canonical ignore policy for exact paths, directories, filename/extension patterns, hidden/linked/internal/oversized items, and visible built-in temporary/incomplete-download patterns.
+- Optional per-folder AI with global/capability/model gates, 12-item requests, a 120-item per-cycle backlog bound, cancellation, unchanged-content avoidance, persisted pending/completed/failed item state, provenance, independent failure, and pending/failed-only retry.
+- Operation Journal path/identity correlation and verified post-operation reconciliation to suppress recursive suggestions without disabling watching for a fixed duration.
+- **Watched Folders** desktop management, status, actions, grouped activity, precise notifications, explicit configuration-removal confirmation, and review routing.
+- Automated configuration, store, ignore, event/debounce, processor, reconciliation, AI, correlation, stability, and ViewModel tests.
+
+### Changed
+
+- Product, assembly, informational, file, manifest, and About versions report `1.2.0` / `1.2.0.0`.
+- Dedicated watched catalogues update in place without consuming or evicting entries from the separate opt-in Saved scans catalogue.
+- Existing v1.1 deterministic and optional AI suggestions are reused to create reviewable Change Plans.
+- Release branches follow `v<version>-<primary-feature>`.
+- Late v1.1 Review Changes progress callbacks no longer overwrite the verified terminal execution status.
+
+### Safety
+
+- Watched folders automate detection and analysis, not file modification.
+- Watcher events are hints and are reconciled with actual canonical in-root state.
+- Overlapping roots are rejected to prevent duplicate ownership and processing.
+- Missing/disconnected folders retain configuration, catalogue, and history.
+- Ignored files never enter optional AI.
+- Watched-folder processing never invokes `IChangePlanExecutionService`; every mutation remains behind existing v1.1 manual review, approval, validation, and explicit Apply.
+- Journal-correlated OpenSorSe changes update catalogue state without repeated plans or AI analysis.
+
+## v1.1.0
+
+Safe File Operations and Robustness stable release.
+
+### Added
+
+- Persisted Change Plans with stable plan/action identities, source file identity snapshots, suggestion provenance, approval/validation state, warnings, conflicts, edit state, scan freshness, and forward-compatible action types.
+- Review Changes UI with approve-all-safe, deselect-all, per-action approve/reject, editable filename/destination, action/issue filters, counts, validation, final confirmation summary, explicit Apply, progress, result summary, and Undo.
+- Dedicated non-overwriting filesystem gateway and execution service for rename, move, and create-directory actions.
+- Durable versioned Operation Journal with pending/running/action/terminal writes, pre/post identities, safe error categories, rollback and Undo facts, AI correlation metadata, and bounded human-readable report export.
+- Immediate pre-execution revalidation, deterministic ordering, safe-boundary cancellation, result verification, reverse-order rollback, case-only rename handling, and startup Interrupted Operation inspection.
+- Conflict-aware whole-operation and individual-operation Undo, including external modification, occupied original, later-operation dependency, and non-empty created-directory protection.
+- `change-plans.json` and `operation-journal.json` atomic local application-data stores, legacy journal-array compatibility, and graceful corrupt-entry recovery.
+- Automated safety tests using isolated temporary directories for planning, stale state, collisions, execution, rollback failure, verification failure, cancellation, Unicode/spaces, case-only rename, persistence, migration, restart recovery, partial Undo, history, and ViewModel apply gating.
+- v1.1 user, safety, architecture, troubleshooting, manual-testing, and implementation documentation.
+
+### Changed
+
+- Accepted AI rename and folder-structure suggestions now create a Change Plan instead of ending at a decision record.
+- Deterministic folder restructuring now routes applied moves through the same Change Plan validator, journal, execution, rollback, and Undo boundary.
+- The advanced history destination is named **Operation History** and loads persistent journal records across restarts.
+- Product, assembly, informational, file, manifest, and About versions report `1.1.0` / `1.1.0.0`.
+
+### Safety
+
+- No AI generation, parsing, retry, acceptance, or diagnostic path performs a filesystem mutation.
+- Destinations are never overwritten and no automatic numeric suffix or implicit conflict resolution is used.
+- Approved actions are revalidated immediately before mutation and the executed action list is immutable for that operation.
+- Every attempted supported apply is journalled before mutation; successful actions carry verified inverse information.
+- Rollback and Undo are reported successful only after verification. Unsafe inverse actions are blocked and journalled instead of overwriting newer data.
+- Permanent deletion remains outside v1.1.
+
 ## v1.0.0
 
 Integrated local-understanding and structure-history release candidate.

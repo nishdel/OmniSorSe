@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Events;
 using OpenSorSe.Core.Lifecycle;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Core.State;
 using OpenSorSe.Core.Tasks;
 
@@ -35,6 +37,12 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddSingleton(options);
+        services.TryAddSingleton<IPathSemantics>(PlatformServices.CurrentPathSemantics);
+        services.TryAddSingleton<IApplicationPathProvider, ApplicationPathProvider>();
+        services.TryAddSingleton<IFileIdentityProvider>(_ => FileIdentityProviderFactory.CreateCurrent());
+        services.TryAddSingleton<IFileSystemCapabilities, FileSystemCapabilities>();
+        services.TryAddSingleton<IExternalToolLocator, ExternalToolLocator>();
+        services.TryAddSingleton<IPlatformCapabilityProvider, PlatformCapabilityProvider>();
         services.AddSingleton<IConfigurationService>(serviceProvider =>
             new JsonConfigurationService(
                 serviceProvider.GetRequiredService<OpenSorSeCoreOptions>().ConfigurationFilePath));

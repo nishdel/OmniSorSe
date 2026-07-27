@@ -1,6 +1,6 @@
 # Scanner Overview
 
-> This document describes the read-only Scanner subsystem implemented in the validated v0.2 release.
+> This document describes the read-only Scanner subsystem and its v1.2 watched-folder orchestration consumer.
 
 ---
 
@@ -25,6 +25,8 @@ The Scanner analyzes a user-selected folder without changing its contents. It tr
 ## Safety Boundary
 
 The Scanner reads filesystem information only. It does not rename, move, delete, modify, or organize user files; it does not read document content, perform OCR, or execute AI.
+
+The v1.2 watched-folder coordinator is an Application-layer consumer of Scanner services. It treats operating-system events as hints, verifies root-confined real state, preserves unchanged catalogue analysis, and sends only changed items into the relevant metadata/content/hash/classification/rules/optional-AI stages. Its suggestions become v1.1 Change Plans and never enter execution automatically.
 
 ---
 
@@ -59,4 +61,5 @@ See [Unified Advanced Diagnostics](../01_Core/10_Advanced_Diagnostics.md).
 * [Folder Scanner](01_Folder_Scanner.md)
 * [Cancellation](07_Cancellation.md)
 * [Scanner Error Handling](08_Error_Handling.md)
+* [v1.2 Watched Folders and Incremental Scanning](09_v1.2_Watched_Folders_and_Incremental_Scanning.md)
 * [Release Status](../../RELEASE_STATUS.md)

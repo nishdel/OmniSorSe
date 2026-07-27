@@ -504,9 +504,7 @@ public sealed class StructureHistoryViewModel : ViewModelBase, IDisposable
                 string.IsNullOrWhiteSpace(RootFilter) ||
                 record.RootPath.Contains(
                     RootFilter.Trim(),
-                    OperatingSystem.IsWindows()
-                        ? StringComparison.OrdinalIgnoreCase
-                        : StringComparison.Ordinal))
+                    OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison))
             .Where(record =>
                 SelectedStatusFilter.Status is null ||
                 record.Status == SelectedStatusFilter.Status)
@@ -681,8 +679,8 @@ public sealed class StructureHistoryViewModel : ViewModelBase, IDisposable
     }
 
     private static StringComparer PathComparer =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
 
     private static StringComparison PathComparison =>
-        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparison;
 }

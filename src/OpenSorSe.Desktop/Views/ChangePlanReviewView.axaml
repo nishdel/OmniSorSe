@@ -1,0 +1,111 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.ChangePlanReviewView"
+             x:DataType="vm:ChangePlanReviewViewModel">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="10">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="2">
+                <TextBlock Classes="page-title" Text="Review Changes" />
+                <TextBlock Classes="page-subtitle"
+                           Text="Approve, reject, or edit each suggestion before validating and applying the Change Plan." />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="help" Content="?" Command="{Binding HelpCommand}"
+                    ToolTip.Tip="Open Review Changes help"
+                    AutomationProperties.Name="Help for Review Changes" />
+            <Button Grid.Column="2" Classes="secondary" Content="Back to Files" Command="{Binding ReturnCommand}" />
+        </Grid>
+
+        <Border Grid.Row="1" Padding="10" Classes="card">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="12">
+                <StackPanel>
+                    <TextBlock Text="{Binding PlanId}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding RootPath}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding ApprovedCount, StringFormat='Approved: {0}'}" />
+                <TextBlock Grid.Column="2" Text="{Binding RejectedCount, StringFormat='Rejected: {0}'}" />
+                <TextBlock Grid.Column="3" Text="{Binding InvalidCount, StringFormat='Invalid/stale: {0}'}" />
+                <TextBlock Grid.Column="4" Text="{Binding ConflictCount, StringFormat='Conflicts: {0}'}" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+            <ComboBox ItemsSource="{Binding AvailableTypeFilters}"
+                      SelectedItem="{Binding SelectedTypeFilter}"
+                      DisplayMemberBinding="{Binding Label}" MinWidth="150" />
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding AvailableIssueFilters}"
+                      SelectedItem="{Binding SelectedIssueFilter}"
+                      MinWidth="150" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <Button Classes="secondary" Content="Approve all safe" Command="{Binding ApproveAllSafeCommand}" />
+                <Button Classes="secondary" Content="Deselect all" Command="{Binding DeselectAllCommand}" />
+            </StackPanel>
+            <Button Grid.Column="3" Classes="secondary" Content="Validate Plan" Command="{Binding ValidatePlanCommand}" />
+            <Button Grid.Column="4" Content="Apply Plan" Command="{Binding RequestApplyCommand}" />
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnDefinitions="1.2*,*" ColumnSpacing="12">
+            <ListBox ItemsSource="{Binding Actions}"
+                     SelectedItem="{Binding SelectedAction, Mode=TwoWay}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ChangePlanActionRow">
+                        <Border Padding="8" Margin="0,0,0,4"
+                                BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+                            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="110,*" ColumnSpacing="8">
+                                <TextBlock Text="{Binding ActionTypeText}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding ApprovalState}"
+                                           HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="1" Text="Current" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CurrentPath}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Row="2" Text="Proposed" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ProposedPath}" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ScrollViewer Grid.Column="1">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Selected action" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedAction.ActionTypeText}" />
+                    <TextBlock Text="{Binding SelectedAction.SuggestionSource, StringFormat='Source: {0}'}" />
+                    <TextBlock Text="{Binding SelectedAction.Reason}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedAction.ValidationState, StringFormat='Validation: {0}'}" />
+                    <TextBlock Text="{Binding SelectedAction.WarningText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SelectedAction.ConflictText}" TextWrapping="Wrap" />
+                    <TextBlock Text="Proposed filename"
+                               IsVisible="{Binding SelectedAction.CanEditFileName}" />
+                    <TextBox Text="{Binding SelectedAction.EditedFileName, Mode=TwoWay}"
+                             IsVisible="{Binding SelectedAction.CanEditFileName}" />
+                    <TextBlock Text="Proposed destination" />
+                    <TextBox Text="{Binding SelectedAction.EditedDestinationPath, Mode=TwoWay}" />
+                    <WrapPanel>
+                        <Button Margin="0,0,6,0" Classes="secondary" Content="Save edit" Command="{Binding SaveEditCommand}" />
+                        <Button Margin="0,0,6,0" Content="Approve" Command="{Binding ApproveSelectedCommand}" />
+                        <Button Classes="secondary" Content="Reject" Command="{Binding RejectSelectedCommand}" />
+                    </WrapPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="4" Padding="10" Classes="card">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{Binding ConfirmationSummary}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ResultSummary}" TextWrapping="Wrap" />
+                <WrapPanel IsVisible="{Binding IsApplyConfirmationPending}">
+                    <Button Margin="0,0,6,0" Content="Confirm Apply Plan" Command="{Binding ConfirmApplyCommand}" />
+                    <Button Classes="secondary" Content="Cancel" Command="{Binding CancelApplyCommand}" />
+                </WrapPanel>
+                <WrapPanel>
+                    <Button Margin="0,0,6,0" Classes="secondary" Content="Cancel operation" Command="{Binding CancelOperationCommand}" />
+                    <Button Content="Undo" Command="{Binding UndoCommand}" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

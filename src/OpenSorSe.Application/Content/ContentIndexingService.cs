@@ -43,8 +43,17 @@ public sealed class ContentIndexingService : IContentIndexingService
         IReadOnlyCollection<FileEntry> files,
         CancellationToken cancellationToken)
     {
+        return await IndexAsync(files, null, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<ContentIndexingSummary> IndexAsync(
+        IReadOnlyCollection<FileEntry> files,
+        ContentIndexingOptions? options,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(files);
-        var settings = _configurationService.Current.Content;
+        var settings = EffectiveSettings(_configurationService.Current.Content, options);
         if (!settings.MetadataExtractionEnabled && !settings.OcrEnabled)
         {
             return new ContentIndexingSummary(files.Count, 0, 0, 0, 0, files.Count);
@@ -306,6 +315,44 @@ public sealed class ContentIndexingService : IContentIndexingService
             failed,
             ocrCompleted,
             ocrSkipped);
+    }
+
+    private static ContentSettings EffectiveSettings(
+        ContentSettings global,
+        ContentIndexingOptions? options)
+    {
+        if (options is null)
+        {
+            return global;
+        }
+
+        var maximumProfileMiB = Math.Max(
+            1,
+            (int)Math.Min(
+                1024,
+                Math.Ceiling(options.MaximumFileSizeBytes / (1024d * 1024d))));
+        return new ContentSettings
+        {
+            MetadataExtractionEnabled =
+                global.MetadataExtractionEnabled &&
+                (options.MetadataEnabled || options.TextEnabled),
+            OcrEnabled = global.OcrEnabled && options.OcrEnabled,
+            OcrOnlyWhenNativeTextUnavailable =
+                global.OcrOnlyWhenNativeTextUnavailable &&
+                options.OcrOnlyWhenTextUnavailable,
+            MaximumPagesPerDocument = Math.Min(
+                global.MaximumPagesPerDocument,
+                options.MaximumPagesPerDocument),
+            MaximumFileSizeMiB = Math.Min(global.MaximumFileSizeMiB, maximumProfileMiB),
+            OcrLanguage = options.OcrLanguage,
+            MaximumOcrDurationSeconds = global.MaximumOcrDurationSeconds,
+            PdfRasterizationDpi = global.PdfRasterizationDpi,
+            MaximumRasterDimension = global.MaximumRasterDimension,
+            MaximumOcrTextCharacters = global.MaximumOcrTextCharacters,
+            MaximumTemporaryStorageMiB = global.MaximumTemporaryStorageMiB,
+            TesseractExecutablePath = global.TesseractExecutablePath,
+            BackgroundProcessingEnabled = global.BackgroundProcessingEnabled,
+        };
     }
 
     private static (long Length, DateTimeOffset LastWriteTimeUtc) ReadSourceIdentity(FileEntry file)

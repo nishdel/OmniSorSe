@@ -8,6 +8,8 @@
 | Target Release | v0.1 |
 | Status | Draft |
 
+> v1.1 note: this historical generic Undo draft remains compatibility context. Stable v1.1 inverse operations are derived from verified journal actions, validate current identity/occupancy/dependencies, support partial conflict-safe Undo, persist every result, and are specified by [053](v1.1/053_Safe_File_Operations_and_Robustness.md).
+
 ---
 
 # Purpose

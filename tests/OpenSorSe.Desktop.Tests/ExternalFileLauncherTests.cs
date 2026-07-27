@@ -1,4 +1,5 @@
 using OpenSorSe.Desktop.Services;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Desktop.Tests;
 
@@ -47,5 +48,33 @@ public sealed class ExternalFileLauncherTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => launcher.OpenFileAsync(Path.GetTempPath(), cancellation.Token));
+    }
+
+    /// <summary>Verifies the exact normalized folder reaches the selected platform adapter.</summary>
+    [Fact]
+    public async Task OpenFolder_DelegatesOneNormalizedPathToPlatformAdapter()
+    {
+        var adapter = new RecordingDesktopIntegration();
+        var launcher = new ExternalFileLauncher(adapter, PlatformServices.CurrentPathSemantics);
+
+        var result = await launcher.OpenFolderAsync(Path.GetTempPath(), CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(
+            PlatformServices.CurrentPathSemantics.NormalizeAbsolutePath(Path.GetTempPath()),
+            adapter.OpenedPath);
+    }
+
+    private sealed class RecordingDesktopIntegration : IDesktopIntegration
+    {
+        public PlatformSupportState SupportState => PlatformSupportState.Supported;
+        public string Explanation => "Controlled test adapter.";
+        public string? OpenedPath { get; private set; }
+
+        public ExternalLaunchResult OpenPath(string normalizedPath, string successMessage)
+        {
+            OpenedPath = normalizedPath;
+            return ExternalLaunchResult.Success(successMessage);
+        }
     }
 }

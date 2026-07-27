@@ -1,6 +1,6 @@
 namespace OpenSorSe.Application.Models;
 
-/// <summary>Identifies the current sequential v0.1 pipeline stage.</summary>
+/// <summary>Identifies the current sequential processing pipeline stage.</summary>
 public enum ProcessingProgressStage
 {
     /// <summary>File discovery is running.</summary>

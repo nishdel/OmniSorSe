@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Rules.Models;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Rules;
 
@@ -59,7 +60,7 @@ public sealed class ConflictResolver : IConflictResolver
 
     private ConflictResolutionResult Resolve(IReadOnlyCollection<PlannedOperation> operations, CancellationToken cancellationToken)
     {
-        var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var pathComparer = PlatformServices.CurrentPathSemantics.Comparer;
         var operationIds = new Dictionary<string, string>(StringComparer.Ordinal);
         var signatures = new Dictionary<OperationSignature, string>(new OperationSignatureComparer(pathComparer));
         var destinationOwners = new Dictionary<string, string>(pathComparer);

@@ -49,6 +49,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="ocrService">The optional local OCR capability service.</param>
     /// <param name="aiDiagnosticsCollector">The optional live process-session diagnostics collector.</param>
     /// <param name="diagnosticsCollector">The shared process-session advanced-diagnostics collector.</param>
+    /// <param name="plugins">The optional local plugin-management presentation model.</param>
+    /// <param name="platformDiagnostics">The optional platform capability and location presentation model.</param>
     public SettingsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
@@ -56,7 +58,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IContentStore? contentStore = null,
         IOcrService? ocrService = null,
         IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
-        IDiagnosticsCollector? diagnosticsCollector = null)
+        IDiagnosticsCollector? diagnosticsCollector = null,
+        PluginsViewModel? plugins = null,
+        PlatformDiagnosticsViewModel? platformDiagnostics = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
@@ -65,6 +69,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _diagnosticsCollector = diagnosticsCollector;
         _contentStore = contentStore;
         _ocrService = ocrService;
+        Plugins = plugins ?? new PluginsViewModel();
+        PlatformDiagnostics = platformDiagnostics;
         ConfigureAdvancedDiagnostics(_configurationService.Current);
         _draft = SettingsDraft.FromSettings(_configurationService.Current);
         _draft.PropertyChanged += OnDraftPropertyChanged;
@@ -110,6 +116,15 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Occurs after validated settings have been persisted and made active.</summary>
     public event EventHandler<ApplicationSettings>? SettingsSaved;
+
+    /// <summary>Gets local plugin discovery, review, lifecycle, and package-management state.</summary>
+    public PluginsViewModel Plugins { get; }
+
+    /// <summary>Gets current platform support, location, and limitation diagnostics.</summary>
+    public PlatformDiagnosticsViewModel? PlatformDiagnostics { get; }
+
+    /// <summary>Gets whether platform diagnostics were composed for this host.</summary>
+    public bool HasPlatformDiagnostics => PlatformDiagnostics is not null;
 
     /// <summary>
     /// Synchronizes the two globally visible shell switches into the editable Settings draft.
