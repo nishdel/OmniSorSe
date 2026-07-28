@@ -30,6 +30,7 @@ Change Plan and remain journalled, recoverable, and conflict-aware for Undo.
 ## Release boundary
 
 This source implementation does not itself claim a package, installer,
-signature, tag, or published release. See the
-[validation report](V1.6_VALIDATION_REPORT.md) and complete the
-[manual checklist](MANUAL_TESTING_v1.6.md) before a binary release claim.
+signature, tag, or published release. Automated validation and the required
+interactive manual smoke testing are complete with no release-blocking issues.
+See the [validation report](V1.6_VALIDATION_REPORT.md) and reusable
+[manual checklist](MANUAL_TESTING_v1.6.md).

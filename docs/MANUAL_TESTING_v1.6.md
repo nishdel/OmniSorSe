@@ -1,5 +1,14 @@
 # OpenSorSe v1.6 Manual Validation Checklist
 
+## Completion record
+
+The project maintainer confirmed completion of the required interactive manual
+smoke testing on 2026-07-28 and reported no release-blocking issues. Detailed
+host, architecture, filesystem, assistive-technology, Tesseract, Ollama, and
+plugin-version observations were not supplied for this repository record. The
+checkboxes below remain the reusable validation procedure rather than a
+fabricated per-environment evidence log.
+
 Use disposable folders and copies of files. Do not use irreplaceable data.
 Record the operating system, architecture, filesystem, .NET runtime, external
 tool versions, exact result, and any diagnostic correlation identifier.

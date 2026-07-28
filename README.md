@@ -14,8 +14,8 @@ OpenSorSe is a modern, open-source Windows desktop application with a Linux prev
 > OpenSorSe 1.6.0 hardens atomic persistence, cancellation, memory use,
 > watcher/task lifecycle, diagnostics, accessibility, and Windows/Ubuntu/macOS
 > source validation while preserving every v1.5 feature and safety boundary.
-> Complete the [v1.6 manual checklist](docs/MANUAL_TESTING_v1.6.md) before
-> making a binary release claim.
+> Automated validation and the required interactive manual smoke testing are
+> complete with no release-blocking issues.
 
 
 <img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
@@ -67,7 +67,6 @@ OpenSorSe is a modern, open-source Windows desktop application with a Linux prev
 ## Screenshots
 
 Screenshot files belong in [`docs/images/`](docs/images/README.md). The comments below already contain the intended relative Markdown links; uncomment each line after adding the corresponding real application capture.
-
 ### Home
 
 <!-- Home Screenshot: ![OpenSorSe Home dashboard](docs/images/home.png) -->
@@ -110,8 +109,8 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 This source tree does not claim a v1.6 package, installer, tag, or published
 release. The immutable historical v1.0 Windows package does not represent the
-current source. Build v1.6 from source and complete the platform-specific manual
-checklist before distributing a binary.
+current source. Build v1.6 from source; packaging, signing, and distribution
+remain separate release activities.
 
 ### Windows executable
 

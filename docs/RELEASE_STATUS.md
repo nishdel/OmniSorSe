@@ -18,7 +18,7 @@
 | v1.3 Workflow Profiles and Recipe Library | Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending | Debug/Release builds and 761 automated tests passed with zero failures/skips; formatting and diff validation clean. | Persistent typed profiles/recipes, safe templates/previews, immutable resolution snapshots, watched/manual integration, Change Plan provenance, profile-aware AI gates, import/export/recovery, Workflows UI, and documentation. |
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
-| v1.6 Reliability, Performance, and Production Hardening | Source implementation plus local and hosted automated validation complete; manual interaction remains separate | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
+| v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
 
 ## Current product boundary
 
@@ -58,8 +58,9 @@ builds, and **895 tests in each configuration** with zero failures and zero
 skips. Analyzer, style, whitespace, documentation, dependency-vulnerability,
 patch, and tracked-artifact gates passed. Fresh Release target builds succeeded
 for Windows x64, Linux x64, macOS x64, and macOS ARM64. Native Windows, Ubuntu,
-and macOS CI also passed; interactive platform checks remain separate. Exact
-evidence is recorded in
+and macOS CI also passed. The maintainer subsequently completed the required
+interactive manual smoke testing and reported no release-blocking issues. Exact
+automated and manual status is recorded in
 [V1.6 Validation Report](V1.6_VALIDATION_REPORT.md).
 
 ## v1.5 validation baseline
@@ -103,9 +104,9 @@ The architecture directory contains both current implementation documentation an
 ## Current release
 
 OpenSorSe 1.6 source implementation is on `v1.6-reliability-performance`.
-Do not publish a stable binary until inherited GUI/OCR/Ollama/execution/
-watcher/workflow/plugin checks and the platform-specific v1.6 checklist pass on
-disposable data. See the [user guide](USER_GUIDE_v1.6.md), [implementation
+Automated validation and the required interactive manual smoke testing are
+complete with no release-blocking issues. Packaging, signing, tagging, and
+publishing remain separate release activities. See the [user guide](USER_GUIDE_v1.6.md), [implementation
 specification](Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md),
 [implementation report](V1.6_IMPLEMENTATION_REPORT.md), and
 [manual checklist](MANUAL_TESTING_v1.6.md).
@@ -115,6 +116,6 @@ specification](Implementation_Spec/v1.6/058_Reliability_Performance_and_Producti
 - Version: `v1.6`
 - Release name: **Reliability, Performance, and Production Hardening**
 - Git branch: `v1.6-reliability-performance`
-- Status: source implementation complete; exact automated and manual validation is reported conservatively.
+- Status: source implementation and required automated/manual validation complete; no package, tag, or published release is claimed.
 
 The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, `v1.3-workflow-profiles`, `v1.4-plugin-foundation`, and `v1.5-cross-platform-foundation`.

@@ -22,8 +22,8 @@ Release branch: `v1.6-reliability-performance`.
   zero-skip, analyzer, style, whitespace, documentation, and patch gates.
 - Product/informational version is `1.6.0`; assembly/file/manifest version is
   `1.6.0.0`; About displays `1.6`.
-- No tag, installer, package, updater, commit, merge, or published release is
-  created by this implementation task.
+- No tag, installer, package, updater, or published release is created by the
+  source integration.
 
 ## v1.5.0
 

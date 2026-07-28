@@ -91,8 +91,9 @@ approval, the executor, credentials, or host dependency injection.
 - [Documentation inventory](DOCUMENTATION_INVENTORY.md)
 
 `RELEASE_CHECKLIST_v1.0.md` is historical and remains useful as the most recent
-packaging checklist. It is not by itself sufficient to publish v1.6; the v1.6
-manual checklist and maintainer guide identify the additional gates.
+packaging checklist. The v1.6 manual checklist and maintainer guide identify
+additional gates; their completion status is recorded in the v1.6 validation
+report.
 
 ## Historical documentation
 
