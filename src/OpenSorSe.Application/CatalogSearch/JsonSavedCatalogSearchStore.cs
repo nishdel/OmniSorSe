@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Application.CatalogSearch;
 
@@ -12,6 +13,7 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
     private const int CurrentSchemaVersion = 1;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly string _filePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
@@ -24,6 +26,7 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
         }
 
         _filePath = filePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService))).CreateLogger(nameof(JsonSavedCatalogSearchStore));
     }
 
@@ -31,6 +34,7 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
     public async Task<IReadOnlyList<SavedCatalogSearch>> ListAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -48,6 +52,7 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
         ArgumentNullException.ThrowIfNull(search);
         var sanitized = Sanitize(search);
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -77,6 +82,7 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(searchId);
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -100,6 +106,7 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -163,39 +170,14 @@ public sealed class JsonSavedCatalogSearchStore : ISavedCatalogSearchStore
 
     private async Task SaveCoreAsync(IReadOnlyList<SavedCatalogSearch> searches, CancellationToken cancellationToken)
     {
-        var directoryPath = Path.GetDirectoryName(_filePath);
-        if (string.IsNullOrWhiteSpace(directoryPath))
-        {
-            throw new InvalidDataException("The saved-search path has no directory.");
-        }
-
-        Directory.CreateDirectory(directoryPath);
-        var temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = File.Create(temporaryPath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new SavedSearchEnvelope(CurrentSchemaVersion, Order(searches)),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporaryPath).Length > SavedCatalogSearchLimits.MaximumStoreFileBytes)
-            {
-                throw new InvalidDataException("The saved catalog searches exceed their supported encoded size.");
-            }
-
-            File.Move(temporaryPath, _filePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _filePath,
+            new SavedSearchEnvelope(CurrentSchemaVersion, Order(searches)),
+            JsonOptions,
+            SavedCatalogSearchLimits.MaximumStoreFileBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The saved catalog searches exceed their supported encoded size.")).ConfigureAwait(false);
     }
 
     private static SavedCatalogSearch Sanitize(SavedCatalogSearch search)

@@ -106,6 +106,41 @@ public sealed class JsonDecisionHistoryStoreTests
         }
     }
 
+    /// <summary>Verifies separate store instances serialize concurrent append transactions without losing decisions.</summary>
+    [Fact]
+    public async Task AppendAsync_MultipleInstancesConcurrently_PreservesEveryDecision()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"opensorse-ai-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "decision-history.json");
+        try
+        {
+            var decisions = Enumerable.Range(0, 32)
+                .Select(index => CreateDecision() with
+                {
+                    SuggestedValue = $"value-{index:D2}",
+                    FinalValue = $"value-{index:D2}",
+                    RecordedAtUtc = DateTimeOffset.UnixEpoch.AddSeconds(index),
+                })
+                .ToArray();
+
+            await Task.WhenAll(decisions.Select(decision =>
+                new JsonDecisionHistoryStore(path, new LoggingService())
+                    .AppendAsync(decision, CancellationToken.None)));
+
+            var loaded = await new JsonDecisionHistoryStore(path, new LoggingService())
+                .LoadAsync(CancellationToken.None);
+            Assert.Equal(decisions, loaded);
+            Assert.Empty(Directory.EnumerateFiles(directory, "*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
     private static AiSuggestionDecision CreateDecision() => new(
         AiSuggestionDecisionKind.Tags,
         AiSuggestionDecisionOutcome.Accepted,

@@ -2,6 +2,7 @@ using OpenSorSe.Application.Models;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
@@ -367,7 +368,7 @@ public sealed class ResultsViewModelTests
         new(
             id,
             path,
-            Path.GetFileName(path),
+            CrossPlatformPath.GetFileName(path),
             ".txt",
             size,
             DateTimeOffset.UnixEpoch,

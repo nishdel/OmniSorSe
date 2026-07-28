@@ -1,6 +1,6 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the OpenSorSe 1.5 source
+This is the authoritative top-level architecture for the OpenSorSe 1.6 source
 tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -65,7 +65,17 @@ The current plugin foundation exposes all eight bounded invocation surfaces.
 Workflow dependency checks and plugin recipe fields are integrated with
 Workflow/Profile resolution and recipe planning. Other extension-point adapters
 are host-callable through `IPluginExtensionHost`; broad insertion into every
-legacy scanner/content pipeline stage is deliberately not implied by v1.5.
+legacy scanner/content pipeline stage is deliberately not implied by v1.6.
+
+## v1.6 reliability boundary
+
+Every versioned application-owned JSON store uses the shared bounded atomic
+writer. A normalized host-path coordinator covers complete process-local
+transactions across independent store instances. Duplicate analysis and Results
+query/projection use bounded allocations and cooperative cancellation.
+Processing-session history is bounded, background task progress is terminal
+safe, observer failures are isolated, and watcher initialization/disposal is
+idempotent. See [Reliability Architecture](Architecture/00_System/09_v1.6_Reliability_Architecture.md).
 
 ## Platform boundary
 

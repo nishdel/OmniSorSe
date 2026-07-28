@@ -2,6 +2,7 @@
 
 using System.Reflection;
 using System.Runtime.Loader;
+using OpenSorSe.Core;
 using OpenSorSe.Extensions.Abstractions;
 
 namespace OpenSorSe.Application.Plugins;
@@ -147,7 +148,7 @@ public sealed class PluginRuntime : IPluginRuntime
                     plugin.DisplayName,
                     plugin.IsBuiltIn),
                 new HashSet<PluginCapability>(plugin.GrantedCapabilities),
-                "1.5.0");
+                ApplicationVersionInfo.Current);
             initialized = await instance.InitializeAsync(context, initializationCancellation.Token)
                 .WaitAsync(_initializationTimeout, cancellationToken)
                 .ConfigureAwait(false);

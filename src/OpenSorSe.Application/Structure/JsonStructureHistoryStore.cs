@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Application.Structure;
 
@@ -15,6 +16,7 @@ public sealed class JsonStructureHistoryStore : IStructureHistoryStore
         Converters = { new JsonStringEnumConverter() },
     };
     private readonly string _filePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
@@ -27,6 +29,7 @@ public sealed class JsonStructureHistoryStore : IStructureHistoryStore
         }
 
         _filePath = filePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonStructureHistoryStore));
     }
@@ -34,6 +37,7 @@ public sealed class JsonStructureHistoryStore : IStructureHistoryStore
     /// <inheritdoc />
     public async Task<IReadOnlyList<RestructuringHistoryRecord>> ListAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -51,6 +55,7 @@ public sealed class JsonStructureHistoryStore : IStructureHistoryStore
         CancellationToken cancellationToken)
     {
         var validated = ValidateRecord(record);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -72,6 +77,7 @@ public sealed class JsonStructureHistoryStore : IStructureHistoryStore
     /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -139,35 +145,14 @@ public sealed class JsonStructureHistoryStore : IStructureHistoryStore
         IReadOnlyList<RestructuringHistoryRecord> records,
         CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(_filePath)
-            ?? throw new InvalidDataException("The structure-history path has no directory.");
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = File.Create(temporaryPath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new HistoryEnvelope(CurrentSchemaVersion, records),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporaryPath).Length > StructureLimits.MaximumHistoryFileBytes)
-            {
-                throw new InvalidDataException("The structure history exceeds its supported encoded size.");
-            }
-
-            File.Move(temporaryPath, _filePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _filePath,
+            new HistoryEnvelope(CurrentSchemaVersion, records),
+            JsonOptions,
+            StructureLimits.MaximumHistoryFileBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The structure history exceeds its supported encoded size.")).ConfigureAwait(false);
     }
 
     private static RestructuringHistoryRecord ValidateRecord(RestructuringHistoryRecord record)

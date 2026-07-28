@@ -9,12 +9,70 @@ namespace OpenSorSe.Application.Tests;
 public sealed class WatchedFolderCoordinatorTests
 {
     [Fact]
+    public async Task Initialize_ConcurrentCallers_StartExactlyOneWatcherAndStartupBatch()
+    {
+        await using var context = await CoordinatorContext.CreateAsync();
+
+        await Task.WhenAll(
+            Enumerable.Range(0, 32)
+                .Select(_ => context.Coordinator.InitializeAsync(CancellationToken.None)));
+        await WaitForInitialReconciliationAsync(context);
+
+        Assert.Single(context.SourceFactory.Sources);
+        Assert.Single(context.Processor.Batches);
+        Assert.True(context.SourceFactory.Sources[0].IsStarted);
+        Assert.Equal(
+            WatchedScanReason.StartupOfflineReconciliation,
+            context.Processor.Batches[0].Reason);
+    }
+
+    [Fact]
+    public async Task Dispose_ConcurrentCallers_StopWatcherExactlyOnceWithoutRaces()
+    {
+        await using var context = await CoordinatorContext.CreateAsync();
+        await context.Coordinator.InitializeAsync(CancellationToken.None);
+        await WaitForInitialReconciliationAsync(context);
+        var source = Assert.Single(context.SourceFactory.Sources);
+
+        await Task.WhenAll(
+            Enumerable.Range(0, 32)
+                .Select(_ => context.Coordinator.DisposeAsync().AsTask()));
+
+        Assert.True(source.IsDisposed);
+        await context.Coordinator.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task PublishedObservers_ThrowingHandlers_DoNotSuppressLaterHandlers()
+    {
+        await using var context = await CoordinatorContext.CreateAsync();
+        var stateNotifications = 0;
+        var activityNotifications = 0;
+        context.Coordinator.StateChanged += (_, _) =>
+            throw new InvalidOperationException("state observer failure");
+        context.Coordinator.StateChanged += (_, _) => stateNotifications++;
+        context.Coordinator.ActivityPublished += (_, _) =>
+            throw new InvalidOperationException("activity observer failure");
+        context.Coordinator.ActivityPublished += (_, _) => activityNotifications++;
+
+        await context.Coordinator.InitializeAsync(CancellationToken.None);
+        await WaitForInitialReconciliationAsync(context);
+        await WaitUntilAsync(() => stateNotifications > 0 && activityNotifications > 0);
+
+        Assert.True(stateNotifications > 0);
+        Assert.True(activityNotifications > 0);
+        Assert.Equal(
+            WatchedFolderStatus.Watching,
+            Assert.Single(await context.Manager.ListAsync(CancellationToken.None)).Status);
+    }
+
+    [Fact]
     public async Task Initialize_StartsWatcherAndQueuesOfflineReconciliation()
     {
         await using var context = await CoordinatorContext.CreateAsync();
 
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
 
         Assert.Single(context.SourceFactory.Sources);
         Assert.True(context.SourceFactory.Sources[0].IsStarted);
@@ -32,7 +90,7 @@ public sealed class WatchedFolderCoordinatorTests
     {
         await using var context = await CoordinatorContext.CreateAsync();
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
         var path = Path.Combine(context.Root, "new.txt");
         var detected = DateTimeOffset.UtcNow;
@@ -43,7 +101,7 @@ public sealed class WatchedFolderCoordinatorTests
             new WatchedFolderHint(context.Configuration.Id, WatchedPathChangeKind.FileModified, path, null, detected.AddMilliseconds(10)));
         context.SourceFactory.Sources[0].Raise(
             new WatchedFolderHint(context.Configuration.Id, WatchedPathChangeKind.FileCreated, path, null, detected.AddMilliseconds(20)));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
 
         var batch = Assert.Single(context.Processor.Batches);
         Assert.Equal(WatchedScanReason.WatcherBatch, batch.Reason);
@@ -55,11 +113,42 @@ public sealed class WatchedFolderCoordinatorTests
     }
 
     [Fact]
+    public async Task SameKindPathsDifferingOnlyByCase_FollowHostPathSemantics()
+    {
+        await using var context = await CoordinatorContext.CreateAsync();
+        await context.Coordinator.InitializeAsync(CancellationToken.None);
+        await WaitForInitialReconciliationAsync(context);
+        context.Processor.Batches.Clear();
+        var lowerPath = Path.Combine(context.Root, "case.txt");
+        var upperPath = Path.Combine(context.Root, "CASE.txt");
+        var detected = DateTimeOffset.UtcNow;
+
+        context.SourceFactory.Sources[0].Raise(new WatchedFolderHint(
+            context.Configuration.Id,
+            WatchedPathChangeKind.FileCreated,
+            lowerPath,
+            null,
+            detected));
+        context.SourceFactory.Sources[0].Raise(new WatchedFolderHint(
+            context.Configuration.Id,
+            WatchedPathChangeKind.FileCreated,
+            upperPath,
+            null,
+            detected.AddMilliseconds(10)));
+        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+
+        var expectedCount = WatchedFolderPathPolicy.PathComparer.Equals(lowerPath, upperPath)
+            ? 1
+            : 2;
+        Assert.Equal(expectedCount, Assert.Single(context.Processor.Batches).Hints.Count);
+    }
+
+    [Fact]
     public async Task DirectoryEventAndOverflow_RequireReconciliationAndRemainVisibleInHistory()
     {
         await using var context = await CoordinatorContext.CreateAsync();
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
         var detected = DateTimeOffset.UtcNow;
         context.SourceFactory.Sources[0].Raise(
@@ -72,6 +161,7 @@ public sealed class WatchedFolderCoordinatorTests
                 true));
         await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
         Assert.True(Assert.Single(context.Processor.Batches).RequiresFullReconciliation);
+        await WaitForWatchingAsync(context);
         context.Processor.Batches.Clear();
 
         context.SourceFactory.Sources[0].Raise(
@@ -81,7 +171,7 @@ public sealed class WatchedFolderCoordinatorTests
                 string.Empty,
                 null,
                 detected.AddSeconds(1)));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
 
         var overflow = Assert.Single(context.Processor.Batches);
         Assert.Equal(WatchedScanReason.OverflowRecovery, overflow.Reason);
@@ -95,7 +185,7 @@ public sealed class WatchedFolderCoordinatorTests
     {
         await using var context = await CoordinatorContext.CreateAsync();
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
 
         context.SourceFactory.Sources[0].Raise(new WatchedFolderHint(
@@ -105,7 +195,7 @@ public sealed class WatchedFolderCoordinatorTests
             null,
             DateTimeOffset.UtcNow,
             false));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
 
         Assert.True(Assert.Single(context.Processor.Batches).RequiresFullReconciliation);
     }
@@ -115,11 +205,11 @@ public sealed class WatchedFolderCoordinatorTests
     {
         await using var context = await CoordinatorContext.CreateAsync();
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
 
         context.SourceFactory.Sources[0].RaiseError(new InternalBufferOverflowException("Overflow."));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
 
         var batch = Assert.Single(context.Processor.Batches);
         Assert.Equal(WatchedScanReason.OverflowRecovery, batch.Reason);
@@ -136,7 +226,7 @@ public sealed class WatchedFolderCoordinatorTests
     {
         await using var context = await CoordinatorContext.CreateAsync(correlationResult: true);
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
         var detected = DateTimeOffset.UtcNow;
         context.SourceFactory.Sources[0].Raise(
@@ -158,7 +248,7 @@ public sealed class WatchedFolderCoordinatorTests
     {
         await using var context = await CoordinatorContext.CreateAsync();
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
         var firstSource = Assert.Single(context.SourceFactory.Sources);
 
@@ -203,7 +293,7 @@ public sealed class WatchedFolderCoordinatorTests
     {
         await using var context = await CoordinatorContext.CreateAsync();
         await context.Coordinator.InitializeAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForInitialReconciliationAsync(context);
         context.Processor.Batches.Clear();
 
         await context.Coordinator.ScanChangesNowAsync(context.Configuration.Id, CancellationToken.None);
@@ -231,6 +321,45 @@ public sealed class WatchedFolderCoordinatorTests
             if (DateTime.UtcNow >= deadline)
             {
                 throw new TimeoutException("The watched-folder test did not reach the expected state.");
+            }
+
+            await Task.Delay(20);
+        }
+    }
+
+    private static async Task WaitForInitialReconciliationAsync(CoordinatorContext context)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (true)
+        {
+            var configuration = Assert.Single(
+                await context.Manager.ListAsync(CancellationToken.None));
+            if (context.Processor.Batches.Count >= 1 &&
+                configuration.Status == WatchedFolderStatus.Watching &&
+                configuration.LastReconciliationUtc is not null &&
+                configuration.LastSuccessfulScanUtc is not null)
+            {
+                return;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new TimeoutException("The initial watched-folder reconciliation did not complete.");
+            }
+
+            await Task.Delay(20);
+        }
+    }
+
+    private static async Task WaitForWatchingAsync(CoordinatorContext context)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (Assert.Single(await context.Manager.ListAsync(CancellationToken.None)).Status !=
+               WatchedFolderStatus.Watching)
+        {
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new TimeoutException("The watched-folder batch did not return to the watching state.");
             }
 
             await Task.Delay(20);

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Core.Configuration;
 
@@ -17,6 +18,7 @@ public sealed class JsonConfigurationService : IConfigurationService
     };
 
     private readonly Func<string, string?> _environmentVariableReader;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly string _settingsFilePath;
 
     /// <summary>
@@ -34,6 +36,7 @@ public sealed class JsonConfigurationService : IConfigurationService
         }
 
         _settingsFilePath = settingsFilePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(settingsFilePath);
         _environmentVariableReader = environmentVariableReader ?? Environment.GetEnvironmentVariable;
     }
 
@@ -47,6 +50,7 @@ public sealed class JsonConfigurationService : IConfigurationService
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         InitializationWarning = null;
         var settings = new ApplicationSettings();
 
@@ -81,6 +85,7 @@ public sealed class JsonConfigurationService : IConfigurationService
     /// <inheritdoc />
     public async Task SaveAsync(CancellationToken cancellationToken)
     {
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await SaveCoreAsync(Current, cancellationToken).ConfigureAwait(false);
     }
 
@@ -89,6 +94,7 @@ public sealed class JsonConfigurationService : IConfigurationService
     {
         ArgumentNullException.ThrowIfNull(settings);
         settings.Validate();
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await SaveCoreAsync(settings, cancellationToken).ConfigureAwait(false);
         Current = settings;
         InitializationWarning = null;
@@ -96,41 +102,14 @@ public sealed class JsonConfigurationService : IConfigurationService
 
     private async Task SaveCoreAsync(ApplicationSettings settings, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var directoryPath = Path.GetDirectoryName(_settingsFilePath);
-        if (string.IsNullOrWhiteSpace(directoryPath))
-        {
-            throw new ConfigurationValidationException("The settings file path must include a directory.");
-        }
-
-        Directory.CreateDirectory(directoryPath);
-        var temporaryFilePath = $"{_settingsFilePath}.{Guid.NewGuid():N}.tmp";
-
-        try
-        {
-            await using (var stream = File.Create(temporaryFilePath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    settings,
-                    SerializerOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporaryFilePath).Length > ConfigurationLimits.MaximumSettingsFileBytes)
-            {
-                throw new ConfigurationValidationException("The configuration file exceeds its supported size.");
-            }
-
-            File.Move(temporaryFilePath, _settingsFilePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryFilePath))
-            {
-                File.Delete(temporaryFilePath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _settingsFilePath,
+            settings,
+            SerializerOptions,
+            ConfigurationLimits.MaximumSettingsFileBytes,
+            cancellationToken,
+            static (_, _) => new ConfigurationValidationException(
+                "The configuration file exceeds its supported size.")).ConfigureAwait(false);
     }
 
     private ApplicationSettings ApplyEnvironmentOverrides(ApplicationSettings settings)

@@ -6,6 +6,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Tags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Application.Tests;
 
@@ -298,12 +299,12 @@ public sealed class SemanticSearchTests
             Path.GetFullPath(path),
             "source",
             Guid.NewGuid().ToString("N"),
-            Path.GetFileName(path),
+            CrossPlatformPath.GetFileName(path),
             tags,
             metadata,
             native,
             ocr ?? [],
-            embedding.Embed($"{Path.GetFileName(path)} {string.Join(' ', metadata)} {string.Join(' ', native)} {string.Join(' ', ocr ?? [])}"),
+            embedding.Embed($"{CrossPlatformPath.GetFileName(path)} {string.Join(' ', metadata)} {string.Join(' ', native)} {string.Join(' ', ocr ?? [])}"),
             time);
 
     private static TagAssociation Tag(

@@ -3,9 +3,14 @@
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
              x:Class="OpenSorSe.Desktop.Views.NotificationCenterView"
              x:DataType="vm:NotificationCenterViewModel">
-    <Border Padding="8" Background="{DynamicResource ThemeControlHighlightMidBrush}" CornerRadius="4" IsVisible="{Binding HasNotifications}">
+    <Border Padding="8" Background="{DynamicResource ThemeControlHighlightMidBrush}" CornerRadius="4"
+            IsVisible="{Binding HasNotifications}"
+            AutomationProperties.Name="Notifications"
+            AutomationProperties.LiveSetting="Polite">
         <StackPanel Spacing="4">
-            <ListBox ItemsSource="{Binding Notifications}" SelectedItem="{Binding SelectedNotification, Mode=TwoWay}" MaxHeight="160">
+            <ListBox ItemsSource="{Binding Notifications}" SelectedItem="{Binding SelectedNotification, Mode=TwoWay}"
+                     MaxHeight="160"
+                     AutomationProperties.Name="Notification list">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />

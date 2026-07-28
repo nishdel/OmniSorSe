@@ -3,6 +3,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OpenSorSe.Core;
 
 namespace OpenSorSe.Application.Workflows;
 
@@ -36,7 +37,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
         var envelope = new WorkflowExportEnvelope(
             WorkflowExportContentType.WorkflowProfile,
             WorkflowLibraryLimits.CurrentExportSchemaVersion,
-            "1.5.0",
+            ApplicationVersionInfo.Current,
             profile.Id,
             profile.Name,
             profile.Description,
@@ -59,7 +60,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
         var envelope = new WorkflowExportEnvelope(
             WorkflowExportContentType.SortingRecipe,
             WorkflowLibraryLimits.CurrentExportSchemaVersion,
-            "1.5.0",
+            ApplicationVersionInfo.Current,
             recipe.Id,
             recipe.Name,
             recipe.Description,
@@ -190,7 +191,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
             Origin = new WorkflowProfileOrigin(
                 WorkflowOriginKind.Imported,
                 imported.Id,
-                "1.5.0"),
+                ApplicationVersionInfo.Current),
         }, cancellationToken).ConfigureAwait(false);
         return Success(created.Id, "Workflow profile imported as a validated user-created item.");
     }
@@ -251,7 +252,7 @@ public sealed class WorkflowImportExportService : IWorkflowImportExportService
             Origin = new WorkflowProfileOrigin(
                 WorkflowOriginKind.Imported,
                 imported.Id,
-                "1.5.0"),
+                ApplicationVersionInfo.Current),
         }, cancellationToken).ConfigureAwait(false);
         return Success(created.Id, "Sorting recipe imported as a validated declarative item.");
     }

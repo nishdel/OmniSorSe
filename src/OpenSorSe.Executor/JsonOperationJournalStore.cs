@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Executor;
@@ -17,8 +18,8 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
         Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false) },
     };
     private readonly string _filePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
-    private readonly SemaphoreSlim _mutex = new(1, 1);
 
     public JsonOperationJournalStore(string filePath, ILoggingService loggingService)
     {
@@ -28,6 +29,7 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
         }
 
         _filePath = Path.GetFullPath(filePath);
+        _fileAccess = new ApplicationFileAccessCoordinator(_filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonOperationJournalStore));
     }
@@ -35,15 +37,8 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
     /// <inheritdoc />
     public async Task<IReadOnlyList<OperationJournalRecord>> ListAsync(CancellationToken cancellationToken)
     {
-        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            return await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _mutex.Release();
-        }
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        return await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -65,24 +60,17 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
     public async Task UpsertAsync(OperationJournalRecord operation, CancellationToken cancellationToken)
     {
         Validate(operation);
-        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            var operations = (await LoadCoreAsync(cancellationToken).ConfigureAwait(false)).ToList();
-            operations.RemoveAll(candidate =>
-                string.Equals(candidate.OperationId, operation.OperationId, StringComparison.Ordinal));
-            operations.Add(operation);
-            var retained = operations
-                .OrderByDescending(candidate => candidate.StartedAtUtc)
-                .ThenBy(candidate => candidate.OperationId, StringComparer.Ordinal)
-                .Take(OperationJournalSchema.MaximumOperations)
-                .ToArray();
-            await SaveCoreAsync(retained, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _mutex.Release();
-        }
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        var operations = (await LoadCoreAsync(cancellationToken).ConfigureAwait(false)).ToList();
+        operations.RemoveAll(candidate =>
+            string.Equals(candidate.OperationId, operation.OperationId, StringComparison.Ordinal));
+        operations.Add(operation);
+        var retained = operations
+            .OrderByDescending(candidate => candidate.StartedAtUtc)
+            .ThenBy(candidate => candidate.OperationId, StringComparer.Ordinal)
+            .Take(OperationJournalSchema.MaximumOperations)
+            .ToArray();
+        await SaveCoreAsync(retained, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<IReadOnlyList<OperationJournalRecord>> LoadCoreAsync(
@@ -161,45 +149,14 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
         IReadOnlyList<OperationJournalRecord> operations,
         CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(_filePath)
-            ?? throw new InvalidDataException("The Operation Journal path has no directory.");
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = new FileStream(
-                             temporaryPath,
-                             new FileStreamOptions
-                             {
-                                 Access = FileAccess.Write,
-                                 Mode = FileMode.CreateNew,
-                                 Share = FileShare.None,
-                                 Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
-                             }))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new Envelope(OperationJournalSchema.CurrentVersion, operations),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-                stream.Flush(flushToDisk: true);
-            }
-
-            if (new FileInfo(temporaryPath).Length > OperationJournalSchema.MaximumFileBytes)
-            {
-                throw new InvalidDataException("The Operation Journal exceeds its supported encoded size.");
-            }
-
-            File.Move(temporaryPath, _filePath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _filePath,
+            new Envelope(OperationJournalSchema.CurrentVersion, operations),
+            JsonOptions,
+            OperationJournalSchema.MaximumFileBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The Operation Journal exceeds its supported encoded size.")).ConfigureAwait(false);
     }
 
     private static void Validate(OperationJournalRecord operation)

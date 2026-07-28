@@ -31,6 +31,7 @@
             </StackPanel>
             <Grid IsVisible="{Binding HasOperations}" ColumnDefinitions="0.9*,1.1*" ColumnSpacing="12">
                 <ListBox ItemsSource="{Binding Operations}"
+                         AutomationProperties.Name="Operation history"
                          SelectedItem="{Binding SelectedOperation, Mode=TwoWay}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="executorModels:OperationJournalRecord">
@@ -71,7 +72,9 @@
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
-            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                       AutomationProperties.Name="Operation history status"
+                       AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

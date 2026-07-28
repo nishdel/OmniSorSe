@@ -1,3 +1,5 @@
+using OpenSorSe.Core;
+
 namespace OpenSorSe.Desktop.ViewModels;
 
 /// <summary>
@@ -11,9 +13,9 @@ public sealed class AboutViewModel : ViewModelBase
     public string ApplicationName => "OpenSorSe";
 
     /// <summary>
-    /// Gets the declared 1.5 application version.
+    /// Gets the declared application version.
     /// </summary>
-    public string Version => "1.5";
+    public string Version => ApplicationVersionInfo.Display;
 
     /// <summary>
     /// Gets the project license displayed by the current application.

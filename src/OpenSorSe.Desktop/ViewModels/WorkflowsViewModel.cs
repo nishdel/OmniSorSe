@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Core;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Scanner.Models;
 
@@ -939,7 +940,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
             {
                 Type = "OpenSorSeWorkflowDiagnostics",
                 SchemaVersion = 1,
-                ApplicationVersion = "1.5.0",
+                ApplicationVersion = ApplicationVersionInfo.Current,
                 ExportedAtUtc = DateTimeOffset.UtcNow,
                 _library.RecoveryMessage,
                 _library.PreservedCorruptCopyPath,

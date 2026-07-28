@@ -179,6 +179,40 @@ public sealed class JsonSavedCatalogSearchStoreTests
         }
     }
 
+    /// <summary>Verifies separate saved-search instances serialize concurrent updates without lost records.</summary>
+    [Fact]
+    public async Task SaveAsync_MultipleInstancesConcurrently_PreservesEverySearch()
+    {
+        var directory = CreateDirectory();
+        var path = Path.Combine(directory, "saved-catalog-searches.json");
+        try
+        {
+            var searches = Enumerable.Range(0, 20)
+                .Select(index => CreateSearch(
+                    $"search:{index:D2}",
+                    $"Search {index:D2}",
+                    $"query {index:D2}",
+                    index))
+                .ToArray();
+
+            await Task.WhenAll(searches.Select(search =>
+                new JsonSavedCatalogSearchStore(path, new LoggingService())
+                    .SaveAsync(search, CancellationToken.None)));
+
+            var reloaded = await new JsonSavedCatalogSearchStore(path, new LoggingService())
+                .ListAsync(CancellationToken.None);
+            Assert.Equal(20, reloaded.Count);
+            Assert.Equal(
+                searches.Select(search => search.Id).OrderBy(value => value, StringComparer.Ordinal),
+                reloaded.Select(search => search.Id).OrderBy(value => value, StringComparer.Ordinal));
+            Assert.Empty(Directory.EnumerateFiles(directory, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static SavedCatalogSearch CreateSearch(string id, string name, string query, int minute) => new(
         id,
         name,

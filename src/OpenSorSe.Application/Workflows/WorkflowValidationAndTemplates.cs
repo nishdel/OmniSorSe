@@ -211,7 +211,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         string? destinationPath = null;
         try
         {
-            if (Path.IsPathRooted(relativeDestination))
+            if (CrossPlatformPath.IsRootedOnAnyPlatform(relativeDestination))
             {
                 conflicts.Add("The destination template produced a rooted path.");
             }
@@ -318,7 +318,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
             return;
         }
 
-        if (destination && Path.IsPathRooted(template))
+        if (destination && CrossPlatformPath.IsRootedOnAnyPlatform(template))
         {
             issues.Add(new WorkflowValidationIssue(
                 "template.rooted",

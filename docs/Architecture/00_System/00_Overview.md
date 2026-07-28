@@ -1,4 +1,4 @@
-# OpenSorSe 1.5 System Overview
+# OpenSorSe 1.6 System Overview
 
 OpenSorSe is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, and versioned local JSON stores.
 
@@ -6,7 +6,12 @@ OpenSorSe is a local-first Avalonia desktop application for understanding select
 
 Scanning, exact-duplicate review, metadata extraction, OCR Beta, tag generation, Semantic Search Beta, catalog/history comparison, diagrams, and optional AI suggestions are non-mutating. AI is disabled by default, capability-specific, untrusted, and suggestion-only. Rename/folder requests are metadata-only; bounded extracted text requires a separate opt-in and explicit one-document action.
 
-OpenSorSe 1.2 added watched roots, v1.3 typed workflows/recipes, and v1.4 the local plugin host/SDK. v1.5 adds explicit Windows/Linux platform semantics, identity, persistence locations, capability diagnostics, external-tool discovery, and desktop adapters. Watcher events, workflow settings, plugin output, and platform capability reports are analysis inputs, not authorization or filesystem truth. Suggestions remain non-mutating and reuse the v1.1 persisted **Change Plan**, separate **Operation Journal**, review, preflight, explicit confirmation, verified execution, rollback, recovery, and conflict-aware Undo boundary.
+OpenSorSe 1.2 added watched roots, v1.3 typed workflows/recipes, v1.4 the
+local plugin host/SDK, and v1.5 explicit platform services. v1.6 hardens atomic
+application-data persistence, cancellation, lifecycle, bounded memory,
+performance, diagnostics, accessibility, and Windows/Linux/macOS validation.
+Watcher events, workflow settings, plugin output, and platform capability
+reports remain analysis inputs, not authorization or filesystem truth.
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.
 
@@ -48,7 +53,12 @@ flowchart LR
 
 ## Local stores
 
-Settings, logs, AI decisions, saved catalog/searches, extracted content, semantic index, structure history, workflow library, plugin state/packages, watched configurations/catalogues/grouped activity, Change Plans, and the Operation Journal live in separate bounded OpenSorSe application-owned files. Windows preserves the existing LocalApplicationData root; Linux separates XDG configuration/data/state/cache. Missing v1.1/v1.2/v1.3/v1.4 stores are valid empty states. Corrupt stores fail closed and cannot activate a file operation.
+Settings, logs, AI decisions, saved catalog/searches, extracted content,
+semantic index, structure history, workflow library, plugin state/packages,
+watched configurations/catalogues/grouped activity, Change Plans, and the
+Operation Journal live in separate bounded OpenSorSe application-owned files.
+v1.6 serializes process-local transactions per normalized path and replaces an
+owned document only after a complete bounded sibling is durably flushed.
 
 ## Deferred
 
@@ -70,3 +80,5 @@ An online plugin marketplace/download/update service, out-of-process plugin sand
 - [v1.4 specification](../../Implementation_Spec/v1.4/056_Plugin_Foundation_and_Extension_SDK.md)
 - [v1.5 platform architecture](08_v1.5_Platform_Architecture.md)
 - [v1.5 specification](../../Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md)
+- [v1.6 reliability architecture](09_v1.6_Reliability_Architecture.md)
+- [v1.6 specification](../../Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md)

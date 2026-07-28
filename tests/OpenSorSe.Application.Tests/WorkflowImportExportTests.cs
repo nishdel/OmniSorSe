@@ -43,7 +43,7 @@ public sealed class WorkflowImportExportTests : IDisposable
         Assert.False(imported.IsBuiltIn);
         Assert.Equal(WorkflowOriginKind.Imported, imported.Origin.Kind);
         Assert.Contains("\"ContentType\"", json, StringComparison.Ordinal);
-        Assert.Contains("\"ApplicationVersion\": \"1.5.0\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"ApplicationVersion\": \"1.6.0\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("SelectedModel", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Credential", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ApiKey", json, StringComparison.OrdinalIgnoreCase);

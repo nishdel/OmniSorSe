@@ -24,11 +24,13 @@
                 <StackPanel>
                     <TextBlock FontWeight="SemiBold" Text="Add watched folder" />
                     <TextBox PlaceholderText="Absolute folder path"
+                             AutomationProperties.Name="New watched folder path"
                              Text="{Binding FolderPath}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock FontWeight="SemiBold" Text="Display name" />
                     <TextBox PlaceholderText="Optional friendly name"
+                             AutomationProperties.Name="New watched folder display name"
                              Text="{Binding DisplayName}" />
                 </StackPanel>
                 <Button Grid.Column="2"
@@ -43,6 +45,7 @@
               ColumnSpacing="14">
             <Grid RowDefinitions="*,Auto" RowSpacing="8">
                 <ListBox ItemsSource="{Binding Folders}"
+                         AutomationProperties.Name="Watched folders"
                          SelectedItem="{Binding SelectedFolder}">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:WatchedFolderRow">
@@ -76,6 +79,8 @@
                 </ListBox>
                 <TextBlock Grid.Row="1"
                            Text="{Binding StatusText}"
+                           AutomationProperties.Name="Watched folder status"
+                           AutomationProperties.LiveSetting="Polite"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}" />
             </Grid>
@@ -134,11 +139,14 @@
                                        FontWeight="SemiBold"
                                        Text="Watched-folder settings" />
                             <TextBlock Text="Folder path" FontWeight="SemiBold" />
-                            <TextBox Text="{Binding FolderPath}" IsReadOnly="True" />
+                            <TextBox Text="{Binding FolderPath}" IsReadOnly="True"
+                                     AutomationProperties.Name="Watched folder path" />
                             <TextBlock Text="Display name" FontWeight="SemiBold" />
-                            <TextBox Text="{Binding DisplayName}" />
+                            <TextBox Text="{Binding DisplayName}"
+                                     AutomationProperties.Name="Watched folder display name" />
                             <TextBlock Text="Workflow profile" FontWeight="SemiBold" />
                             <ComboBox ItemsSource="{Binding WorkflowProfiles}"
+                                      AutomationProperties.Name="Watched folder workflow profile"
                                       SelectedItem="{Binding SelectedWorkflowProfile}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
@@ -170,6 +178,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Notification level" FontWeight="SemiBold" />
                                     <ComboBox ItemsSource="{Binding NotificationLevels}"
+                                              AutomationProperties.Name="Watched folder notification level"
                                               SelectedItem="{Binding NotificationLevel}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
@@ -183,6 +192,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Quiet period (seconds)" FontWeight="SemiBold" />
                                     <NumericUpDown Minimum="0.25"
+                                                   AutomationProperties.Name="Watched folder quiet period in seconds"
                                                    Maximum="300"
                                                    Increment="0.25"
                                                    Value="{Binding QuietPeriodSeconds}" />
@@ -190,6 +200,7 @@
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="Maximum file size (MiB)" FontWeight="SemiBold" />
                                     <NumericUpDown Minimum="1"
+                                                   AutomationProperties.Name="Watched folder maximum file size in MiB"
                                                    Maximum="1048576"
                                                    Increment="1"
                                                    Value="{Binding MaximumFileSizeMiB}" />
@@ -197,10 +208,12 @@
                             </Grid>
                             <TextBlock Text="Ignored paths (one per line)" FontWeight="SemiBold" />
                             <TextBox AcceptsReturn="True"
+                                     AutomationProperties.Name="Watched folder ignored paths"
                                      MinHeight="64"
                                      Text="{Binding IgnoredPathsText}" />
                             <TextBlock Text="Additional ignore patterns (one per line)" FontWeight="SemiBold" />
                             <TextBox AcceptsReturn="True"
+                                     AutomationProperties.Name="Watched folder ignore patterns"
                                      MinHeight="64"
                                      PlaceholderText="Examples: *.bak or Archive/**"
                                      Text="{Binding IgnorePatternsText}" />

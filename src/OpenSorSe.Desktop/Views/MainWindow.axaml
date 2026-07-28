@@ -58,6 +58,7 @@
                                 <DataTemplate x:DataType="vm:NavigationItem">
                                     <Button Classes="nav-item"
                                             Classes.active="{Binding IsSelected}"
+                                            AutomationProperties.Name="{Binding Label}"
                                             Click="OnNavigationButtonClick">
                                         <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
                                             <TextBlock Text="{Binding Icon}"
@@ -82,6 +83,7 @@
                                     <DataTemplate x:DataType="vm:NavigationItem">
                                         <Button Classes="nav-item"
                                                 Classes.active="{Binding IsSelected}"
+                                                AutomationProperties.Name="{Binding Label}"
                                                 Click="OnNavigationButtonClick">
                                             <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
                                                 <TextBlock Text="{Binding Icon}"
@@ -102,6 +104,7 @@
                         <DataTemplate x:DataType="vm:NavigationItem">
                             <Button Classes="nav-item"
                                     Classes.active="{Binding IsSelected}"
+                                    AutomationProperties.Name="{Binding Label}"
                                     Click="OnNavigationButtonClick">
                                 <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
                                     <TextBlock Text="{Binding Icon}"
@@ -155,13 +158,16 @@
                             <Button Margin="0,0,6,0"
                                     Classes="secondary"
                                     Content="Scan Library"
+                                    AutomationProperties.Name="Open scan library"
                                     Command="{Binding ShowSavedScanLibraryCommand}" />
                             <Button Margin="0,0,6,0"
                                     Classes="secondary"
                                     Content="Search saved scans"
+                                    AutomationProperties.Name="Open saved scan search"
                                     Command="{Binding ShowSavedScanSearchCommand}" />
                             <Button Classes="secondary"
                                     Content="Compare scans"
+                                    AutomationProperties.Name="Open scan comparison"
                                     IsVisible="{Binding IsCompareScansAvailable}"
                                     Command="{Binding ShowSavedScanComparisonCommand}" />
                         </WrapPanel>
@@ -181,6 +187,7 @@
                 <Grid IsVisible="{Binding IsSemanticSearchSelected}" RowDefinitions="Auto,*" RowSpacing="10">
                     <Button Classes="secondary"
                             Content="Back to Files"
+                            AutomationProperties.Name="Back to Files"
                             HorizontalAlignment="Left"
                             Command="{Binding BackToFilesCommand}" />
                     <views:SemanticSearchView Grid.Row="1" DataContext="{Binding SemanticSearch}" />
@@ -227,7 +234,9 @@
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             Spacing="8"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Global operation status"
+                            AutomationProperties.LiveSetting="Polite">
                     <TextBlock Text="{Binding GlobalStatusText}" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding GlobalStatusDetail}"
                                Foreground="{DynamicResource TextSecondaryBrush}"
@@ -235,6 +244,7 @@
                 </StackPanel>
                 <ProgressBar Grid.Column="2"
                              IsVisible="{Binding IsGlobalOperationActive}"
+                             AutomationProperties.Name="Global operation progress"
                              Minimum="0"
                              Maximum="1"
                              Value="{Binding GlobalProgressValue}"
@@ -244,6 +254,7 @@
                         IsVisible="{Binding CanCancelCurrentOperation}"
                         Classes="secondary"
                         Content="Cancel"
+                        AutomationProperties.Name="Cancel current operation"
                         Command="{Binding CancelCurrentOperationCommand}" />
             </Grid>
         </Border>

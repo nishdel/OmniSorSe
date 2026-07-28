@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.AI;
 
@@ -19,6 +20,7 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
     };
 
     private readonly string _historyFilePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
@@ -35,6 +37,7 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
         }
 
         _historyFilePath = historyFilePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(historyFilePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService))).CreateLogger(nameof(JsonDecisionHistoryStore));
     }
 
@@ -42,6 +45,7 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
     public async Task<IReadOnlyList<AiSuggestionDecision>> LoadAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -59,6 +63,7 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
         ArgumentNullException.ThrowIfNull(decision);
         var sanitized = Sanitize(decision);
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -84,6 +89,7 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -140,39 +146,14 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
 
     private async Task SaveCoreAsync(IReadOnlyList<AiSuggestionDecision> decisions, CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(_historyFilePath);
-        if (string.IsNullOrWhiteSpace(directory))
-        {
-            throw new InvalidDataException("The local AI decision-history path has no directory.");
-        }
-
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{_historyFilePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = File.Create(temporaryPath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new DecisionHistoryEnvelope(CurrentSchemaVersion, decisions.ToArray()),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporaryPath).Length > AiDecisionHistoryLimits.MaximumHistoryFileBytes)
-            {
-                throw new InvalidDataException("The local AI decision history exceeds its supported size.");
-            }
-
-            File.Move(temporaryPath, _historyFilePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _historyFilePath,
+            new DecisionHistoryEnvelope(CurrentSchemaVersion, decisions.ToArray()),
+            JsonOptions,
+            AiDecisionHistoryLimits.MaximumHistoryFileBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The local AI decision history exceeds its supported size.")).ConfigureAwait(false);
     }
 
     private static AiSuggestionDecision Sanitize(AiSuggestionDecision decision)

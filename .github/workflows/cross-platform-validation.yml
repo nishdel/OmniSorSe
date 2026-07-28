@@ -3,11 +3,15 @@ name: Cross-platform validation
 on:
   push:
     branches:
-      - v1.5-cross-platform-foundation
+      - main
+      - v1.6-reliability-performance
   pull_request:
 
 permissions:
   contents: read
+
+env:
+  AVALONIA_TELEMETRY_OPTOUT: "1"
 
 jobs:
   validate:
@@ -19,6 +23,7 @@ jobs:
         os:
           - windows-latest
           - ubuntu-latest
+          - macos-latest
 
     steps:
       - name: Check out source
@@ -36,16 +41,41 @@ jobs:
         run: dotnet build OpenSorSe.sln --configuration Debug --no-restore
 
       - name: Test Debug
-        run: dotnet test OpenSorSe.sln --configuration Debug --no-build --no-restore
+        run: dotnet test OpenSorSe.sln --configuration Debug --no-build --no-restore --logger "trx;LogFilePrefix=debug" --results-directory .artifacts/test-results/${{ matrix.os }}/Debug
 
       - name: Build Release
         run: dotnet build OpenSorSe.sln --configuration Release --no-restore
 
       - name: Test Release
-        run: dotnet test OpenSorSe.sln --configuration Release --no-build --no-restore
+        run: dotnet test OpenSorSe.sln --configuration Release --no-build --no-restore --logger "trx;LogFilePrefix=release" --results-directory .artifacts/test-results/${{ matrix.os }}/Release
 
-      - name: Verify formatting
-        run: dotnet format OpenSorSe.sln --verify-no-changes --no-restore
+      - name: Verify no tests were skipped
+        shell: pwsh
+        run: |
+          $notExecuted = 0
+          $files = Get-ChildItem -Path ".artifacts/test-results/${{ matrix.os }}" -Filter *.trx -Recurse
+          if ($files.Count -eq 0) {
+            throw "No TRX test results were produced."
+          }
+          foreach ($file in $files) {
+            [xml]$result = Get-Content -Raw -LiteralPath $file.FullName
+            $notExecuted += [int]$result.TestRun.ResultSummary.Counters.notExecuted
+          }
+          if ($notExecuted -ne 0) {
+            throw "$notExecuted test(s) were skipped or not executed."
+          }
+
+      - name: Verify whitespace formatting
+        run: dotnet format whitespace OpenSorSe.sln --verify-no-changes --no-restore
+
+      - name: Verify code-style formatting
+        run: dotnet format style OpenSorSe.sln --verify-no-changes --no-restore --severity warn
+
+      - name: Verify analyzer formatting
+        run: dotnet format analyzers OpenSorSe.sln --verify-no-changes --no-restore --severity warn
+
+      - name: Verify clean patch formatting
+        run: git diff --check
 
       - name: Verify documentation and dependency policy
         run: dotnet test tests/OpenSorSe.Core.Tests/OpenSorSe.Core.Tests.csproj --configuration Release --no-build --no-restore --filter FullyQualifiedName~RepositoryDocumentationTests

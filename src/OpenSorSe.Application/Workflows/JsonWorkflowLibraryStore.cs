@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Application.Workflows;
 
@@ -27,6 +28,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
     };
 
     private readonly string _path;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly IWorkflowValidator _validator;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -42,6 +44,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
         }
 
         _path = path;
+        _fileAccess = new ApplicationFileAccessCoordinator(path);
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonWorkflowLibraryStore));
@@ -49,6 +52,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
 
     public async Task<WorkflowLibraryLoadResult> LoadAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -120,51 +124,21 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
             throw new InvalidDataException("Canonical built-ins are supplied by the application and are not persisted as user items.");
         }
 
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var directory = Path.GetDirectoryName(_path)
-                ?? throw new InvalidDataException("The workflow-library path has no parent directory.");
-            Directory.CreateDirectory(directory);
-            var temporary = $"{_path}.{Guid.NewGuid():N}.tmp";
-            try
-            {
-                await using (var stream = new FileStream(
-                                 temporary,
-                                 new FileStreamOptions
-                                 {
-                                     Mode = FileMode.CreateNew,
-                                     Access = FileAccess.Write,
-                                     Share = FileShare.None,
-                                     Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
-                                 }))
-                {
-                    await JsonSerializer.SerializeAsync(
-                        stream,
-                        new WorkflowLibraryEnvelope(
-                            WorkflowLibraryLimits.CurrentLibrarySchemaVersion,
-                            profileCopies,
-                            recipeCopies),
-                        JsonOptions,
-                        cancellationToken).ConfigureAwait(false);
-                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-                    stream.Flush(flushToDisk: true);
-                }
-
-                if (new FileInfo(temporary).Length > WorkflowLibraryLimits.MaximumLibraryBytes)
-                {
-                    throw new InvalidDataException("The workflow library exceeds its supported encoded size.");
-                }
-
-                File.Move(temporary, _path, true);
-            }
-            finally
-            {
-                if (File.Exists(temporary))
-                {
-                    File.Delete(temporary);
-                }
-            }
+            await AtomicJsonFile.WriteAsync(
+                _path,
+                new WorkflowLibraryEnvelope(
+                    WorkflowLibraryLimits.CurrentLibrarySchemaVersion,
+                    profileCopies,
+                    recipeCopies),
+                JsonOptions,
+                WorkflowLibraryLimits.MaximumLibraryBytes,
+                cancellationToken,
+                static (_, _) => new InvalidDataException(
+                    "The workflow library exceeds its supported encoded size.")).ConfigureAwait(false);
         }
         finally
         {

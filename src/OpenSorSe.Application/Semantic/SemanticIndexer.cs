@@ -3,6 +3,7 @@ using System.Text;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Platform;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -119,7 +120,7 @@ public sealed class SemanticIndexer : ISemanticIndexer
             .ToArray();
         var embeddingText = string.Join(
             ' ',
-            Path.GetFileName(record.FullPath),
+            CrossPlatformPath.GetFileName(record.FullPath),
             record.FullPath,
             string.Join(' ', activeTags.Select(tag => tag.DisplayName)),
             string.Join(' ', metadataTerms),
@@ -129,7 +130,7 @@ public sealed class SemanticIndexer : ISemanticIndexer
             record.FullPath,
             record.SourceFingerprint,
             indexFingerprint,
-            Path.GetFileName(record.FullPath),
+            CrossPlatformPath.GetFileName(record.FullPath),
             Array.AsReadOnly(record.Tags.ToArray()),
             metadataTerms,
             nativeTerms,

@@ -73,7 +73,7 @@ public sealed class ProcessingSessionManager : IProcessingSessionManager
             closed = _sessions[index] with { Status = ProcessingSessionStatus.Closed };
             _sessions[index] = closed;
         }
-        SessionChanged?.Invoke(this, closed);
+        PublishSessionChanged(closed);
         return true;
     }
 
@@ -83,7 +83,44 @@ public sealed class ProcessingSessionManager : IProcessingSessionManager
         {
             var index = _sessions.FindIndex(candidate => candidate.Id == session.Id);
             if (index < 0) _sessions.Add(session); else _sessions[index] = session;
+            TrimRetainedSessions();
         }
-        SessionChanged?.Invoke(this, session);
+        PublishSessionChanged(session);
+    }
+
+    private void TrimRetainedSessions()
+    {
+        while (_sessions.Count > ProcessingSessionLimits.MaximumRetainedSessions)
+        {
+            var removableIndex = _sessions.FindIndex(candidate =>
+                candidate.Status != ProcessingSessionStatus.Running);
+            if (removableIndex < 0)
+            {
+                return;
+            }
+
+            _sessions.RemoveAt(removableIndex);
+        }
+    }
+
+    private void PublishSessionChanged(ProcessingSession session)
+    {
+        var handlers = SessionChanged?.GetInvocationList()
+            .Cast<EventHandler<ProcessingSession>>()
+            .ToArray() ?? [];
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                handler(this, session);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "A processing-session observer failed while receiving session {SessionId}.",
+                    session.Id);
+            }
+        }
     }
 }

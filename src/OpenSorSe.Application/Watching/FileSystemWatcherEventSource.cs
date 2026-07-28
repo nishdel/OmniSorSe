@@ -132,23 +132,54 @@ public sealed class FileSystemWatcherEventSource : IWatchedFolderEventSource
             exception,
             "Operating-system watcher error for configuration {ConfigurationId}; reconciliation is required.",
             ConfigurationId);
-        Error?.Invoke(this, exception);
+        foreach (var handler in Error?.GetInvocationList()
+                     .Cast<EventHandler<Exception>>()
+                     .ToArray() ?? [])
+        {
+            try
+            {
+                handler(this, exception);
+            }
+            catch (Exception observerException)
+            {
+                _logger.LogWarning(
+                    observerException,
+                    "A watcher-error observer failed for configuration {ConfigurationId}.",
+                    ConfigurationId);
+            }
+        }
     }
 
     private void Publish(
         string path,
         string? oldPath,
         WatchedPathChangeKind kind,
-        bool? isDirectory = null) =>
-        HintReceived?.Invoke(
-            this,
-            new WatchedFolderHint(
-                ConfigurationId,
-                kind,
-                path,
-                oldPath,
-                _timeProvider.GetUtcNow(),
-                isDirectory ?? IsDirectory(path)));
+        bool? isDirectory = null)
+    {
+        var hint = new WatchedFolderHint(
+            ConfigurationId,
+            kind,
+            path,
+            oldPath,
+            _timeProvider.GetUtcNow(),
+            isDirectory ?? IsDirectory(path));
+        foreach (var handler in HintReceived?.GetInvocationList()
+                     .Cast<EventHandler<WatchedFolderHint>>()
+                     .ToArray() ?? [])
+        {
+            try
+            {
+                handler(this, hint);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "A watcher-hint observer failed for configuration {ConfigurationId}.",
+                    ConfigurationId);
+            }
+        }
+    }
 
     private static bool IsDirectory(string path)
     {

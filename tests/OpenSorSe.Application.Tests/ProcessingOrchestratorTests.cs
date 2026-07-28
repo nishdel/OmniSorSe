@@ -6,6 +6,7 @@ using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner;
@@ -165,7 +166,7 @@ public sealed class ProcessingOrchestratorTests
         new(
             path,
             new FileMetadata(
-                Path.GetFileName(path),
+                CrossPlatformPath.GetFileName(path),
                 extension,
                 size,
                 null,

@@ -28,9 +28,9 @@ public sealed class UndoEngineTests
         IReadOnlyCollection<UndoRecord> nullRecords = null!;
         await Assert.ThrowsAsync<ArgumentNullException>(() => Create().UndoAsync(nullRecords));
         await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync(new List<UndoRecord> { null! }));
-        await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync([Record("", UndoOperationKind.Move, "C:\\a", "C:\\b")]));
-        await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync([Record("one", (UndoOperationKind)999, "C:\\a", "C:\\b")]));
-        await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync([Record("one", UndoOperationKind.Move, "C:\\a", "C:\\b"), Record("one", UndoOperationKind.Copy, "C:\\c", "C:\\d")]));
+        await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync([Record("", UndoOperationKind.Move, Rooted("a"), Rooted("b"))]));
+        await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync([Record("one", (UndoOperationKind)999, Rooted("a"), Rooted("b"))]));
+        await Assert.ThrowsAsync<ArgumentException>(() => Create().UndoAsync([Record("one", UndoOperationKind.Move, Rooted("a"), Rooted("b")), Record("one", UndoOperationKind.Copy, Rooted("c"), Rooted("d"))]));
     }
 
     /// <summary>Verifies all scalar validation boundaries reject before a later valid record can mutate files.</summary>
@@ -183,16 +183,17 @@ public sealed class UndoEngineTests
     /// <summary>Supplies every collection-level validation defect.</summary>
     public static IEnumerable<object[]> InvalidRecords()
     {
-        yield return [Record("", UndoOperationKind.Move, "C:\\a", "C:\\b")];
-        yield return [new UndoRecord("one", "", UndoOperationKind.Move, "C:\\a", "C:\\b", DateTimeOffset.UtcNow)];
-        yield return [Record("one", (UndoOperationKind)999, "C:\\a", "C:\\b")];
-        yield return [Record("one", UndoOperationKind.Move, "relative", "C:\\b")];
-        yield return [Record("one", UndoOperationKind.Move, "C:\\a", "relative")];
-        yield return [Record("one", UndoOperationKind.Move, "C:\\a", "C:\\folder\\..\\a")];
-        yield return [new UndoRecord("one", "operation", UndoOperationKind.Move, "C:\\a", "C:\\b", DateTimeOffset.Now)];
+        yield return [Record("", UndoOperationKind.Move, Rooted("a"), Rooted("b"))];
+        yield return [new UndoRecord("one", "", UndoOperationKind.Move, Rooted("a"), Rooted("b"), DateTimeOffset.UtcNow)];
+        yield return [Record("one", (UndoOperationKind)999, Rooted("a"), Rooted("b"))];
+        yield return [Record("one", UndoOperationKind.Move, "relative", Rooted("b"))];
+        yield return [Record("one", UndoOperationKind.Move, Rooted("a"), "relative")];
+        yield return [Record("one", UndoOperationKind.Move, Rooted("a"), Path.Combine(Rooted("folder"), "..", "a"))];
+        yield return [new UndoRecord("one", "operation", UndoOperationKind.Move, Rooted("a"), Rooted("b"), DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(1)))];
     }
 
     private static UndoEngine Create() => new(new Log(), new Errors());
+    private static string Rooted(string name) => Path.Combine(Path.GetTempPath(), "OpenSorSe-Undo-Validation", name);
     private static UndoRecord Record(string id, UndoOperationKind kind, string original, string result) => new(id, "operation", kind, original, result, DateTimeOffset.UtcNow);
     private sealed class Temp : IDisposable { public Temp() { Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"OpenSorSe.Undo.{Guid.NewGuid():N}"); Directory.CreateDirectory(Path); } public string Path { get; } public string File(string name, string text) { var path = System.IO.Path.Combine(Path, name); System.IO.File.WriteAllText(path, text); return path; } public void Dispose() => Directory.Delete(Path, true); }
     private sealed class Log : ILoggingService { public ILogger CreateLogger(string categoryName) => NullLogger.Instance; public void Dispose() { } public void Initialize(LogLevel minimumLevel) { } }

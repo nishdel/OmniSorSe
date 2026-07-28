@@ -21,7 +21,7 @@ public sealed class FileScannerTests
     public async Task ScanAsync_RecursivelyDiscoversFilesAndDirectories()
     {
         using var directory = new TemporaryDirectory();
-        var nestedDirectory = directory.CreateDirectory("first\\second");
+        var nestedDirectory = directory.CreateDirectory(Path.Combine("first", "second"));
         var rootFile = directory.CreateFile("root.txt");
         var nestedFile = Path.Combine(nestedDirectory, "nested.txt");
         File.WriteAllText(nestedFile, "content is not read by the scanner");
@@ -68,7 +68,7 @@ public sealed class FileScannerTests
     {
         using var directory = new TemporaryDirectory();
         var childDirectory = directory.CreateDirectory("child");
-        var childFile = directory.CreateFile("child\\document.txt");
+        var childFile = directory.CreateFile(Path.Combine("child", "document.txt"));
         var duplicateRoot = directory.Path + Path.DirectorySeparatorChar;
 
         var result = await CreateScanner().ScanAsync(CreateRequest(directory.Path, duplicateRoot, childDirectory));

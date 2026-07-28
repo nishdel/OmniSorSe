@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
 
@@ -24,7 +25,7 @@ public sealed class ActionPlannerTests
     {
         var action = actionKind switch
         {
-            RuleActionKind.Move or RuleActionKind.Copy => new RuleAction(actionKind, "C:\\Destination"),
+            RuleActionKind.Move or RuleActionKind.Copy => new RuleAction(actionKind, DestinationDirectory),
             RuleActionKind.Rename => new RuleAction(actionKind, NameTemplate: "renamed.txt"),
             _ => new RuleAction(actionKind),
         };
@@ -59,9 +60,9 @@ public sealed class ActionPlannerTests
     [InlineData(RuleActionKind.Copy)]
     public async Task PlanAsync_MoveAndCopy_CombineDestinationWithMetadataName(RuleActionKind kind)
     {
-        var result = await CreatePlanner().PlanAsync([Decision(new RuleAction(kind, "C:\\Destination"))]);
+        var result = await CreatePlanner().PlanAsync([Decision(new RuleAction(kind, DestinationDirectory))]);
 
-        Assert.Equal(Path.Combine("C:\\Destination", "file.txt"), Assert.Single(result.Operations).DestinationPath);
+        Assert.Equal(Path.Combine(DestinationDirectory, "file.txt"), Assert.Single(result.Operations).DestinationPath);
     }
 
     /// <summary>
@@ -74,7 +75,7 @@ public sealed class ActionPlannerTests
         var result = await CreatePlanner().PlanAsync([Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{name}-{category}{extension}"), file)]);
 
         var operation = Assert.Single(result.Operations);
-        Assert.Equal(Path.Combine("C:\\Source", "Report-Document.txt"), operation.DestinationPath);
+        Assert.Equal(Path.Combine(SourceDirectory, "Report-Document.txt"), operation.DestinationPath);
     }
 
     /// <summary>
@@ -86,7 +87,7 @@ public sealed class ActionPlannerTests
         var file = File(fileName: "README", extension: string.Empty);
         var result = await CreatePlanner().PlanAsync([Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{name}{extension}-copy"), file)]);
 
-        Assert.Equal(Path.Combine("C:\\Source", "README-copy"), Assert.Single(result.Operations).DestinationPath);
+        Assert.Equal(Path.Combine(SourceDirectory, "README-copy"), Assert.Single(result.Operations).DestinationPath);
     }
 
     /// <summary>
@@ -109,11 +110,11 @@ public sealed class ActionPlannerTests
     [Fact]
     public async Task PlanAsync_MissingRequiredData_ReturnsIssuesAndContinues()
     {
-        var missingMove = Decision(new RuleAction(RuleActionKind.Move, "C:\\Destination"), new FileEntry("C:\\Source\\missing.txt"));
-        var missingCopy = Decision(new RuleAction(RuleActionKind.Copy, "C:\\Destination"), new FileEntry("C:\\Source\\missing.txt"));
-        var missingRename = Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{name}"), new FileEntry("C:\\Source\\missing.txt"));
+        var missingMove = Decision(new RuleAction(RuleActionKind.Move, DestinationDirectory), new FileEntry(SourcePath("missing.txt")));
+        var missingCopy = Decision(new RuleAction(RuleActionKind.Copy, DestinationDirectory), new FileEntry(SourcePath("missing.txt")));
+        var missingRename = Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{name}"), new FileEntry(SourcePath("missing.txt")));
         var missingCategory = Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{category}.txt"), File(category: null));
-        var validDelete = Decision(new RuleAction(RuleActionKind.Delete), new FileEntry("C:\\Source\\delete.bin"));
+        var validDelete = Decision(new RuleAction(RuleActionKind.Delete), new FileEntry(SourcePath("delete.bin")));
         var result = await CreatePlanner().PlanAsync([missingMove, missingCopy, missingRename, missingCategory, validDelete]);
 
         Assert.Equal(4, result.Issues.Count);
@@ -131,8 +132,8 @@ public sealed class ActionPlannerTests
         var hash = new FileHash("SHA-256", new string('a', 64));
         var classification = new FileClassification(FileCategory.Document);
         var duplicate = new DuplicateClassification(DuplicateStatus.Unique);
-        var file = new FileEntry("C:\\Source\\file.txt", metadata, hash, classification, duplicate);
-        var decision = Decision(new RuleAction(RuleActionKind.Move, "C:\\Destination"), file);
+        var file = new FileEntry(SourcePath("file.txt"), metadata, hash, classification, duplicate);
+        var decision = Decision(new RuleAction(RuleActionKind.Move, DestinationDirectory), file);
         var result = await CreatePlanner().PlanAsync([decision, decision]);
 
         Assert.Equal(["plan:0", "plan:1"], result.Operations.Select(operation => operation.OperationId));
@@ -144,7 +145,7 @@ public sealed class ActionPlannerTests
             Assert.Same(classification, operation.File.Classification);
             Assert.Same(duplicate, operation.File.Duplicate);
         });
-        Assert.Equal("C:\\Destination", decision.Action.DestinationPath);
+        Assert.Equal(DestinationDirectory, decision.Action.DestinationPath);
     }
 
     /// <summary>
@@ -153,7 +154,7 @@ public sealed class ActionPlannerTests
     [Fact]
     public async Task PlanAsync_MixedDecisions_ProducesAccurateStatistics()
     {
-        var move = Decision(new RuleAction(RuleActionKind.Move, "C:\\Destination"));
+        var move = Decision(new RuleAction(RuleActionKind.Move, DestinationDirectory));
         var invalid = Decision(new RuleAction(RuleActionKind.Copy, "relative"));
         var rename = Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "new.txt"));
         var delete = Decision(new RuleAction(RuleActionKind.Delete));
@@ -192,6 +193,35 @@ public sealed class ActionPlannerTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => CreatePlanner().PlanAsync([Decision(new RuleAction(RuleActionKind.Delete))], source.Token));
     }
 
+    /// <summary>Verifies source-equality checks follow the injected host path case policy.</summary>
+    [Fact]
+    public async Task PlanAsync_CaseOnlyRename_FollowsConfiguredPathSemantics()
+    {
+        var sourcePath = Path.Combine(
+            Path.GetTempPath(),
+            "OpenSorSe-ActionPlanner-Case",
+            "file.txt");
+        var file = new FileEntry(
+            sourcePath,
+            new FileMetadata("file.txt", ".txt", 1, null, null, null, FileAttributes.Normal),
+            null,
+            new FileClassification(FileCategory.Document));
+        var decision = Decision(
+            new RuleAction(RuleActionKind.Rename, NameTemplate: "FILE.txt"),
+            file);
+
+        var windowsResult = await CreatePlanner(new WindowsPathSemantics()).PlanAsync([decision]);
+        var linuxResult = await CreatePlanner(new LinuxPathSemantics()).PlanAsync([decision]);
+
+        Assert.Empty(windowsResult.Operations);
+        Assert.Equal(
+            ActionPlanningIssueKind.SourceEqualsDestination,
+            Assert.Single(windowsResult.Issues).Kind);
+        Assert.Equal(
+            Path.Combine(Path.GetDirectoryName(sourcePath)!, "FILE.txt"),
+            Assert.Single(linuxResult.Operations).DestinationPath);
+    }
+
     /// <summary>
     /// Supplies malformed decisions covering supported planning validation boundaries.
     /// </summary>
@@ -202,17 +232,26 @@ public sealed class ActionPlannerTests
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "folder/name")), ActionPlanningIssueKind.InvalidNameTemplate];
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: ".")), ActionPlanningIssueKind.InvalidNameTemplate];
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "..")), ActionPlanningIssueKind.InvalidNameTemplate];
-        yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "bad?name")), ActionPlanningIssueKind.InvalidNameTemplate];
+        yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "bad\0name")), ActionPlanningIssueKind.InvalidNameTemplate];
         yield return [Decision(new RuleAction(RuleActionKind.Move, "relative")), ActionPlanningIssueKind.InvalidDestinationPath];
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{name}{extension}")), ActionPlanningIssueKind.SourceEqualsDestination];
-        yield return [Decision(new RuleAction(RuleActionKind.Move, "C:\\Destination"), selectedRuleId: null), ActionPlanningIssueKind.InvalidDecision];
+        yield return [Decision(new RuleAction(RuleActionKind.Move, DestinationDirectory), selectedRuleId: null), ActionPlanningIssueKind.InvalidDecision];
         yield return [Decision(new RuleAction((RuleActionKind)999)), ActionPlanningIssueKind.UnsupportedAction];
     }
 
-    private static ActionPlanner CreatePlanner() => new(new TestLoggingService(), new TestErrorHandler());
+    private static ActionPlanner CreatePlanner(IPathSemantics? pathSemantics = null) =>
+        new(new TestLoggingService(), new TestErrorHandler(), pathSemantics);
+
+    private static string SourceDirectory =>
+        Path.Combine(Path.GetTempPath(), "OpenSorSe-Rules-Source");
+
+    private static string DestinationDirectory =>
+        Path.Combine(Path.GetTempPath(), "OpenSorSe-Rules-Destination");
+
+    private static string SourcePath(string name) => Path.Combine(SourceDirectory, name);
 
     private static FileEntry File(string fileName = "file.txt", string extension = ".txt", FileCategory? category = FileCategory.Document) =>
-        new("C:\\Source\\file.txt", new FileMetadata(fileName, extension, 1, null, null, null, FileAttributes.Normal), null,
+        new(SourcePath("file.txt"), new FileMetadata(fileName, extension, 1, null, null, null, FileAttributes.Normal), null,
             category is null ? null : new FileClassification(category.Value));
 
     private static RuleDecision Decision(RuleAction action, FileEntry? file = null, string? selectedRuleId = "rule") =>

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 using OpenSorSe.Application.Workflows;
 
 namespace OpenSorSe.Application.Watching;
@@ -31,32 +32,14 @@ internal static class WatchedStoreJson
         long maximumBytes,
         CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(path)
-            ?? throw new InvalidDataException("The watched-folder store path has no parent directory.");
-        Directory.CreateDirectory(directory);
-        var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = File.Create(temporary))
-            {
-                await JsonSerializer.SerializeAsync(stream, value, Options, cancellationToken).ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporary).Length > maximumBytes)
-            {
-                throw new InvalidDataException("The watched-folder store exceeds its supported size.");
-            }
-
-            File.Move(temporary, path, true);
-        }
-        finally
-        {
-            if (File.Exists(temporary))
-            {
-                File.Delete(temporary);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            path,
+            value,
+            Options,
+            maximumBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The watched-folder store exceeds its supported size.")).ConfigureAwait(false);
     }
 
     public static void ValidateRootedStorePath(string path, string parameterName)
@@ -71,6 +54,7 @@ internal static class WatchedStoreJson
 public sealed class JsonWatchedFolderConfigurationStore : IWatchedFolderConfigurationStore
 {
     private readonly string _path;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -78,12 +62,14 @@ public sealed class JsonWatchedFolderConfigurationStore : IWatchedFolderConfigur
     {
         WatchedStoreJson.ValidateRootedStorePath(path, nameof(path));
         _path = path;
+        _fileAccess = new ApplicationFileAccessCoordinator(path);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonWatchedFolderConfigurationStore));
     }
 
     public async Task<IReadOnlyList<WatchedFolderConfiguration>> LoadAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -144,6 +130,7 @@ public sealed class JsonWatchedFolderConfigurationStore : IWatchedFolderConfigur
             throw new InvalidDataException("The watched-folder configuration exceeds its supported bounds.");
         }
 
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -223,6 +210,7 @@ public sealed class JsonWatchedFolderConfigurationStore : IWatchedFolderConfigur
 public sealed class JsonWatchedFolderCatalogueStore : IWatchedFolderCatalogueStore
 {
     private readonly string _path;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -230,6 +218,7 @@ public sealed class JsonWatchedFolderCatalogueStore : IWatchedFolderCatalogueSto
     {
         WatchedStoreJson.ValidateRootedStorePath(path, nameof(path));
         _path = path;
+        _fileAccess = new ApplicationFileAccessCoordinator(path);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonWatchedFolderCatalogueStore));
     }
@@ -237,6 +226,7 @@ public sealed class JsonWatchedFolderCatalogueStore : IWatchedFolderCatalogueSto
     public async Task<WatchedFolderCatalogue?> GetAsync(string catalogueId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(catalogueId);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -252,6 +242,7 @@ public sealed class JsonWatchedFolderCatalogueStore : IWatchedFolderCatalogueSto
     public async Task UpsertAsync(WatchedFolderCatalogue catalogue, CancellationToken cancellationToken)
     {
         Validate(catalogue);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -363,6 +354,7 @@ public sealed class JsonWatchedFolderCatalogueStore : IWatchedFolderCatalogueSto
 public sealed class JsonWatchedActivityStore : IWatchedActivityStore
 {
     private readonly string _path;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -370,6 +362,7 @@ public sealed class JsonWatchedActivityStore : IWatchedActivityStore
     {
         WatchedStoreJson.ValidateRootedStorePath(path, nameof(path));
         _path = path;
+        _fileAccess = new ApplicationFileAccessCoordinator(path);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonWatchedActivityStore));
     }
@@ -384,6 +377,7 @@ public sealed class JsonWatchedActivityStore : IWatchedActivityStore
             throw new ArgumentOutOfRangeException(nameof(maximumCount));
         }
 
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -403,6 +397,7 @@ public sealed class JsonWatchedActivityStore : IWatchedActivityStore
     public async Task AppendAsync(WatchedActivityEntry activity, CancellationToken cancellationToken)
     {
         Validate(activity);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {

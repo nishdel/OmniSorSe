@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Application.Catalog;
 
@@ -21,6 +22,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
     };
 
     private readonly string _catalogFilePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
@@ -37,6 +39,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
         }
 
         _catalogFilePath = catalogFilePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(catalogFilePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService))).CreateLogger(nameof(JsonResultsCatalogStore));
     }
 
@@ -44,6 +47,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
     public async Task<IReadOnlyList<CatalogEntrySummary>> ListAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -64,6 +68,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(entryId);
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -94,6 +99,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
 
         var sanitized = SanitizeForStorage(entry);
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -118,6 +124,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(entryId);
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -141,6 +148,7 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -204,39 +212,14 @@ public sealed class JsonResultsCatalogStore : IResultsCatalogStore
 
     private async Task SaveCoreAsync(IReadOnlyList<CatalogEntry> entries, CancellationToken cancellationToken)
     {
-        var directoryPath = Path.GetDirectoryName(_catalogFilePath);
-        if (string.IsNullOrWhiteSpace(directoryPath))
-        {
-            throw new InvalidDataException("The local catalog path has no directory.");
-        }
-
-        Directory.CreateDirectory(directoryPath);
-        var temporaryPath = $"{_catalogFilePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = File.Create(temporaryPath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new CatalogEnvelope(CurrentSchemaVersion, entries.ToArray()),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporaryPath).Length > CatalogLimits.MaximumCatalogFileBytes)
-            {
-                throw new CatalogCapacityExceededException("The local results catalog exceeds its supported encoded size.");
-            }
-
-            File.Move(temporaryPath, _catalogFilePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _catalogFilePath,
+            new CatalogEnvelope(CurrentSchemaVersion, entries.ToArray()),
+            JsonOptions,
+            CatalogLimits.MaximumCatalogFileBytes,
+            cancellationToken,
+            static (_, _) => new CatalogCapacityExceededException(
+                "The local results catalog exceeds its supported encoded size.")).ConfigureAwait(false);
     }
 
     private static CatalogEntry SanitizeForStorage(CatalogEntry entry)

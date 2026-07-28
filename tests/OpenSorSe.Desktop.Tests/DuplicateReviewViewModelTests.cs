@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Scanner.Models;
@@ -181,7 +182,7 @@ public sealed class DuplicateReviewViewModelTests
     private static ResultFile CreateFile(string id, string path, string groupId) => new(
         id,
         path,
-        Path.GetFileName(path),
+        CrossPlatformPath.GetFileName(path),
         Path.GetExtension(path),
         10,
         DateTimeOffset.UnixEpoch,

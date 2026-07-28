@@ -35,7 +35,9 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
     private readonly TimeProvider _timeProvider;
     private readonly Channel<WatchedChangeBatch> _queue;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private readonly SemaphoreSlim _initializationGate = new(1, 1);
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
+    private readonly object _disposeSync = new();
     private readonly object _debounceGate = new();
     private readonly Dictionary<string, WatchRegistration> _registrations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DebounceState> _debounceStates = new(StringComparer.Ordinal);
@@ -43,6 +45,7 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
     private readonly ConcurrentDictionary<string, byte> _pausedConfigurations = new(StringComparer.Ordinal);
     private Task? _consumerTask;
     private Task? _availabilityTask;
+    private Task? _disposeTask;
     private bool _initialized;
     private bool _disposed;
 
@@ -84,27 +87,37 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        if (_initialized)
-        {
-            return;
-        }
-
-        _consumerTask = ConsumeAsync(_lifetimeCancellation.Token);
+        await _initializationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await RefreshCoreAsync(
-                WatchedScanReason.StartupOfflineReconciliation,
-                queueReconciliationForNewSources: true,
-                cancellationToken).ConfigureAwait(false);
+            ThrowIfDisposed();
+            if (_initialized)
+            {
+                return;
+            }
+
+            _consumerTask ??= ConsumeAsync(_lifetimeCancellation.Token);
+            try
+            {
+                await RefreshCoreAsync(
+                    WatchedScanReason.StartupOfflineReconciliation,
+                    queueReconciliationForNewSources: true,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidDataException exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Watched-folder configuration could not be loaded. The invalid file was preserved and watching was not started.");
+            }
+
+            _availabilityTask ??= AvailabilityLoopAsync(_lifetimeCancellation.Token);
+            Volatile.Write(ref _initialized, true);
         }
-        catch (InvalidDataException exception)
+        finally
         {
-            _logger.LogError(
-                exception,
-                "Watched-folder configuration could not be loaded. The invalid file was preserved and watching was not started.");
+            _initializationGate.Release();
         }
-        _availabilityTask = AvailabilityLoopAsync(_lifetimeCancellation.Token);
-        _initialized = true;
     }
 
     public Task RefreshAsync(CancellationToken cancellationToken)
@@ -137,36 +150,56 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
             requiresFullReconciliation: false,
             cancellationToken);
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        if (_disposed)
+        lock (_disposeSync)
         {
-            return;
+            _disposeTask ??= DisposeCoreAsync();
+            return new ValueTask(_disposeTask);
+        }
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        await _initializationGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            Volatile.Write(ref _disposed, true);
+        }
+        finally
+        {
+            _initializationGate.Release();
         }
 
-        _disposed = true;
         _manager.ConfigurationsChanged -= OnConfigurationsChanged;
         _lifetimeCancellation.Cancel();
         _queue.Writer.TryComplete();
-        List<WatchRegistration> registrations;
-        lock (_debounceGate)
+        await _lifecycleGate.WaitAsync().ConfigureAwait(false);
+        try
         {
-            foreach (var state in _debounceStates.Values)
+            List<WatchRegistration> registrations;
+            lock (_debounceGate)
             {
-                state.Cancellation.Cancel();
-                state.Cancellation.Dispose();
+                foreach (var state in _debounceStates.Values)
+                {
+                    state.Cancellation.Cancel();
+                }
+
+                _debounceStates.Clear();
+                registrations = _registrations.Values.ToList();
+                _registrations.Clear();
             }
 
-            _debounceStates.Clear();
-            registrations = _registrations.Values.ToList();
-            _registrations.Clear();
+            foreach (var registration in registrations)
+            {
+                registration.Source.HintReceived -= OnHintReceived;
+                registration.Source.Error -= OnWatcherError;
+                registration.Source.Dispose();
+            }
         }
-
-        foreach (var registration in registrations)
+        finally
         {
-            registration.Source.HintReceived -= OnHintReceived;
-            registration.Source.Error -= OnWatcherError;
-            registration.Source.Dispose();
+            _lifecycleGate.Release();
         }
 
         var tasks = new[] { _consumerTask, _availabilityTask }.Where(task => task is not null).Cast<Task>().ToArray();
@@ -178,8 +211,13 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         {
             // Expected during controlled application shutdown.
         }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "A watched-folder background loop failed while the coordinator was shutting down.");
+        }
 
-        _lifecycleGate.Dispose();
         _lifetimeCancellation.Dispose();
     }
 
@@ -193,6 +231,7 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            ThrowIfDisposed();
             var configurations = await _manager.ListAsync(cancellationToken).ConfigureAwait(false);
             var byId = configurations.ToDictionary(configuration => configuration.Id, StringComparer.Ordinal);
             List<WatchRegistration> toDispose;
@@ -211,7 +250,6 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
                     if (_debounceStates.Remove(registration.Configuration.Id, out var debounce))
                     {
                         debounce.Cancellation.Cancel();
-                        debounce.Cancellation.Dispose();
                     }
                 }
             }
@@ -479,7 +517,6 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
             if (_debounceStates.TryGetValue(configuration.Id, out var previous))
             {
                 previous.Cancellation.Cancel();
-                previous.Cancellation.Dispose();
                 previous.Hints.Add(hint);
                 state = previous with { Cancellation = new CancellationTokenSource() };
             }
@@ -505,7 +542,10 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
                 : "Waiting for the configured quiet period before analysis.",
         };
         await PublishStateAsync(detected, _lifetimeCancellation.Token).ConfigureAwait(false);
-        _ = FlushAfterQuietPeriodAsync(configuration.Id, configuration.QuietPeriod, state);
+        _ = ObserveBackgroundTaskAsync(
+            FlushAfterQuietPeriodAsync(configuration.Id, configuration.QuietPeriod, state),
+            "debounced watcher batch",
+            configuration.Id);
     }
 
     private async Task FlushAfterQuietPeriodAsync(
@@ -533,11 +573,10 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
                 _debounceStates.Remove(configurationId);
             }
 
-            scheduledState.Cancellation.Dispose();
             var normalized = hints
                 .GroupBy(
                     item => $"{item.Kind}|{item.OldPath}|{item.Path}",
-                    StringComparer.OrdinalIgnoreCase)
+                    WatchedFolderPathPolicy.PathComparer)
                 .Select(group => group.OrderByDescending(item => item.DetectedAtUtc).First())
                 .OrderBy(item => item.DetectedAtUtc)
                 .ToArray();
@@ -591,6 +630,10 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         {
             // Superseded by another event or application shutdown.
         }
+        finally
+        {
+            scheduledState.Cancellation.Dispose();
+        }
     }
 
     private void OnWatcherError(object? sender, Exception exception)
@@ -604,12 +647,15 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
             source.ConfigurationId,
             WatchedScanReason.OverflowRecovery,
             requiresFullReconciliation: true));
-        _ = RecordActivityAsync(
-            source.ConfigurationId,
-            WatchedActivityKind.WatcherOverflow,
-            "The operating-system watcher reported an error; reconciliation is required.",
-            detail: exception.GetType().Name,
-            cancellationToken: _lifetimeCancellation.Token);
+        _ = ObserveBackgroundTaskAsync(
+            RecordActivityAsync(
+                source.ConfigurationId,
+                WatchedActivityKind.WatcherOverflow,
+                "The operating-system watcher reported an error; reconciliation is required.",
+                detail: exception.GetType().Name,
+                cancellationToken: _lifetimeCancellation.Token),
+            "watcher-error activity recording",
+            source.ConfigurationId);
     }
 
     private async Task EnqueueBatchAsync(WatchedChangeBatch batch, CancellationToken cancellationToken)
@@ -978,7 +1024,7 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         try
         {
             await _activityStore.AppendAsync(activity, cancellationToken).ConfigureAwait(false);
-            ActivityPublished?.Invoke(this, activity);
+            PublishActivity(activity);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -1009,23 +1055,25 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
             activity = Array.Empty<WatchedActivityEntry>();
         }
 
-        StateChanged?.Invoke(this, new WatchedFolderRuntimeSnapshot(configuration, activity));
+        PublishState(new WatchedFolderRuntimeSnapshot(configuration, activity));
     }
 
     private void OnConfigurationsChanged(object? sender, EventArgs eventArgs)
     {
-        if (!_disposed && _initialized)
+        if (!Volatile.Read(ref _disposed) && Volatile.Read(ref _initialized))
         {
-            _ = RefreshAsync(_lifetimeCancellation.Token);
+            _ = ObserveBackgroundTaskAsync(
+                RefreshAsync(_lifetimeCancellation.Token),
+                "configuration refresh");
         }
     }
 
-    private static WatchedChangeBatch NewBatch(
+    private WatchedChangeBatch NewBatch(
         string configurationId,
         WatchedScanReason reason,
         bool requiresFullReconciliation)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _timeProvider.GetUtcNow().ToUniversalTime();
         return new WatchedChangeBatch(
             $"watch-batch:{Guid.NewGuid():N}",
             configurationId,
@@ -1106,7 +1154,78 @@ public sealed class WatchedFolderCoordinator : IWatchedFolderCoordinator, IDispo
         }
     }
 
-    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
+    private async Task ObserveBackgroundTaskAsync(
+        Task task,
+        string operation,
+        string? configurationId = null)
+    {
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            // Controlled shutdown.
+        }
+        catch (Exception exception)
+        {
+            if (configurationId is not null)
+            {
+                _reconciliationRequired.TryAdd(configurationId, 0);
+            }
+
+            _logger.LogWarning(
+                exception,
+                "The watched-folder background operation {Operation} failed safely.",
+                operation);
+        }
+    }
+
+    private void PublishActivity(WatchedActivityEntry activity)
+    {
+        var handlers = ActivityPublished?.GetInvocationList()
+            .Cast<EventHandler<WatchedActivityEntry>>()
+            .ToArray() ?? [];
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                handler(this, activity);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "A watched-folder activity observer failed for configuration {ConfigurationId}.",
+                    activity.ConfigurationId);
+            }
+        }
+    }
+
+    private void PublishState(WatchedFolderRuntimeSnapshot snapshot)
+    {
+        var handlers = StateChanged?.GetInvocationList()
+            .Cast<EventHandler<WatchedFolderRuntimeSnapshot>>()
+            .ToArray() ?? [];
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                handler(this, snapshot);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "A watched-folder state observer failed for configuration {ConfigurationId}.",
+                    snapshot.Configuration.Id);
+            }
+        }
+    }
+
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(
+        Volatile.Read(ref _disposed),
+        this);
 
     private sealed record WatchRegistration(
         WatchedFolderConfiguration Configuration,
