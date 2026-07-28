@@ -18,7 +18,7 @@
 | v1.3 Workflow Profiles and Recipe Library | Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending | Debug/Release builds and 761 automated tests passed with zero failures/skips; formatting and diff validation clean. | Persistent typed profiles/recipes, safe templates/previews, immutable resolution snapshots, watched/manual integration, Change Plan provenance, profile-aware AI gates, import/export/recovery, Workflows UI, and documentation. |
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
-| v1.6 Reliability, Performance, and Production Hardening | Source implementation and local automated validation complete; native hosted/manual results remain distinct | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; Windows/Linux/macOS runtime-target builds passed. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
+| v1.6 Reliability, Performance, and Production Hardening | Source implementation plus local and hosted automated validation complete; manual interaction remains separate | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
 
 ## Current product boundary
 
@@ -57,8 +57,9 @@ The clean final local sequence passed restore, zero-warning Debug and Release
 builds, and **895 tests in each configuration** with zero failures and zero
 skips. Analyzer, style, whitespace, documentation, dependency-vulnerability,
 patch, and tracked-artifact gates passed. Fresh Release target builds succeeded
-for Windows x64, Linux x64, macOS x64, and macOS ARM64. Native hosted execution
-and interactive platform checks remain separate; exact evidence is recorded in
+for Windows x64, Linux x64, macOS x64, and macOS ARM64. Native Windows, Ubuntu,
+and macOS CI also passed; interactive platform checks remain separate. Exact
+evidence is recorded in
 [V1.6 Validation Report](V1.6_VALIDATION_REPORT.md).
 
 ## v1.5 validation baseline
