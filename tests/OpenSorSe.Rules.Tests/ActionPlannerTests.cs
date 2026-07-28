@@ -232,7 +232,7 @@ public sealed class ActionPlannerTests
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "folder/name")), ActionPlanningIssueKind.InvalidNameTemplate];
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: ".")), ActionPlanningIssueKind.InvalidNameTemplate];
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "..")), ActionPlanningIssueKind.InvalidNameTemplate];
-        yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "bad?name")), ActionPlanningIssueKind.InvalidNameTemplate];
+        yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "bad\0name")), ActionPlanningIssueKind.InvalidNameTemplate];
         yield return [Decision(new RuleAction(RuleActionKind.Move, "relative")), ActionPlanningIssueKind.InvalidDestinationPath];
         yield return [Decision(new RuleAction(RuleActionKind.Rename, NameTemplate: "{name}{extension}")), ActionPlanningIssueKind.SourceEqualsDestination];
         yield return [Decision(new RuleAction(RuleActionKind.Move, DestinationDirectory), selectedRuleId: null), ActionPlanningIssueKind.InvalidDecision];
@@ -240,7 +240,7 @@ public sealed class ActionPlannerTests
     }
 
     private static ActionPlanner CreatePlanner(IPathSemantics? pathSemantics = null) =>
-        new(new TestLoggingService(), new TestErrorHandler(), pathSemantics ?? new WindowsPathSemantics());
+        new(new TestLoggingService(), new TestErrorHandler(), pathSemantics);
 
     private static string SourceDirectory =>
         Path.Combine(Path.GetTempPath(), "OpenSorSe-Rules-Source");
