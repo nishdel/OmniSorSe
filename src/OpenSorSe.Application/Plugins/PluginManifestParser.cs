@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using OpenSorSe.Core;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Extensions.Abstractions;
 
 namespace OpenSorSe.Application.Plugins;
@@ -130,7 +131,7 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
     {
         if (string.IsNullOrWhiteSpace(path) ||
             path.Length > 512 ||
-            Path.IsPathRooted(path) ||
+            CrossPlatformPath.IsRootedOnAnyPlatform(path) ||
             path.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
         {
             return false;

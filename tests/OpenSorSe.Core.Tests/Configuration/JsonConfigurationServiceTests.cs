@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Configuration;
+using System.Text.Json;
 
 namespace OpenSorSe.Core.Tests.Configuration;
 
@@ -152,7 +153,19 @@ public sealed class JsonConfigurationServiceTests
     public async Task InitializeAsync_PreservesLoggingOutputSettingsDuringEnvironmentOverride()
     {
         var settingsFilePath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}.json");
-        await File.WriteAllTextAsync(settingsFilePath, "{\"Logging\":{\"MinimumLevel\":\"Warning\",\"FileLoggingEnabled\":false,\"LogDirectoryPath\":\"C:\\\\Logs\",\"RetainedFileCount\":3}}");
+        var logDirectoryPath = Path.Combine(Path.GetTempPath(), "OpenSorSe-Logs");
+        await File.WriteAllTextAsync(
+            settingsFilePath,
+            JsonSerializer.Serialize(new
+            {
+                Logging = new
+                {
+                    MinimumLevel = "Warning",
+                    FileLoggingEnabled = false,
+                    LogDirectoryPath = logDirectoryPath,
+                    RetainedFileCount = 3,
+                },
+            }));
 
         try
         {
@@ -164,7 +177,7 @@ public sealed class JsonConfigurationServiceTests
 
             Assert.Equal(LogLevel.Error, service.Current.Logging.MinimumLevel);
             Assert.False(service.Current.Logging.FileLoggingEnabled);
-            Assert.Equal("C:\\Logs", service.Current.Logging.LogDirectoryPath);
+            Assert.Equal(logDirectoryPath, service.Current.Logging.LogDirectoryPath);
             Assert.Equal(3, service.Current.Logging.RetainedFileCount);
         }
         finally
@@ -291,6 +304,7 @@ public sealed class JsonConfigurationServiceTests
     {
         var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
         var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        var tesseractExecutablePath = Path.Combine(directoryPath, "tools", "tesseract");
         var settings = new ApplicationSettings
         {
             Features = new FeatureSettings
@@ -334,7 +348,7 @@ public sealed class JsonConfigurationServiceTests
                 MaximumRasterDimension = 5000,
                 MaximumOcrTextCharacters = 32_768,
                 MaximumTemporaryStorageMiB = 128,
-                TesseractExecutablePath = "C:\\Tools\\tesseract.exe",
+                TesseractExecutablePath = tesseractExecutablePath,
                 BackgroundProcessingEnabled = true,
             },
             SemanticSearch = new SemanticSearchSettings
@@ -379,7 +393,7 @@ public sealed class JsonConfigurationServiceTests
             Assert.Equal(5000, reader.Current.Content.MaximumRasterDimension);
             Assert.Equal(32_768, reader.Current.Content.MaximumOcrTextCharacters);
             Assert.Equal(128, reader.Current.Content.MaximumTemporaryStorageMiB);
-            Assert.Equal("C:\\Tools\\tesseract.exe", reader.Current.Content.TesseractExecutablePath);
+            Assert.Equal(tesseractExecutablePath, reader.Current.Content.TesseractExecutablePath);
             Assert.True(reader.Current.Content.BackgroundProcessingEnabled);
             Assert.True(reader.Current.SemanticSearch.Enabled);
             Assert.Equal(5000, reader.Current.SemanticSearch.MaximumDocumentCount);

@@ -168,7 +168,7 @@ public sealed partial class RepositoryDocumentationTests
             Assert.True(expected.TryGetValue(project, out var allowed), $"Undocumented production project '{project}'.");
             var actual = XDocument.Load(projectPath)
                 .Descendants("ProjectReference")
-                .Select(element => Path.GetFileNameWithoutExtension((string?)element.Attribute("Include")))
+                .Select(element => GetProjectReferenceName((string?)element.Attribute("Include")))
                 .Where(reference => !string.IsNullOrWhiteSpace(reference))
                 .ToHashSet(StringComparer.Ordinal);
             Assert.True(
@@ -256,6 +256,13 @@ public sealed partial class RepositoryDocumentationTests
 
     private static string Relative(string path) =>
         Path.GetRelativePath(RepositoryRoot, path);
+
+    private static string? GetProjectReferenceName(string? path) =>
+        string.IsNullOrWhiteSpace(path)
+            ? null
+            : Path.GetFileNameWithoutExtension(
+                path.Replace('\\', Path.DirectorySeparatorChar)
+                    .Replace('/', Path.DirectorySeparatorChar));
 
     private static bool HasExactRepositoryPathCasing(string path)
     {

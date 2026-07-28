@@ -1,5 +1,6 @@
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Desktop.ViewModels;
 
@@ -96,7 +97,7 @@ public sealed class SemanticSearchViewModelTests
 
     private static SemanticSearchHit Hit(string path) => new(
         path,
-        Path.GetFileName(path),
+        CrossPlatformPath.GetFileName(path),
         100,
         "Matched tags: tax",
         ["tax"],

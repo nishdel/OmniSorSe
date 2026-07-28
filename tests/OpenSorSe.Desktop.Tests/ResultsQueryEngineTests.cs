@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Scanner.Models;
 
@@ -172,7 +173,7 @@ public sealed class ResultsQueryEngineTests
         new(
             id,
             path,
-            Path.GetFileName(path),
+            CrossPlatformPath.GetFileName(path),
             extension,
             size,
             null,

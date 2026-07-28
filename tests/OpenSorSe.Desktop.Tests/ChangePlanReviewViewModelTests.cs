@@ -2,6 +2,7 @@
 
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor;
 using OpenSorSe.Executor.Models;
 
@@ -69,8 +70,8 @@ public sealed class ChangePlanReviewViewModelTests
         using var directory = new TemporaryDirectory();
         var source = directory.File("source.txt", "source");
         directory.File("occupied.txt", "existing");
-        var gateway = new PhysicalFileSystemGateway();
-        var validator = new ChangePlanValidator(gateway);
+        var gateway = CreateGateway();
+        var validator = CreateValidator(gateway);
         var store = new InMemoryChangePlanStore();
         var journal = new InMemoryOperationJournalStore();
         var factory = new ChangePlanFactory(gateway, validator, store);
@@ -183,8 +184,8 @@ public sealed class ChangePlanReviewViewModelTests
         string destinationName)
     {
         var source = directory.File(sourceName, "content");
-        var gateway = new PhysicalFileSystemGateway();
-        var validator = new ChangePlanValidator(gateway);
+        var gateway = CreateGateway();
+        var validator = CreateValidator(gateway);
         var store = new InMemoryChangePlanStore();
         var journal = new InMemoryOperationJournalStore();
         var factory = new ChangePlanFactory(gateway, validator, store);
@@ -212,6 +213,46 @@ public sealed class ChangePlanReviewViewModelTests
         IChangePlanExecutionService Executor,
         IChangePlanStore PlanStore,
         IOperationJournalStore Journal);
+
+    private static IPathSemantics TestPathSemantics =>
+        OperatingSystem.IsWindows()
+            ? new WindowsPathSemantics()
+            : new LinuxPathSemantics();
+
+    private static IFileSystemCapabilities SupportedFileSystemCapabilities =>
+        new SupportedCapabilities();
+
+    private static PhysicalFileSystemGateway CreateGateway() =>
+        new(
+            TestPathSemantics,
+            FileIdentityProviderFactory.CreateCurrent(),
+            SupportedFileSystemCapabilities);
+
+    private static ChangePlanValidator CreateValidator(IFileSystemGateway gateway) =>
+        new(gateway, TestPathSemantics, SupportedFileSystemCapabilities);
+
+    private sealed class SupportedCapabilities : IFileSystemCapabilities
+    {
+        public FileLinkInspection InspectLink(string path) =>
+            new(false, null, null, "Test paths are not links.");
+
+        public bool CanWriteDirectory(string path, out string explanation)
+        {
+            explanation = "The test directory is writable.";
+            return true;
+        }
+
+        public long? GetAvailableFreeSpace(string path) => long.MaxValue;
+
+        public bool AreOnSameFileSystem(
+            string firstPath,
+            string secondPath,
+            out string explanation)
+        {
+            explanation = "Temporary test paths share one filesystem.";
+            return true;
+        }
+    }
 
     private sealed class RecordingClipboard : IClipboardService
     {

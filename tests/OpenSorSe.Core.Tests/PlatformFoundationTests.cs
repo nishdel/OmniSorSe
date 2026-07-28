@@ -55,6 +55,22 @@ public sealed class PlatformFoundationTests : IDisposable
         Assert.True(Path.IsPathFullyQualified(semantics.NormalizeAbsolutePath(nested)));
     }
 
+    [Theory]
+    [InlineData("C:\\folder\\report.txt", true, "report.txt")]
+    [InlineData("C:/folder/report.txt", true, "report.txt")]
+    [InlineData("/folder/report.txt", true, "report.txt")]
+    [InlineData("folder/report.txt", false, "report.txt")]
+    [InlineData("folder\\report.txt", false, "report.txt")]
+    public void CrossPlatformPath_RecognizesPersistedSyntaxIndependentOfHost(
+        string path,
+        bool rooted,
+        string fileName)
+    {
+        Assert.Equal(rooted, CrossPlatformPath.IsRootedOnAnyPlatform(path));
+        Assert.Equal(fileName, CrossPlatformPath.GetFileName(path));
+        Assert.Equal("report", CrossPlatformPath.GetFileNameWithoutExtension(path));
+    }
+
     [Fact]
     public void LinuxApplicationPaths_UseXdgCategoriesAndRejectRelativeOverrides()
     {

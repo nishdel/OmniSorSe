@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
 
@@ -362,14 +363,8 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
 
     private static string GetDisplayName(string path)
     {
-        var fileName = Path.GetFileName(path);
-        if (!string.IsNullOrWhiteSpace(fileName) && !string.Equals(fileName, path, StringComparison.Ordinal))
-        {
-            return fileName;
-        }
-
-        var separatorIndex = Math.Max(path.LastIndexOf('/'), path.LastIndexOf('\\'));
-        return separatorIndex >= 0 && separatorIndex < path.Length - 1 ? path[(separatorIndex + 1)..] : path;
+        var fileName = CrossPlatformPath.GetFileName(path);
+        return string.IsNullOrWhiteSpace(fileName) ? path : fileName;
     }
 
     private static string NormalizeExtension(string? metadataExtension, string path)

@@ -1,5 +1,6 @@
 using OpenSorSe.Application;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
 
@@ -164,7 +165,7 @@ public sealed class ResultsSnapshotProjectorTests
     private static FileEntry CreateFile(string path, long? size, DuplicateStatus status, string? groupId) =>
         new(
             path,
-            new FileMetadata(Path.GetFileName(path), Path.GetExtension(path), size, null, DateTimeOffset.UnixEpoch, null, FileAttributes.Normal),
+            new FileMetadata(CrossPlatformPath.GetFileName(path), Path.GetExtension(path), size, null, DateTimeOffset.UnixEpoch, null, FileAttributes.Normal),
             Duplicate: new DuplicateClassification(status, groupId));
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

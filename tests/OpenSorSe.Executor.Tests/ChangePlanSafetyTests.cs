@@ -41,7 +41,7 @@ public sealed class ChangePlanSafetyTests
         var first = directory.File("first.txt", "one");
         var second = directory.File("second.txt", "two");
         var destination = directory.PathOf("CON.txt");
-        var context = Context(directory.Path);
+        var context = Context(directory.Path, pathSemantics: new WindowsPathSemantics());
 
         var plan = await context.Factory.CreateAsync(
             new ChangePlanCreationRequest(
@@ -70,13 +70,13 @@ public sealed class ChangePlanSafetyTests
         var destinationDirectory = directory.PathOf("destination");
         Directory.CreateDirectory(destinationDirectory);
         var source = directory.File("source.txt", "source");
-        var gateway = new PhysicalFileSystemGateway();
+        var gateway = CreatePhysicalGateway();
         var capabilities = new ControlledFileSystemCapabilities(
             canWrite: false,
             sameFileSystem: false);
         var validator = new ChangePlanValidator(
             gateway,
-            PlatformServices.CurrentPathSemantics,
+            TestPathSemantics,
             capabilities);
         var factory = new ChangePlanFactory(
             gateway,
@@ -383,8 +383,8 @@ public sealed class ChangePlanSafetyTests
         using var directory = new TemporaryDirectory();
         var source = directory.File("source.txt", "source");
         var destination = directory.PathOf("destination.txt");
-        var gateway = new PhysicalFileSystemGateway();
-        var validator = new ChangePlanValidator(gateway);
+        var gateway = CreatePhysicalGateway();
+        var validator = CreateValidator(gateway);
         var planStore = new InMemoryChangePlanStore();
         var journal = new FailingJournalStore(failOnCall: 3);
         var factory = new ChangePlanFactory(gateway, validator, planStore);
@@ -623,8 +623,8 @@ public sealed class ChangePlanSafetyTests
         var planPath = directory.PathOf("plans.json");
         var journalPath = directory.PathOf("journal.json");
         var logging = new TestLoggingService();
-        var gateway = new PhysicalFileSystemGateway();
-        var validator = new ChangePlanValidator(gateway);
+        var gateway = CreatePhysicalGateway();
+        var validator = CreateValidator(gateway);
         var planStore = new JsonChangePlanStore(planPath, logging);
         var journal = new JsonOperationJournalStore(journalPath, logging);
         var factory = new ChangePlanFactory(gateway, validator, planStore);
@@ -653,7 +653,7 @@ public sealed class ChangePlanSafetyTests
         var logging = new TestLoggingService();
         var planPath = directory.PathOf("plans.json");
         var journalPath = directory.PathOf("journal.json");
-        var gateway = new PhysicalFileSystemGateway();
+        var gateway = CreatePhysicalGateway();
         var sources = Enumerable.Range(0, 24)
             .Select(index => directory.File($"source-{index:D2}.txt", $"data-{index}"))
             .ToArray();
@@ -663,7 +663,7 @@ public sealed class ChangePlanSafetyTests
             var store = new JsonChangePlanStore(planPath, logging);
             var factory = new ChangePlanFactory(
                 gateway,
-                new ChangePlanValidator(gateway),
+                CreateValidator(gateway),
                 store);
             return await factory.CreateAsync(
                 Request(
@@ -740,7 +740,7 @@ public sealed class ChangePlanSafetyTests
         using var directory = new TemporaryDirectory();
         var original = directory.PathOf("source.txt");
         var destination = directory.File("destination.txt", "moved");
-        var gateway = new PhysicalFileSystemGateway();
+        var gateway = CreatePhysicalGateway();
         var identity = await gateway.CaptureFileIdentityAsync(destination, false, CancellationToken.None);
         var planStore = new InMemoryChangePlanStore();
         var journal = new InMemoryOperationJournalStore();
@@ -760,7 +760,7 @@ public sealed class ChangePlanSafetyTests
         await journal.UpsertAsync(operation, CancellationToken.None);
         var executor = new ChangePlanExecutionService(
             gateway,
-            new ChangePlanValidator(gateway),
+            CreateValidator(gateway),
             planStore,
             journal);
 
@@ -779,7 +779,7 @@ public sealed class ChangePlanSafetyTests
         var original = directory.PathOf("source.txt");
         var temporary = directory.File(".opensorse-test.tmp", "moved");
         var destination = directory.PathOf("Source.txt");
-        var gateway = new PhysicalFileSystemGateway();
+        var gateway = CreatePhysicalGateway();
         var identity = await gateway.CaptureFileIdentityAsync(temporary, false, CancellationToken.None);
         var journal = new InMemoryOperationJournalStore();
         var sample = SampleOperation(directory.Path);
@@ -802,7 +802,7 @@ public sealed class ChangePlanSafetyTests
         var planStore = new InMemoryChangePlanStore();
         var executor = new ChangePlanExecutionService(
             gateway,
-            new ChangePlanValidator(gateway),
+            CreateValidator(gateway),
             planStore,
             journal);
 
@@ -831,16 +831,39 @@ public sealed class ChangePlanSafetyTests
             "Test proposal.",
             order);
 
-    private static SafetyContext Context(string root, IFileSystemGateway? gateway = null)
+    private static SafetyContext Context(
+        string root,
+        IFileSystemGateway? gateway = null,
+        IPathSemantics? pathSemantics = null)
     {
-        gateway ??= new PhysicalFileSystemGateway();
-        var validator = new ChangePlanValidator(gateway);
+        gateway ??= CreatePhysicalGateway();
+        var validator = new ChangePlanValidator(
+            gateway,
+            pathSemantics ?? TestPathSemantics,
+            SupportedFileSystemCapabilities);
         var planStore = new InMemoryChangePlanStore();
         var journal = new InMemoryOperationJournalStore();
         var factory = new ChangePlanFactory(gateway, validator, planStore);
         var executor = new ChangePlanExecutionService(gateway, validator, planStore, journal);
         return new SafetyContext(factory, validator, executor, planStore, journal);
     }
+
+    private static IPathSemantics TestPathSemantics =>
+        OperatingSystem.IsWindows()
+            ? new WindowsPathSemantics()
+            : new LinuxPathSemantics();
+
+    private static IFileSystemCapabilities SupportedFileSystemCapabilities =>
+        new ControlledFileSystemCapabilities(canWrite: true, sameFileSystem: true);
+
+    private static PhysicalFileSystemGateway CreatePhysicalGateway() =>
+        new(
+            TestPathSemantics,
+            FileIdentityProviderFactory.CreateCurrent(),
+            SupportedFileSystemCapabilities);
+
+    private static ChangePlanValidator CreateValidator(IFileSystemGateway gateway) =>
+        new(gateway, TestPathSemantics, SupportedFileSystemCapabilities);
 
     private static async Task<ChangePlan> CreateApprovedAsync(
         SafetyContext context,
@@ -948,7 +971,7 @@ public sealed class ChangePlanSafetyTests
         bool noOpMove = false,
         bool denyMove = false) : IFileSystemGateway
     {
-        private readonly PhysicalFileSystemGateway _inner = new();
+        private readonly PhysicalFileSystemGateway _inner = CreatePhysicalGateway();
         private int _moveCount;
 
         public string NormalizePath(string path) => _inner.NormalizePath(path);

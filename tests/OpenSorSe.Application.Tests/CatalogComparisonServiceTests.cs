@@ -2,6 +2,7 @@ using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application.Tests;
@@ -183,7 +184,7 @@ public sealed class CatalogComparisonServiceTests
     private static ResultFile CreateFile(string id, string path, long size = 1) => new(
         id,
         path,
-        Path.GetFileName(path),
+        CrossPlatformPath.GetFileName(path),
         Path.GetExtension(path),
         size,
         DateTimeOffset.UnixEpoch,

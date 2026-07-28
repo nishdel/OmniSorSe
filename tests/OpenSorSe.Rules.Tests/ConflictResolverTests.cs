@@ -20,10 +20,10 @@ public sealed class ConflictResolverTests
     {
         var operations = new[]
         {
-            Operation("plan:0", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\one.txt"),
-            Operation("plan:1", PlannedOperationKind.Copy, "C:\\Source\\two.txt", "C:\\Destination\\two.txt"),
-            Operation("plan:2", PlannedOperationKind.Rename, "C:\\Source\\three.txt", "C:\\Source\\renamed.txt"),
-            Operation("plan:3", PlannedOperationKind.Delete, "C:\\Source\\four.txt"),
+            Operation("plan:0", PlannedOperationKind.Move, Source("one.txt"), Destination("one.txt")),
+            Operation("plan:1", PlannedOperationKind.Copy, Source("two.txt"), Destination("two.txt")),
+            Operation("plan:2", PlannedOperationKind.Rename, Source("three.txt"), Source("renamed.txt")),
+            Operation("plan:3", PlannedOperationKind.Delete, Source("four.txt")),
         };
 
         var result = await CreateResolver().ResolveAsync(operations);
@@ -38,9 +38,9 @@ public sealed class ConflictResolverTests
     [Fact]
     public async Task ResolveAsync_DuplicateOperationIdAndSignature_HaveDistinctIssues()
     {
-        var first = Operation("plan:0", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\one.txt");
-        var sameId = Operation("plan:0", PlannedOperationKind.Copy, "C:\\Source\\two.txt", "C:\\Destination\\two.txt");
-        var sameSignature = Operation("plan:2", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\one.txt");
+        var first = Operation("plan:0", PlannedOperationKind.Move, Source("one.txt"), Destination("one.txt"));
+        var sameId = Operation("plan:0", PlannedOperationKind.Copy, Source("two.txt"), Destination("two.txt"));
+        var sameSignature = Operation("plan:2", PlannedOperationKind.Move, Source("one.txt"), Destination("one.txt"));
         var result = await CreateResolver().ResolveAsync([first, sameId, sameSignature]);
 
         Assert.Equal([ConflictResolutionIssueKind.DuplicateOperationId, ConflictResolutionIssueKind.DuplicateOperation], result.Issues.Select(issue => issue.Kind));
@@ -56,8 +56,8 @@ public sealed class ConflictResolverTests
     [Fact]
     public async Task ResolveAsync_DuplicateSignature_HasConflictPrecedence()
     {
-        var first = Operation("plan:0", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\one.txt");
-        var duplicate = Operation("plan:1", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\one.txt");
+        var first = Operation("plan:0", PlannedOperationKind.Move, Source("one.txt"), Destination("one.txt"));
+        var duplicate = Operation("plan:1", PlannedOperationKind.Move, Source("one.txt"), Destination("one.txt"));
         var result = await CreateResolver().ResolveAsync([first, duplicate]);
 
         Assert.Equal(ConflictResolutionIssueKind.DuplicateOperation, Assert.Single(result.Issues).Kind);
@@ -69,8 +69,8 @@ public sealed class ConflictResolverTests
     [Fact]
     public async Task ResolveAsync_DestinationConflict_KeepsFirstOperation()
     {
-        var first = Operation("plan:0", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\same.txt");
-        var later = Operation("plan:1", PlannedOperationKind.Copy, "C:\\Source\\two.txt", "C:\\Destination\\same.txt");
+        var first = Operation("plan:0", PlannedOperationKind.Move, Source("one.txt"), Destination("same.txt"));
+        var later = Operation("plan:1", PlannedOperationKind.Copy, Source("two.txt"), Destination("same.txt"));
         var result = await CreateResolver().ResolveAsync([first, later]);
 
         Assert.Same(first, Assert.Single(result.Operations));
@@ -84,9 +84,9 @@ public sealed class ConflictResolverTests
     [Fact]
     public async Task ResolveAsync_SourceConflicts_AreDeterministic()
     {
-        var copyOne = Operation("plan:0", PlannedOperationKind.Copy, "C:\\Source\\one.txt", "C:\\Destination\\one.txt");
-        var copyTwo = Operation("plan:1", PlannedOperationKind.Copy, "C:\\Source\\one.txt", "C:\\Destination\\two.txt");
-        var move = Operation("plan:2", PlannedOperationKind.Move, "C:\\Source\\one.txt", "C:\\Destination\\three.txt");
+        var copyOne = Operation("plan:0", PlannedOperationKind.Copy, Source("one.txt"), Destination("one.txt"));
+        var copyTwo = Operation("plan:1", PlannedOperationKind.Copy, Source("one.txt"), Destination("two.txt"));
+        var move = Operation("plan:2", PlannedOperationKind.Move, Source("one.txt"), Destination("three.txt"));
         var result = await CreateResolver().ResolveAsync([copyOne, copyTwo, move]);
 
         Assert.Equal([copyOne, copyTwo], result.Operations);
@@ -100,8 +100,8 @@ public sealed class ConflictResolverTests
     [Fact]
     public async Task ResolveAsync_InvalidOperation_ContinuesLaterOperations()
     {
-        var invalid = Operation("plan:0", PlannedOperationKind.Move, "relative\\one.txt", "C:\\Destination\\one.txt");
-        var valid = Operation("plan:1", PlannedOperationKind.Move, "C:\\Source\\two.txt", "C:\\Destination\\one.txt");
+        var invalid = Operation("plan:0", PlannedOperationKind.Move, Path.Combine("relative", "one.txt"), Destination("one.txt"));
+        var valid = Operation("plan:1", PlannedOperationKind.Move, Source("two.txt"), Destination("one.txt"));
         var result = await CreateResolver().ResolveAsync([invalid, valid]);
 
         Assert.Same(valid, Assert.Single(result.Operations));
@@ -127,13 +127,13 @@ public sealed class ConflictResolverTests
     [Fact]
     public async Task ResolveAsync_ValidatesSourceAgainstFilePathWithoutMutatingInput()
     {
-        var file = new FileEntry("C:\\Source\\file.txt");
-        var invalid = new PlannedOperation("plan:0", PlannedOperationKind.Delete, file, "C:\\Source\\other.txt", null, "rule", "Rule", 1);
-        var valid = Operation("plan:1", PlannedOperationKind.Delete, "C:\\Source\\file.txt", file);
+        var file = new FileEntry(Source("file.txt"));
+        var invalid = new PlannedOperation("plan:0", PlannedOperationKind.Delete, file, Source("other.txt"), null, "rule", "Rule", 1);
+        var valid = Operation("plan:1", PlannedOperationKind.Delete, Source("file.txt"), file);
         var result = await CreateResolver().ResolveAsync([invalid, valid]);
 
         Assert.Same(file, Assert.Single(result.Operations).File);
-        Assert.Equal("C:\\Source\\file.txt", file.FullPath);
+        Assert.Equal(Source("file.txt"), file.FullPath);
         Assert.Equal(ConflictResolutionIssueKind.InvalidOperation, Assert.Single(result.Issues).Kind);
     }
 
@@ -163,7 +163,7 @@ public sealed class ConflictResolverTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => CreateResolver().ResolveAsync(Array.Empty<PlannedOperation>(), cancellationToken: preCancelled.Token));
 
         using var processingCancellation = new CancellationTokenSource();
-        var operations = new CancellingOperationCollection([Operation("plan:0", PlannedOperationKind.Delete, "C:\\Source\\one.txt")], processingCancellation);
+        var operations = new CancellingOperationCollection([Operation("plan:0", PlannedOperationKind.Delete, Source("one.txt"))], processingCancellation);
         await Assert.ThrowsAsync<OperationCanceledException>(() => CreateResolver().ResolveAsync(operations, cancellationToken: processingCancellation.Token));
     }
 
@@ -172,14 +172,20 @@ public sealed class ConflictResolverTests
     /// </summary>
     public static IEnumerable<object[]> InvalidOperations()
     {
-        yield return [Operation("", PlannedOperationKind.Delete, "C:\\Source\\one.txt")];
-        yield return [Operation("plan:0", (PlannedOperationKind)999, "C:\\Source\\one.txt")];
-        yield return [Operation("plan:0", PlannedOperationKind.Move, "C:\\Source\\one.txt")];
-        yield return [Operation("plan:0", PlannedOperationKind.Delete, "C:\\Source\\one.txt", "C:\\Destination\\one.txt")];
-        yield return [Operation("plan:0", PlannedOperationKind.Copy, "relative\\one.txt", "C:\\Destination\\one.txt")];
+        yield return [Operation("", PlannedOperationKind.Delete, Source("one.txt"))];
+        yield return [Operation("plan:0", (PlannedOperationKind)999, Source("one.txt"))];
+        yield return [Operation("plan:0", PlannedOperationKind.Move, Source("one.txt"))];
+        yield return [Operation("plan:0", PlannedOperationKind.Delete, Source("one.txt"), Destination("one.txt"))];
+        yield return [Operation("plan:0", PlannedOperationKind.Copy, Path.Combine("relative", "one.txt"), Destination("one.txt"))];
     }
 
     private static ConflictResolver CreateResolver() => new(new TestLoggingService(), new TestErrorHandler());
+
+    private static string Source(string name) =>
+        Path.Combine(Path.GetTempPath(), "OpenSorSe-Conflict-Source", name);
+
+    private static string Destination(string name) =>
+        Path.Combine(Path.GetTempPath(), "OpenSorSe-Conflict-Destination", name);
 
     private static PlannedOperation Operation(string id, PlannedOperationKind kind, string source, string? destination = null) =>
         Operation(id, kind, source, new FileEntry(source), destination);

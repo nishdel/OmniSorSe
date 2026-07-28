@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
+using OpenSorSe.Executor;
 
 namespace OpenSorSe.Application.Tests;
 
@@ -273,10 +275,7 @@ public sealed class StructureHistoryTests
         var store = new JsonStructureHistoryStore(
             appData.PathFor("history.json"),
             new Logging());
-        var service = new FolderRestructuringService(
-            new FolderStructureSnapshotService(),
-            store,
-            new Configuration(advancedEnabled: true));
+        var service = CreateService(store);
         var preview = Assert.IsType<RestructuringPlan>(
             (await service.PreviewAsync(temporary.Path, false, CancellationToken.None)).Plan);
 
@@ -328,11 +327,30 @@ public sealed class StructureHistoryTests
         Assert.Contains(changes, change => change.Kind == StructureChangeKind.Renamed);
     }
 
-    private static FolderRestructuringService CreateService(IStructureHistoryStore history) =>
-        new(
+    private static FolderRestructuringService CreateService(IStructureHistoryStore history)
+    {
+        var pathSemantics = OperatingSystem.IsWindows()
+            ? (IPathSemantics)new WindowsPathSemantics()
+            : new LinuxPathSemantics();
+        var capabilities = new SupportedFileSystemCapabilities();
+        var fileSystem = new PhysicalFileSystemGateway(
+            pathSemantics,
+            FileIdentityProviderFactory.CreateCurrent(),
+            capabilities);
+        var validator = new ChangePlanValidator(fileSystem, pathSemantics, capabilities);
+        var planStore = new InMemoryChangePlanStore();
+        return new FolderRestructuringService(
             new FolderStructureSnapshotService(),
             history,
-            new Configuration(advancedEnabled: true));
+            new Configuration(advancedEnabled: true),
+            new ChangePlanFactory(fileSystem, validator, planStore),
+            validator,
+            new ChangePlanExecutionService(
+                fileSystem,
+                validator,
+                planStore,
+                new InMemoryOperationJournalStore()));
+    }
 
     private static StructureNode Node(string path, string identity) =>
         new(path, false, 1, DateTimeOffset.UnixEpoch, identity);
@@ -404,6 +422,29 @@ public sealed class StructureHistoryTests
         public void Initialize(LogLevel minimumLevel) { }
         public ILogger CreateLogger(string categoryName) => NullLogger.Instance;
         public void Dispose() { }
+    }
+
+    private sealed class SupportedFileSystemCapabilities : IFileSystemCapabilities
+    {
+        public FileLinkInspection InspectLink(string path) =>
+            new(false, null, null, "Test paths are not links.");
+
+        public bool CanWriteDirectory(string path, out string explanation)
+        {
+            explanation = "The test directory is writable.";
+            return true;
+        }
+
+        public long? GetAvailableFreeSpace(string path) => long.MaxValue;
+
+        public bool AreOnSameFileSystem(
+            string firstPath,
+            string secondPath,
+            out string explanation)
+        {
+            explanation = "Temporary test paths share one filesystem.";
+            return true;
+        }
     }
 
     private sealed class TemporaryDirectory : IDisposable
