@@ -423,6 +423,40 @@ public sealed class JsonResultsCatalogStoreTests
         }
     }
 
+    /// <summary>Verifies separate catalog instances serialize concurrent save transactions without lost entries.</summary>
+    [Fact]
+    public async Task SaveAsync_MultipleInstancesConcurrently_PreservesEveryEntry()
+    {
+        var directory = CreateDirectory();
+        var path = Path.Combine(directory, "catalog.json");
+        try
+        {
+            var entries = Enumerable.Range(0, CatalogLimits.MaximumEntryCount)
+                .Select(index => new CatalogEntry(
+                    $"catalog:{index:D2}",
+                    DateTimeOffset.UnixEpoch.AddMinutes(index),
+                    CreateSnapshot(),
+                    []))
+                .ToArray();
+
+            await Task.WhenAll(entries.Select(entry =>
+                new JsonResultsCatalogStore(path, new LoggingService())
+                    .SaveAsync(entry, CancellationToken.None)));
+
+            var reloaded = await new JsonResultsCatalogStore(path, new LoggingService())
+                .ListAsync(CancellationToken.None);
+            Assert.Equal(CatalogLimits.MaximumEntryCount, reloaded.Count);
+            Assert.Equal(
+                entries.Select(entry => entry.Id).OrderBy(value => value, StringComparer.Ordinal),
+                reloaded.Select(entry => entry.Id).OrderBy(value => value, StringComparer.Ordinal));
+            Assert.Empty(Directory.EnumerateFiles(directory, "*.tmp"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static string CreateDirectory()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"opensorse-catalog-{Guid.NewGuid():N}");

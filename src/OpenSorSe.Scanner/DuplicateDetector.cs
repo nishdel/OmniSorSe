@@ -59,10 +59,10 @@ public sealed class DuplicateDetector : IDuplicateDetector
 
     private DuplicateDetectionResult Detect(IReadOnlyCollection<FileEntry> files, CancellationToken cancellationToken)
     {
-        var preparedEntries = new List<PreparedEntry>(files.Count);
+        var preparedEntries = new PreparedEntry[files.Count];
         var issues = new List<DuplicateDetectionIssue>();
-        var bucketsByHash = new Dictionary<string, HashBucket>(StringComparer.Ordinal);
-        var bucketsInInputOrder = new List<HashBucket>();
+        var countsByHash = new Dictionary<string, int>(StringComparer.Ordinal);
+        var preparedIndex = 0;
 
         foreach (var entry in files)
         {
@@ -71,79 +71,77 @@ public sealed class DuplicateDetector : IDuplicateDetector
             {
                 issues.Add(issue!);
                 _logger.LogWarning("Duplicate-detection issue {IssueKind}: {Message}", issue!.Kind, issue.Message);
-                preparedEntries.Add(new PreparedEntry(entry, null));
+                preparedEntries[preparedIndex++] = new PreparedEntry(entry, null);
                 continue;
             }
 
-            if (!bucketsByHash.TryGetValue(normalizedHash!, out var bucket))
-            {
-                bucket = new HashBucket(normalizedHash!);
-                bucketsByHash.Add(normalizedHash!, bucket);
-                bucketsInInputOrder.Add(bucket);
-            }
-
-            bucket.EntryIndexes.Add(preparedEntries.Count);
-            preparedEntries.Add(new PreparedEntry(entry, normalizedHash));
+            countsByHash.TryGetValue(normalizedHash!, out var count);
+            countsByHash[normalizedHash!] = count + 1;
+            preparedEntries[preparedIndex++] = new PreparedEntry(entry, normalizedHash);
         }
 
-        var output = new List<FileEntry>(preparedEntries.Count);
+        var output = new FileEntry[preparedEntries.Length];
+        var duplicateMembers = new Dictionary<string, List<FileEntry>>(StringComparer.Ordinal);
+        var duplicateHashesInInputOrder = new List<string>();
         long filesUnique = 0;
         long filesDuplicate = 0;
         long filesUnknown = 0;
 
-        foreach (var prepared in preparedEntries)
+        for (var index = 0; index < preparedEntries.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var prepared = preparedEntries[index];
             if (prepared.NormalizedHash is null)
             {
                 filesUnknown++;
-                output.Add(prepared.Entry with
+                output[index] = prepared.Entry with
                 {
                     Duplicate = new DuplicateClassification(DuplicateStatus.Unknown),
-                });
+                };
                 continue;
             }
 
-            var bucket = bucketsByHash[prepared.NormalizedHash];
-            if (bucket.EntryIndexes.Count > 1)
+            if (countsByHash[prepared.NormalizedHash] > 1)
             {
                 filesDuplicate++;
-                output.Add(prepared.Entry with
+                output[index] = prepared.Entry with
                 {
-                    Duplicate = new DuplicateClassification(DuplicateStatus.Duplicate, bucket.GroupId),
-                });
+                    Duplicate = new DuplicateClassification(
+                        DuplicateStatus.Duplicate,
+                        GroupId(prepared.NormalizedHash)),
+                };
+                if (!duplicateMembers.TryGetValue(prepared.NormalizedHash, out var members))
+                {
+                    members = new List<FileEntry>(countsByHash[prepared.NormalizedHash]);
+                    duplicateMembers.Add(prepared.NormalizedHash, members);
+                    duplicateHashesInInputOrder.Add(prepared.NormalizedHash);
+                }
+
+                members.Add(output[index]);
             }
             else
             {
                 filesUnique++;
-                output.Add(prepared.Entry with
+                output[index] = prepared.Entry with
                 {
                     Duplicate = new DuplicateClassification(DuplicateStatus.Unique),
-                });
+                };
             }
         }
 
-        var groups = new List<DuplicateGroup>();
-        foreach (var bucket in bucketsInInputOrder)
+        var groups = new List<DuplicateGroup>(duplicateHashesInInputOrder.Count);
+        foreach (var hash in duplicateHashesInInputOrder)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (bucket.EntryIndexes.Count < 2)
-            {
-                continue;
-            }
-
-            var groupFiles = new List<FileEntry>(bucket.EntryIndexes.Count);
-            foreach (var index in bucket.EntryIndexes)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                groupFiles.Add(output[index]);
-            }
-
-            groups.Add(new DuplicateGroup(bucket.GroupId, Algorithm, bucket.HashValue, groupFiles.ToArray()));
+            groups.Add(new DuplicateGroup(
+                GroupId(hash),
+                Algorithm,
+                hash,
+                duplicateMembers[hash].ToArray()));
         }
 
         return new DuplicateDetectionResult(
-            output.ToArray(),
+            output,
             groups.ToArray(),
             new DuplicateDetectionStatistics(files.Count, filesUnique, filesDuplicate, filesUnknown, groups.Count, issues.Count),
             issues.ToArray());
@@ -187,20 +185,7 @@ public sealed class DuplicateDetector : IDuplicateDetector
         return true;
     }
 
-    private sealed record PreparedEntry(FileEntry Entry, string? NormalizedHash);
+    private static string GroupId(string normalizedHash) => $"sha256:{normalizedHash}";
 
-    private sealed class HashBucket
-    {
-        public HashBucket(string hashValue)
-        {
-            HashValue = hashValue;
-            GroupId = $"sha256:{hashValue}";
-        }
-
-        public List<int> EntryIndexes { get; } = [];
-
-        public string GroupId { get; }
-
-        public string HashValue { get; }
-    }
+    private readonly record struct PreparedEntry(FileEntry Entry, string? NormalizedHash);
 }

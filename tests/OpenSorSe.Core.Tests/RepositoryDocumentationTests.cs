@@ -109,8 +109,12 @@ public sealed partial class RepositoryDocumentationTests
         {
             "../README.md",
             "../CONTRIBUTING.md",
-            "USER_GUIDE_v1.5.md",
-            "TROUBLESHOOTING_v1.5.md",
+            "USER_GUIDE_v1.6.md",
+            "TROUBLESHOOTING_v1.6.md",
+            "MANUAL_TESTING_v1.6.md",
+            "VERSION_NOTES_v1.6.md",
+            "V1.6_IMPLEMENTATION_REPORT.md",
+            "V1.6_VALIDATION_REPORT.md",
             "PLATFORM_COMPATIBILITY_MATRIX.md",
             "LINUX_BUILD_AND_LAUNCH.md",
             "SAFETY_AND_PRIVACY.md",
@@ -124,6 +128,8 @@ public sealed partial class RepositoryDocumentationTests
             "PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md",
             "WORKFLOW_PORTABILITY_v1.5.md",
             "WATCHED_FOLDERS_LINUX_v1.5.md",
+            "Architecture/00_System/09_v1.6_Reliability_Architecture.md",
+            "Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md",
             "Implementation_Spec/README.md",
         };
 
@@ -209,6 +215,28 @@ public sealed partial class RepositoryDocumentationTests
             $"Undocumented public SDK types:{Environment.NewLine}{string.Join(Environment.NewLine, undocumented)}");
         Assert.Contains("does not authorize direct user-file mutation", source, StringComparison.Ordinal);
         Assert.Contains("not sandboxing", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies the automated suite contains no statically skipped xUnit tests.</summary>
+    [Fact]
+    public void AutomatedTests_ContainNoSkipDeclarations()
+    {
+        var skipped = Directory.EnumerateFiles(
+                Path.Combine(RepositoryRoot, "tests"),
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !IsExcluded(path))
+            .SelectMany(path => File.ReadLines(path)
+                .Select((line, index) => (Path: path, Line: index + 1, Text: line)))
+            .Where(item =>
+                item.Text.Contains(string.Concat("Sk", "ip ="), StringComparison.Ordinal) ||
+                item.Text.Contains(string.Concat("Sk", "ip="), StringComparison.Ordinal))
+            .Select(item => $"{Relative(item.Path)}:{item.Line}")
+            .ToArray();
+
+        Assert.True(
+            skipped.Length == 0,
+            $"Skipped test declarations:{Environment.NewLine}{string.Join(Environment.NewLine, skipped)}");
     }
 
     private static IEnumerable<string> MarkdownFiles() =>

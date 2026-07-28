@@ -6,6 +6,7 @@ using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using OpenSorSe.Core.Persistence;
 using OpenSorSe.Extensions.Abstractions;
 
 namespace OpenSorSe.Application.Plugins;
@@ -116,6 +117,7 @@ public sealed class JsonPluginStateStore : IPluginStateStore
     private const int CurrentSchemaVersion = 1;
     private const long MaximumBytes = 4L * 1024 * 1024;
     private readonly string _path;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -130,10 +132,12 @@ public sealed class JsonPluginStateStore : IPluginStateStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         _path = Path.GetFullPath(path);
+        _fileAccess = new ApplicationFileAccessCoordinator(_path);
     }
 
     public async Task<IReadOnlyList<PluginStateEntry>> LoadAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -196,47 +200,25 @@ public sealed class JsonPluginStateStore : IPluginStateStore
             throw new ArgumentException("Plugin state is invalid or excessive.", nameof(entries));
         }
 
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var directory = Path.GetDirectoryName(_path)
-                ?? throw new InvalidOperationException("The plugin state path must include a directory.");
-            Directory.CreateDirectory(directory);
-            var temporary = _path + $".tmp-{Guid.NewGuid():N}";
-            try
-            {
-                await using (var stream = new FileStream(
-                    temporary,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    64 * 1024,
-                    FileOptions.Asynchronous | FileOptions.WriteThrough))
-                {
-                    var envelope = new PluginStateEnvelope(
-                        CurrentSchemaVersion,
-                        Array.AsReadOnly(entries
-                            .Select(Clone)
-                            .OrderBy(entry => entry.PluginId, StringComparer.Ordinal)
-                            .ThenBy(entry => entry.PluginVersion, StringComparer.Ordinal)
-                            .ToArray()));
-                    await JsonSerializer.SerializeAsync(
-                        stream,
-                        envelope,
-                        JsonOptions,
-                        cancellationToken).ConfigureAwait(false);
-                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-                }
-
-                File.Move(temporary, _path, overwrite: true);
-            }
-            finally
-            {
-                if (File.Exists(temporary))
-                {
-                    File.Delete(temporary);
-                }
-            }
+            var envelope = new PluginStateEnvelope(
+                CurrentSchemaVersion,
+                Array.AsReadOnly(entries
+                    .Select(Clone)
+                    .OrderBy(entry => entry.PluginId, StringComparer.Ordinal)
+                    .ThenBy(entry => entry.PluginVersion, StringComparer.Ordinal)
+                    .ToArray()));
+            await AtomicJsonFile.WriteAsync(
+                _path,
+                envelope,
+                JsonOptions,
+                MaximumBytes,
+                cancellationToken,
+                static (_, _) => new InvalidDataException(
+                    "The plugin state exceeds its supported encoded size.")).ConfigureAwait(false);
         }
         finally
         {

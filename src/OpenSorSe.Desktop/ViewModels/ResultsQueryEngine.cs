@@ -9,6 +9,7 @@ namespace OpenSorSe.Desktop.ViewModels;
 public static class ResultsQueryEngine
 {
     private static readonly int[] ApprovedPageSizes = [50, 100, 200, 500];
+    private static readonly ResultSearchMatch NoTextMatch = new(0, "No text query applied.");
 
     /// <summary>
     /// Evaluates a normalized query with deterministic ranking, filters, and bounded paging.
@@ -26,6 +27,7 @@ public static class ResultsQueryEngine
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         var normalizedQuery = Normalize(query);
+        var tokens = Tokenize(normalizedQuery.Text);
         var filtered = new List<SearchCandidate>(snapshot.Files.Count);
         for (var index = 0; index < snapshot.Files.Count; index++)
         {
@@ -38,7 +40,7 @@ public static class ResultsQueryEngine
             var tags = tagsByFile is not null && tagsByFile.TryGetValue(file.Id, out var values)
                 ? values
                 : Array.Empty<TagAssociation>();
-            if (Matches(file, tags, normalizedQuery, out var match))
+            if (Matches(file, tags, normalizedQuery, tokens, out var match))
             {
                 filtered.Add(new SearchCandidate(file, match));
             }
@@ -94,25 +96,36 @@ public static class ResultsQueryEngine
         ResultFile file,
         IReadOnlyList<TagAssociation> tags,
         ResultsQuery query,
+        IReadOnlyList<string> tokens,
         out ResultSearchMatch match)
     {
-        return MatchesText(file, tags, query.Text, out match)
-            && MatchesDuplicate(file, query.DuplicateFilter)
-            && (query.Extension is null || string.Equals(file.NormalizedExtension, query.Extension, StringComparison.Ordinal))
-            && MatchesCategory(file, query.Category)
-            && MatchesPlannedOperation(file, query.PlannedOperationFilter)
-            && (query.DuplicateGroupId is null || string.Equals(file.DuplicateGroupId, query.DuplicateGroupId, StringComparison.Ordinal));
+        if (!MatchesDuplicate(file, query.DuplicateFilter) ||
+            query.Extension is not null &&
+            !string.Equals(file.NormalizedExtension, query.Extension, StringComparison.Ordinal) ||
+            !MatchesCategory(file, query.Category) ||
+            !MatchesPlannedOperation(file, query.PlannedOperationFilter) ||
+            query.DuplicateGroupId is not null &&
+            !string.Equals(file.DuplicateGroupId, query.DuplicateGroupId, StringComparison.Ordinal))
+        {
+            match = default!;
+            return false;
+        }
+
+        return MatchesText(file, tags, tokens, out match);
     }
 
-    private static bool MatchesText(ResultFile file, IReadOnlyList<TagAssociation> tags, string? text, out ResultSearchMatch match)
+    private static bool MatchesText(
+        ResultFile file,
+        IReadOnlyList<TagAssociation> tags,
+        IReadOnlyList<string> tokens,
+        out ResultSearchMatch match)
     {
-        if (text is null)
+        if (tokens.Count == 0)
         {
-            match = new ResultSearchMatch(0, "No text query applied.");
+            match = NoTextMatch;
             return true;
         }
 
-        var tokens = Tokenize(text);
         var totalScore = 0;
         var explanations = new List<string>(tokens.Count);
         foreach (var token in tokens)
@@ -134,52 +147,60 @@ public static class ResultsQueryEngine
 
     private static SearchSignal GetBestSignal(ResultFile file, IReadOnlyList<TagAssociation> tags, string token)
     {
-        var signals = new List<SearchSignal>();
+        var best = default(SearchSignal);
         if (string.Equals(file.DisplayFileName, token, StringComparison.OrdinalIgnoreCase))
         {
-            signals.Add(new SearchSignal(120, $"exact filename match: {token}"));
+            best = Better(best, 120, $"exact filename match: {token}");
         }
         else if (file.DisplayFileName.StartsWith(token, StringComparison.OrdinalIgnoreCase))
         {
-            signals.Add(new SearchSignal(100, $"filename starts with: {token}"));
+            best = Better(best, 100, $"filename starts with: {token}");
         }
         else if (file.DisplayFileName.Contains(token, StringComparison.OrdinalIgnoreCase))
         {
-            signals.Add(new SearchSignal(80, $"filename contains: {token}"));
+            best = Better(best, 80, $"filename contains: {token}");
         }
 
         if (string.Equals(file.NormalizedExtension, token, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(file.NormalizedExtension.TrimStart('.'), token, StringComparison.OrdinalIgnoreCase))
         {
-            signals.Add(new SearchSignal(70, $"extension match: {file.NormalizedExtension}"));
+            best = Better(best, 70, $"extension match: {file.NormalizedExtension}");
         }
 
         if (file.ClassificationDisplay.Contains(token, StringComparison.OrdinalIgnoreCase))
         {
-            signals.Add(new SearchSignal(60, $"category match: {file.ClassificationDisplay}"));
+            best = Better(best, 60, $"category match: {file.ClassificationDisplay}");
         }
 
         if (file.FullPath.Contains(token, StringComparison.OrdinalIgnoreCase))
         {
-            signals.Add(new SearchSignal(45, $"path match: {token}"));
+            best = Better(best, 45, $"path match: {token}");
         }
 
         foreach (var tag in tags.Where(tag => tag.AcceptanceState == TagAcceptanceState.Accepted))
         {
             if (string.Equals(tag.NormalizedValue, token, StringComparison.OrdinalIgnoreCase) || string.Equals(tag.DisplayName, token, StringComparison.OrdinalIgnoreCase))
             {
-                signals.Add(new SearchSignal(90, $"tag match: {tag.DisplayName}"));
+                best = Better(best, 90, $"tag match: {tag.DisplayName}");
             }
             else if (tag.DisplayName.Contains(token, StringComparison.OrdinalIgnoreCase) || tag.NormalizedValue.Contains(token, StringComparison.OrdinalIgnoreCase))
             {
-                signals.Add(new SearchSignal(75, $"tag match: {tag.DisplayName}"));
+                best = Better(best, 75, $"tag match: {tag.DisplayName}");
             }
         }
 
-        return signals.Count == 0
-            ? new SearchSignal(0, string.Empty)
-            : signals.OrderByDescending(signal => signal.Score).ThenBy(signal => signal.Explanation, StringComparer.Ordinal).First();
+        return best;
     }
+
+    private static SearchSignal Better(
+        SearchSignal current,
+        int score,
+        string explanation) =>
+        score > current.Score ||
+        score == current.Score &&
+        string.Compare(explanation, current.Explanation, StringComparison.Ordinal) < 0
+            ? new SearchSignal(score, explanation)
+            : current;
 
     private static List<SearchCandidate> Order(List<SearchCandidate> candidates, ResultsQuery query)
     {
@@ -254,7 +275,10 @@ public static class ResultsQueryEngine
         _ => false,
     };
 
-    private static IReadOnlyList<string> Tokenize(string query) => Array.AsReadOnly(query
+    private static IReadOnlyList<string> Tokenize(string? query) =>
+        string.IsNullOrWhiteSpace(query)
+            ? []
+            : Array.AsReadOnly(query
         .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Select(token => token.Trim().ToLowerInvariant())
         .Where(token => token.Length > 0)
@@ -278,7 +302,7 @@ public static class ResultsQueryEngine
         return $".{trimmed.TrimStart('.').ToLowerInvariant()}";
     }
 
-    private sealed record SearchCandidate(ResultFile File, ResultSearchMatch Match);
+    private readonly record struct SearchCandidate(ResultFile File, ResultSearchMatch Match);
 
-    private sealed record SearchSignal(int Score, string Explanation);
+    private readonly record struct SearchSignal(int Score, string Explanation);
 }

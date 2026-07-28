@@ -18,6 +18,7 @@
 
         <Grid ColumnDefinitions="1.05*,1.25*" ColumnSpacing="10">
             <ListBox ItemsSource="{Binding Plugins}"
+                     AutomationProperties.Name="Installed plugins"
                      SelectedItem="{Binding SelectedPlugin, Mode=TwoWay}"
                      MinHeight="220">
                 <ListBox.ItemTemplate>
@@ -40,6 +41,7 @@
                 <TextBlock Text="Capabilities to grant (comma separated; remove any capability you do not approve):"
                            TextWrapping="Wrap" />
                 <TextBox Text="{Binding CapabilityGrantText, Mode=TwoWay}"
+                         AutomationProperties.Name="Plugin capability grants"
                          PlaceholderText="Leave empty to grant none" />
                 <WrapPanel>
                     <Button Margin="0,0,6,6" Content="Inspect" Command="{Binding InspectCommand}" />
@@ -66,6 +68,7 @@
                 <TextBlock Text="Enter an absolute path to a local .zip plugin package. Packages are validated and staged before installation. Existing versions are never overwritten silently."
                            TextWrapping="Wrap" />
                 <TextBox PlaceholderText="C:\path\plugin-package.zip"
+                         AutomationProperties.Name="Local plugin package path"
                          Text="{Binding PackagePath, Mode=TwoWay}" />
                 <WrapPanel>
                     <Button Margin="0,0,6,0" Content="Install local package" Command="{Binding InstallCommand}" />
@@ -81,6 +84,7 @@
             <StackPanel Spacing="6">
                 <TextBlock Text="Diagnostic export" FontWeight="SemiBold" />
                 <TextBox PlaceholderText="Absolute path for a new diagnostic text file"
+                         AutomationProperties.Name="Plugin diagnostic export path"
                          Text="{Binding DiagnosticExportPath, Mode=TwoWay}" />
                 <Button HorizontalAlignment="Left"
                         Content="Export plugin diagnostics"
@@ -88,6 +92,8 @@
             </StackPanel>
         </Border>
 
-        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                   AutomationProperties.Name="Plugin status"
+                   AutomationProperties.LiveSetting="Polite" />
     </StackPanel>
 </UserControl>

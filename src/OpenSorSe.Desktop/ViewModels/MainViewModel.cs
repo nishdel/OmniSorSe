@@ -1477,7 +1477,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             if (result.Session.Status == ProcessingSessionStatus.Completed &&
                 result.Processing is { Status: ProcessingStatus.Completed } processing)
             {
-                var snapshot = await Task.Run(() => _resultsSnapshotProjector.Project(result));
+                var snapshot = await Task.Run(
+                    () => _resultsSnapshotProjector.Project(result, cancellation.Token),
+                    cancellation.Token);
                 await Results.LoadSnapshotAsync(snapshot);
                 _currentCatalogEntryId = null;
                 if (_catalogStore is not null && _configurationService.Current.Catalog.Enabled)

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 using OpenSorSe.Executor.Models;
 
 namespace OpenSorSe.Executor;
@@ -17,8 +18,8 @@ public sealed class JsonChangePlanStore : IChangePlanStore
         Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false) },
     };
     private readonly string _filePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
-    private readonly SemaphoreSlim _mutex = new(1, 1);
 
     public JsonChangePlanStore(string filePath, ILoggingService loggingService)
     {
@@ -28,6 +29,7 @@ public sealed class JsonChangePlanStore : IChangePlanStore
         }
 
         _filePath = Path.GetFullPath(filePath);
+        _fileAccess = new ApplicationFileAccessCoordinator(_filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonChangePlanStore));
     }
@@ -35,15 +37,8 @@ public sealed class JsonChangePlanStore : IChangePlanStore
     /// <inheritdoc />
     public async Task<IReadOnlyList<ChangePlan>> ListAsync(CancellationToken cancellationToken)
     {
-        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            return await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _mutex.Release();
-        }
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        return await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -62,23 +57,16 @@ public sealed class JsonChangePlanStore : IChangePlanStore
     public async Task UpsertAsync(ChangePlan plan, CancellationToken cancellationToken)
     {
         Validate(plan);
-        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            var plans = (await LoadCoreAsync(cancellationToken).ConfigureAwait(false)).ToList();
-            plans.RemoveAll(candidate => string.Equals(candidate.PlanId, plan.PlanId, StringComparison.Ordinal));
-            plans.Add(plan);
-            var retained = plans
-                .OrderByDescending(candidate => candidate.CreatedAtUtc)
-                .ThenBy(candidate => candidate.PlanId, StringComparer.Ordinal)
-                .Take(ChangePlanSchema.MaximumStoredPlans)
-                .ToArray();
-            await SaveCoreAsync(retained, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _mutex.Release();
-        }
+        using var access = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        var plans = (await LoadCoreAsync(cancellationToken).ConfigureAwait(false)).ToList();
+        plans.RemoveAll(candidate => string.Equals(candidate.PlanId, plan.PlanId, StringComparison.Ordinal));
+        plans.Add(plan);
+        var retained = plans
+            .OrderByDescending(candidate => candidate.CreatedAtUtc)
+            .ThenBy(candidate => candidate.PlanId, StringComparer.Ordinal)
+            .Take(ChangePlanSchema.MaximumStoredPlans)
+            .ToArray();
+        await SaveCoreAsync(retained, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<IReadOnlyList<ChangePlan>> LoadCoreAsync(CancellationToken cancellationToken)
@@ -127,45 +115,14 @@ public sealed class JsonChangePlanStore : IChangePlanStore
 
     private async Task SaveCoreAsync(IReadOnlyList<ChangePlan> plans, CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(_filePath)
-            ?? throw new InvalidDataException("The Change Plan store path has no directory.");
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = new FileStream(
-                             temporaryPath,
-                             new FileStreamOptions
-                             {
-                                 Access = FileAccess.Write,
-                                 Mode = FileMode.CreateNew,
-                                 Share = FileShare.None,
-                                 Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
-                             }))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new Envelope(ChangePlanSchema.CurrentVersion, plans),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
-                stream.Flush(flushToDisk: true);
-            }
-
-            if (new FileInfo(temporaryPath).Length > ChangePlanSchema.MaximumStoreFileBytes)
-            {
-                throw new InvalidDataException("The Change Plan store exceeds its supported encoded size.");
-            }
-
-            File.Move(temporaryPath, _filePath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _filePath,
+            new Envelope(ChangePlanSchema.CurrentVersion, plans),
+            JsonOptions,
+            ChangePlanSchema.MaximumStoreFileBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The Change Plan store exceeds its supported encoded size.")).ConfigureAwait(false);
     }
 
     private static void Validate(ChangePlan plan)

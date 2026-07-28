@@ -647,6 +647,74 @@ public sealed class ChangePlanSafetyTests
     }
 
     [Fact]
+    public async Task JsonStores_IndependentConcurrentWriters_PreserveEveryRecordAndValidJson()
+    {
+        using var directory = new TemporaryDirectory();
+        var logging = new TestLoggingService();
+        var planPath = directory.PathOf("plans.json");
+        var journalPath = directory.PathOf("journal.json");
+        var gateway = new PhysicalFileSystemGateway();
+        var sources = Enumerable.Range(0, 24)
+            .Select(index => directory.File($"source-{index:D2}.txt", $"data-{index}"))
+            .ToArray();
+
+        var plans = await Task.WhenAll(sources.Select(async (source, index) =>
+        {
+            var store = new JsonChangePlanStore(planPath, logging);
+            var factory = new ChangePlanFactory(
+                gateway,
+                new ChangePlanValidator(gateway),
+                store);
+            return await factory.CreateAsync(
+                Request(
+                    directory.Path,
+                    Proposal(
+                        ChangeActionType.RenameFile,
+                        source,
+                        directory.PathOf($"destination-{index:D2}.txt"))),
+                CancellationToken.None);
+        }));
+
+        var sample = SampleOperation(directory.Path);
+        await Task.WhenAll(Enumerable.Range(0, 48).Select(index =>
+        {
+            var operation = sample with
+            {
+                SchemaVersion = OperationJournalSchema.CurrentVersion,
+                OperationId = $"operation:{index:D2}",
+                SourcePlanId = $"plan:{index:D2}",
+                StartedAtUtc = DateTimeOffset.UnixEpoch.AddSeconds(index),
+                Actions = Array.AsReadOnly(sample.Actions.Select(action => action with
+                {
+                    ActionId = $"action:{index:D2}",
+                }).ToArray()),
+            };
+            return new JsonOperationJournalStore(journalPath, logging)
+                .UpsertAsync(operation, CancellationToken.None);
+        }));
+
+        var reloadedPlans = await new JsonChangePlanStore(planPath, logging)
+            .ListAsync(CancellationToken.None);
+        var reloadedOperations = await new JsonOperationJournalStore(journalPath, logging)
+            .ListAsync(CancellationToken.None);
+        using var planJson = JsonDocument.Parse(await File.ReadAllTextAsync(planPath));
+        using var journalJson = JsonDocument.Parse(await File.ReadAllTextAsync(journalPath));
+
+        Assert.Equal(24, plans.Select(plan => plan.PlanId).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(24, reloadedPlans.Count);
+        Assert.Equal(
+            plans.Select(plan => plan.PlanId).OrderBy(value => value, StringComparer.Ordinal),
+            reloadedPlans.Select(plan => plan.PlanId).OrderBy(value => value, StringComparer.Ordinal));
+        Assert.Equal(48, reloadedOperations.Count);
+        Assert.Equal(
+            Enumerable.Range(0, 48).Select(index => $"operation:{index:D2}").OrderBy(value => value, StringComparer.Ordinal),
+            reloadedOperations.Select(operation => operation.OperationId).OrderBy(value => value, StringComparer.Ordinal));
+        Assert.Equal(JsonValueKind.Object, planJson.RootElement.ValueKind);
+        Assert.Equal(JsonValueKind.Object, journalJson.RootElement.ValueKind);
+        Assert.Empty(Directory.EnumerateFiles(directory.Path, "*.tmp"));
+    }
+
+    [Fact]
     public async Task JournalReadsLegacyArrayAndCorruptDataFailsGracefully()
     {
         using var directory = new TemporaryDirectory();

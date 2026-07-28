@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
 
@@ -192,6 +193,35 @@ public sealed class ActionPlannerTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => CreatePlanner().PlanAsync([Decision(new RuleAction(RuleActionKind.Delete))], source.Token));
     }
 
+    /// <summary>Verifies source-equality checks follow the injected host path case policy.</summary>
+    [Fact]
+    public async Task PlanAsync_CaseOnlyRename_FollowsConfiguredPathSemantics()
+    {
+        var sourcePath = Path.Combine(
+            Path.GetTempPath(),
+            "OpenSorSe-ActionPlanner-Case",
+            "file.txt");
+        var file = new FileEntry(
+            sourcePath,
+            new FileMetadata("file.txt", ".txt", 1, null, null, null, FileAttributes.Normal),
+            null,
+            new FileClassification(FileCategory.Document));
+        var decision = Decision(
+            new RuleAction(RuleActionKind.Rename, NameTemplate: "FILE.txt"),
+            file);
+
+        var windowsResult = await CreatePlanner(new WindowsPathSemantics()).PlanAsync([decision]);
+        var linuxResult = await CreatePlanner(new LinuxPathSemantics()).PlanAsync([decision]);
+
+        Assert.Empty(windowsResult.Operations);
+        Assert.Equal(
+            ActionPlanningIssueKind.SourceEqualsDestination,
+            Assert.Single(windowsResult.Issues).Kind);
+        Assert.Equal(
+            Path.Combine(Path.GetDirectoryName(sourcePath)!, "FILE.txt"),
+            Assert.Single(linuxResult.Operations).DestinationPath);
+    }
+
     /// <summary>
     /// Supplies malformed decisions covering supported planning validation boundaries.
     /// </summary>
@@ -209,7 +239,8 @@ public sealed class ActionPlannerTests
         yield return [Decision(new RuleAction((RuleActionKind)999)), ActionPlanningIssueKind.UnsupportedAction];
     }
 
-    private static ActionPlanner CreatePlanner() => new(new TestLoggingService(), new TestErrorHandler());
+    private static ActionPlanner CreatePlanner(IPathSemantics? pathSemantics = null) =>
+        new(new TestLoggingService(), new TestErrorHandler(), pathSemantics);
 
     private static FileEntry File(string fileName = "file.txt", string extension = ".txt", FileCategory? category = FileCategory.Document) =>
         new("C:\\Source\\file.txt", new FileMetadata(fileName, extension, 1, null, null, null, FileAttributes.Normal), null,

@@ -224,6 +224,26 @@ Linux desktop/filesystem verification are tracked in Release Status.
 > Linux is a preview and every file mutation still requires explicit review,
 > confirmation, immediate validation, journalling, and verification.
 
+## v1.6 - Reliability, Performance, and Production Hardening
+
+Source implementation complete; final automated and native manual validation is
+tracked in the v1.6 reports.
+
+- Version: `v1.6`
+- Release name: **Reliability, Performance, and Production Hardening**
+- Git branch: `v1.6-reliability-performance`
+- Shared bounded durable atomic persistence and cross-instance transaction
+  coordination for application-owned stores.
+- Lower-allocation duplicate analysis and Results queries, cancellable result
+  projection, bounded processing-session history, and terminal-safe tasks.
+- Idempotent watcher lifecycle, observed background work, isolated observers,
+  and host-correct path case behavior.
+- Critical-workflow accessibility metadata and live announcements.
+- Windows, Ubuntu, and macOS Debug/Release CI with zero-skip, analyzer,
+  formatting, documentation, and patch gates.
+- No schema migration, autonomous feature, new mutation path, installer,
+  updater, package, tag, or publishing step.
+
 Release branches follow `v<version>-<primary-feature>`, for example:
 
 - `v1.1-safe-file-operations`
@@ -231,6 +251,7 @@ Release branches follow `v<version>-<primary-feature>`, for example:
 - `v1.3-workflow-profiles`
 - `v1.4-plugin-foundation`
 - `v1.5-cross-platform-foundation`
+- `v1.6-reliability-performance`
 
 ## Future release ideas
 

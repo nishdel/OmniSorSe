@@ -21,9 +21,16 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
     }
 
     /// <inheritdoc />
-    public ResultsSnapshot Project(ProcessingSessionResult sessionResult)
+    public ResultsSnapshot Project(ProcessingSessionResult sessionResult) =>
+        Project(sessionResult, CancellationToken.None);
+
+    /// <inheritdoc />
+    public ResultsSnapshot Project(
+        ProcessingSessionResult sessionResult,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(sessionResult);
+        cancellationToken.ThrowIfCancellationRequested();
         ValidateCompletedSession(sessionResult);
 
         var processing = sessionResult.Processing!;
@@ -40,6 +47,11 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         var files = new List<ResultFile>(sourceFiles.Count);
         for (var index = 0; index < sourceFiles.Count; index++)
         {
+            if ((index & 127) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
             var sourceFile = sourceFiles[index] ?? throw new ArgumentException("The completed result contains a null file.", nameof(sessionResult));
             var resultFile = CreateResultFile(sourceFile, index, hasPlannedOperation: false);
             files.Add(resultFile);
@@ -53,25 +65,45 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
             processing.Conflicts,
             filesByPath,
             issues,
-            processing.Workflow?.Analysis.RuleEvaluationEnabled is not false);
+            processing.Workflow?.Analysis.RuleEvaluationEnabled is not false,
+            cancellationToken);
         var plannedPaths = operations
             .Where(operation => operation.SourceFileId is not null)
             .Select(operation => operation.SourceFileId!)
             .ToHashSet(StringComparer.Ordinal);
-        files = files.Select(file => file with { HasPlannedOperation = plannedPaths.Contains(file.Id) }).ToList();
+        for (var index = 0; index < files.Count; index++)
+        {
+            if ((index & 127) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            var file = files[index];
+            files[index] = file with { HasPlannedOperation = plannedPaths.Contains(file.Id) };
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
         var filesById = files.ToDictionary(file => file.Id, StringComparer.Ordinal);
         filesByPath = files
             .GroupBy(file => file.FullPath, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
-        var directories = processing.Scan.Directories
-            .Select(directory => new ResultDirectory(directory.FullPath, GetDisplayName(directory.FullPath)))
-            .ToList();
+        var directories = new List<ResultDirectory>(processing.Scan.Directories.Count);
+        for (var index = 0; index < processing.Scan.Directories.Count; index++)
+        {
+            if ((index & 127) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
-        AddSourceIssues(processing, filesByPath, issues);
+            var directory = processing.Scan.Directories[index];
+            directories.Add(new ResultDirectory(directory.FullPath, GetDisplayName(directory.FullPath)));
+        }
+
+        AddSourceIssues(processing, filesByPath, issues, cancellationToken);
         var duplicateDataAvailable = processing.Duplicates is not null;
         var groups = duplicateDataAvailable
-            ? MapDuplicateGroups(processing.Duplicates!, filesByPath, filesById, issues)
+            ? MapDuplicateGroups(processing.Duplicates!, filesByPath, filesById, issues, cancellationToken)
             : processing.Workflow?.Analysis.DuplicateAnalysisEnabled == false
                 ? []
                 : AddMissingDuplicateDataIssue(issues);
@@ -155,7 +187,8 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         ConflictResolutionResult? conflicts,
         IReadOnlyDictionary<string, ResultFile> filesByPath,
         List<ResultIssue> issues,
-        bool expected)
+        bool expected,
+        CancellationToken cancellationToken)
     {
         if (conflicts is null)
         {
@@ -171,6 +204,7 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         var operations = new List<ResultPlannedOperation>(conflicts.Operations.Count);
         foreach (var operation in conflicts.Operations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (operation is null)
             {
                 throw new ArgumentException("The completed result contains a null planned operation.", nameof(conflicts));
@@ -197,12 +231,14 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         DuplicateDetectionResult duplicates,
         IReadOnlyDictionary<string, ResultFile> filesByPath,
         IReadOnlyDictionary<string, ResultFile> filesById,
-        List<ResultIssue> issues)
+        List<ResultIssue> issues,
+        CancellationToken cancellationToken)
     {
         ValidateCollection(duplicates.Groups, "The completed result contains an invalid duplicate-group collection.", nameof(duplicates));
         var groups = new List<ResultDuplicateGroup>(duplicates.Groups.Count);
         for (var index = 0; index < duplicates.Groups.Count; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var group = duplicates.Groups[index];
             if (group is null)
             {
@@ -213,6 +249,7 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
             var isComplete = true;
             foreach (var sourceFile in group.Files)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (sourceFile is null || !filesByPath.TryGetValue(sourceFile.FullPath, out var resultFile))
                 {
                     isComplete = false;
@@ -268,15 +305,16 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
     private static void AddSourceIssues(
         ProcessingResult processing,
         IReadOnlyDictionary<string, ResultFile> filesByPath,
-        List<ResultIssue> issues)
+        List<ResultIssue> issues,
+        CancellationToken cancellationToken)
     {
-        AddIssues("Scanning", processing.Scan.Issues, issue => issue.Message, issue => issue.Path, filesByPath, issues);
-        AddIssues("Metadata", processing.Metadata?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues);
-        AddIssues("Hashing", processing.Hashing?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues);
-        AddIssues("Classification", processing.Classification?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues);
-        AddIssues("Exact duplicates", processing.Duplicates?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues);
-        AddIssues("Planned operations", processing.Plan?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues);
-        AddIssues("Conflict resolution", processing.Conflicts?.Issues, issue => issue.Message, _ => null, filesByPath, issues);
+        AddIssues("Scanning", processing.Scan.Issues, issue => issue.Message, issue => issue.Path, filesByPath, issues, cancellationToken);
+        AddIssues("Metadata", processing.Metadata?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues, cancellationToken);
+        AddIssues("Hashing", processing.Hashing?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues, cancellationToken);
+        AddIssues("Classification", processing.Classification?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues, cancellationToken);
+        AddIssues("Exact duplicates", processing.Duplicates?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues, cancellationToken);
+        AddIssues("Planned operations", processing.Plan?.Issues, issue => issue.Message, issue => issue.FilePath, filesByPath, issues, cancellationToken);
+        AddIssues("Conflict resolution", processing.Conflicts?.Issues, issue => issue.Message, _ => null, filesByPath, issues, cancellationToken);
     }
 
     private static void AddIssues<TIssue>(
@@ -285,7 +323,8 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
         Func<TIssue, string> messageSelector,
         Func<TIssue, string?> pathSelector,
         IReadOnlyDictionary<string, ResultFile> filesByPath,
-        List<ResultIssue> target)
+        List<ResultIssue> target,
+        CancellationToken cancellationToken)
     {
         if (sourceIssues is null)
         {
@@ -294,6 +333,7 @@ public sealed class ResultsSnapshotProjector : IResultsSnapshotProjector
 
         foreach (var issue in sourceIssues)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (issue is null || string.IsNullOrWhiteSpace(messageSelector(issue)))
             {
                 continue;

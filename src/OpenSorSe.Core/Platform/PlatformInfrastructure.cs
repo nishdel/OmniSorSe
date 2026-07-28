@@ -492,7 +492,10 @@ public sealed class PlatformCapabilityProvider : IPlatformCapabilityProvider
                     ? PlatformSupportState.SupportedWithLimitations
                     : PlatformSupportState.Unavailable,
                 "Uses an exact path through the operating-system association API; failure is non-fatal."),
-            Capability(PlatformCapabilityKind.PackagingAndUpdates, PlatformSupportState.Unavailable, "v1.5 does not provide an installer, updater, or published package."),
+            Capability(
+                PlatformCapabilityKind.PackagingAndUpdates,
+                PlatformSupportState.Unavailable,
+                $"v{ApplicationVersionInfo.Display} does not provide an installer, updater, or published package."),
         };
         return Array.AsReadOnly(values.OrderBy(value => value.Kind).ToArray());
     }

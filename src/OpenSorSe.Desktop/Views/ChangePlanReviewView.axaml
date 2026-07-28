@@ -32,10 +32,12 @@
         <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
             <ComboBox ItemsSource="{Binding AvailableTypeFilters}"
                       SelectedItem="{Binding SelectedTypeFilter}"
+                      AutomationProperties.Name="Change action type filter"
                       DisplayMemberBinding="{Binding Label}" MinWidth="150" />
             <ComboBox Grid.Column="1"
                       ItemsSource="{Binding AvailableIssueFilters}"
                       SelectedItem="{Binding SelectedIssueFilter}"
+                      AutomationProperties.Name="Change action issue filter"
                       MinWidth="150" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
                 <Button Classes="secondary" Content="Approve all safe" Command="{Binding ApproveAllSafeCommand}" />
@@ -47,6 +49,7 @@
 
         <Grid Grid.Row="3" ColumnDefinitions="1.2*,*" ColumnSpacing="12">
             <ListBox ItemsSource="{Binding Actions}"
+                     AutomationProperties.Name="Change Plan actions"
                      SelectedItem="{Binding SelectedAction, Mode=TwoWay}">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ChangePlanActionRow">
@@ -79,9 +82,11 @@
                     <TextBlock Text="Proposed filename"
                                IsVisible="{Binding SelectedAction.CanEditFileName}" />
                     <TextBox Text="{Binding SelectedAction.EditedFileName, Mode=TwoWay}"
+                             AutomationProperties.Name="Edited proposed filename"
                              IsVisible="{Binding SelectedAction.CanEditFileName}" />
                     <TextBlock Text="Proposed destination" />
-                    <TextBox Text="{Binding SelectedAction.EditedDestinationPath, Mode=TwoWay}" />
+                    <TextBox Text="{Binding SelectedAction.EditedDestinationPath, Mode=TwoWay}"
+                             AutomationProperties.Name="Edited proposed destination path" />
                     <WrapPanel>
                         <Button Margin="0,0,6,0" Classes="secondary" Content="Save edit" Command="{Binding SaveEditCommand}" />
                         <Button Margin="0,0,6,0" Content="Approve" Command="{Binding ApproveSelectedCommand}" />
@@ -94,9 +99,14 @@
         <Border Grid.Row="4" Padding="10" Classes="card">
             <StackPanel Spacing="6">
                 <TextBlock Text="{Binding ConfirmationSummary}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding ResultSummary}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                           AutomationProperties.Name="Change Plan status"
+                           AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap"
+                           AutomationProperties.Name="Change Plan progress"
+                           AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Text="{Binding ResultSummary}" TextWrapping="Wrap"
+                           AutomationProperties.Name="Change Plan result" />
                 <WrapPanel IsVisible="{Binding IsApplyConfirmationPending}">
                     <Button Margin="0,0,6,0" Content="Confirm Apply Plan" Command="{Binding ConfirmApplyCommand}" />
                     <Button Classes="secondary" Content="Cancel" Command="{Binding CancelApplyCommand}" />

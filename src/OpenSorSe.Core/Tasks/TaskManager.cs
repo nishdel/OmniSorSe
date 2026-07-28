@@ -10,7 +10,7 @@ namespace OpenSorSe.Core.Tasks;
 public sealed class TaskManager : ITaskManager
 {
     private readonly ConcurrentDictionary<Guid, TaskExecution> _activeTasks = new();
-    private readonly ILoggingService _loggingService;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a task manager that reports task failures through centralized logging.
@@ -18,7 +18,8 @@ public sealed class TaskManager : ITaskManager
     /// <param name="loggingService">The logging service used for task diagnostics.</param>
     public TaskManager(ILoggingService loggingService)
     {
-        _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
+        _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
+            .CreateLogger(nameof(TaskManager));
     }
 
     /// <inheritdoc />
@@ -43,44 +44,46 @@ public sealed class TaskManager : ITaskManager
             throw new InvalidOperationException("Unable to register the background task.");
         }
 
+        BackgroundTaskSnapshot? finalSnapshot = null;
         try
         {
             Publish(execution.CreateSnapshot());
-            execution.Status = BackgroundTaskStatus.Running;
-            Publish(execution.CreateSnapshot());
+            Publish(execution.SetStatus(BackgroundTaskStatus.Running));
             var progress = new InlineProgress(value =>
             {
-                execution.Progress = Math.Clamp(value, 0d, 1d);
-                Publish(execution.CreateSnapshot());
+                var snapshot = execution.TrySetProgress(value);
+                if (snapshot is not null)
+                {
+                    Publish(snapshot);
+                }
             });
 
             await Task.Run(
                 () => operation(execution.CancellationSource.Token, progress),
                 CancellationToken.None).ConfigureAwait(false);
-            execution.Status = BackgroundTaskStatus.Completed;
+            execution.SetStatus(BackgroundTaskStatus.Completed);
         }
         catch (OperationCanceledException) when (execution.CancellationSource.IsCancellationRequested)
         {
-            execution.Status = BackgroundTaskStatus.Cancelled;
+            execution.SetStatus(BackgroundTaskStatus.Cancelled);
         }
         catch (Exception exception)
         {
-            execution.Failure = exception;
-            execution.Status = BackgroundTaskStatus.Failed;
-            _loggingService.CreateLogger(nameof(TaskManager)).LogError(
+            execution.SetStatus(BackgroundTaskStatus.Failed, exception);
+            _logger.LogError(
                 exception,
                 "Background task {TaskName} failed.",
                 name);
         }
         finally
         {
-            var finalSnapshot = execution.CreateSnapshot();
+            finalSnapshot = execution.CreateSnapshot();
             Publish(finalSnapshot);
             _activeTasks.TryRemove(execution.Id, out _);
             execution.CancellationSource.Dispose();
         }
 
-        return execution.CreateSnapshot();
+        return finalSnapshot;
     }
 
     /// <inheritdoc />
@@ -91,8 +94,15 @@ public sealed class TaskManager : ITaskManager
             return false;
         }
 
-        execution.CancellationSource.Cancel();
-        return true;
+        try
+        {
+            execution.CancellationSource.Cancel();
+            return true;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
     }
 
     private void Publish(BackgroundTaskSnapshot snapshot)
@@ -107,7 +117,7 @@ public sealed class TaskManager : ITaskManager
             }
             catch (Exception exception)
             {
-                _loggingService.CreateLogger(nameof(TaskManager)).LogError(
+                _logger.LogError(
                     exception,
                     "A background task observer failed.");
             }
@@ -116,6 +126,11 @@ public sealed class TaskManager : ITaskManager
 
     private sealed class TaskExecution
     {
+        private readonly object _sync = new();
+        private BackgroundTaskStatus _status = BackgroundTaskStatus.Pending;
+        private double? _progress;
+        private Exception? _failure;
+
         public TaskExecution(string name, CancellationToken cancellationToken)
         {
             Id = Guid.NewGuid();
@@ -129,13 +144,44 @@ public sealed class TaskManager : ITaskManager
 
         public CancellationTokenSource CancellationSource { get; }
 
-        public BackgroundTaskStatus Status { get; set; } = BackgroundTaskStatus.Pending;
+        public BackgroundTaskSnapshot CreateSnapshot()
+        {
+            lock (_sync)
+            {
+                return CreateSnapshotCore();
+            }
+        }
 
-        public double? Progress { get; set; }
+        public BackgroundTaskSnapshot SetStatus(
+            BackgroundTaskStatus status,
+            Exception? failure = null)
+        {
+            lock (_sync)
+            {
+                _status = status;
+                _failure = failure;
+                return CreateSnapshotCore();
+            }
+        }
 
-        public Exception? Failure { get; set; }
+        public BackgroundTaskSnapshot? TrySetProgress(double progress)
+        {
+            lock (_sync)
+            {
+                if (_status is BackgroundTaskStatus.Completed or
+                    BackgroundTaskStatus.Cancelled or
+                    BackgroundTaskStatus.Failed)
+                {
+                    return null;
+                }
 
-        public BackgroundTaskSnapshot CreateSnapshot() => new(Id, Name, Status, Progress, Failure);
+                _progress = Math.Clamp(progress, 0d, 1d);
+                return CreateSnapshotCore();
+            }
+        }
+
+        private BackgroundTaskSnapshot CreateSnapshotCore() =>
+            new(Id, Name, _status, _progress, _failure);
     }
 
     private sealed class InlineProgress : IProgress<double>

@@ -77,6 +77,65 @@ public sealed class ResultsSnapshotProjectorTests
         Assert.Throws<ArgumentException>(() => new ResultsSnapshotProjector().Project(session));
     }
 
+    /// <summary>Verifies pre-cancellation stops projection before any snapshot can be produced.</summary>
+    [Fact]
+    public void Project_PreCancelled_ThrowsOperationCanceledException()
+    {
+        var processing = CreateProcessing(
+            [CreateFile("C:\\Only\\entry.txt", 1, DuplicateStatus.Unique, null)],
+            includeDuplicates: false,
+            includeConflicts: false);
+        var session = new ProcessingSessionResult(
+            new ProcessingSession("session:cancelled", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, ProcessingSessionStatus.Completed, null),
+            processing);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            new ResultsSnapshotProjector().Project(session, cancellation.Token));
+    }
+
+    /// <summary>Verifies cancellation is observed during a large in-memory file projection.</summary>
+    [Fact]
+    public void Project_CancelledDuringLargeProjection_StopsWithoutPartialSnapshot()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var files = Enumerable.Range(0, 10_000)
+            .Select(index => CreateFile(
+                $"C:\\Bulk\\{index:D5}.bin",
+                index,
+                DuplicateStatus.Unique,
+                null))
+            .ToArray();
+        var cancellingFiles = new CancellingReadOnlyList<FileEntry>(
+            files,
+            cancelAfterIndex: 256,
+            cancellation);
+        var scan = new ScanResult(
+            cancellingFiles,
+            [new DirectoryEntry("C:\\Bulk")],
+            new ScanStatistics(files.Length, 1, files.Length),
+            [],
+            ScanStatus.Completed,
+            TimeSpan.Zero);
+        var processing = new ProcessingResult(
+            ProcessingStatus.Completed,
+            scan,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+        var session = new ProcessingSessionResult(
+            new ProcessingSession("session:bulk", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, ProcessingSessionStatus.Completed, null),
+            processing);
+
+        Assert.Throws<OperationCanceledException>(() =>
+            new ResultsSnapshotProjector().Project(session, cancellation.Token));
+    }
+
     private static ProcessingResult CreateProcessing(IReadOnlyList<FileEntry> files, bool includeDuplicates, bool includeConflicts)
     {
         var scan = new ScanResult(
@@ -112,5 +171,30 @@ public sealed class ResultsSnapshotProjectorTests
     {
         /// <inheritdoc />
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class CancellingReadOnlyList<T>(
+        IReadOnlyList<T> inner,
+        int cancelAfterIndex,
+        CancellationTokenSource cancellation) : IReadOnlyList<T>
+    {
+        public int Count => inner.Count;
+
+        public T this[int index]
+        {
+            get
+            {
+                if (index == cancelAfterIndex)
+                {
+                    cancellation.Cancel();
+                }
+
+                return inner[index];
+            }
+        }
+
+        public IEnumerator<T> GetEnumerator() => inner.GetEnumerator();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

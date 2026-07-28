@@ -472,4 +472,81 @@ public sealed class JsonConfigurationServiceTests
             File.Delete(settingsFilePath);
         }
     }
+
+    /// <summary>Verifies independent service instances cannot interleave concurrent writes to one settings file.</summary>
+    [Fact]
+    public async Task SaveAsync_MultipleInstancesConcurrently_LeavesOneValidCompleteDocument()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
+        var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        try
+        {
+            var levels = new[]
+            {
+                LogLevel.Trace,
+                LogLevel.Debug,
+                LogLevel.Information,
+                LogLevel.Warning,
+                LogLevel.Error,
+                LogLevel.Critical,
+            };
+            var services = Enumerable.Range(0, 24)
+                .Select(_ => new JsonConfigurationService(settingsFilePath, _ => null))
+                .ToArray();
+
+            await Task.WhenAll(services.Select((service, index) =>
+                service.SaveAsync(
+                    new ApplicationSettings
+                    {
+                        Logging = new LoggingSettings
+                        {
+                            MinimumLevel = levels[index % levels.Length],
+                        },
+                    },
+                    CancellationToken.None)));
+
+            var reader = new JsonConfigurationService(settingsFilePath, _ => null);
+            await reader.InitializeAsync(CancellationToken.None);
+            Assert.Contains(reader.Current.Logging.MinimumLevel, levels);
+            Assert.Null(reader.InitializationWarning);
+            Assert.Empty(Directory.EnumerateFiles(directoryPath, "*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>Verifies cancellation preserves a previously persisted settings document byte-for-byte.</summary>
+    [Fact]
+    public async Task SaveAsync_PreCancelled_PreservesExistingDocument()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
+        var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        try
+        {
+            Directory.CreateDirectory(directoryPath);
+            const string original = """{"Logging":{"MinimumLevel":"Warning"}}""";
+            await File.WriteAllTextAsync(settingsFilePath, original);
+            using var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            var service = new JsonConfigurationService(settingsFilePath, _ => null);
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                service.SaveAsync(new ApplicationSettings(), cancellation.Token));
+
+            Assert.Equal(original, await File.ReadAllTextAsync(settingsFilePath));
+            Assert.Empty(Directory.EnumerateFiles(directoryPath, "*.tmp"));
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
 }

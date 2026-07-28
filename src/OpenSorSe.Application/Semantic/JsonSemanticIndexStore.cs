@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -12,6 +13,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
     private const long MaximumFileBytes = 256L * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
     private readonly string _filePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
@@ -24,6 +26,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
         }
 
         _filePath = filePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonSemanticIndexStore));
     }
@@ -31,6 +34,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
     /// <inheritdoc />
     public async Task<IReadOnlyList<SemanticIndexEntry>> ListAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -59,38 +63,18 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
             throw new InvalidDataException("The semantic index contains duplicate paths.");
         }
 
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var directory = Path.GetDirectoryName(_filePath)
-                ?? throw new InvalidDataException("The semantic-index path has no directory.");
-            Directory.CreateDirectory(directory);
-            var temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
-            try
-            {
-                await using (var stream = File.Create(temporaryPath))
-                {
-                    await JsonSerializer.SerializeAsync(
-                        stream,
-                        new SemanticEnvelope(CurrentSchemaVersion, normalized),
-                        JsonOptions,
-                        cancellationToken).ConfigureAwait(false);
-                }
-
-                if (new FileInfo(temporaryPath).Length > MaximumFileBytes)
-                {
-                    throw new InvalidDataException("The semantic index exceeds its supported encoded size.");
-                }
-
-                File.Move(temporaryPath, _filePath, true);
-            }
-            finally
-            {
-                if (File.Exists(temporaryPath))
-                {
-                    File.Delete(temporaryPath);
-                }
-            }
+            await AtomicJsonFile.WriteAsync(
+                _filePath,
+                new SemanticEnvelope(CurrentSchemaVersion, normalized),
+                JsonOptions,
+                MaximumFileBytes,
+                cancellationToken,
+                static (_, _) => new InvalidDataException(
+                    "The semantic index exceeds its supported encoded size.")).ConfigureAwait(false);
         }
         finally
         {
@@ -101,6 +85,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
     /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {

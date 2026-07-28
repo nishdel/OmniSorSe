@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the implemented
-v1.5 system and take precedence when an older document uses future-oriented
+v1.6 system and take precedence when an older document uses future-oriented
 language.
 
 ## Current implementation references
@@ -10,6 +10,8 @@ language.
 - `00_System/00_Overview.md`: concise current component summary.
 - `00_System/08_v1.5_Platform_Architecture.md`: current Windows/Linux platform,
   identity, filesystem, desktop, tool, and packaging boundaries.
+- `00_System/09_v1.6_Reliability_Architecture.md`: current atomic persistence,
+  bounded-resource, cancellation, observer-isolation, and lifecycle hardening.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.

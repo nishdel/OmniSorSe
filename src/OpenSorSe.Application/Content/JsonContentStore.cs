@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Persistence;
 
 namespace OpenSorSe.Application.Content;
 
@@ -14,6 +15,7 @@ public sealed class JsonContentStore : IContentStore
     private static readonly StringComparer PathComparer =
         OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;
     private readonly string _filePath;
+    private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _mutex = new(1, 1);
     private readonly Dictionary<string, string> _diagnosticSessions = new(PathComparer);
@@ -27,6 +29,7 @@ public sealed class JsonContentStore : IContentStore
         }
 
         _filePath = filePath;
+        _fileAccess = new ApplicationFileAccessCoordinator(filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonContentStore));
     }
@@ -35,6 +38,7 @@ public sealed class JsonContentStore : IContentStore
     public async Task<ContentRecord?> GetAsync(string fullPath, CancellationToken cancellationToken)
     {
         var normalizedPath = NormalizePath(fullPath);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -51,6 +55,7 @@ public sealed class JsonContentStore : IContentStore
     /// <inheritdoc />
     public async Task<IReadOnlyList<ContentRecord>> ListAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -70,6 +75,7 @@ public sealed class JsonContentStore : IContentStore
     {
         ArgumentNullException.ThrowIfNull(record);
         var normalized = NormalizeRecord(record);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -99,6 +105,7 @@ public sealed class JsonContentStore : IContentStore
     {
         ArgumentNullException.ThrowIfNull(knownPaths);
         var known = new HashSet<string>(knownPaths.Select(NormalizePath), PathComparer);
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -122,6 +129,7 @@ public sealed class JsonContentStore : IContentStore
     /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -184,35 +192,14 @@ public sealed class JsonContentStore : IContentStore
         IReadOnlyList<ContentRecord> records,
         CancellationToken cancellationToken)
     {
-        var directory = Path.GetDirectoryName(_filePath)
-            ?? throw new InvalidDataException("The local content-store path has no directory.");
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            await using (var stream = File.Create(temporaryPath))
-            {
-                await JsonSerializer.SerializeAsync(
-                    stream,
-                    new ContentEnvelope(CurrentSchemaVersion, Order(records)),
-                    JsonOptions,
-                    cancellationToken).ConfigureAwait(false);
-            }
-
-            if (new FileInfo(temporaryPath).Length > MaximumStoreBytes)
-            {
-                throw new InvalidDataException("The local content cache exceeds its supported encoded size.");
-            }
-
-            File.Move(temporaryPath, _filePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
+        await AtomicJsonFile.WriteAsync(
+            _filePath,
+            new ContentEnvelope(CurrentSchemaVersion, Order(records)),
+            JsonOptions,
+            MaximumStoreBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The local content cache exceeds its supported encoded size.")).ConfigureAwait(false);
     }
 
     private static ContentRecord NormalizeRecord(ContentRecord record)

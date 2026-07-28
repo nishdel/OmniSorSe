@@ -9,11 +9,16 @@
             <Button Grid.Column="1" Content="Help" Command="{Binding HelpCommand}"
                     ToolTip.Tip="Open scanning help" AutomationProperties.Name="Help for scanning" />
         </Grid>
-        <ProgressBar IsIndeterminate="{Binding IsActive}" Height="12" />
-        <TextBlock Text="{Binding StatusText}" />
+        <ProgressBar IsIndeterminate="{Binding IsActive}"
+                     Height="12"
+                     AutomationProperties.Name="Scan progress" />
+        <TextBlock Text="{Binding StatusText}"
+                   AutomationProperties.Name="Scan status"
+                   AutomationProperties.LiveSetting="Polite" />
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="6">
             <TextBlock Grid.Row="0" Text="Current folder" FontWeight="SemiBold" />
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentFolder}" TextWrapping="Wrap" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentFolder}" TextWrapping="Wrap"
+                       AutomationProperties.Name="Current scan folder" />
             <TextBlock Grid.Row="1" Text="Files found" FontWeight="SemiBold" />
             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FilesFound}" />
             <TextBlock Grid.Row="2" Text="Folders scanned" FontWeight="SemiBold" />
@@ -21,6 +26,8 @@
             <TextBlock Grid.Row="3" Text="Elapsed" FontWeight="SemiBold" />
             <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Elapsed}" />
         </Grid>
-        <Button Content="Cancel scan" IsEnabled="{Binding IsActive}" Click="OnCancelClick" HorizontalAlignment="Left" />
+        <Button Content="Cancel scan" IsEnabled="{Binding IsActive}" Click="OnCancelClick"
+                AutomationProperties.Name="Cancel scan"
+                HorizontalAlignment="Left" />
     </StackPanel>
 </UserControl>

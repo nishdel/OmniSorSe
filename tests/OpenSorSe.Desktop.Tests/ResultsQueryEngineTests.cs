@@ -94,6 +94,68 @@ public sealed class ResultsQueryEngineTests
         Assert.Equal(1, result.Page.TotalItemCount);
     }
 
+    /// <summary>Verifies large in-memory result sets remain bounded, accurately ranked, and stable.</summary>
+    [Fact]
+    public void Evaluate_FiftyThousandFiles_ReturnsOnlyBoundedMatchingPage()
+    {
+        var files = Enumerable.Range(0, 50_000)
+            .Select(index => CreateFile(
+                $"file:{index:D5}",
+                index % 10_000 == 0
+                    ? $"C:\\Bulk\\needle-{index:D5}.txt"
+                    : $"C:\\Bulk\\entry-{index:D5}.txt",
+                ".txt",
+                "Document",
+                size: index))
+            .ToArray();
+        var snapshot = CreateSnapshot(files);
+
+        var result = ResultsQueryEngine.Evaluate(
+            snapshot,
+            ResultsQuery.Default with { Text = "needle document", PageSize = 50 });
+
+        Assert.Equal(5, result.Page.TotalItemCount);
+        Assert.Equal(5, result.Page.Items.Count);
+        Assert.Equal(
+            ["file:00000", "file:10000", "file:20000", "file:30000", "file:40000"],
+            result.Page.Items.Select(file => file.Id));
+        Assert.All(result.Page.Items, file => Assert.Contains("needle", file.DisplayFileName));
+    }
+
+    /// <summary>Verifies cancellation is observed during a large local query and no partial page is returned.</summary>
+    [Fact]
+    public void Evaluate_CancelledDuringLargeQuery_ThrowsOperationCanceledException()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var files = Enumerable.Range(0, 10_000)
+            .Select(index => CreateFile(
+                $"file:{index:D5}",
+                $"C:\\Bulk\\entry-{index:D5}.txt",
+                ".txt",
+                "Document",
+                size: index))
+            .ToArray();
+        IReadOnlyList<ResultFile> cancellingFiles =
+            new CancellingReadOnlyList<ResultFile>(files, 256, cancellation);
+        var snapshot = new ResultsSnapshot(
+            "session:cancellation",
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            cancellingFiles,
+            Array.AsReadOnly(Array.Empty<ResultDirectory>()),
+            Array.AsReadOnly(Array.Empty<ResultDuplicateGroup>()),
+            Array.AsReadOnly(Array.Empty<ResultPlannedOperation>()),
+            Array.AsReadOnly(Array.Empty<ResultIssue>()),
+            new ResultsSnapshotStatistics(files.Length, 0, 0, 0, 0, 0, 0),
+            true);
+
+        Assert.Throws<OperationCanceledException>(() =>
+            ResultsQueryEngine.Evaluate(
+                snapshot,
+                ResultsQuery.Default,
+                cancellation.Token));
+    }
+
     private static ResultsSnapshot CreateSnapshot(params ResultFile[] files) => new(
         "session:test",
         DateTimeOffset.UnixEpoch,
@@ -119,4 +181,29 @@ public sealed class ResultsQueryEngineTests
             groupId is null ? DuplicateStatus.Unique : DuplicateStatus.Duplicate,
             groupId,
             false);
+
+    private sealed class CancellingReadOnlyList<T>(
+        IReadOnlyList<T> inner,
+        int cancelAtIndex,
+        CancellationTokenSource cancellation) : IReadOnlyList<T>
+    {
+        public int Count => inner.Count;
+
+        public T this[int index]
+        {
+            get
+            {
+                if (index == cancelAtIndex)
+                {
+                    cancellation.Cancel();
+                }
+
+                return inner[index];
+            }
+        }
+
+        public IEnumerator<T> GetEnumerator() => inner.GetEnumerator();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
 }

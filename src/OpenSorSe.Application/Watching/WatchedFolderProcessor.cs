@@ -851,7 +851,7 @@ public sealed class WatchedFolderProcessor : IWatchedFolderProcessor
             .Where(hint => hint is not null)
             .GroupBy(
                 hint => $"{hint.Kind}|{hint.OldPath}|{hint.Path}",
-                StringComparer.OrdinalIgnoreCase)
+                WatchedFolderPathPolicy.PathComparer)
             .Select(group => group.OrderByDescending(hint => hint.DetectedAtUtc).First())
             .OrderBy(hint => hint.DetectedAtUtc)
             .ToArray());

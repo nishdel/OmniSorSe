@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Errors;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
 
@@ -15,17 +16,23 @@ public sealed class ActionPlanner : IActionPlanner
     private const string LoggerCategory = "Rules";
     private readonly IErrorHandler _errorHandler;
     private readonly ILogger _logger;
+    private readonly IPathSemantics _pathSemantics;
 
     /// <summary>
     /// Initializes an action planner using shared diagnostics infrastructure.
     /// </summary>
     /// <param name="loggingService">The centralized logging service.</param>
     /// <param name="errorHandler">The handler for unexpected operation failures.</param>
-    public ActionPlanner(ILoggingService loggingService, IErrorHandler errorHandler)
+    /// <param name="pathSemantics">The optional platform path comparison policy.</param>
+    public ActionPlanner(
+        ILoggingService loggingService,
+        IErrorHandler errorHandler,
+        IPathSemantics? pathSemantics = null)
     {
         ArgumentNullException.ThrowIfNull(loggingService);
         _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
         _logger = loggingService.CreateLogger(LoggerCategory);
+        _pathSemantics = pathSemantics ?? PlatformServices.CurrentPathSemantics;
     }
 
     /// <inheritdoc />
@@ -129,7 +136,7 @@ public sealed class ActionPlanner : IActionPlanner
             issues.ToArray());
     }
 
-    private static bool TryCreateOperation(
+    private bool TryCreateOperation(
         RuleDecision decision,
         int index,
         CancellationToken cancellationToken,
@@ -368,14 +375,17 @@ public sealed class ActionPlanner : IActionPlanner
     private static PlannedOperation CreateOperation(RuleDecision decision, int index, PlannedOperationKind kind, string? destination) =>
         new($"plan:{index}", kind, decision.File, decision.File.FullPath, destination, decision.SelectedRuleId, decision.SelectedRuleName, decision.SelectedRulePriority);
 
-    private static bool TryComparePaths(string source, string destination, out bool pathsMatch)
+    private bool TryComparePaths(string source, string destination, out bool pathsMatch)
     {
         try
         {
-            pathsMatch = string.Equals(Path.GetFullPath(source), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase);
+            pathsMatch = _pathSemantics.Comparer.Equals(
+                Path.GetFullPath(source),
+                Path.GetFullPath(destination));
             return true;
         }
-        catch (ArgumentException)
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
         {
             pathsMatch = false;
             return false;

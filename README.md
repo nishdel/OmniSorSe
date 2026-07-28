@@ -11,7 +11,11 @@
 
 OpenSorSe is a modern, open-source Windows desktop application with a Linux preview for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, local meaning-based search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
 
-> OpenSorSe 1.5.0 adds explicit platform services, XDG persistence, Linux-safe core behavior, platform diagnostics, and Windows/Ubuntu validation while retaining preview-first, journalled file organization. Complete the [v1.5 manual checklist](docs/MANUAL_TESTING_v1.5.md) before making a binary release claim.
+> OpenSorSe 1.6.0 hardens atomic persistence, cancellation, memory use,
+> watcher/task lifecycle, diagnostics, accessibility, and Windows/Ubuntu/macOS
+> source validation while preserving every v1.5 feature and safety boundary.
+> Complete the [v1.6 manual checklist](docs/MANUAL_TESTING_v1.6.md) before
+> making a binary release claim.
 
 
 <img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
@@ -104,9 +108,9 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 ### Binary availability
 
-This source tree does not claim a v1.5 package, installer, tag, or published
+This source tree does not claim a v1.6 package, installer, tag, or published
 release. The immutable historical v1.0 Windows package does not represent the
-current source. Build v1.5 from source and complete the platform-specific manual
+current source. Build v1.6 from source and complete the platform-specific manual
 checklist before distributing a binary.
 
 ### Windows executable
@@ -159,14 +163,14 @@ Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
 
 ## Known limitations
 
-- The previously produced v1.0 portable package targets Windows x64. No v1.5 package, installer, or updater is claimed.
+- The previously produced v1.0 portable package targets Windows x64. No v1.6 package, installer, or updater is claimed.
 - Tesseract and its language data are external and required for image/scanned-page OCR. Rendered OCR page previews are not retained in diagnostics.
 - Real approximately 2B, 4B, and 7B/8B Ollama compatibility remains pending the documented manual matrix.
 - Folder-structure AI requests accept at most 12 selected files. Larger selections are rejected as a whole with the exact count shown; no file is silently omitted and no partial plan is generated.
 - Watcher APIs can duplicate, reorder, omit, or overflow events. OpenSorSe treats them as hints and reconciles on startup, resume, reconnect, overflow, at least daily while running, and on demand.
-- Watching runs only while OpenSorSe is open. A root renamed externally is shown as unavailable; v1.5 does not guess its new location.
+- Watching runs only while OpenSorSe is open. A root renamed externally is shown as unavailable; v1.6 does not guess its new location.
 - Linux watcher delivery depends on inotify descriptors/queues and reconciliation; network, FUSE, removable, and disconnected filesystems can provide weaker behavior.
-- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.5.
+- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.6.
 - The legacy recipe ID `current` is not silently persisted; affected watched folders require a deliberate persistent replacement.
 - Workflow transfer uses versioned JSON in the Workflows area. There is no cloud library, synchronization, marketplace, or arbitrary scripting.
 - Plugins are in-process. Assembly-load-context isolation and SHA-256 integrity checking are not an OS sandbox, code review, signature authority, or publisher authentication. Native plugins require an exact supported runtime identifier.
@@ -190,7 +194,7 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
   --configuration Release `
   --runtime win-x64 `
   --self-contained true `
-  --output $env:TEMP\OpenSorSe-v1.5.0-win-x64
+  --output $env:TEMP\OpenSorSe-v1.6.0-win-x64
 ```
 
 For Linux framework-dependent validation, use the
@@ -202,10 +206,12 @@ local build output only; they do not publish a release.
 - [Documentation index](docs/README.md)
 - [Installation](docs/INSTALLATION.md)
 - [Release status](docs/RELEASE_STATUS.md)
-- [v1.5 user guide](docs/USER_GUIDE_v1.5.md)
-- [v1.5 manual testing](docs/MANUAL_TESTING_v1.5.md)
-- [v1.5 version notes](docs/VERSION_NOTES_v1.5.md)
-- [v1.5 troubleshooting](docs/TROUBLESHOOTING_v1.5.md)
+- [v1.6 user guide](docs/USER_GUIDE_v1.6.md)
+- [v1.6 manual testing](docs/MANUAL_TESTING_v1.6.md)
+- [v1.6 version notes](docs/VERSION_NOTES_v1.6.md)
+- [v1.6 troubleshooting](docs/TROUBLESHOOTING_v1.6.md)
+- [v1.6 implementation report](docs/V1.6_IMPLEMENTATION_REPORT.md)
+- [v1.6 validation report](docs/V1.6_VALIDATION_REPORT.md)
 - [Platform compatibility matrix](docs/PLATFORM_COMPATIBILITY_MATRIX.md)
 - [Linux build and launch](docs/LINUX_BUILD_AND_LAUNCH.md)
 - [Extension SDK](docs/EXTENSION_SDK_v1.4.md)
@@ -217,6 +223,7 @@ local build output only; they do not publish a release.
 - [Workflow portability](docs/WORKFLOW_PORTABILITY_v1.5.md)
 - [Watched Folders on Linux](docs/WATCHED_FOLDERS_LINUX_v1.5.md)
 - [Platform architecture](docs/Architecture/00_System/08_v1.5_Platform_Architecture.md)
+- [Reliability architecture](docs/Architecture/00_System/09_v1.6_Reliability_Architecture.md)
 - [Workflow architecture](docs/Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
 - [Safety and privacy](docs/SAFETY_AND_PRIVACY.md)
 - [Advanced diagnostics architecture](docs/Architecture/01_Core/10_Advanced_Diagnostics.md)
@@ -233,7 +240,10 @@ local build output only; they do not publish a release.
 
 ## Roadmap
 
-**v1.5 — Cross-Platform Foundation and Linux Preview** is implemented in source on `v1.5-cross-platform-foundation`; exact automated and manual completion status is tracked in the release documentation. Autonomous AI file management and unrestricted filesystem control are not roadmap goals.
+**v1.6 — Reliability, Performance, and Production Hardening** is implemented
+in source on `v1.6-reliability-performance`; exact automated and manual
+completion status is tracked in the release documentation. Autonomous AI file
+management and unrestricted filesystem control are not roadmap goals.
 
 See the detailed [roadmap](docs/roadmap.md).
 

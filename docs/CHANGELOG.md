@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.6.0
+
+Release name: **Reliability, Performance, and Production Hardening**<br>
+Release branch: `v1.6-reliability-performance`.
+
+- Consolidated all application-owned JSON stores onto one bounded, flushed,
+  cancellation-safe atomic replacement primitive.
+- Added normalized process-local transaction coordination across independent
+  store instances without changing persisted schemas.
+- Reduced duplicate-detection and Results-query transient allocations and made
+  large projection/query paths cancellation-responsive.
+- Bounded processing-session history and hardened background-task progress,
+  cancellation classification, and observer isolation.
+- Made watched-folder initialization/disposal concurrent-safe, awaited owned
+  loops, observed background failures, and applied host path semantics.
+- Added critical-workflow automation names and polite live status regions.
+- Expanded concurrency, recovery, stress, cancellation, persistence,
+  lifecycle, accessibility, and repository-policy tests.
+- Expanded source CI to Windows, Ubuntu, and macOS with Debug/Release,
+  zero-skip, analyzer, style, whitespace, documentation, and patch gates.
+- Product/informational version is `1.6.0`; assembly/file/manifest version is
+  `1.6.0.0`; About displays `1.6`.
+- No tag, installer, package, updater, commit, merge, or published release is
+  created by this implementation task.
+
 ## v1.5.0
 
 Release name: **Cross-Platform Foundation and Linux Preview**<br>

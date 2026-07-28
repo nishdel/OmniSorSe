@@ -67,7 +67,11 @@ public sealed class EventBus : IEventBus
             {
                 await handler(applicationEvent, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
             {
                 _loggingService.CreateLogger(nameof(EventBus)).LogError(
                     exception,

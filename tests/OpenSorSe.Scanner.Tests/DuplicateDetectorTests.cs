@@ -192,6 +192,45 @@ public sealed class DuplicateDetectorTests
         Assert.Single(result.Groups);
     }
 
+    /// <summary>Verifies a large unique collection remains ordered and does not allocate duplicate groups unnecessarily.</summary>
+    [Fact]
+    public async Task DetectAsync_TwentyFiveThousandUniqueHashes_RemainsAccurateAndOrdered()
+    {
+        var files = Enumerable.Range(0, 25_000)
+            .Select(index => Entry(
+                $"entry-{index:D5}",
+                new FileHash("SHA-256", index.ToString("x64"))))
+            .ToArray();
+
+        var result = await CreateDetector().DetectAsync(files);
+
+        Assert.Equal(25_000, result.Files.Count);
+        Assert.Empty(result.Groups);
+        Assert.Empty(result.Issues);
+        Assert.Equal(
+            new DuplicateDetectionStatistics(25_000, 25_000, 0, 0, 0, 0),
+            result.Statistics);
+        Assert.Equal(files.Select(file => file.FullPath), result.Files.Select(file => file.FullPath));
+        Assert.All(result.Files, file => Assert.Equal(DuplicateStatus.Unique, file.Duplicate!.Status));
+    }
+
+    /// <summary>Verifies cancellation is checked during preparation rather than only before a large scan.</summary>
+    [Fact]
+    public async Task DetectAsync_CancelledDuringPreparation_StopsWithoutReturningPartialResult()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var files = Enumerable.Range(0, 10_000)
+            .Select(index => Entry(
+                $"entry-{index:D5}",
+                new FileHash("SHA-256", index.ToString("x64"))))
+            .ToArray();
+        IReadOnlyCollection<FileEntry> cancellingCollection =
+            new CancellingCollection<FileEntry>(files, 256, cancellation);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            CreateDetector().DetectAsync(cancellingCollection, cancellation.Token));
+    }
+
     private static DuplicateDetector CreateDetector() => new(new TestLoggingService(), new TestErrorHandler());
 
     private static FileEntry Entry(string path, FileHash? hash = null) => new(path, Hash: hash);
@@ -216,5 +255,31 @@ public sealed class DuplicateDetectorTests
         public event EventHandler<ApplicationError>? ErrorReported;
 
         public void Report(ApplicationError applicationError) => ErrorReported?.Invoke(this, applicationError);
+    }
+
+    private sealed class CancellingCollection<T>(
+        IReadOnlyList<T> inner,
+        int cancelAtIndex,
+        CancellationTokenSource cancellation) : IReadOnlyCollection<T>
+    {
+        private int _enumerationCount;
+
+        public int Count => inner.Count;
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            var enumeration = Interlocked.Increment(ref _enumerationCount);
+            for (var index = 0; index < inner.Count; index++)
+            {
+                if (enumeration >= 2 && index == cancelAtIndex)
+                {
+                    cancellation.Cancel();
+                }
+
+                yield return inner[index];
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
