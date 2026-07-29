@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.5 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Platform adapters make Windows and Linux behavior explicit. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. OCR Beta and Semantic Search Beta remain local and independent of AI.
+OpenSorSe 1.7 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, Search/background indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Platform adapters make Windows and Linux behavior explicit. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. Search and OCR remain local and do not require AI.
 
 ## Completed releases
 
@@ -244,6 +244,30 @@ tracked in the v1.6 reports.
 - No schema migration, autonomous feature, new mutation path, installer,
   updater, package, tag, or publishing step.
 
+## v1.7 - Deep Indexing Foundation
+
+Source implementation and local automated validation are complete; exact
+post-push hosted evidence and the uncompleted manual status are tracked in the
+v1.7 report and final handoff.
+
+- Version: `v1.7`
+- Release name: **Deep Indexing Foundation**
+- Git branch: `v1.7-deep-indexing-foundation`
+- Provider-independent durable indexing contracts with an embedded SQLite
+  provider and no required database server.
+- Basic, Standard, and Deep policies with stable identity, content
+  fingerprints, duplicate sharing, incremental invalidation, deleted-record
+  retention, exclusions, and quota maintenance.
+- Persistent discovery/run/job/stage state with pause, resume, safe
+  cancellation, bounded retry, dependency waiting, shutdown recovery, and
+  completed-work reuse.
+- Progressive Search coverage, plain-language help, accurate progress,
+  storage breakdown, source controls, and privacy-safe indexing diagnostics.
+- User-facing Meaning Search renamed to Search while internal/persisted
+  compatibility names remain stable.
+- No conversational Search, final hybrid ranker, PostgreSQL runtime, cloud
+  index, autonomous organization, or new file-mutation path.
+
 Release branches follow `v<version>-<primary-feature>`, for example:
 
 - `v1.1-safe-file-operations`
@@ -252,6 +276,7 @@ Release branches follow `v<version>-<primary-feature>`, for example:
 - `v1.4-plugin-foundation`
 - `v1.5-cross-platform-foundation`
 - `v1.6-reliability-performance`
+- `v1.7-deep-indexing-foundation`
 
 ## Future release ideas
 
@@ -260,7 +285,8 @@ The following are longer-term ideas, not current capabilities or committed relea
 - Rich full-fidelity document/content readers beyond the bounded 1.0 extractors.
 - Bundled Tesseract executables or OCR language/model packaging.
 - Learned or external semantic embedding models and GPU acceleration.
-- Database-backed scan catalogs, tags, and search indexes.
+- Optional server-backed indexing providers and reviewed synchronization
+  protocols; PostgreSQL would remain behind a server/API boundary.
 - Generic rule execution and undo integration beyond the narrow restructuring apply workflow.
 - Out-of-process plugin sandboxing, publisher signatures, and an optional
   reviewed marketplace/download service.

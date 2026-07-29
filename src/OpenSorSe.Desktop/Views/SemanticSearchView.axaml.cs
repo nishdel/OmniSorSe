@@ -2,10 +2,10 @@ using Avalonia.Controls;
 
 namespace OpenSorSe.Desktop.Views;
 
-/// <summary>Hosts local Semantic Search Beta indexing and explained results.</summary>
+/// <summary>Hosts local Search, durable indexing progress, and explained results.</summary>
 public partial class SemanticSearchView : UserControl
 {
-    /// <summary>Initializes the semantic search view.</summary>
+    /// <summary>Initializes the Search view.</summary>
     public SemanticSearchView()
     {
         InitializeComponent();

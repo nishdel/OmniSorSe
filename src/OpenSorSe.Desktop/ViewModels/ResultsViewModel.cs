@@ -136,7 +136,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// </summary>
     public event EventHandler? PersistedTagsChanged;
 
-    /// <summary>Occurs when the user switches from name search to local Meaning Search.</summary>
+    /// <summary>Occurs when the user opens local Search.</summary>
     public event EventHandler? MeaningSearchRequested;
 
     /// <summary>Occurs when a reviewed suggestion becomes a Change Plan.</summary>
@@ -217,13 +217,13 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         OpenMeaningSearchCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Gets whether local Meaning Search Beta is enabled.</summary>
+    /// <summary>Gets whether local Search is enabled.</summary>
     public bool IsMeaningSearchEnabled => _configurationService.Current.SemanticSearch.Enabled;
 
-    /// <summary>Gets plain-language Meaning Search availability guidance.</summary>
+    /// <summary>Gets plain-language Search availability guidance.</summary>
     public string MeaningSearchAvailabilityText => IsMeaningSearchEnabled
-        ? "Meaning Search is ready to open. It finds related ideas using a local index."
-        : "Meaning Search is off. Enable it in Settings to search by related ideas.";
+        ? "Search is ready. It can use names, metadata, document text, tags, and related concepts."
+        : "Search is off. Enable it in Settings to use the local index.";
 
     /// <summary>Gets the current normalized explorer query.</summary>
     public ResultsQuery Query
@@ -514,7 +514,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that returns from duplicate review to the file explorer.</summary>
     public IRelayCommand BackToExplorerCommand { get; }
 
-    /// <summary>Gets the command that opens local Meaning Search Beta.</summary>
+    /// <summary>Gets the command that opens local Search.</summary>
     public IRelayCommand OpenMeaningSearchCommand { get; }
 
     /// <summary>Shows the ordinary Files explorer.</summary>

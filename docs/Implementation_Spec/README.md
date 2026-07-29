@@ -21,18 +21,18 @@ This index distinguishes historical foundation specifications from release-speci
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual verification pending | [Specification 056](v1.4/056_Plugin_Foundation_and_Extension_SDK.md), [architecture](../Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md), [SDK](../EXTENSION_SDK_v1.4.md), [user guide](../USER_GUIDE_v1.4.md), and [manual checklist](../MANUAL_TESTING_v1.4.md) |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; exact platform validation tracked in Release Status | [Specification 057](v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md), [platform architecture](../Architecture/00_System/08_v1.5_Platform_Architecture.md), [matrix](../PLATFORM_COMPATIBILITY_MATRIX.md), [user guide](../USER_GUIDE_v1.5.md), and [manual checklist](../MANUAL_TESTING_v1.5.md) |
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation complete; exact final validation tracked in the v1.6 report | [Specification 058](v1.6/058_Reliability_Performance_and_Production_Hardening.md), [reliability architecture](../Architecture/00_System/09_v1.6_Reliability_Architecture.md), [implementation report](../V1.6_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.6.md) |
+| v1.7 Deep Indexing Foundation | Source implementation complete; exact final validation tracked in the v1.7 report | [Specification 059](v1.7/059_Deep_Indexing_Foundation.md), [deep-indexing architecture](../Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md), [implementation report](../V1.7_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.7.md) |
 
 ## Current boundary
 
-v1.6 preserves the local-first, suggestion-only AI and v1.1 execution boundary
-while hardening persistence, cancellation, lifecycle, memory, performance,
-accessibility, and platform verification. Reusable profiles and local plugin
-contributions resolve typed scan/analysis policy and recipes create proposals;
-neither grants approval. No specification authorizes autonomous AI filesystem
-control, permanent deletion, plugin direct mutation, cloud indexing, or
-unreviewed execution.
+v1.7 preserves the local-first, suggestion-only AI and v1.1 execution boundary
+while adding provider-independent, durable, progressive background indexing.
+Reusable profiles and local plugin contributions resolve typed scan/analysis
+policy and recipes create proposals; neither grants approval. No specification
+authorizes autonomous AI filesystem control, permanent deletion, plugin direct
+mutation, cloud indexing, or unreviewed execution.
 
-The current release is `v1.6`, **Reliability, Performance, and Production
-Hardening**, on `v1.6-reliability-performance`.
+The current release is `v1.7`, **Deep Indexing Foundation**, on
+`v1.7-deep-indexing-foundation`.
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.

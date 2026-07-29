@@ -15,6 +15,7 @@ using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
@@ -25,6 +26,7 @@ using OpenSorSe.Desktop.Services;
 using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor;
+using OpenSorSe.Indexing.Sqlite;
 
 namespace OpenSorSe.Desktop;
 
@@ -77,6 +79,10 @@ public partial class App : Avalonia.Application
                 .GetAwaiter()
                 .GetResult();
             _serviceProvider.GetRequiredService<IWatchedFolderCoordinator>()
+                .InitializeAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            _serviceProvider.GetRequiredService<IBackgroundIndexingService>()
                 .InitializeAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
@@ -146,6 +152,18 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
+        services.AddSingleton<IDeepIndexStore>(serviceProvider =>
+        {
+            return new SqliteDeepIndexStore(
+                Path.Combine(paths.DataDirectory, "index", "deep-index.db"),
+                serviceProvider.GetRequiredService<IPathSemantics>());
+        });
+        services.AddSingleton<IIndexFileDiscovery, PhysicalIndexFileDiscovery>();
+        services.AddSingleton<IBackgroundResourceMonitor, PortableBackgroundResourceMonitor>();
+        services.AddSingleton<IIndexingStageProcessor, DefaultIndexingStageProcessor>();
+        services.AddSingleton<IBackgroundIndexingService, BackgroundIndexingService>();
+        services.AddSingleton<IProgressiveSearchSource>(serviceProvider =>
+            serviceProvider.GetRequiredService<IBackgroundIndexingService>());
         services.AddSingleton<ISemanticIndexStore>(serviceProvider =>
         {
             return new JsonSemanticIndexStore(
@@ -298,6 +316,7 @@ public partial class App : Avalonia.Application
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
         _serviceProvider?.GetService<IWatchedFolderCoordinator>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _serviceProvider?.GetService<IBackgroundIndexingService>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _serviceProvider?.GetService<IPluginManager>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll();
         _applicationHost?.ShutdownAsync().GetAwaiter().GetResult();

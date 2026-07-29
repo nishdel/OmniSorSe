@@ -13,7 +13,7 @@ git status --short --branch
 dotnet --info
 ```
 
-Windows is the locally verified Desktop target and Linux is the v1.5 preview
+Windows is the primary Desktop target and Linux remains a preview
 target. The solution targets .NET 8 and the exact SDK selection is in
 `global.json`. Linux contributors should also read
 [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
@@ -68,6 +68,8 @@ Start at these entry points:
 | How does a manual scan run? | `ApplicationController`, `ProcessingSessionManager`, `ProcessingOrchestrator` |
 | How are files discovered? | `Scanner/FileScanner.cs` |
 | How are content and OCR coordinated? | `Application/Content/ContentIndexingService.cs` and `OcrService.cs` |
+| How does durable indexing work? | `Application/Indexing/BackgroundIndexingService.cs`, `IDeepIndexStore`, and `OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
+| How does progressive Search work? | `Application/Semantic/SemanticSearchService.cs` and `IProgressiveSearchSource` |
 | How are workflows resolved? | `Application/Workflows/WorkflowConfigurationResolver.cs` |
 | How are watcher hints processed? | `Application/Watching/WatchedFolderCoordinator.cs` and `WatchedFolderProcessor.cs` |
 | How are plugins discovered and loaded? | `Application/Plugins/PluginInfrastructure.cs` and `PluginRuntime.cs` |
@@ -87,7 +89,8 @@ Start at these entry points:
    core scan fail if extraction/OCR is unavailable.
 6. `ResultsSnapshotProjector` creates the immutable Results model.
 7. Desktop feature ViewModels consume the snapshot; optional catalog/content/
-   semantic stores persist only when their feature flow requests it.
+   Search stores persist only when their feature flow requests it. Completed
+   scans also queue their roots into durable background indexing when enabled.
 
 Set breakpoints at `MainViewModel.StartProcessingAsync`,
 `ProcessingOrchestrator.ProcessAsync`, and `FileScanner.ScanAsync` to observe
@@ -165,6 +168,8 @@ and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
 - Catching `OperationCanceledException` and reporting success.
 - Persisting unbounded provider, OCR, diagnostic, or plugin output.
 - Adding a store field without a schema/migration decision.
+- Calling `Microsoft.Data.Sqlite` outside the provider project or blocking the
+  UI thread with synchronous provider work.
 - Assuming `AssemblyLoadContext` is a sandbox.
 - Updating a historical document instead of the current authoritative guide.
 - Adding an Application-to-Desktop or SDK-to-internal project reference.

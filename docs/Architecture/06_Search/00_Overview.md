@@ -6,7 +6,7 @@
 
 ## Implementation Status
 
-OpenSorSe retains deterministic current-Results and catalog metadata search from v0.3-v0.9. OpenSorSe 1.0 additionally implements separately enabled Semantic Search Beta over a bounded local `semantic-index.json`. It combines exact filename, confirmed tag, path, metadata, native-text, OCR, and deterministic feature-hashing similarity signals and explains each match. The index is incremental, cancellable, rebuildable, and independent of AI. Search hits and comparison rows remain in memory. The broader database-backed/full-text/learned-embedding design below remains future architecture.
+OpenSorSe retains deterministic current-Results and catalog metadata search from v0.3-v0.9 and the compatible v1.0 `semantic-index.json`. In v1.7 the user-facing feature is named **Search** and can combine that bounded index with provider-neutral progressive documents from the durable background index. Filename, folder, tag, metadata, native text, OCR, summary, and related-concept fields remain distinguishable and matches are explained. Search stays usable while coverage is incomplete. A final learned ranker and server-backed provider remain future work.
 
 ---
 

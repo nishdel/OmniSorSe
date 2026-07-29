@@ -142,6 +142,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether advanced non-AI settings are visible in the editable hierarchy.</summary>
     public bool IsAdvancedSettingsVisible => Draft.ShowAdvancedFeatures;
 
+    /// <summary>Gets the supported durable indexing levels.</summary>
+    public IReadOnlyList<IndexingLevel> AvailableIndexingLevels { get; } = Enum.GetValues<IndexingLevel>();
+
+    /// <summary>Gets the supported responsible-resource profiles.</summary>
+    public IReadOnlyList<IndexingResourceMode> AvailableIndexingResourceModes { get; } =
+        Enum.GetValues<IndexingResourceMode>();
+
     /// <summary>Gets whether essential provider setup is visible whenever AI is enabled.</summary>
     public bool IsAiProviderSettingsVisible => Draft.AiEnabled;
 
@@ -414,9 +421,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             settings.Validate();
             await _configurationService.SaveAsync(settings, CancellationToken.None);
             ConfigureAdvancedDiagnostics(settings);
-            RestartRequired = LoggingChanged(previous.Logging, settings.Logging);
+            RestartRequired =
+                LoggingChanged(previous.Logging, settings.Logging) ||
+                ActiveIndexingWorkersChanged(previous.DeepIndexing, settings.DeepIndexing);
             StatusText = RestartRequired
-                ? "Settings saved and feature visibility updated. Restart OpenSorSe to apply active logging changes."
+                ? "Settings saved and feature visibility updated. Restart OpenSorSe to apply active logging or background-worker changes."
                 : "Settings saved and feature visibility updated.";
             Status = StatusPresentation.Success(StatusText);
             SettingsSaved?.Invoke(this, settings);
@@ -969,4 +978,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         previous.MinimumLevel != current.MinimumLevel ||
         previous.RetainedFileCount != current.RetainedFileCount ||
         !string.Equals(previous.LogDirectoryPath, current.LogDirectoryPath, StringComparison.Ordinal);
+
+    private static bool ActiveIndexingWorkersChanged(DeepIndexingSettings previous, DeepIndexingSettings current) =>
+        previous.Enabled != current.Enabled ||
+        previous.ResourceMode != current.ResourceMode ||
+        previous.MaximumConcurrency != current.MaximumConcurrency;
 }

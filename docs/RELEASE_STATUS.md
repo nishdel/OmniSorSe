@@ -19,13 +19,14 @@
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
+| v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; post-push hosted validation is a handoff gate; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
 
 ## Current product boundary
 
-OpenSorSe 1.6 is a safe, local-first desktop application for understanding,
-monitoring, and organizing explicitly selected folders. The v1.5 platform
-foundation remains intact; v1.6 adds production hardening and a native
-Windows/Ubuntu/macOS CI definition. Reusable workflows and plugin contributions
+OpenSorSe 1.7 is a safe, local-first desktop application for understanding,
+monitoring, searching, and organizing explicitly selected folders. The v1.6
+production-hardening and cross-platform foundation remains intact; v1.7 adds
+durable progressive background indexing. Reusable workflows and plugin contributions
 configure scanning and analysis but do not grant mutation authority.
 
 The current Desktop workflow does not:
@@ -49,7 +50,18 @@ Watcher APIs are treated as fallible hints. Enabled roots are reconciled on star
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic semantic vectors, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite index additionally retains durable sources, runs, stages, bounded shared content, coverage, and maintenance history. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+
+## v1.7 validation
+
+The final clean local sequence passed restore, zero-warning Debug and Release
+builds, and **987 tests in each configuration** with zero failures and zero
+skips. Analyzer, style, whitespace, documentation/dependency/architecture,
+vulnerability, patch, artifact, privacy, and four-runtime target-compilation
+gates passed. The exact immutable commit, push, synchronization, and native
+Windows/Ubuntu/macOS GitHub Actions result are post-commit evidence reported in
+the final handoff. Interactive manual validation is not claimed. See the
+[v1.7 Validation Report](V1.7_VALIDATION_REPORT.md).
 
 ## v1.6 validation
 
@@ -103,19 +115,21 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe 1.6 source implementation is on `v1.6-reliability-performance`.
-Automated validation and the required interactive manual smoke testing are
-complete with no release-blocking issues. Packaging, signing, tagging, and
-publishing remain separate release activities. See the [user guide](USER_GUIDE_v1.6.md), [implementation
-specification](Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md),
-[implementation report](V1.6_IMPLEMENTATION_REPORT.md), and
-[manual checklist](MANUAL_TESTING_v1.6.md).
+OpenSorSe 1.7 source implementation is on
+`v1.7-deep-indexing-foundation`. Final local automated validation is complete;
+commit, push, and exact GitHub Actions evidence are post-commit handoff gates
+tracked separately from the uncompleted manual checklist.
+Packaging, signing, tagging, and publishing remain separate release activities.
+See the [user guide](USER_GUIDE_v1.7.md), [implementation
+specification](Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md),
+[implementation report](V1.7_IMPLEMENTATION_REPORT.md), and
+[manual checklist](MANUAL_TESTING_v1.7.md).
 
 ## Release identity
 
-- Version: `v1.6`
-- Release name: **Reliability, Performance, and Production Hardening**
-- Git branch: `v1.6-reliability-performance`
-- Status: source implementation and required automated/manual validation complete; no package, tag, or published release is claimed.
+- Version: `v1.7`
+- Release name: **Deep Indexing Foundation**
+- Git branch: `v1.7-deep-indexing-foundation`
+- Status: source implementation and local automated validation complete; post-push hosted validation remains a handoff gate; no interactive manual result, package, tag, or published release is claimed.
 
 The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, `v1.3-workflow-profiles`, `v1.4-plugin-foundation`, and `v1.5-cross-platform-foundation`.

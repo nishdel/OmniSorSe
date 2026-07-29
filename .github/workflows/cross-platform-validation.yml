@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - v1.6-reliability-performance
+      - v1.7-deep-indexing-foundation
   pull_request:
 
 permissions:

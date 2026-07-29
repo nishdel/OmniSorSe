@@ -2,32 +2,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
              xmlns:semantic="using:OpenSorSe.Application.Semantic"
+             xmlns:indexing="using:OpenSorSe.Application.Indexing"
              xmlns:views="using:OpenSorSe.Desktop.Views"
              x:Class="OpenSorSe.Desktop.Views.SemanticSearchView"
              x:DataType="vm:SemanticSearchViewModel">
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <StackPanel Spacing="3">
-                <WrapPanel>
-                    <TextBlock Classes="page-title" Text="Meaning Search" />
-                    <Border Margin="8,5,0,0"
-                            Padding="7,2"
-                            CornerRadius="8"
-                            Background="{DynamicResource AccentAIMutedBrush}">
-                        <TextBlock Text="BETA"
-                                   FontSize="10"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource AccentSearchBrush}" />
-                    </Border>
-                </WrapPanel>
+                <TextBlock Classes="page-title" Text="Search" />
                 <TextBlock Classes="page-subtitle"
-                           Text="Find files using related ideas, not only exact words." />
+                           Text="Find files using names, metadata, document text, tags, and related concepts." />
             </StackPanel>
             <Button Grid.Column="1"
                     Classes="help"
                     Content="?"
+                    Focusable="True"
                     Command="{Binding HelpCommand}"
-                    ToolTip.Tip="Meaning Search builds a local index. It does not send content to Ollama." />
+                    AutomationProperties.Name="About Search coverage"
+                    AutomationProperties.HelpText="Search can find files using names, metadata, document text, OCR, tags, and related concepts. Results improve as background indexing completes."
+                    ToolTip.Tip="Search can find files using names, metadata, document text, OCR, tags, and related concepts. Results improve as background indexing completes." />
         </Grid>
 
         <Border Grid.Row="1" Classes="card">
@@ -35,7 +28,7 @@
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <TextBox Text="{Binding QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              PlaceholderText="Try: tax documents from 2023"
-                             AutomationProperties.Name="Meaning search query" />
+                             AutomationProperties.Name="Search query" />
                     <Button Grid.Column="1"
                             Classes="primary"
                             Content="Search"
@@ -48,7 +41,7 @@
                 <WrapPanel>
                     <Button Margin="0,0,8,0"
                             Classes="secondary"
-                            Content="Build or refresh index"
+                            Content="Build or refresh existing index"
                             Command="{Binding BuildIndexCommand}" />
                     <Button Margin="0,0,8,0"
                             Classes="secondary"
@@ -76,13 +69,126 @@
                 <ProgressBar Minimum="0"
                              Maximum="1"
                              Value="{Binding ProgressValue}"
-                             IsVisible="{Binding IsBusy}" />
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="Current Search operation progress" />
                 <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
                 <views:StatusBanner DataContext="{Binding Status}" />
             </StackPanel>
         </Border>
 
         <Border Grid.Row="2" Classes="card">
+            <StackPanel Spacing="9">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Background indexing"
+                                   FontSize="18"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding BackgroundStateText}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="secondary"
+                            Content="Refresh status"
+                            Command="{Binding RefreshIndexingStatusCommand}" />
+                </Grid>
+                <ProgressBar Minimum="0"
+                             Maximum="1"
+                             Value="{Binding BackgroundProgressValue}"
+                             AutomationProperties.Name="Overall background indexing progress"
+                             AutomationProperties.HelpText="{Binding ProcessedCountText}" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding CurrentStageText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CurrentFileText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ProcessedCountText}" />
+                        <TextBlock Text="{Binding RemainingCountText}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock Text="{Binding OutcomeCountText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ThroughputText}" />
+                        <TextBlock Text="{Binding EstimatedTimeText}"
+                                   IsVisible="{Binding HasEstimatedTime}" />
+                        <TextBlock Text="{Binding StorageText}" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding CoverageText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Text="{Binding StorageBreakdownText}"
+                           TextWrapping="Wrap"
+                           Classes="page-subtitle" />
+                <WrapPanel>
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Pause"
+                            Command="{Binding PauseIndexingCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Resume"
+                            Command="{Binding ResumeIndexingCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Cancel safely"
+                            Command="{Binding CancelIndexingCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Retry failed items"
+                            Command="{Binding RetryFailedItemsCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Rebuild background index"
+                            Command="{Binding RebuildBackgroundIndexCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Maintain storage"
+                            Command="{Binding MaintainIndexCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Open run diagnostics"
+                            Command="{Binding OpenIndexingDiagnosticsCommand}"
+                            AutomationProperties.HelpText="Opens privacy-minimized diagnostics for background indexing runs." />
+                </WrapPanel>
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <ComboBox ItemsSource="{Binding Sources}"
+                              SelectedItem="{Binding SelectedSource, Mode=TwoWay}"
+                              PlaceholderText="No indexed folder selected"
+                              DisplayMemberBinding="{Binding DisplayName}"
+                              AutomationProperties.Name="Indexed folder" />
+                    <Button Grid.Column="1"
+                            Classes="secondary"
+                            Content="Prioritize"
+                            Command="{Binding PrioritizeSourceCommand}" />
+                    <Button Grid.Column="2"
+                            Classes="secondary"
+                            Content="Remove source"
+                            Command="{Binding RemoveSourceCommand}"
+                            AutomationProperties.HelpText="Removes this folder from indexing without changing source files." />
+                </Grid>
+                <Expander Header="{Binding FailureSummaryText}"
+                          AutomationProperties.Name="Indexing failures">
+                    <ItemsControl ItemsSource="{Binding IndexingFailures}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="indexing:IndexingFailure">
+                                <Border Classes="result-row" Padding="0,6">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding FileName}"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Stage, StringFormat='Stage: {0}'}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Category, StringFormat='Category: {0}'}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Attempt, StringFormat='Attempt: {0}'}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Classes="card">
             <Grid>
                 <StackPanel IsVisible="{Binding !HasHits}"
                             Classes="empty-state"
@@ -94,10 +200,10 @@
                                FontWeight="Bold"
                                Foreground="{DynamicResource AccentSearchBrush}"
                                HorizontalAlignment="Center" />
-                    <TextBlock Text="No meaning matches yet"
+                    <TextBlock Text="No Search results yet"
                                FontSize="18"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="Build the local index, then search using an idea or phrase."
+                    <TextBlock Text="Build or refresh the index, then search using a name, detail, or phrase."
                                Classes="page-subtitle"
                                TextAlignment="Center" />
                 </StackPanel>

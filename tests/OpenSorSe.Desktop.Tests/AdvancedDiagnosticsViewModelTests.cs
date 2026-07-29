@@ -47,9 +47,10 @@ public sealed class AdvancedDiagnosticsViewModelTests
 
         var planned = viewModel.CategoryFilters.Where(item => !item.IsInstrumented).ToArray();
 
-        Assert.Equal(5, planned.Length);
+        Assert.Equal(4, planned.Length);
         Assert.All(planned, item =>
             Assert.Contains("not yet instrumented", item.DisplayName, StringComparison.Ordinal));
+        Assert.True(DiagnosticCategoryRegistry.Get(DiagnosticCategory.SearchAndIndexing).IsInstrumented);
         Assert.DoesNotContain(
             viewModel.Sessions,
             item => !DiagnosticCategoryRegistry.Get(item.Session.Category).IsInstrumented);

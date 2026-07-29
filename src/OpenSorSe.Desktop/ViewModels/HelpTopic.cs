@@ -21,7 +21,7 @@ public enum HelpTopicId
     CatalogSearch,
     /// <summary>Historical comparison guidance.</summary>
     CompareSnapshots,
-    /// <summary>Local hybrid Semantic Search Beta guidance.</summary>
+    /// <summary>Local Search and background-indexing guidance.</summary>
     SemanticSearch,
     /// <summary>Folder restructuring history and diagram guidance.</summary>
     StructureHistory,
@@ -127,13 +127,13 @@ public static class HelpCatalog
             ["Baseline", "Current", "Compare", "Filters"], "At least two compatible snapshots are needed.",
             "Scope differences are reported rather than hidden.", "Comparison never verifies or changes stored paths.",
             [HelpTopicId.SavedCatalog, HelpTopicId.AdvancedFeatures]),
-        Topic(HelpTopicId.SemanticSearch, "Semantic Search (Beta)", "Searches a bounded local index using filename, tag, metadata, native-text, OCR, and deterministic similarity signals.",
-            "Only the application-owned local content cache and semantic index.", "Only the rebuildable local semantic index and in-memory search results.",
+        Topic(HelpTopicId.SemanticSearch, "Search", "Search can find files using names, folder names, metadata, document text, OCR, tags, summaries, and related concepts. Results improve as background indexing completes.",
+            "Only application-owned local content and Search index data.", "Only rebuildable local Search data and in-memory search results.",
             "Source files; indexing never renames, moves, deletes, or edits them.",
-            ["Enable Semantic Search Beta in Settings.", "Build or refresh the local index.", "Enter a natural-language or exact query.", "Review why each result matched.", "Clear or rebuild the index when needed."],
-            ["Build / refresh index", "Rebuild index", "Search", "Clear local index", "Open selected result"],
-            "An empty index is normal until content metadata has been indexed.", "Missing files are removed during refresh; corrupt optional indexes recover to an empty rebuild state.",
-            "Search quality may evolve and future upgrades may require rebuilding. OCR and extracted text remain local.", [HelpTopicId.Results, HelpTopicId.Settings]),
+            ["Enable Search in Settings.", "Build or refresh the existing local index.", "Let background indexing add coverage gradually.", "Enter a natural-language or exact query.", "Review why each result matched.", "Pause, resume, retry, maintain, or rebuild when needed."],
+            ["Build / refresh index", "Pause", "Resume", "Cancel safely", "Retry failed items", "Prioritize source", "Remove source", "Rebuild", "Maintain storage", "Search", "Open selected result"],
+            "An empty index is normal until files have been discovered.", "Interrupted work resumes from durable stage state. Missing files are retained temporarily, and corrupt data requires an explicit backup restore or rebuild.",
+            "An empty result is not definitive while coverage is incomplete. OCR and extracted text remain local. Review diagnostics before exporting them.", [HelpTopicId.Results, HelpTopicId.Settings]),
         Topic(HelpTopicId.StructureHistory, "Structure history", "Reviews folder restructuring proposals, applied outcomes, repeat protection, and historical structures.",
             "Bounded relative paths, sizes, timestamps, fingerprints, and application-owned structure history.", "Preview/history records; only an exact separately confirmed proposal may move listed in-root files.",
             "File contents. Diagrams, comparisons, refresh, filters, and preview do not modify files.",

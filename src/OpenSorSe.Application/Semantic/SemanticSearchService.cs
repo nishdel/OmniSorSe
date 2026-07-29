@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Semantic;
@@ -9,16 +10,19 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly IConfigurationService _configurationService;
     private readonly IEmbeddingProvider _embeddingProvider;
     private readonly ISemanticIndexStore _indexStore;
+    private readonly IProgressiveSearchSource? _progressiveSearchSource;
 
     /// <summary>Initializes the bounded local hybrid search service.</summary>
     public SemanticSearchService(
         IConfigurationService configurationService,
         IEmbeddingProvider embeddingProvider,
-        ISemanticIndexStore indexStore)
+        ISemanticIndexStore indexStore,
+        IProgressiveSearchSource? progressiveSearchSource = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _embeddingProvider = embeddingProvider ?? throw new ArgumentNullException(nameof(embeddingProvider));
         _indexStore = indexStore ?? throw new ArgumentNullException(nameof(indexStore));
+        _progressiveSearchSource = progressiveSearchSource;
     }
 
     /// <inheritdoc />
@@ -29,7 +33,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
         var settings = _configurationService.Current.SemanticSearch;
         if (!settings.Enabled)
         {
-            return Result(SemanticState.Disabled, "Semantic Search Beta is disabled in Settings.", []);
+            return Result(SemanticState.Disabled, "Search is disabled in Settings.", []);
         }
 
         var normalizedQuery = query?.Trim() ?? string.Empty;
@@ -38,10 +42,31 @@ public sealed class SemanticSearchService : ISemanticSearchService
             return Result(SemanticState.Failed, "Enter a search phrase of up to 256 characters.", []);
         }
 
-        var entries = await _indexStore.ListAsync(cancellationToken).ConfigureAwait(false);
-        if (entries.Count == 0)
+        var legacyEntries = await _indexStore.ListAsync(cancellationToken).ConfigureAwait(false);
+        var progressiveDocuments = _progressiveSearchSource is null
+            ? []
+            : await _progressiveSearchSource
+                .GetDocumentsAsync(settings.MaximumDocumentCount, cancellationToken)
+                .ConfigureAwait(false);
+        var progressiveEntries = progressiveDocuments.Select(ToSemanticEntry);
+        var entries = legacyEntries
+            .Concat(progressiveEntries)
+            .GroupBy(entry => entry.FullPath, PathComparer)
+            .Select(group => group
+                .OrderByDescending(entry => entry.IndexedAtUtc)
+                .First())
+            .ToArray();
+        var coverage = _progressiveSearchSource is null
+            ? new SearchCoverage(0, 0, 0, 0, 0, 0)
+            : await _progressiveSearchSource.GetCoverageAsync(cancellationToken).ConfigureAwait(false);
+        if (entries.Length == 0)
         {
-            return Result(SemanticState.Empty, "The local semantic index is empty. Build it first.", []);
+            return Result(
+                SemanticState.Empty,
+                coverage.IsIncomplete
+                    ? "Search coverage is still being built. Some files may not appear yet."
+                    : "The local Search index is empty. Build or refresh it first.",
+                []);
         }
 
         var queryTokens = SemanticTokenizer.Tokenize(normalizedQuery, 12)
@@ -118,7 +143,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             if (similarity > 0)
             {
                 score += similarity * 30;
-                explanation.Add($"Local similarity: {DescribeSimilarity(similarity)}");
+                explanation.Add($"Related concepts: {DescribeSimilarity(similarity)}");
             }
 
             if (score <= 1)
@@ -144,8 +169,33 @@ public sealed class SemanticSearchService : ISemanticSearchService
             .ToArray();
         return Result(
             SemanticState.Ready,
-            $"{ordered.Length} local result(s). Scores combine exact, tag, metadata, text, and Beta similarity signals.",
+            coverage.IsIncomplete
+                ? $"{ordered.Length} local result(s). Search coverage is still being built, so some files may not appear yet."
+                : $"{ordered.Length} local result(s) from names, metadata, document text, tags, and related concepts.",
             Array.AsReadOnly(ordered));
+    }
+
+    private SemanticIndexEntry ToSemanticEntry(ProgressiveSearchDocument document)
+    {
+        var metadataTerms = SemanticTokenizer.Tokenize(
+            string.Join(' ', document.FolderName, document.MetadataText, document.Summary, string.Join(' ', document.Tags)),
+            128);
+        var nativeTerms = SemanticTokenizer.Tokenize(document.ExtractedText ?? string.Empty, 256);
+        var ocrTerms = SemanticTokenizer.Tokenize(document.OcrText ?? string.Empty, 256);
+        var vector = document.SemanticRepresentation is { Count: > 0 } stored
+            ? stored
+            : _embeddingProvider.Embed(string.Join(' ', document.FileName, document.FolderName, document.MetadataText));
+        return new SemanticIndexEntry(
+            document.FullPath,
+            document.FileId,
+            DeepIndexingVersion.ProcessorVersion,
+            document.FileName,
+            [],
+            metadataTerms,
+            nativeTerms,
+            ocrTerms,
+            vector,
+            DateTimeOffset.MinValue);
     }
 
     private static double Cosine(IReadOnlyList<float> left, IReadOnlyList<float> right)

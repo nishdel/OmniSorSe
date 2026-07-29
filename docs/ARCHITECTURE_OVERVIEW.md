@@ -1,6 +1,6 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the OpenSorSe 1.6 source
+This is the authoritative top-level architecture for the OpenSorSe 1.7 source
 tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -8,8 +8,9 @@ describes project ownership and references.
 ## Architectural shape
 
 OpenSorSe is a local-first Windows desktop application with a Linux preview, built with .NET 8,
-Avalonia, MVVM, dependency injection, asynchronous bounded services, and
-user-local JSON persistence. Most of the application analyses data or creates
+Avalonia, MVVM, dependency injection, asynchronous bounded services,
+user-local JSON persistence, and an embedded provider-isolated SQLite Search
+index. Most of the application analyses data or creates
 proposals. A narrow, explicit Change Plan boundary separates those activities
 from approved user-file mutation.
 
@@ -28,6 +29,8 @@ internal services.
 | File discovery | `FileScanner` enumerates selected roots read-only with progress, cancellation, and isolated issues. |
 | Basic analysis | `FileMetadataReader`, `FileHasher`, `FileClassifier`, and `DuplicateDetector`. |
 | Text and OCR | `ContentIndexingService` → `MetadataExtractionPipeline`; `OcrService`, `PdfPageRasterizer`, and `TesseractCliOcrEngine` supply bounded local OCR where enabled and needed. |
+| Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
+| Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource` documents and coverage while deeper indexing is incomplete. |
 | Rules and planning | `RuleEngine`, `ActionPlanner`, and `ConflictResolver` produce deterministic proposals; they do not execute them. |
 | Optional AI | `AiSuggestionService` owns gates, prompts, parsing, validation, and review outcomes. `OllamaSuggestionProvider` owns HTTP transport. |
 | Workflows and recipes | `WorkflowLibraryService`, `WorkflowConfigurationResolver`, `WorkflowTemplateEngine`, and `WorkflowRecipePlanService`. |
@@ -65,7 +68,7 @@ The current plugin foundation exposes all eight bounded invocation surfaces.
 Workflow dependency checks and plugin recipe fields are integrated with
 Workflow/Profile resolution and recipe planning. Other extension-point adapters
 are host-callable through `IPluginExtensionHost`; broad insertion into every
-legacy scanner/content pipeline stage is deliberately not implied by v1.6.
+legacy scanner/content pipeline stage is deliberately not implied by v1.7.
 
 ## v1.6 reliability boundary
 
@@ -76,6 +79,18 @@ query/projection use bounded allocations and cooperative cancellation.
 Processing-session history is bounded, background task progress is terminal
 safe, observer failures are isolated, and watcher initialization/disposal is
 idempotent. See [Reliability Architecture](Architecture/00_System/09_v1.6_Reliability_Architecture.md).
+
+## v1.7 deep-indexing boundary
+
+Application owns provider-independent stage, progress, storage, Search, and
+control contracts. The SQLite project owns relational schema and provider
+mechanics; Views, ViewModels, Search ranking, and other application services do
+not reference SQLite APIs. Durable transactions separate discovery batches,
+claims, and stage outputs. Startup recovers interrupted `running` rows,
+completed compatible work is reused, content-derived values can be shared by
+hash, and quota maintenance is explicit. PostgreSQL is not a desktop runtime
+dependency; a future server adapter can implement the same contracts. See
+[Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md).
 
 ## Platform boundary
 
@@ -195,6 +210,7 @@ them.
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
 | Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
 | Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
+| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v1; transactional stages, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
 | AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
 | Structure history | `JsonStructureHistoryStore` | `structure-history.json` | Schema v1; bounded snapshots and relative paths. |
 | Workflow Profiles and Sorting Recipes | `JsonWorkflowLibraryStore` | `workflow-library.json` | Library schema v2; migration occurs on load/save; a corrupt source is preserved where possible before built-in recovery. |
@@ -243,6 +259,9 @@ never be committed.
   per-root debounce state, and one lifetime cancellation source.
 - JSON stores serialize writes with semaphores and replace only their own target
   after complete serialization and size validation.
+- The durable Search provider serializes provider operations, moves synchronous
+  SQLite work off the UI thread, uses short transactions, supports concurrent
+  external readers through WAL, and cooperatively cancels discovery/workers.
 - Plugin lifecycle and package operations are serialized by `PluginManager`;
   extension calls receive linked timeout/caller cancellation.
 - Executor cancellation is checked at safe action boundaries so a partially

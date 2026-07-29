@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the implemented
-v1.6 system and take precedence when an older document uses future-oriented
+v1.7 system and take precedence when an older document uses future-oriented
 language.
 
 ## Current implementation references
@@ -12,6 +12,8 @@ language.
   identity, filesystem, desktop, tool, and packaging boundaries.
 - `00_System/09_v1.6_Reliability_Architecture.md`: current atomic persistence,
   bounded-resource, cancellation, observer-isolation, and lifecycle hardening.
+- `00_System/10_v1.7_Deep_Indexing_Architecture.md`: current durable stages,
+  embedded provider, recovery, storage policy, progress, and Search coverage.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
@@ -19,8 +21,8 @@ language.
 - `04_AI/11_Small_Model_Prompt_Contracts.md`: implemented provider contract and
   validation shape.
 - `05_Database/09_v1_Local_Content_Stores_and_Migrations.md`: implemented local
-  JSON-store boundary; despite the directory name, v1.5 does not use a
-  relational database.
+  JSON-store boundary retained by v1.7; the separate durable Search provider
+  uses embedded SQLite behind Application contracts.
 - `06_Search/07_v1_Semantic_Index.md` and `08_v1_Tag_Provenance.md`: implemented
   local semantic/tag behavior.
 - `07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md`: current mutation

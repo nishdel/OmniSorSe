@@ -55,6 +55,7 @@ public sealed class DesktopBrandingAndLayoutTests
             ["UndoHistoryView.axaml"] = 3,
             ["PluginsView.axaml"] = 5,
             ["NotificationCenterView.axaml"] = 2,
+            ["SemanticSearchView.axaml"] = 5,
         };
         var viewsDirectory = Path.Combine(
             FindRepositoryRoot(),
@@ -87,11 +88,44 @@ public sealed class DesktopBrandingAndLayoutTests
                      "UndoHistoryView.axaml",
                      "PluginsView.axaml",
                      "NotificationCenterView.axaml",
+                     "SemanticSearchView.axaml",
                  })
         {
             var source = File.ReadAllText(Path.Combine(viewsDirectory, fileName));
             Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>Verifies Search naming and help remain plain-language and available beyond pointer hover.</summary>
+    [Fact]
+    public void SearchView_UsesAccessiblePlainLanguageHelpAndNoLegacyMeaningLabel()
+    {
+        var path = Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "SemanticSearchView.axaml");
+        var source = File.ReadAllText(path);
+        var document = XDocument.Parse(source);
+        var help = Assert.Single(
+            document.Descendants(),
+            element => element.Attributes().Any(attribute =>
+                attribute.Name.LocalName == "AutomationProperties.Name" &&
+                attribute.Value == "About Search coverage"));
+
+        Assert.Equal("True", help.Attribute("Focusable")?.Value);
+        Assert.NotNull(help.Attributes().SingleOrDefault(attribute =>
+            attribute.Name.LocalName == "ToolTip.Tip"));
+        Assert.Contains(
+            "document text",
+            help.Attributes().Single(attribute =>
+                attribute.Name.LocalName == "AutomationProperties.HelpText").Value,
+            StringComparison.Ordinal);
+        Assert.NotNull(help.Attribute("Command"));
+        Assert.Contains("Text=\"Search\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("Meaning Search", source, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("embedding", source, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FindRepositoryRoot()

@@ -147,7 +147,7 @@ identity, signing, update, migration, and uninstall policy.
   model, and enabled capability.
 - **OCR is unavailable:** verify the Tesseract executable and every configured
   language data file.
-- **Meaning Search is unavailable:** enable it separately and build/rebuild the
+- **Search is unavailable:** enable it separately and build/rebuild the
   local index.
 - **Settings do not persist:** verify write access to
   `%LOCALAPPDATA%\OpenSorSe`.

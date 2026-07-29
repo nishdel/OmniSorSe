@@ -19,10 +19,10 @@ OpenSorSe release compatible, safe, and understandable.
    publish workflow. Source validation alone does not claim a release exists.
 
 The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains the
-packaging baseline. Apply the current [v1.5 manual checklist](MANUAL_TESTING_v1.5.md)
+packaging baseline. Apply the current [v1.7 manual checklist](MANUAL_TESTING_v1.7.md)
 and [Release Status](RELEASE_STATUS.md) in addition.
 
-For v1.5, record Windows and Linux results independently. A green local Windows
+Record Windows, Linux, and macOS results independently. A green local Windows
 run does not prove the Ubuntu workflow ran, and a successful Linux source build
 does not prove every distribution, desktop, mount, watcher limit, native
 dependency, or packaging format. Never turn an unobserved CI definition into a
@@ -52,6 +52,7 @@ write, corruption behavior, and tests.
 | --- | --- |
 | Settings and logs | Core |
 | Catalog, saved searches, content, semantic index, structure history | Application subsystem containing the store |
+| Durable Search index | Application contracts and `OpenSorSe.Indexing.Sqlite` provider |
 | Watched configuration/catalogue/activity | Application/Watching |
 | Workflow library/import/export | Application/Workflows |
 | Plugin state and controlled installed versions | Application/Plugins |
@@ -70,6 +71,13 @@ For a schema change:
    tests;
 7. update Architecture Overview, Safety and Privacy, migration notes, and
    Version Notes.
+
+For the durable Search index, also test `PRAGMA quick_check`, unsupported newer
+schemas, interrupted migration recovery copies, startup recovery of every
+`running` job/stage row, WAL/backup lifecycle on Windows, connection disposal,
+quota maintenance, and rebuild source preservation. PostgreSQL is not a
+desktop dependency; alternate providers must preserve the provider-neutral
+contract.
 
 Never silently reinterpret a field in a way that could authorize broader file
 operations.

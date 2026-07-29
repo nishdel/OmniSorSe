@@ -9,13 +9,12 @@
   Find clarity in your files.
 </p>
 
-OpenSorSe is a modern, open-source Windows desktop application with a Linux preview for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, local meaning-based search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
+OpenSorSe is a modern, open-source Windows desktop application with a Linux preview for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, progressive local Search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
 
-> OpenSorSe 1.6.0 hardens atomic persistence, cancellation, memory use,
-> watcher/task lifecycle, diagnostics, accessibility, and Windows/Ubuntu/macOS
-> source validation while preserving every v1.5 feature and safety boundary.
-> Automated validation and the required interactive manual smoke testing are
-> complete with no release-blocking issues.
+> OpenSorSe 1.7.0 adds a durable, resumable background-indexing foundation,
+> progressive Search coverage, storage controls, and provider-independent
+> persistence while preserving every v1.6 feature and safety boundary. Exact
+> implementation and validation status is recorded in the v1.7 reports.
 
 
 <img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
@@ -51,7 +50,8 @@ OpenSorSe is a modern, open-source Windows desktop application with a Linux prev
 | **Workflows** | Manages versioned scan/analysis profiles and constrained sorting recipes with deterministic previews, assignments, imports/exports, and historical revision snapshots. |
 | **Local plugins** | Discovers and inspects bounded local extensions for metadata, extraction, classification, recipe fields, duplicate evidence, workflow capabilities, imports, and exports; external plugins require explicit enable/capability grants. |
 | **Duplicate Detective** | Groups byte-identical files, shows potential reclaimable space, and supports review without offering automatic deletion. |
-| **Meaning Search (Beta)** | Builds a bounded local index and finds related filenames, tags, metadata, native text, and OCR text with match explanations. |
+| **Search** | Finds files by names, folder names, metadata, document text, OCR, tags, summaries, and related concepts while showing progressive indexing coverage. |
+| **Background indexing** | Gradually analyses selected and watched folders with durable stages, pause/resume/cancel/retry, restart recovery, accurate progress, and bounded storage. |
 | **File Assistant** | Produces validated, review-only rename and folder-structure suggestions for explicitly selected files and metadata. |
 | **OCR / Text Recognition** | Extracts native PDF/Open XML text and can use an externally installed local Tesseract engine for images and scanned PDF pages. |
 | **Saved scans** | Keeps optional bounded scan snapshots, accepted tags, searches, and comparisons in OpenSorSe application data. |
@@ -91,11 +91,12 @@ Duplicate Detective keeps exact-copy groups visible while showing selected locat
 
 File Assistant clearly reports local-model readiness and presents unverified suggestions for review without applying them automatically.
 
-### Meaning Search
+### Search
 
-<!-- Meaning Search Screenshot: ![OpenSorSe Meaning Search](docs/images/meaning-search.png) -->
+<!-- Search Screenshot: ![OpenSorSe Search](docs/images/meaning-search.png) -->
 
-Meaning Search searches the local deterministic index and explains why each result matched.
+Search explains why each result matched and remains usable while deeper indexing
+coverage is still being built.
 
 ### Settings
 
@@ -107,9 +108,9 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 ### Binary availability
 
-This source tree does not claim a v1.6 package, installer, tag, or published
+This source tree does not claim a v1.7 package, installer, tag, or published
 release. The immutable historical v1.0 Windows package does not represent the
-current source. Build v1.6 from source; packaging, signing, and distribution
+current source. Build v1.7 from source; packaging, signing, and distribution
 remain separate release activities.
 
 ### Windows executable
@@ -123,7 +124,7 @@ An installer is not currently provided. The portable package avoids unsigned MSI
 ### Optional components
 
 - **Ollama:** Required only for explicitly enabled File Assistant capabilities. Install and manage it separately, then select an installed model in OpenSorSe Settings.
-- **Advanced diagnostics:** A default-off, non-modal viewer unifies live AI, OCR/text-extraction, and scanning sessions with correlation, filters, copy/export, explicit bounds, and redacted display by default. Duplicate, search/indexing, rules/organisation, file-operation, and performance categories are visible as not yet instrumented. Records remain memory-only unless manually exported.
+- **Advanced diagnostics:** A default-off, non-modal viewer unifies live AI, OCR/text-extraction, scanning, and durable Search-indexing sessions with correlation, filters, copy/export, explicit bounds, and redacted display by default. Records remain memory-only unless manually exported.
 - **Tesseract 5:** Required only for local OCR recognition. Native metadata and supported document text extraction work without it. English (`eng`) and/or German (`deu`) language data must match the configured languages.
 - **Developing from source:** Requires the .NET SDK version selected by [`global.json`](global.json).
 - **Local plugins:** Optional external plugins are local ZIP packages. OpenSorSe does not download or automatically update them. They run in-process as the current user and must be trusted.
@@ -135,9 +136,12 @@ See [Installation](docs/INSTALLATION.md) and
 
 OpenSorSe is local-first:
 
-- Selected files are not uploaded by scanning, OCR, saved scans, or Meaning Search.
+- Selected files are not uploaded by scanning, OCR, saved scans, Search, or background indexing.
 - OCR runs through local libraries and an optional local Tesseract installation.
-- Meaning Search uses a local, rebuildable deterministic index.
+- Search uses local, rebuildable indexes and does not require a database server.
+- The durable index can retain bounded filenames, paths, metadata, document/OCR
+  text, tags, summaries, and related-concept data according to explicit policy;
+  it never stores duplicate copies of complete source files.
 - AI is optional, disabled by default, and contacted only for explicit enabled requests.
 - File Assistant prompts target small local instruction models, but no model-size compatibility is claimed until the documented manual matrix is completed.
 - No cloud account is required.
@@ -162,14 +166,17 @@ Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
 
 ## Known limitations
 
-- The previously produced v1.0 portable package targets Windows x64. No v1.6 package, installer, or updater is claimed.
+- The previously produced v1.0 portable package targets Windows x64. No v1.7 package, installer, or updater is claimed.
 - Tesseract and its language data are external and required for image/scanned-page OCR. Rendered OCR page previews are not retained in diagnostics.
 - Real approximately 2B, 4B, and 7B/8B Ollama compatibility remains pending the documented manual matrix.
 - Folder-structure AI requests accept at most 12 selected files. Larger selections are rejected as a whole with the exact count shown; no file is silently omitted and no partial plan is generated.
 - Watcher APIs can duplicate, reorder, omit, or overflow events. OpenSorSe treats them as hints and reconciles on startup, resume, reconnect, overflow, at least daily while running, and on demand.
-- Watching runs only while OpenSorSe is open. A root renamed externally is shown as unavailable; v1.6 does not guess its new location.
+- Watching runs only while OpenSorSe is open. A root renamed externally is shown as unavailable; OpenSorSe does not guess its new location.
 - Linux watcher delivery depends on inotify descriptors/queues and reconciliation; network, FUSE, removable, and disconnected filesystems can provide weaker behavior.
-- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.6.
+- Background indexing runs only while OpenSorSe is open. Portable time windows
+  are enforced; idle/power/battery settings degrade gracefully where platform
+  signals are unavailable.
+- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.7.
 - The legacy recipe ID `current` is not silently persisted; affected watched folders require a deliberate persistent replacement.
 - Workflow transfer uses versioned JSON in the Workflows area. There is no cloud library, synchronization, marketplace, or arbitrary scripting.
 - Plugins are in-process. Assembly-load-context isolation and SHA-256 integrity checking are not an OS sandbox, code review, signature authority, or publisher authentication. Native plugins require an exact supported runtime identifier.
@@ -193,7 +200,7 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
   --configuration Release `
   --runtime win-x64 `
   --self-contained true `
-  --output $env:TEMP\OpenSorSe-v1.6.0-win-x64
+  --output $env:TEMP\OpenSorSe-v1.7.0-win-x64
 ```
 
 For Linux framework-dependent validation, use the
@@ -205,12 +212,12 @@ local build output only; they do not publish a release.
 - [Documentation index](docs/README.md)
 - [Installation](docs/INSTALLATION.md)
 - [Release status](docs/RELEASE_STATUS.md)
-- [v1.6 user guide](docs/USER_GUIDE_v1.6.md)
-- [v1.6 manual testing](docs/MANUAL_TESTING_v1.6.md)
-- [v1.6 version notes](docs/VERSION_NOTES_v1.6.md)
-- [v1.6 troubleshooting](docs/TROUBLESHOOTING_v1.6.md)
-- [v1.6 implementation report](docs/V1.6_IMPLEMENTATION_REPORT.md)
-- [v1.6 validation report](docs/V1.6_VALIDATION_REPORT.md)
+- [v1.7 user guide](docs/USER_GUIDE_v1.7.md)
+- [v1.7 manual testing](docs/MANUAL_TESTING_v1.7.md)
+- [v1.7 version notes](docs/VERSION_NOTES_v1.7.md)
+- [v1.7 troubleshooting](docs/TROUBLESHOOTING_v1.7.md)
+- [v1.7 implementation report](docs/V1.7_IMPLEMENTATION_REPORT.md)
+- [v1.7 validation report](docs/V1.7_VALIDATION_REPORT.md)
 - [Platform compatibility matrix](docs/PLATFORM_COMPATIBILITY_MATRIX.md)
 - [Linux build and launch](docs/LINUX_BUILD_AND_LAUNCH.md)
 - [Extension SDK](docs/EXTENSION_SDK_v1.4.md)
@@ -223,6 +230,7 @@ local build output only; they do not publish a release.
 - [Watched Folders on Linux](docs/WATCHED_FOLDERS_LINUX_v1.5.md)
 - [Platform architecture](docs/Architecture/00_System/08_v1.5_Platform_Architecture.md)
 - [Reliability architecture](docs/Architecture/00_System/09_v1.6_Reliability_Architecture.md)
+- [Deep indexing architecture](docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md)
 - [Workflow architecture](docs/Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
 - [Safety and privacy](docs/SAFETY_AND_PRIVACY.md)
 - [Advanced diagnostics architecture](docs/Architecture/01_Core/10_Advanced_Diagnostics.md)
@@ -239,9 +247,9 @@ local build output only; they do not publish a release.
 
 ## Roadmap
 
-**v1.6 — Reliability, Performance, and Production Hardening** is implemented
-in source on `v1.6-reliability-performance`; exact automated and manual
-completion status is tracked in the release documentation. Autonomous AI file
+**v1.7 — Deep Indexing Foundation** is implemented in source on
+`v1.7-deep-indexing-foundation`; exact automated and manual completion status
+is tracked in the release documentation. Autonomous AI file
 management and unrestricted filesystem control are not roadmap goals.
 
 See the detailed [roadmap](docs/roadmap.md).

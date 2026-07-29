@@ -1,10 +1,10 @@
-# OpenSorSe 1.5 Safety and Privacy
+# OpenSorSe Safety and Privacy
 
-OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
+OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, Search/background indexing, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe 1.5 continues to authorize only rename file, move file, and create
+OpenSorSe continues to authorize only rename file, move file, and create
 directory through the v1.1 Change Plan execution boundary. Workflow and plugin
 features can contribute configuration, analysis, and proposals; they do not
 receive mutation authority.
@@ -88,13 +88,13 @@ Watched-folder AI is separately disabled by default for every root and still req
 
 ## Advanced diagnostics
 
-Advanced Diagnostics is independent of ordinary logging and disabled by default. Its master switch controls all detailed collection; separate category switches currently instrument AI, OCR/text extraction, and scanning. Duplicate detection, search/indexing, rules/organisation, file operations, and standalone performance diagnostics are clearly marked not yet instrumented.
+Advanced Diagnostics is independent of ordinary logging and disabled by default. Its master switch controls all detailed collection; separate category switches currently instrument AI, OCR/text extraction, scanning, and Search/indexing. Duplicate detection, rules/organisation, file operations, and standalone performance diagnostics are clearly marked not yet instrumented.
 
 Redacted mode is the default. The separate unredacted opt-in may retain filenames, complete paths, document/OCR text, metadata, tags, search terms, prompts, and responses in process memory. Secrets, credentials, authorization headers, passwords, and API keys are removed in every mode. Detailed diagnostic content is never written to normal logs.
 
 The common store retains at most 50 sessions overall, 20 per category, 750 events per session, 100 OCR page records, 500 scan-entry records, 1,048,576 characters per field/event field set, approximately 8 MiB per session, and approximately 32 MiB total. Rendered OCR images are not retained. History is cleared when diagnostics are disabled and saved, when unredacted retention is turned back off, when explicitly cleared, or when OpenSorSe exits. Data leaves memory only through an explicit JSON or text export chosen by the user.
 
-## OCR, metadata, tags, and semantic search
+## OCR, metadata, tags, and Search
 
 - Filesystem, PDF, Open XML, and image extractors open supported files read-only, apply byte/page/text bounds, do not execute macros, and do not fetch external resources.
 - OCR Beta is separately enabled and capability-detected. PdfPig reads native PDF pages; the built-in PDFtoImage/PDFium renderer creates bounded page images only where native text is insufficient; the optional external Tesseract CLI recognizes those images.
@@ -103,9 +103,12 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Temporary page images live only in validated OpenSorSe-owned `job-*` directories and are deleted per page and again on success, error, timeout, or cancellation.
 - OCR and extraction failures are isolated per file and cannot stop normal scanning/search/catalog workflows.
 - Provenance tags distinguish confirmed system/user evidence from unverified generated candidates.
-- Semantic Search Beta is separately enabled, local, deterministic, bounded to configured document/result limits, incremental, cancellable, and rebuildable.
-- Search vectors are not shown as meaning or certainty. Results explain concrete match signals.
-- Clearing content or semantic stores never changes source files.
+- Search is separately enabled, local, bounded, incremental, cancellable, and rebuildable.
+- Search representations are not shown as meaning or certainty. Results explain concrete match signals.
+- Durable background indexing uses Basic, Standard, and Deep levels. It stores
+  bounded derived data, never copies complete source files, and remains usable
+  at partial coverage.
+- Clearing content, Search, or deep-index stores never changes source files.
 
 ## OpenSorSe-owned storage
 
@@ -120,6 +123,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Schema-versioned embedded SQLite sources, runs, files, stage state, bounded shared text/OCR/summary/chunks/representations, failures, and maintenance history. Corrupt/newer storage is preserved only after explicit rebuild; no source-file copies; explicit quota and retention policy. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
 | Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
 | Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
@@ -130,7 +134,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
 | Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
 
-Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
+Content and Search stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, Search representations, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
 
 Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
 

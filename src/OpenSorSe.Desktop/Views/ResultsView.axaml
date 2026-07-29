@@ -40,7 +40,7 @@
                                  AutomationProperties.Name="Name and metadata search" />
                         <Button Grid.Column="1"
                                 Classes="secondary"
-                                Content="Meaning Search  Beta"
+                                Content="Search"
                                 Command="{Binding OpenMeaningSearchCommand}"
                                 ToolTip.Tip="{Binding MeaningSearchAvailabilityText}" />
                         <Button Grid.Column="2"

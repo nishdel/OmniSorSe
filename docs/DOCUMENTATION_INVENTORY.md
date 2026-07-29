@@ -1,8 +1,8 @@
 # Documentation inventory
 
-This inventory records the v1.4 pre-commit documentation audit and the v1.5
-cross-platform addendum. The numerical inventory below is historical v1.4
-evidence; v1.5 link/structure tests enumerate the live tree instead of
+This inventory records the v1.4 pre-commit documentation audit and subsequent
+cross-platform, reliability, and deep-indexing addenda. The numerical inventory
+below is historical v1.4 evidence; current link/structure tests enumerate the live tree instead of
 pretending those counts stayed fixed. Source
 documentation and the checked-in v1.0 distribution snapshot are counted
 separately so packaged copies do not masquerade as independent current
@@ -80,7 +80,19 @@ product architecture.
 
 ## Current version-specific documentation
 
-These files are authoritative for v1.5 within their scope:
+These files are authoritative for v1.7 within their scope:
+
+- `docs/USER_GUIDE_v1.7.md`
+- `docs/TROUBLESHOOTING_v1.7.md`
+- `docs/MANUAL_TESTING_v1.7.md`
+- `docs/VERSION_NOTES_v1.7.md`
+- `docs/V1.7_IMPLEMENTATION_REPORT.md`
+- `docs/V1.7_VALIDATION_REPORT.md`
+- `docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md`
+- `docs/Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md`
+
+The v1.6 reliability and v1.5 platform documents remain authoritative for
+their stable subsystem boundaries:
 
 - `docs/USER_GUIDE_v1.5.md`
 - `docs/TROUBLESHOOTING_v1.5.md`

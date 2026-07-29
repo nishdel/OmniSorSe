@@ -42,7 +42,7 @@ public sealed class SemanticIndexer : ISemanticIndexer
         {
             return new SemanticResult<int>(
                 SemanticState.Disabled,
-                "Semantic Search Beta is disabled in Settings.",
+                "Search is disabled in Settings.",
                 0);
         }
 

@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
@@ -95,6 +96,105 @@ public sealed class SemanticSearchViewModelTests
         Assert.Empty(launcher.Opened);
     }
 
+    /// <summary>Verifies durable progress, coverage, storage, estimates, and source controls remain understandable.</summary>
+    [Fact]
+    public async Task RefreshBackgroundIndexing_PublishesCompletePlainLanguageProgress()
+    {
+        var background = new BackgroundIndexing
+        {
+            Progress = new IndexingProgressSnapshot
+            {
+                RunId = "run-1",
+                Status = IndexingRunStatus.Running,
+                CurrentStage = IndexingStage.TextExtracted,
+                CurrentFile = "report.pdf",
+                TotalDiscovered = 10,
+                Processed = 4,
+                Completed = 3,
+                Skipped = 1,
+                Failed = 0,
+                Waiting = 1,
+                RetryScheduled = 1,
+                FilesPerSecond = 2.5,
+                IndexSizeBytes = 512,
+                MaximumIndexSizeBytes = 1024,
+                Coverage = new SearchCoverage(10, 10, 4, 1, 2, 3),
+            },
+        };
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([]),
+            new Store(),
+            new Launcher(),
+            background);
+
+        await viewModel.RefreshAsync();
+
+        Assert.Equal(0.4, viewModel.BackgroundProgressValue);
+        Assert.Contains("document text", viewModel.CurrentStageText, StringComparison.Ordinal);
+        Assert.Contains("report.pdf", viewModel.CurrentFileText, StringComparison.Ordinal);
+        Assert.Contains("4 of 10", viewModel.ProcessedCountText, StringComparison.Ordinal);
+        Assert.Contains("6 files remaining", viewModel.RemainingCountText, StringComparison.Ordinal);
+        Assert.Contains("Waiting 1", viewModel.OutcomeCountText, StringComparison.Ordinal);
+        Assert.Contains("files/second", viewModel.ThroughputText, StringComparison.Ordinal);
+        Assert.False(viewModel.HasEstimatedTime);
+        Assert.Contains("still being built", viewModel.CoverageText, StringComparison.Ordinal);
+        Assert.Contains("B of", viewModel.StorageText, StringComparison.Ordinal);
+        Assert.Contains("document text", viewModel.StorageBreakdownText, StringComparison.Ordinal);
+        Assert.True(viewModel.PauseIndexingCommand.CanExecute(null));
+        Assert.False(viewModel.ResumeIndexingCommand.CanExecute(null));
+
+        background.Progress = background.Progress with
+        {
+            EstimatedRemaining = TimeSpan.FromMinutes(3),
+        };
+        await viewModel.RefreshAsync();
+
+        Assert.True(viewModel.HasEstimatedTime);
+        Assert.Equal("Estimated time remaining: 3 min", viewModel.EstimatedTimeText);
+    }
+
+    /// <summary>Verifies failures are inspectable without full paths and shared redacted diagnostics can be opened.</summary>
+    [Fact]
+    public async Task BackgroundFailuresAndDiagnosticsAreAccessible()
+    {
+        var background = new BackgroundIndexing
+        {
+            Failures =
+            [
+                new IndexingFailure(
+                    "run-1",
+                    "locked.txt",
+                    IndexingStage.ContentFingerprinted,
+                    IndexingFailureCategory.FileLocked,
+                    "file-locked",
+                    2,
+                    DateTimeOffset.UnixEpoch,
+                    CanRetry: true),
+            ],
+        };
+        var diagnostics = new DiagnosticsWindow();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([]),
+            new Store(),
+            new Launcher(),
+            background,
+            diagnostics);
+
+        await viewModel.RefreshAsync();
+        viewModel.OpenIndexingDiagnosticsCommand.Execute(null);
+
+        var failure = Assert.Single(viewModel.IndexingFailures);
+        Assert.Equal("locked.txt", failure.FileName);
+        Assert.DoesNotContain("C:\\", failure.FileName, StringComparison.Ordinal);
+        Assert.True(viewModel.HasIndexingFailures);
+        Assert.Contains("full paths are not shown", viewModel.FailureSummaryText, StringComparison.Ordinal);
+        Assert.True(diagnostics.WasShown);
+    }
+
     private static SemanticSearchHit Hit(string path) => new(
         path,
         CrossPlatformPath.GetFileName(path),
@@ -188,5 +288,87 @@ public sealed class SemanticSearchViewModelTests
             Opened.Add(fullPath);
             return Task.FromResult(ExternalLaunchResult.Success("Opened"));
         }
+    }
+
+    private sealed class BackgroundIndexing : IBackgroundIndexingService
+    {
+        private readonly IndexingSource _source =
+            new("source", "C:\\Docs", "Documents", IndexingLevel.Standard, true, true, 0, []);
+
+        public event EventHandler<IndexingProgressSnapshot>? ProgressChanged;
+
+        public IndexingProgressSnapshot Progress { get; set; } = new();
+
+        public IReadOnlyList<IndexingFailure> Failures { get; set; } = [];
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<string> QueueFolderAsync(
+            string rootPath,
+            IndexingLevel? level = null,
+            bool includeSubfolders = true,
+            IReadOnlyList<string>? exclusions = null,
+            CancellationToken cancellationToken = default) => Task.FromResult("run");
+
+        public Task<IReadOnlyList<IndexingSource>> GetSourcesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<IndexingSource>>([_source]);
+
+        public Task PauseAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task ResumeAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task CancelAsync(string reason, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<int> RetryFailedAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
+
+        public Task PrioritizeSourceAsync(string sourceId, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task RemoveSourceAsync(string sourceId, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task RebuildAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<IndexingProgressSnapshot> GetProgressAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Progress);
+
+        public Task<IndexStorageBreakdown> GetStorageBreakdownAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new IndexStorageBreakdown(10, 20, 30, 40, 50, 60, 70, 80, 512, 1024));
+
+        public Task<IReadOnlyList<IndexingFailure>> GetFailuresAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Failures);
+
+        public Task<IndexMaintenanceResult> MaintainAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new IndexMaintenanceResult(
+                [],
+                new IndexStorageBreakdown(0, 0, 0, 0, 0, 0, 0, 0, 512, 1024),
+                true));
+
+        public Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsAsync(
+            int maximumCount,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
+
+        public Task<SearchCoverage> GetCoverageAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Progress.Coverage);
+
+        public void Dispose()
+        {
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        public void Publish(IndexingProgressSnapshot progress)
+        {
+            Progress = progress;
+            ProgressChanged?.Invoke(this, progress);
+        }
+    }
+
+    private sealed class DiagnosticsWindow : IAdvancedDiagnosticsWindowService
+    {
+        public bool WasShown { get; private set; }
+
+        public void Show() => WasShown = true;
     }
 }

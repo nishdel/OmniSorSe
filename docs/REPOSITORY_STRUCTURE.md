@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the OpenSorSe 1.5 solution as it exists in source. It describes
+This guide maps the OpenSorSe 1.7 solution as it exists in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -11,6 +11,7 @@ flowchart TB
     Desktop["OpenSorSe.Desktop"]
     Ai["OpenSorSe.AI"]
     Application["OpenSorSe.Application"]
+    Indexing["OpenSorSe.Indexing.Sqlite"]
     Executor["OpenSorSe.Executor"]
     Rules["OpenSorSe.Rules"]
     Scanner["OpenSorSe.Scanner"]
@@ -19,6 +20,7 @@ flowchart TB
 
     Desktop --> Ai
     Desktop --> Application
+    Desktop --> Indexing
     Desktop --> Executor
     Desktop --> Rules
     Desktop --> Scanner
@@ -31,6 +33,8 @@ flowchart TB
     Application --> Scanner
     Application --> Core
     Application --> Sdk
+    Indexing --> Application
+    Indexing --> Core
     Executor --> Rules
     Executor --> Core
     Rules --> Scanner
@@ -173,6 +177,20 @@ reference cycles.
 - **Reference rule:** Desktop composes this transport behind
   `IAiSuggestionProvider`; lower projects do not reference it.
 
+### `OpenSorSe.Indexing.Sqlite`
+
+- **Purpose:** Initial embedded implementation of the provider-neutral durable
+  background-index store.
+- **Owns:** SQLite schema/versioning, migrations/backups, transactions,
+  integrity checks, durable sources/runs/jobs/stages, shared bounded content,
+  coverage/search projections, retention, quota maintenance, and compaction.
+- **Must not own:** Views, ViewModels, Search ranking, discovery/processing
+  policy, source-file mutation, PostgreSQL clients, or server configuration.
+- **Principal entry point:** `SqliteDeepIndexStore`.
+- **Dependencies:** Application and Core.
+- **Reference rule:** Desktop composes this provider behind `IDeepIndexStore`.
+  No Application, ViewModel, or View may use SQLite-specific APIs.
+
 ### `OpenSorSe.Desktop`
 
 - **Purpose:** Avalonia composition root and presentation layer.
@@ -199,6 +217,7 @@ reference cycles.
 | `OpenSorSe.Rules.Tests` | Rule evaluation, planning, conflicts, and pure models |
 | `OpenSorSe.Executor.Tests` | Change Plans, validation, journalling, execution, rollback, recovery, Undo, and compatibility regressions |
 | `OpenSorSe.Application.Tests` | Orchestration, stores, OCR/content, AI policy, catalog/search, watchers, workflows, plugins, and provenance |
+| `OpenSorSe.Indexing.Sqlite.Tests` | Schema, migration, corruption, incremental identity, durable stages, concurrency, cancellation, recovery, quota, Search coverage, and bounded performance regressions |
 | `OpenSorSe.Desktop.Tests` | Composition, navigation, ViewModels, command state, persistence presentation, and plugin UI |
 
 Tests may reference the production project under test and explicit
@@ -227,6 +246,7 @@ projects.
 | Pure rule/plan behavior | `OpenSorSe.Rules` plus Rules tests |
 | Change Plan, validation, journal, execution, recovery, or Undo | `OpenSorSe.Executor` plus Executor tests |
 | Product orchestration, persistence, watcher, workflow, content, or plugin host | `OpenSorSe.Application` plus Application tests |
+| Embedded durable-index schema/provider mechanics | `OpenSorSe.Indexing.Sqlite` plus SQLite provider tests |
 | Ollama HTTP behavior | `OpenSorSe.AI` plus Application integration tests |
 | Navigation, ViewModel, or XAML | `OpenSorSe.Desktop` plus Desktop tests |
 | Plugin-author contract | `OpenSorSe.Extensions.Abstractions`, compatibility docs, and adversarial host tests |

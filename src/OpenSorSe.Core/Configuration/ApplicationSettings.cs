@@ -34,8 +34,11 @@ public sealed class ApplicationSettings
     /// <summary>Gets or initializes bounded local content-extraction settings.</summary>
     public ContentSettings Content { get; init; } = new();
 
-    /// <summary>Gets or initializes local Semantic Search Beta settings.</summary>
+    /// <summary>Gets or initializes local Search settings.</summary>
     public SemanticSearchSettings SemanticSearch { get; init; } = new();
+
+    /// <summary>Gets or initializes durable background-indexing settings.</summary>
+    public DeepIndexingSettings DeepIndexing { get; init; } = new();
 
     /// <summary>
     /// Creates a settings snapshot with only the two shell-wide feature switches changed.
@@ -66,6 +69,7 @@ public sealed class ApplicationSettings
         Catalog = Catalog,
         Content = Content,
         SemanticSearch = SemanticSearch,
+        DeepIndexing = DeepIndexing,
     };
 
     /// <summary>
@@ -86,6 +90,7 @@ public sealed class ApplicationSettings
         Catalog = Catalog,
         Content = Content,
         SemanticSearch = SemanticSearch,
+        DeepIndexing = DeepIndexing,
     };
 
     /// <summary>
@@ -140,10 +145,17 @@ public sealed class ApplicationSettings
 
         if (SemanticSearch is null)
         {
-            throw new ConfigurationValidationException("Semantic Search settings are required.");
+            throw new ConfigurationValidationException("Search settings are required.");
         }
 
         SemanticSearch.Validate();
+
+        if (DeepIndexing is null)
+        {
+            throw new ConfigurationValidationException("Background indexing settings are required.");
+        }
+
+        DeepIndexing.Validate();
     }
 }
 
@@ -205,7 +217,7 @@ public sealed class DiagnosticsSettings
     }
 }
 
-/// <summary>Defines bounded local deterministic Semantic Search Beta behavior.</summary>
+/// <summary>Defines bounded local deterministic Search behavior.</summary>
 public sealed class SemanticSearchSettings
 {
     /// <summary>Gets or initializes whether local semantic indexing and navigation are enabled.</summary>
@@ -223,7 +235,124 @@ public sealed class SemanticSearchSettings
         if (MaximumDocumentCount is < 1 or > 100_000 ||
             MaximumResultCount is < 1 or > 1_000)
         {
-            throw new ConfigurationValidationException("Semantic Search settings are invalid.");
+            throw new ConfigurationValidationException("Search settings are invalid.");
+        }
+    }
+}
+
+/// <summary>Identifies the amount of local analysis requested for an indexing source.</summary>
+public enum IndexingLevel
+{
+    /// <summary>Indexes file and folder names, paths, timestamps, sizes, and stable fingerprints.</summary>
+    Basic,
+
+    /// <summary>Adds bounded native text, keywords, and one document-level search representation.</summary>
+    Standard,
+
+    /// <summary>Adds applicable OCR, richer derived data, bounded chunks, and relationship analysis.</summary>
+    Deep,
+}
+
+/// <summary>Identifies the resource profile used by durable background indexing.</summary>
+public enum IndexingResourceMode
+{
+    /// <summary>Minimizes background resource use and responsiveness impact.</summary>
+    Eco,
+
+    /// <summary>Balances indexing throughput with interactive responsiveness.</summary>
+    Balanced,
+
+    /// <summary>Uses the configured concurrency limit for maximum throughput.</summary>
+    Fast,
+}
+
+/// <summary>Defines conservative, bounded settings for durable background indexing.</summary>
+public sealed class DeepIndexingSettings
+{
+    /// <summary>Gets or initializes whether durable background indexing is enabled.</summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>Gets or initializes the default analysis level for newly registered sources.</summary>
+    public IndexingLevel DefaultLevel { get; init; } = IndexingLevel.Basic;
+
+    /// <summary>Gets or initializes the background resource profile.</summary>
+    public IndexingResourceMode ResourceMode { get; init; } = IndexingResourceMode.Balanced;
+
+    /// <summary>Gets or initializes the maximum durable index size in mebibytes.</summary>
+    public int MaximumIndexSizeMiB { get; init; } = 1024;
+
+    /// <summary>Gets or initializes the maximum extracted-text characters retained for one file.</summary>
+    public int MaximumExtractedTextCharacters { get; init; } = 131_072;
+
+    /// <summary>Gets or initializes the maximum OCR characters retained for one file.</summary>
+    public int MaximumOcrTextCharacters { get; init; } = 65_536;
+
+    /// <summary>Gets or initializes the maximum selected semantic chunks retained for one document.</summary>
+    public int MaximumSemanticChunksPerDocument { get; init; } = 8;
+
+    /// <summary>Gets or initializes deleted-file record retention in days.</summary>
+    public int DeletedFileRetentionDays { get; init; } = 30;
+
+    /// <summary>Gets or initializes failed-job history retention in days.</summary>
+    public int FailedJobHistoryRetentionDays { get; init; } = 14;
+
+    /// <summary>Gets or initializes the maximum attempts for a retryable stage.</summary>
+    public int MaximumRetryCount { get; init; } = 3;
+
+    /// <summary>Gets or initializes the maximum number of simultaneous stage workers.</summary>
+    public int MaximumConcurrency { get; init; } = 1;
+
+    /// <summary>Gets or initializes whether processing is restricted to user-idle periods when supported.</summary>
+    public bool ProcessOnlyWhileIdle { get; init; }
+
+    /// <summary>Gets or initializes whether processing is restricted to external power when supported.</summary>
+    public bool ProcessOnlyWhileConnectedToPower { get; init; }
+
+    /// <summary>Gets or initializes the optional battery percentage below which processing pauses.</summary>
+    public int? PauseBelowBatteryPercentage { get; init; }
+
+    /// <summary>Gets or initializes whether OCR stages may run.</summary>
+    public bool OcrProcessingEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether optional local-AI enrichment stages may run.</summary>
+    public bool AiProcessingEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether archive contents may be indexed.</summary>
+    public bool ArchiveIndexingEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether known generated folders are excluded.</summary>
+    public bool ExcludeGeneratedFolders { get; init; } = true;
+
+    /// <summary>Gets or initializes whether binaries and executables default to metadata-only indexing.</summary>
+    public bool BinaryAndExecutableMetadataOnly { get; init; } = true;
+
+    /// <summary>Gets or initializes an optional inclusive processing-window start hour in local time.</summary>
+    public int? ProcessingWindowStartHour { get; init; }
+
+    /// <summary>Gets or initializes an optional exclusive processing-window end hour in local time.</summary>
+    public int? ProcessingWindowEndHour { get; init; }
+
+    /// <summary>Validates resource, retention, and storage bounds.</summary>
+    public void Validate()
+    {
+        if (!Enum.IsDefined(DefaultLevel) ||
+            !Enum.IsDefined(ResourceMode) ||
+            MaximumIndexSizeMiB is < 16 or > 1_048_576 ||
+            MaximumExtractedTextCharacters is < 4096 or > 4_194_304 ||
+            MaximumOcrTextCharacters is < 4096 or > 1_048_576 ||
+            MaximumSemanticChunksPerDocument is < 1 or > 256 ||
+            DeletedFileRetentionDays is < 0 or > 3650 ||
+            FailedJobHistoryRetentionDays is < 1 or > 3650 ||
+            MaximumRetryCount is < 0 or > 20 ||
+            MaximumConcurrency is < 1 or > 32 ||
+            PauseBelowBatteryPercentage is < 1 or > 100 ||
+            ProcessingWindowStartHour is < 0 or > 23 ||
+            ProcessingWindowEndHour is < 0 or > 23 ||
+            ProcessingWindowStartHour.HasValue != ProcessingWindowEndHour.HasValue ||
+            ProcessingWindowStartHour.HasValue &&
+            ProcessingWindowStartHour == ProcessingWindowEndHour)
+        {
+            throw new ConfigurationValidationException("Background indexing settings are invalid.");
         }
     }
 }

@@ -195,7 +195,7 @@ public sealed class MainViewModelTests
         Assert.False(viewModel.ShowAdvancedFeatures);
         viewModel.Results.OpenMeaningSearchCommand.Execute(null);
         Assert.True(viewModel.IsSemanticSearchSelected);
-        Assert.Equal("Meaning Search (Beta)", viewModel.CurrentPageTitle);
+        Assert.Equal("Search", viewModel.CurrentPageTitle);
         Assert.Equal(NavigationDestination.Results, viewModel.SelectedNavigationItem.Destination);
     }
 

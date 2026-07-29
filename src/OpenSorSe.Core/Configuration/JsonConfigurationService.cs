@@ -141,6 +141,7 @@ public sealed class JsonConfigurationService : IConfigurationService
             Catalog = settings.Catalog,
             Content = settings.Content,
             SemanticSearch = settings.SemanticSearch,
+            DeepIndexing = settings.DeepIndexing,
         };
     }
 
@@ -165,6 +166,7 @@ public sealed class JsonConfigurationService : IConfigurationService
                 Catalog = settings.Catalog,
                 Content = settings.Content,
                 SemanticSearch = settings.SemanticSearch,
+                DeepIndexing = settings.DeepIndexing,
             };
         }
 
@@ -182,6 +184,7 @@ public sealed class JsonConfigurationService : IConfigurationService
             Catalog = settings.Catalog,
             Content = settings.Content,
             SemanticSearch = settings.SemanticSearch,
+            DeepIndexing = settings.DeepIndexing,
         };
     }
 }

@@ -20,7 +20,7 @@ reported Linux preview. AI and Advanced interface features remain independently
 disabled by default. AI is constrained to metadata-only rename/logical-folder
 proposals and a separately gated bounded extracted-text interpretation proposal;
 every response is strictly validated and suggestion-only. OCR Beta, metadata
-extraction, provenance tags, and Semantic Search Beta run locally and do not
+extraction, provenance tags, and Search run locally and do not
 require AI.
 
 Scanning, watchers, workflows, plugins, extraction, indexing, comparisons,

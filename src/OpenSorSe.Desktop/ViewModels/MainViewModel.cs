@@ -9,6 +9,7 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Features;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
@@ -64,6 +65,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IWorkflowRecipePlanService? _workflowRecipePlanService;
     private readonly IWatchedFolderManager? _watchedFolderManager;
     private readonly IWatchedFolderCoordinator? _watchedFolderCoordinator;
+    private readonly IBackgroundIndexingService? _backgroundIndexingService;
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
@@ -278,7 +280,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowTemplateEngine? workflowTemplateEngine = null,
         IPluginManager? pluginManager = null,
         OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
-        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null)
+        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
+        IBackgroundIndexingService? backgroundIndexingService = null)
         : this(
             configurationService,
             loggingService,
@@ -320,7 +323,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             workflowTemplateEngine,
             pluginManager,
             platformCapabilityProvider,
-            applicationPathProvider)
+            applicationPathProvider,
+            backgroundIndexingService)
     {
     }
 
@@ -365,7 +369,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowTemplateEngine? workflowTemplateEngine = null,
         IPluginManager? pluginManager = null,
         OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
-        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null)
+        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
+        IBackgroundIndexingService? backgroundIndexingService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -378,6 +383,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _workflowRecipePlanService = workflowRecipePlanService;
         _watchedFolderManager = watchedFolderManager;
         _watchedFolderCoordinator = watchedFolderCoordinator;
+        _backgroundIndexingService = backgroundIndexingService;
         Dashboard = new DashboardViewModel(Navigate);
         FolderSelection = new FolderSelectionViewModel(workflowLibrary);
         ScanProgress = new ScanProgressViewModel();
@@ -408,7 +414,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             semanticIndexer,
             semanticSearchService,
             semanticIndexStore,
-            externalFileLauncher);
+            externalFileLauncher,
+            backgroundIndexingService,
+            advancedDiagnosticsWindowService);
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
         StructureHistory = new StructureHistoryViewModel(
             structureHistoryStore,
@@ -526,7 +534,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     public CatalogSearchViewModel CatalogSearch { get; }
 
-    /// <summary>Gets local deterministic Semantic Search Beta state.</summary>
+    /// <summary>Gets local deterministic Search state.</summary>
     public SemanticSearchViewModel SemanticSearch { get; }
 
     /// <summary>
@@ -675,7 +683,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the advanced Compare scans tab command.</summary>
     public IRelayCommand ShowSavedScanComparisonCommand { get; }
 
-    /// <summary>Gets the command that returns from Meaning Search to Files.</summary>
+    /// <summary>Gets the command that returns from Search to Files.</summary>
     public IRelayCommand BackToFilesCommand { get; }
 
     /// <summary>Gets a single status-bar cancellation command for the active supported operation.</summary>
@@ -811,7 +819,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Duplicates => "Duplicates",
         NavigationDestination.Catalog => "Saved scans",
         NavigationDestination.CatalogSearch => "Search saved scans",
-        NavigationDestination.SemanticSearch => "Meaning Search (Beta)",
+        NavigationDestination.SemanticSearch => "Search",
         NavigationDestination.CatalogComparison => "Compare scans",
         NavigationDestination.StructureHistory => "Folder plans",
         NavigationDestination.Rules => "Sorting rules",
@@ -905,7 +913,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsCatalogSearchSelected => SelectedDestination == NavigationDestination.CatalogSearch;
 
-    /// <summary>Gets whether local Semantic Search Beta is selected.</summary>
+    /// <summary>Gets whether local Search is selected.</summary>
     public bool IsSemanticSearchSelected => SelectedDestination == NavigationDestination.SemanticSearch;
 
     /// <summary>
@@ -978,6 +986,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (destination == NavigationDestination.History)
         {
             _ = UndoHistory.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.SemanticSearch)
+        {
+            _ = SemanticSearch.RefreshAsync();
         }
         else if (destination == NavigationDestination.Workflows)
         {
@@ -1112,7 +1124,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (!_configurationService.Current.SemanticSearch.Enabled)
         {
-            StatusText = "Meaning Search is off. Enable it in Settings first.";
+            StatusText = "Search is off. Enable it in Settings first.";
             return;
         }
 
@@ -1157,6 +1169,36 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void OnWatchedFolderNotificationRequested(object? sender, NotificationRequest request) =>
         Notifications.Publish(request);
+
+    private async Task QueueCompletedScanForBackgroundIndexingAsync(
+        IReadOnlyList<string> folderPaths,
+        CancellationToken cancellationToken)
+    {
+        if (_backgroundIndexingService is null ||
+            !_configurationService.Current.DeepIndexing.Enabled)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var folderPath in folderPaths)
+            {
+                await _backgroundIndexingService.QueueFolderAsync(
+                    folderPath,
+                    _configurationService.Current.DeepIndexing.DefaultLevel,
+                    includeSubfolders: true,
+                    cancellationToken: cancellationToken);
+            }
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            Notifications.Publish(new NotificationRequest(
+                NotificationSeverity.Warning,
+                "The scan completed, but background Search indexing could not be queued. Existing results remain available."));
+        }
+    }
 
     private void OnWorkflowRunScanRequested(object? sender, string profileId)
     {
@@ -1486,6 +1528,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 {
                     await PersistCompletedSnapshotAsync(snapshot, request.FolderPaths.ToArray());
                 }
+
+                await QueueCompletedScanForBackgroundIndexingAsync(
+                    request.FolderPaths,
+                    cancellation.Token);
 
                 Dashboard.UpdateFromCompletedScan(Results.Summary);
                 ScanProgress.Complete(ScanStatus.Completed);

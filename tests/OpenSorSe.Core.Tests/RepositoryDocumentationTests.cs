@@ -109,12 +109,12 @@ public sealed partial class RepositoryDocumentationTests
         {
             "../README.md",
             "../CONTRIBUTING.md",
-            "USER_GUIDE_v1.6.md",
-            "TROUBLESHOOTING_v1.6.md",
-            "MANUAL_TESTING_v1.6.md",
-            "VERSION_NOTES_v1.6.md",
-            "V1.6_IMPLEMENTATION_REPORT.md",
-            "V1.6_VALIDATION_REPORT.md",
+            "USER_GUIDE_v1.7.md",
+            "TROUBLESHOOTING_v1.7.md",
+            "MANUAL_TESTING_v1.7.md",
+            "VERSION_NOTES_v1.7.md",
+            "V1.7_IMPLEMENTATION_REPORT.md",
+            "V1.7_VALIDATION_REPORT.md",
             "PLATFORM_COMPATIBILITY_MATRIX.md",
             "LINUX_BUILD_AND_LAUNCH.md",
             "SAFETY_AND_PRIVACY.md",
@@ -128,8 +128,8 @@ public sealed partial class RepositoryDocumentationTests
             "PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md",
             "WORKFLOW_PORTABILITY_v1.5.md",
             "WATCHED_FOLDERS_LINUX_v1.5.md",
-            "Architecture/00_System/09_v1.6_Reliability_Architecture.md",
-            "Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md",
+            "Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md",
+            "Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md",
             "Implementation_Spec/README.md",
         };
 
@@ -154,8 +154,11 @@ public sealed partial class RepositoryDocumentationTests
                 ["OpenSorSe.Extensions.Abstractions", "OpenSorSe.Core", "OpenSorSe.Executor", "OpenSorSe.Scanner", "OpenSorSe.Rules"],
                 StringComparer.Ordinal),
             ["OpenSorSe.AI"] = new HashSet<string>(["OpenSorSe.Application", "OpenSorSe.Core"], StringComparer.Ordinal),
+            ["OpenSorSe.Indexing.Sqlite"] = new HashSet<string>(
+                ["OpenSorSe.Application", "OpenSorSe.Core"],
+                StringComparer.Ordinal),
             ["OpenSorSe.Desktop"] = new HashSet<string>(
-                ["OpenSorSe.Extensions.Abstractions", "OpenSorSe.Core", "OpenSorSe.Scanner", "OpenSorSe.Rules", "OpenSorSe.Executor", "OpenSorSe.Application", "OpenSorSe.AI"],
+                ["OpenSorSe.Extensions.Abstractions", "OpenSorSe.Core", "OpenSorSe.Scanner", "OpenSorSe.Rules", "OpenSorSe.Executor", "OpenSorSe.Application", "OpenSorSe.AI", "OpenSorSe.Indexing.Sqlite"],
                 StringComparer.Ordinal),
         };
 

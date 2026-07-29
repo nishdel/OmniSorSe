@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.7.0
+
+Release branch: `v1.7-deep-indexing-foundation`.
+
+### Added
+
+- Provider-neutral durable background-index contracts and a separate embedded
+  SQLite provider with schema 1, migrations/backups, integrity checks,
+  transactions, WAL/full synchronization, recovery, and disposal.
+- Basic, Standard, and Deep indexing policies; stable file identity/content
+  fingerprints; incremental invalidation; duplicate content sharing; deletion
+  retention; exclusions; storage quota/maintenance; and bounded chunks/text.
+- Persistent staged jobs with pause, resume, safe cancellation, retry,
+  dependency waiting, prioritization, source removal, rebuild, and
+  interruption recovery. Interrupted discovery resumes without resetting
+  completed work; paused/cancelled state remains explicit across restart.
+- Progressive Search documents/coverage and accurate indexing progress,
+  counts, speed, sample-gated ETA, storage usage/breakdown, failures, and
+  privacy-safe diagnostics.
+- Watched-folder source ownership, automatic eligible-wait recovery, explicit
+  corruption/newer-schema recovery copies, and bounded backup sidecar cleanup.
+- Expanded unit, integration, persistence, migration, corruption, concurrency,
+  cancellation, recovery, ViewModel/accessibility, and bounded synthetic
+  performance-regression coverage.
+
+### Changed
+
+- User-facing **Meaning Search** is now **Search**. Stable internal types,
+  schemas, APIs, and migration identifiers retain compatible names.
+- Search includes an accessible pointer/keyboard/touch/screen-reader help
+  affordance and remains usable with an explicit partial-coverage warning.
+- Product, assembly, file, manifest, and About versions are `1.7.0` /
+  `1.7.0.0`.
+- Search/index diagnostics are now an instrumented category.
+- Search exposes a bounded failure inspector and direct current-run diagnostics
+  navigation; compatible existing Search stays available if the derived store
+  requires recovery.
+
+### Preserved boundaries
+
+- Existing JSON settings/catalog/content/Search/history/watch/workflow/plugin/
+  Change Plan/Operation Journal data remains compatible.
+- No PostgreSQL or database server, conversational Search, final hybrid ranker,
+  cloud indexing, autonomous file organization, new mutation path, package,
+  tag, installer, or release publishing is added.
+
 ## v1.6.0
 
 Release name: **Reliability, Performance, and Production Hardening**<br>
