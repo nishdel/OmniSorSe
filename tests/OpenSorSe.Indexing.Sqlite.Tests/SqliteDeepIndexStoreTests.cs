@@ -115,7 +115,7 @@ public sealed class SqliteDeepIndexStoreTests
 
         await store.InitializeAsync();
 
-        Assert.Equal(1, ReadUserVersion(fixture.DatabasePath));
+        Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
         Assert.Equal("retained", ReadScalar(fixture.DatabasePath, "SELECT id FROM legacy_partial LIMIT 1;"));
         Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
     }
@@ -136,7 +136,7 @@ public sealed class SqliteDeepIndexStoreTests
 
         Assert.True(File.Exists(backups[^1]));
         Assert.Equal(3, Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "*.db").Count());
-        Assert.Equal(1, ReadUserVersion(backups[^1]));
+        Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(backups[^1]));
     }
 
     /// <summary>Verifies provider-neutral source persistence.</summary>
@@ -761,6 +761,384 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.False(document.IsFullyIndexed);
     }
 
+    /// <summary>Verifies the v1.7 schema migrates transactionally to privacy-aware schema v2.</summary>
+    [Fact]
+    public async Task VersionOneMigratesToVersionTwoWithRecoveryBackup()
+    {
+        using var fixture = new IndexFixture();
+        await using (var versionTwo = await fixture.CreateInitializedStoreAsync())
+        {
+            Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
+        }
+
+        CreateDatabase(
+            fixture.DatabasePath,
+            "DROP TABLE index_privacy_rules; PRAGMA user_version = 1; UPDATE index_meta SET value = '1' WHERE key = 'schema_version';");
+        await using var migrated = fixture.CreateStore();
+
+        await migrated.InitializeAsync();
+
+        Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'index_privacy_rules';"));
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+    }
+
+    /// <summary>Verifies privacy inspection reports categories and counts, never raw derived text or vectors.</summary>
+    [Fact]
+    public async Task InspectFileReportsStoredCategoriesWithoutRawContent()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("private.txt")]);
+        await CompleteStandardRunAsync(store, "private-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var privacy = Assert.IsType<IndexPrivacyItem>(await store.InspectFileAsync(document.FileId));
+
+        Assert.Equal("private.txt", privacy.FileName);
+        Assert.True(privacy.ExtractedTextCharacters > 0);
+        Assert.True(privacy.HasSummary);
+        Assert.True(privacy.KeywordCount > 0);
+        Assert.True(privacy.HasSemanticData);
+        Assert.True(privacy.ChunkCount > 0);
+        Assert.DoesNotContain("bounded document text", privacy.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("0.5", privacy.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies per-file metadata-only policy is durable and controls the next claim.</summary>
+    [Fact]
+    public async Task MetadataOnlyPolicyPersistsAndPreventsDeepStages()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var source = fixture.Source(IndexingLevel.Deep);
+        var observation = fixture.Observation("policy.pdf");
+        await QueueAsync(store, source, [observation]);
+        await CompleteStandardRunAsync(store, "policy-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var result = await store.SetFilePolicyAsync(
+            document.FileId,
+            new IndexPrivacyPolicyChange(
+                LevelOverride: IndexingLevel.Basic,
+                SuppressOcr: true,
+                SuppressSummary: true,
+                SuppressSemantic: true),
+            Epoch.AddDays(11));
+        var metadataOnly = Assert.Single(
+            await store.GetSearchDocumentsAsync(10),
+            item => !item.IsExcluded);
+        var privacy = Assert.IsType<IndexPrivacyItem>(
+            await store.InspectFileAsync(document.FileId));
+        var coverage = await store.GetSearchCoverageAsync();
+        await QueueAsync(store, source, [observation], Epoch.AddDays(12));
+        var claim = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(13)));
+
+        Assert.True(result.Applied);
+        Assert.Null(metadataOnly.ExtractedText);
+        Assert.Null(metadataOnly.OcrText);
+        Assert.Null(metadataOnly.Summary);
+        Assert.Empty(metadataOnly.Keywords);
+        Assert.Null(metadataOnly.SemanticRepresentation);
+        Assert.Empty(metadataOnly.SelectedChunks);
+        Assert.Equal(0, privacy.ExtractedTextCharacters);
+        Assert.Equal(0, coverage.ExtractedTextCount);
+        Assert.Equal(0, coverage.OcrCount);
+        Assert.Equal(0, coverage.SemanticCount);
+        Assert.Equal(IndexingLevel.Basic, claim.Level);
+        Assert.True(claim.SuppressOcr);
+        Assert.True(claim.SuppressSummary);
+        Assert.True(claim.SuppressSemantic);
+        Assert.True(claim.ForceReprocess);
+    }
+
+    /// <summary>Verifies clearing selected generated data applies a durable anti-regeneration policy.</summary>
+    [Fact]
+    public async Task ClearSemanticDataRemovesOnlyDerivedIndexDataAndSuppressesRegeneration()
+    {
+        using var fixture = new IndexFixture();
+        var sourceFile = Path.Combine(fixture.Root, "source.txt");
+        var original = "original source remains unchanged"u8.ToArray();
+        await File.WriteAllBytesAsync(sourceFile, original);
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("source.txt")]);
+        await CompleteStandardRunAsync(store, "clear-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var result = await store.ClearFileDataAsync(
+            document.FileId,
+            IndexedDataKind.SemanticData | IndexedDataKind.Chunks,
+            Epoch.AddDays(11));
+        var refreshed = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+        var privacy = Assert.IsType<IndexPrivacyItem>(await store.InspectFileAsync(document.FileId));
+
+        Assert.True(result.Applied);
+        Assert.Null(refreshed.SemanticRepresentation);
+        Assert.Empty(refreshed.SelectedChunks);
+        Assert.True(privacy.SemanticSuppressed);
+        Assert.Equal(original, await File.ReadAllBytesAsync(sourceFile));
+    }
+
+    /// <summary>Verifies clearing extracted text explicitly downgrades the file to metadata-only indexing.</summary>
+    [Fact]
+    public async Task ClearExtractedTextDowngradesToBasic()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("downgrade.txt")]);
+        await CompleteStandardRunAsync(store, "downgrade-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        await store.ClearFileDataAsync(
+            document.FileId,
+            IndexedDataKind.ExtractedText,
+            Epoch.AddDays(11));
+        var privacy = Assert.IsType<IndexPrivacyItem>(await store.InspectFileAsync(document.FileId));
+
+        Assert.Equal(IndexingLevel.Basic, privacy.IndexingLevel);
+        Assert.Equal(0, privacy.ExtractedTextCharacters);
+        Assert.True(privacy.OcrSuppressed);
+        Assert.True(privacy.SummarySuppressed);
+        Assert.True(privacy.SemanticSuppressed);
+    }
+
+    /// <summary>Verifies OCR clearing also removes every dependent generated Search signal.</summary>
+    [Fact]
+    public async Task ClearOcrDataClearsDependentGeneratedSignalsAndCoverage()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Deep),
+            [fixture.Observation("ocr-private.txt")]);
+        await CompleteDeepRunAsync(store, "ocr-private-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        await store.ClearFileDataAsync(
+            document.FileId,
+            IndexedDataKind.OcrText,
+            Epoch.AddDays(11));
+        var after = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+        var privacy = Assert.IsType<IndexPrivacyItem>(await store.InspectFileAsync(document.FileId));
+        var coverage = await store.GetSearchCoverageAsync();
+
+        Assert.Null(after.OcrText);
+        Assert.Null(after.Summary);
+        Assert.Empty(after.Keywords);
+        Assert.Null(after.SemanticRepresentation);
+        Assert.Empty(after.SelectedChunks);
+        Assert.True(after.IsFullyIndexed);
+        Assert.True(privacy.OcrSuppressed);
+        Assert.True(privacy.SummarySuppressed);
+        Assert.True(privacy.SemanticSuppressed);
+        Assert.Equal(0, coverage.OcrCount);
+        Assert.Equal(0, coverage.SemanticCount);
+    }
+
+    /// <summary>Verifies forgetting a file retains only a path exclusion that suppresses legacy Search data.</summary>
+    [Fact]
+    public async Task ForgetFileRetainsSearchExclusionWithoutIndexedFileRecord()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(), [fixture.Observation("forget.txt")]);
+        await CompleteBasicRunAsync(store, "forget-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var result = await store.ForgetFileAsync(document.FileId, Epoch.AddDays(11));
+        var documents = await store.GetSearchDocumentsAsync(10);
+        var exclusions = await store.GetExcludedSearchPathsAsync(10);
+        var coverage = await store.GetSearchCoverageAsync();
+
+        Assert.True(result.Applied);
+        Assert.Null(await store.InspectFileAsync(document.FileId));
+        Assert.Empty(documents);
+        Assert.Contains(
+            exclusions,
+            path => Path.GetFileName(path).Equals("forget.txt", StringComparison.Ordinal));
+        Assert.Equal(0, coverage.KnownFileCount);
+        Assert.Equal(1, coverage.ExcludedSourceCount);
+    }
+
+    /// <summary>Verifies forgetting a watched source preserves its registration and ownership.</summary>
+    [Fact]
+    public async Task ForgetSourcePreservesWatchedFolderOwnership()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var source = fixture.Source() with { ManagedByWatchedFolders = true };
+        await QueueAsync(
+            store,
+            source,
+            [fixture.Observation("one.txt", "one"), fixture.Observation("two.txt", "two")]);
+        await CompleteBasicRunAsync(store, "shared");
+
+        var result = await store.ForgetSourceAsync(source.Id, Epoch.AddDays(11));
+        var retainedSource = Assert.Single(await store.GetSourcesAsync());
+
+        Assert.True(result.Applied);
+        Assert.Equal(2, result.AffectedFileCount);
+        Assert.True(retainedSource.ManagedByWatchedFolders);
+        Assert.Equal(source.RootPath, retainedSource.RootPath);
+        Assert.Empty(await store.GetSearchDocumentsAsync(10));
+        Assert.Equal(2, (await store.GetExcludedSearchPathsAsync(10)).Count);
+    }
+
+    /// <summary>Verifies selective semantic repair invalidates only the semantic and later stages.</summary>
+    [Fact]
+    public async Task SemanticRepairResumesAtSelectedDurableStage()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var source = fixture.Source(IndexingLevel.Standard);
+        var observation = fixture.Observation("repair.txt");
+        await QueueAsync(store, source, [observation]);
+        await CompleteStandardRunAsync(store, "repair-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var prepared = await store.PrepareFileRepairAsync(
+            document.FileId,
+            IndexRepairKind.RegenerateSemanticData,
+            Epoch.AddDays(11));
+        await QueueAsync(store, source, [observation], Epoch.AddDays(12));
+        var claim = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(13)));
+
+        Assert.True(prepared.Applied);
+        Assert.Equal(IndexingStage.SemanticRepresentationGenerated, claim.Stage);
+        Assert.Equal("bounded document text", claim.ExtractedText);
+        Assert.True(claim.ForceReprocess);
+    }
+
+    /// <summary>Verifies each explicit repair resumes at its documented durable boundary.</summary>
+    [Theory]
+    [InlineData(IndexRepairKind.Rebuild, IndexingStage.FileDiscovered)]
+    [InlineData(IndexRepairKind.RefreshMetadata, IndexingStage.MetadataIndexed)]
+    [InlineData(IndexRepairKind.RefreshText, IndexingStage.TextExtracted)]
+    [InlineData(IndexRepairKind.RefreshOcr, IndexingStage.OcrProcessed)]
+    [InlineData(IndexRepairKind.RegenerateSummaryAndKeywords, IndexingStage.SummaryKeywordsGenerated)]
+    [InlineData(IndexRepairKind.RegenerateSemanticData, IndexingStage.SemanticRepresentationGenerated)]
+    public async Task SelectiveRepairKindsResumeAtRequestedStage(
+        IndexRepairKind repair,
+        IndexingStage expectedStage)
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var source = fixture.Source(IndexingLevel.Standard);
+        var observation = fixture.Observation("selective-repair.txt");
+        await QueueAsync(store, source, [observation]);
+        await CompleteStandardRunAsync(store, "selective-repair-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var prepared = await store.PrepareFileRepairAsync(
+            document.FileId,
+            repair,
+            Epoch.AddDays(11));
+        await QueueAsync(store, source, [observation], Epoch.AddDays(12));
+        var claim = Assert.IsType<IndexingWorkItem>(
+            await store.ClaimNextAsync(Epoch.AddDays(13)));
+
+        Assert.True(prepared.Applied);
+        Assert.Equal(expectedStage, claim.Stage);
+        Assert.True(claim.ForceReprocess);
+    }
+
+    /// <summary>Verifies verification is a no-op for a consistent indexed file.</summary>
+    [Fact]
+    public async Task VerifyConsistentFileDoesNotQueueRepair()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("consistent.txt")]);
+        await CompleteStandardRunAsync(store, "consistent-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var result = await store.PrepareFileRepairAsync(
+            document.FileId,
+            IndexRepairKind.Verify,
+            Epoch.AddDays(11));
+
+        Assert.False(result.Applied);
+        Assert.Equal(0, result.AffectedFileCount);
+    }
+
+    /// <summary>Verifies hostile identifiers remain parameters and cannot alter the SQLite schema.</summary>
+    [Fact]
+    public async Task PrivacyIdentifiersAreParameterisedAgainstSqlInjection()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        const string hostile = "'; DROP TABLE index_files; --";
+
+        var inspected = await store.InspectFileAsync(hostile);
+        var forgotten = await store.ForgetFileAsync(hostile, Epoch);
+
+        Assert.Null(inspected);
+        Assert.False(forgotten.Applied);
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'index_files';"));
+    }
+
+    /// <summary>Verifies corrupt generated ranking fields fall back to valid filename and metadata records.</summary>
+    [Fact]
+    public async Task CorruptGeneratedSearchDataFallsBackToMetadata()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("corrupt.txt")]);
+        await CompleteStandardRunAsync(store, "corrupt-hash");
+        CreateDatabase(
+            fixture.DatabasePath,
+            "UPDATE index_content SET keywords_json = '{bad', semantic_json = '[\"not-a-number\"]' WHERE content_hash = 'corrupt-hash';");
+
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.Equal("corrupt.txt", document.FileName);
+        Assert.Empty(document.Keywords);
+        Assert.Null(document.SemanticRepresentation);
+        Assert.True(document.HasIndexingFailure);
+    }
+
+    /// <summary>Verifies actual source and privacy lookup patterns use declared indexes.</summary>
+    [Fact]
+    public async Task SearchAndPrivacyQueryPlansUseDeclaredIndexes()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+
+        var sourcePlan = ReadQueryPlan(
+            fixture.DatabasePath,
+            "EXPLAIN QUERY PLAN SELECT * FROM index_files WHERE source_id = 'source' AND relative_path_key = 'x';");
+        var privacyPlan = ReadQueryPlan(
+            fixture.DatabasePath,
+            "EXPLAIN QUERY PLAN SELECT * FROM index_privacy_rules WHERE source_id = 'source' AND relative_path_key = 'x';");
+
+        Assert.Contains("INDEX", sourcePlan, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("INDEX", privacyPlan, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task<string> QueueAsync(
         SqliteDeepIndexStore store,
         IndexingSource source,
@@ -857,6 +1235,65 @@ public sealed class SqliteDeepIndexStoreTests
         }
     }
 
+    private static async Task CompleteDeepRunAsync(SqliteDeepIndexStore store, string hash)
+    {
+        while (await store.ClaimNextAsync(Epoch.AddDays(10)) is { } claim)
+        {
+            var next = claim.Stage switch
+            {
+                IndexingStage.FileDiscovered => IndexingStage.MetadataIndexed,
+                IndexingStage.MetadataIndexed => IndexingStage.ContentFingerprinted,
+                IndexingStage.ContentFingerprinted => IndexingStage.TextExtracted,
+                IndexingStage.TextExtracted => IndexingStage.OcrProcessed,
+                IndexingStage.OcrProcessed => IndexingStage.SummaryKeywordsGenerated,
+                IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
+                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SearchIndexUpdated,
+                IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
+                IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
+                IndexingStage.FileFullyIndexed => (IndexingStage?)null,
+                _ => throw new InvalidOperationException($"Unexpected Deep stage {claim.Stage}."),
+            };
+            var output = claim.Stage switch
+            {
+                IndexingStage.ContentFingerprinted => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    ContentHash = hash,
+                },
+                IndexingStage.TextExtracted => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    ExtractedText = "bounded document text",
+                },
+                IndexingStage.OcrProcessed => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    OcrText = "private OCR text",
+                },
+                IndexingStage.SummaryKeywordsGenerated => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    Summary = "bounded summary",
+                    Keywords = ["bounded", "document"],
+                    SelectedChunks = ["bounded document text"],
+                },
+                IndexingStage.SemanticRepresentationGenerated => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    SemanticRepresentation = [0.5f, 0.5f],
+                },
+                _ => new IndexingStageOutput { Status = IndexingStageStatus.Complete },
+            };
+            await store.SaveStageOutputAsync(
+                claim,
+                output,
+                next,
+                Epoch.AddDays(10),
+                TimeSpan.FromMilliseconds(1),
+                null);
+        }
+    }
+
     private static Task SaveCompleteAsync(
         SqliteDeepIndexStore store,
         IndexingWorkItem claim,
@@ -898,6 +1335,23 @@ public sealed class SqliteDeepIndexStoreTests
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         return Convert.ToString(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture)!;
+    }
+
+    private static string ReadQueryPlan(string path, string sql)
+    {
+        SqliteConnection.ClearAllPools();
+        using var connection = new SqliteConnection($"Data Source={path};Mode=ReadOnly");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        using var reader = command.ExecuteReader();
+        var details = new List<string>();
+        while (reader.Read())
+        {
+            details.Add(reader.GetString(3));
+        }
+
+        return string.Join(Environment.NewLine, details);
     }
 
     private sealed class IndexFixture : IDisposable

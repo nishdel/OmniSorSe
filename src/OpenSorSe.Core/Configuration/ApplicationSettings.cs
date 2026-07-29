@@ -317,6 +317,12 @@ public sealed class DeepIndexingSettings
     /// <summary>Gets or initializes whether optional local-AI enrichment stages may run.</summary>
     public bool AiProcessingEnabled { get; init; }
 
+    /// <summary>Gets or initializes whether generated summaries and keywords may be retained.</summary>
+    public bool SummaryProcessingEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether related-concept data and selected chunks may be retained.</summary>
+    public bool SemanticProcessingEnabled { get; init; } = true;
+
     /// <summary>Gets or initializes whether archive contents may be indexed.</summary>
     public bool ArchiveIndexingEnabled { get; init; }
 

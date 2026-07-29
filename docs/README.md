@@ -1,6 +1,6 @@
 # OpenSorSe documentation
 
-This is the documentation entry point for OpenSorSe 1.7. Start with the section
+This is the documentation entry point for OpenSorSe 1.8. Start with the section
 that matches what you are trying to do. Documents with a version in their name
 describe that release; older versioned documents are retained as history and
 must not override the current architecture or safety documentation.
@@ -9,7 +9,7 @@ must not override the current architecture or safety documentation.
 
 | Audience | Start here | Then read |
 | --- | --- | --- |
-| User | [OpenSorSe README](../README.md) | [Installation](INSTALLATION.md), [v1.7 User Guide](USER_GUIDE_v1.7.md), and [Troubleshooting](TROUBLESHOOTING_v1.7.md) |
+| User | [OpenSorSe README](../README.md) | [Installation](INSTALLATION.md), [v1.8 User Guide](USER_GUIDE_v1.8.md), and [Troubleshooting](TROUBLESHOOTING_v1.8.md) |
 | Contributor | [Contributing](../CONTRIBUTING.md) | [Developer Guide](DEVELOPER_GUIDE.md), [Repository Structure](REPOSITORY_STRUCTURE.md), and [Architecture Overview](ARCHITECTURE_OVERVIEW.md) |
 | Plugin author | [Extension SDK](EXTENSION_SDK_v1.4.md) | [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md), [Manifest Reference](PLUGIN_MANIFEST_REFERENCE_v1.4.md), and [v1.5 platform constraints](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md) |
 | Maintainer | [Maintainer Guide](MAINTAINER_GUIDE.md) | [Release Status](RELEASE_STATUS.md), [Safety and Privacy](SAFETY_AND_PRIVACY.md), and [Implementation Specifications](Implementation_Spec/README.md) |
@@ -17,22 +17,23 @@ must not override the current architecture or safety documentation.
 ## Users
 
 - [Installation and updates](INSTALLATION.md)
-- [OpenSorSe 1.7 User Guide](USER_GUIDE_v1.7.md)
-- [Manual verification checklist](MANUAL_TESTING_v1.7.md)
-- [Troubleshooting](TROUBLESHOOTING_v1.7.md)
+- [OpenSorSe 1.8 User Guide](USER_GUIDE_v1.8.md)
+- [Manual verification checklist](MANUAL_TESTING_v1.8.md)
+- [Troubleshooting](TROUBLESHOOTING_v1.8.md)
 - [Safety and Privacy](SAFETY_AND_PRIVACY.md)
-- [Version notes](VERSION_NOTES_v1.7.md)
-- [Implementation report](V1.7_IMPLEMENTATION_REPORT.md)
-- [Validation report](V1.7_VALIDATION_REPORT.md)
+- [Version notes](VERSION_NOTES_v1.8.md)
+- [Implementation report](V1.8_IMPLEMENTATION_REPORT.md)
+- [Validation report](V1.8_VALIDATION_REPORT.md)
 - [Platform capability matrix](PLATFORM_COMPATIBILITY_MATRIX.md)
 - [Linux build and launch](LINUX_BUILD_AND_LAUNCH.md)
 - [Known limitations and release readiness](RELEASE_STATUS.md)
 
 The user guide covers the first scan, Files, Watched Folders, Workflow Profiles,
 Sorting Recipes, Change Plan review, Apply, Undo, Recovery, local AI, and Plugin
-management. The v1.7 guide adds Search, durable background indexing, progress,
-recovery, coverage, and storage controls. The safety document is authoritative
-for privacy and mutation boundaries.
+management. The v1.8 guide covers durable indexing, hybrid Search, interpreted
+filters, explanations, snippets, progressive coverage, indexed-data inspection,
+forgetting, and targeted repair. The safety document is authoritative for
+privacy and mutation boundaries.
 
 ## Contributors
 
@@ -63,6 +64,7 @@ designs are labelled by the [architecture index](Architecture/README.md).
 - [v1.5 platform architecture](Architecture/00_System/08_v1.5_Platform_Architecture.md)
 - [v1.6 reliability architecture](Architecture/00_System/09_v1.6_Reliability_Architecture.md)
 - [v1.7 deep indexing architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md)
+- [v1.8 Search intelligence and privacy architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md)
 - [Workflow portability](WORKFLOW_PORTABILITY_v1.5.md)
 - [Watched Folders on Linux](WATCHED_FOLDERS_LINUX_v1.5.md)
 
@@ -77,6 +79,7 @@ designs are labelled by the [architecture index](Architecture/README.md).
 - [Cross-platform implementation specification](Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md)
 - [Production-hardening implementation specification](Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md)
 - [Deep-indexing implementation specification](Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md)
+- [Search-intelligence implementation specification](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md)
 
 External plugins run in-process with the current user's permissions. A
 collectible assembly-load context is a dependency-isolation mechanism, not a
@@ -94,9 +97,9 @@ approval, the executor, credentials, or host dependency injection.
 - [Documentation inventory](DOCUMENTATION_INVENTORY.md)
 
 `RELEASE_CHECKLIST_v1.0.md` is historical and remains useful as the most recent
-packaging checklist. The v1.7 manual checklist and maintainer guide identify
-additional gates; their completion status is recorded in the v1.7 validation
-report.
+packaging checklist. The v1.8 manual checklist and maintainer guide identify
+additional gates; automated status is recorded in the v1.8 validation report.
+Every interactive scenario remains unchecked until a maintainer performs it.
 
 ## Historical documentation
 

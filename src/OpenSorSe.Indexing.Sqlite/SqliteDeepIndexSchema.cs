@@ -155,4 +155,25 @@ internal static class SqliteDeepIndexSchema
 
         CREATE INDEX IF NOT EXISTS ix_index_maintenance_performed ON index_maintenance(performed_utc_ticks);
         """;
+
+    public const string CreateVersionTwo = """
+        CREATE TABLE IF NOT EXISTS index_privacy_rules (
+            source_id TEXT NOT NULL,
+            relative_path_key TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            is_excluded INTEGER NOT NULL DEFAULT 0,
+            indexing_level_override INTEGER,
+            suppress_ocr INTEGER NOT NULL DEFAULT 0,
+            suppress_summary INTEGER NOT NULL DEFAULT 0,
+            suppress_semantic INTEGER NOT NULL DEFAULT 0,
+            repair_stage INTEGER,
+            force_reprocess INTEGER NOT NULL DEFAULT 0,
+            updated_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY(source_id, relative_path_key),
+            FOREIGN KEY(source_id) REFERENCES index_sources(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_index_privacy_rules_excluded
+            ON index_privacy_rules(is_excluded, source_id);
+        """;
 }

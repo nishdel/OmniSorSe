@@ -20,14 +20,17 @@
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
 | v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; post-push hosted validation is a handoff gate; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
+| v1.8 Search Intelligence, Quality and Privacy | Source implementation complete; final clean automated validation is tracked in the v1.8 report; interactive manual validation is not claimed | Exact totals and every automated gate are recorded in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
 
 ## Current product boundary
 
-OpenSorSe 1.7 is a safe, local-first desktop application for understanding,
+OpenSorSe 1.8 is a safe, local-first desktop application for understanding,
 monitoring, searching, and organizing explicitly selected folders. The v1.6
 production-hardening and cross-platform foundation remains intact; v1.7 adds
-durable progressive background indexing. Reusable workflows and plugin contributions
-configure scanning and analysis but do not grant mutation authority.
+durable progressive background indexing, and v1.8 adds bounded Search
+intelligence and index-only privacy/repair controls. Reusable workflows and
+plugin contributions configure scanning and analysis but do not grant mutation
+authority.
 
 The current Desktop workflow does not:
 
@@ -50,7 +53,15 @@ Watcher APIs are treated as fallible hints. Enabled roots are reconciled on star
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite index additionally retains durable sources, runs, stages, bounded shared content, coverage, and maintenance history. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, and index-only privacy rules. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+
+## v1.8 validation
+
+The exact clean automated results, independently parsed Debug and Release TRX
+totals, relevance/performance gates, target builds, advisory audit, final commit,
+push, and exact-tip CI result are recorded in the
+[v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). No interactive manual
+scenario is marked complete.
 
 ## v1.7 validation
 
@@ -115,21 +126,21 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe 1.7 source implementation is on
-`v1.7-deep-indexing-foundation`. Final local automated validation is complete;
-commit, push, and exact GitHub Actions evidence are post-commit handoff gates
-tracked separately from the uncompleted manual checklist.
+OpenSorSe 1.8 source implementation is on
+`v1.8-search-intelligence-privacy`. Final local automated validation, commit,
+push, and exact GitHub Actions evidence are recorded separately from the
+uncompleted manual checklist.
 Packaging, signing, tagging, and publishing remain separate release activities.
-See the [user guide](USER_GUIDE_v1.7.md), [implementation
-specification](Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md),
-[implementation report](V1.7_IMPLEMENTATION_REPORT.md), and
-[manual checklist](MANUAL_TESTING_v1.7.md).
+See the [user guide](USER_GUIDE_v1.8.md), [implementation
+specification](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md),
+[implementation report](V1.8_IMPLEMENTATION_REPORT.md), and
+[manual checklist](MANUAL_TESTING_v1.8.md).
 
 ## Release identity
 
-- Version: `v1.7`
-- Release name: **Deep Indexing Foundation**
-- Git branch: `v1.7-deep-indexing-foundation`
-- Status: source implementation and local automated validation complete; post-push hosted validation remains a handoff gate; no interactive manual result, package, tag, or published release is claimed.
+- Version: `v1.8`
+- Release name: **Search Intelligence, Quality and Privacy**
+- Git branch: `v1.8-search-intelligence-privacy`
+- Status: source implementation complete; exact local/hosted automated results are tracked in the validation report; no interactive manual result, package, tag, or published release is claimed.
 
 The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, `v1.3-workflow-profiles`, `v1.4-plugin-foundation`, and `v1.5-cross-platform-foundation`.

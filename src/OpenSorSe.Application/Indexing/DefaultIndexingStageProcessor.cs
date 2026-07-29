@@ -57,7 +57,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
                 IndexingStage.TextExtracted => await ExtractTextAsync(workItem, settings, ocr: false, cancellationToken).ConfigureAwait(false),
                 IndexingStage.OcrProcessed => await ExtractTextAsync(workItem, settings, ocr: true, cancellationToken).ConfigureAwait(false),
                 IndexingStage.SummaryKeywordsGenerated => await EnrichAsync(workItem, settings, cancellationToken).ConfigureAwait(false),
-                IndexingStage.SemanticRepresentationGenerated => ProcessSemanticRepresentation(workItem),
+                IndexingStage.SemanticRepresentationGenerated => ProcessSemanticRepresentation(workItem, settings),
                 IndexingStage.SearchIndexUpdated or
                 IndexingStage.RelationshipAnalysisCompleted or
                 IndexingStage.FileFullyIndexed => Complete(),
@@ -104,6 +104,8 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             settings.MaximumSemanticChunksPerDocument,
             settings.OcrProcessingEnabled,
             settings.AiProcessingEnabled,
+            settings.SummaryProcessingEnabled,
+            settings.SemanticProcessingEnabled,
             settings.ArchiveIndexingEnabled,
             settings.BinaryAndExecutableMetadataOnly,
             content.MaximumPagesPerDocument,
@@ -250,9 +252,13 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         var text = Bound(
             string.Join(' ', new[] { workItem.ExtractedText, workItem.OcrText }.Where(value => !string.IsNullOrWhiteSpace(value))),
             settings.MaximumExtractedTextCharacters + settings.MaximumOcrTextCharacters) ?? string.Empty;
-        var keywords = CreateKeywords(Path.GetFileName(workItem.FullPath), text);
+        var summaryEnabled = settings.SummaryProcessingEnabled && !workItem.SuppressSummary;
+        var semanticEnabled = settings.SemanticProcessingEnabled && !workItem.SuppressSemantic;
+        var keywords = summaryEnabled
+            ? CreateKeywords(Path.GetFileName(workItem.FullPath), text)
+            : [];
         string? summary = null;
-        if (settings.AiProcessingEnabled)
+        if (settings.AiProcessingEnabled && summaryEnabled)
         {
             if (_enrichmentProvider is null ||
                 !await _enrichmentProvider.IsAvailableAsync(cancellationToken).ConfigureAwait(false))
@@ -279,7 +285,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
                 .Take(64)
                 .ToArray();
         }
-        else if (workItem.Level == IndexingLevel.Deep)
+        else if (workItem.Level == IndexingLevel.Deep && summaryEnabled)
         {
             summary = CreateExtractiveSummary(text);
         }
@@ -289,14 +295,24 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             Status = IndexingStageStatus.Complete,
             Summary = summary,
             Keywords = keywords,
-            SelectedChunks = workItem.Level == IndexingLevel.Deep
+            SelectedChunks = workItem.Level == IndexingLevel.Deep && semanticEnabled
                 ? CreateChunks(text, settings.MaximumSemanticChunksPerDocument)
                 : null,
         };
     }
 
-    private IndexingStageOutput ProcessSemanticRepresentation(IndexingWorkItem workItem)
+    private IndexingStageOutput ProcessSemanticRepresentation(
+        IndexingWorkItem workItem,
+        DeepIndexingSettings settings)
     {
+        if (!settings.SemanticProcessingEnabled || workItem.SuppressSemantic)
+        {
+            return new IndexingStageOutput
+            {
+                Status = IndexingStageStatus.Skipped,
+            };
+        }
+
         var input = string.Join(
             ' ',
             Path.GetFileName(workItem.FullPath),

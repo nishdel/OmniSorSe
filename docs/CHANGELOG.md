@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.8.0
+
+Release branch: `v1.8-search-intelligence-privacy`.
+
+### Added
+
+- Provider-neutral Search query, interpreted-filter, candidate, ranking-signal,
+  explanation, snippet, coverage, privacy-inspection, forget, and repair
+  contracts.
+- Deterministic bounded query interpretation for common file type, extension,
+  date, size, source, folder, tag, indexing, OCR, semantic, and failure filters
+  with an injectable clock and visible removable filters.
+- One coherent hybrid ranker with exact/literal tiers, bounded typo tolerance,
+  optional semantic supplementation, explicit components, deterministic
+  tie-breaking, bounded snippets, and source indicators.
+- Search-quality evaluation over a synthetic corpus, relevance metrics, and
+  separate bounded performance regression tests.
+- User-facing indexed-data inspection, file/source forgetting, per-file
+  processing policy, selective clearing, and targeted durable repair controls.
+- SQLite schema 2 privacy rules with transactional migration, recovery copy,
+  parameterized operations, and corrupt-ranking-data fallback.
+
+### Changed
+
+- Search distinguishes excluded, OCR-waiting, AI-waiting, failed-stage,
+  unavailable-index, and incomplete coverage without treating partial results
+  as exhaustive.
+- Search diagnostics record duration, counts, filters, coverage, and ranking
+  stages without complete query text, snippets, extracted content, or absolute
+  paths.
+- Summary and semantic processing can be disabled independently while filename,
+  folder, metadata, text, OCR, filtering, ranking, snippets, and explanations
+  remain local and usable without Ollama.
+- Product, assembly, file, manifest, and About versions are `1.8.0` /
+  `1.8.0.0`.
+
+### Preserved boundaries
+
+- v1.7 indexes migrate without silent loss; existing catalogs, saved scans,
+  watched folders, duplicate detection, workflows, plugins, Change Plans,
+  Operation Journal, recovery, and Undo remain compatible.
+- Forget and repair actions alter only application-owned indexed data. Original
+  user files are never deleted or modified.
+- No database server, remote query service, improvised encryption,
+  conversational assistant, autonomous organization, package, tag, installer,
+  merge, or release publishing is added.
+
 ## v1.7.0
 
 Release branch: `v1.7-deep-indexing-foundation`.

@@ -108,6 +108,14 @@
                                   Content="Enable optional local AI stages"
                                   IsChecked="{Binding Draft.DeepAiProcessingEnabled, Mode=TwoWay}" />
                         <CheckBox Margin="0,0,16,6"
+                                  Content="Store generated summaries and keywords"
+                                  IsChecked="{Binding Draft.DeepSummaryProcessingEnabled, Mode=TwoWay}"
+                                  AutomationProperties.HelpText="Generated summaries and keywords are stored only in OpenSorSe's local index." />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Store related-concept data and selected chunks"
+                                  IsChecked="{Binding Draft.DeepSemanticProcessingEnabled, Mode=TwoWay}"
+                                  AutomationProperties.HelpText="Related-concept data supports local Search and is not sent to a remote service." />
+                        <CheckBox Margin="0,0,16,6"
                                   Content="Exclude generated folders"
                                   IsChecked="{Binding Draft.ExcludeGeneratedFolders, Mode=TwoWay}" />
                         <CheckBox Margin="0,0,16,6"

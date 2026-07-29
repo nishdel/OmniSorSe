@@ -1,6 +1,6 @@
 # OpenSorSe system map
 
-These Mermaid diagrams model the v1.7 implementation. They emphasize
+These Mermaid diagrams model the v1.8 implementation. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
 
@@ -51,7 +51,7 @@ flowchart TB
         Shell["Application shell and navigation"]
         ScanUI["Scan UI"]
         FilesUI["Files and Results UI"]
-        SearchUI["Search progress and coverage UI"]
+        SearchUI["Search filters, explanations, privacy, and coverage UI"]
         ReviewUI["Change Plan Review"]
         WatchUI["Watched Folders UI"]
         WorkflowUI["Workflows UI"]
@@ -71,6 +71,9 @@ flowchart TB
         HistoryService["Operation-history projection"]
         Stores["Persistence services"]
         IndexCoordinator["Durable indexing coordinator"]
+        QueryInterpreter["Bounded query interpreter"]
+        HybridRanker["Deterministic hybrid ranker"]
+        IndexPrivacy["Index privacy and repair service"]
     end
 
     subgraph Processing["Read-only processing and suggestion layer"]
@@ -109,7 +112,7 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Embedded durable Search index"]
+        DeepIndex["Embedded schema 2 durable Search index"]
     end
 
     User -->|commands and review| Shell
@@ -181,6 +184,12 @@ flowchart TB
     Stores --> PluginState
     Stores --> LocalIndexes
     SearchUI --> IndexCoordinator
+    SearchUI --> QueryInterpreter
+    QueryInterpreter --> HybridRanker
+    HybridRanker --> SearchUI
+    SearchUI --> IndexPrivacy
+    IndexPrivacy --> IndexCoordinator
+    IndexPrivacy --> DeepIndex
     IndexCoordinator --> Enumerate
     IndexCoordinator --> Metadata
     IndexCoordinator --> Text

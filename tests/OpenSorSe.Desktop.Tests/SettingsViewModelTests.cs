@@ -245,6 +245,8 @@ public sealed class SettingsViewModelTests
         viewModel.Draft.PauseBelowBatteryPercentage = 25;
         viewModel.Draft.DeepOcrProcessingEnabled = true;
         viewModel.Draft.DeepAiProcessingEnabled = true;
+        viewModel.Draft.DeepSummaryProcessingEnabled = false;
+        viewModel.Draft.DeepSemanticProcessingEnabled = false;
         viewModel.Draft.ArchiveIndexingEnabled = true;
         viewModel.Draft.ExcludeGeneratedFolders = false;
         viewModel.Draft.BinaryAndExecutableMetadataOnly = false;
@@ -270,6 +272,8 @@ public sealed class SettingsViewModelTests
         Assert.Equal(25, saved.PauseBelowBatteryPercentage);
         Assert.True(saved.OcrProcessingEnabled);
         Assert.True(saved.AiProcessingEnabled);
+        Assert.False(saved.SummaryProcessingEnabled);
+        Assert.False(saved.SemanticProcessingEnabled);
         Assert.True(saved.ArchiveIndexingEnabled);
         Assert.False(saved.ExcludeGeneratedFolders);
         Assert.False(saved.BinaryAndExecutableMetadataOnly);

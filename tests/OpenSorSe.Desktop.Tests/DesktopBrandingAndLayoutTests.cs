@@ -55,7 +55,7 @@ public sealed class DesktopBrandingAndLayoutTests
             ["UndoHistoryView.axaml"] = 3,
             ["PluginsView.axaml"] = 5,
             ["NotificationCenterView.axaml"] = 2,
-            ["SemanticSearchView.axaml"] = 5,
+            ["SemanticSearchView.axaml"] = 10,
         };
         var viewsDirectory = Path.Combine(
             FindRepositoryRoot(),
@@ -126,6 +126,37 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("Text=\"Search\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Meaning Search", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("embedding", source, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies v1.8 result evidence and privacy actions work beyond pointer hover.</summary>
+    [Fact]
+    public void SearchView_ExposesKeyboardAndClickResultEvidenceAndPrivacyActions()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "SemanticSearchView.axaml"));
+
+        Assert.Contains("Header=\"Why this result?\"", source, StringComparison.Ordinal);
+        Assert.Contains("InspectIndexedDataCommand", source, StringComparison.Ordinal);
+        Assert.Contains("RemoveFilterCommand", source, StringComparison.Ordinal);
+        Assert.Contains("ClearFiltersCommand", source, StringComparison.Ordinal);
+        Assert.Contains("ConfirmForgetFileCommand", source, StringComparison.Ordinal);
+        Assert.Contains("Snippet.AccessibleText", source, StringComparison.Ordinal);
+        Assert.Contains("Snippet.MatchedText", source, StringComparison.Ordinal);
+        Assert.Contains("SourceIndicator", source, StringComparison.Ordinal);
+        Assert.Contains("CoverageIndicator", source, StringComparison.Ordinal);
+        Assert.Contains("VerifyFileCommand", source, StringComparison.Ordinal);
+        Assert.Contains("RefreshMetadataCommand", source, StringComparison.Ordinal);
+        Assert.Contains("RefreshTextCommand", source, StringComparison.Ordinal);
+        Assert.Contains("RefreshOcrCommand", source, StringComparison.Ordinal);
+        Assert.Contains("RegenerateSummaryCommand", source, StringComparison.Ordinal);
+        Assert.Contains("RegenerateSemanticCommand", source, StringComparison.Ordinal);
+        Assert.Contains("original source file is never deleted or modified", source, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("AutomationProperties.Name", source, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"{Binding}\"", source, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

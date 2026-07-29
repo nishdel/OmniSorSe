@@ -16,7 +16,7 @@ namespace OpenSorSe.Application.Indexing;
 /// <summary>
 /// Coordinates durable discovery and staged work while keeping Views, ViewModels, and search logic provider independent.
 /// </summary>
-public sealed class BackgroundIndexingService : IBackgroundIndexingService
+public sealed partial class BackgroundIndexingService : IBackgroundIndexingService, IIndexPrivacyService
 {
     private static readonly HashSet<string> ArchiveExtensions = new(
         [".zip", ".7z", ".rar", ".tar", ".gz", ".bz2", ".xz"],
@@ -408,7 +408,10 @@ public sealed class BackgroundIndexingService : IBackgroundIndexingService
                 RunId = "storage-initialization",
                 Status = IndexingRunStatus.Failed,
                 MaximumIndexSizeBytes = MaximumIndexBytes(_configurationService.Current.DeepIndexing),
-                Coverage = new SearchCoverage(0, 0, 0, 0, 0, 0),
+                Coverage = new SearchCoverage(0, 0, 0, 0, 0, 0)
+                {
+                    IsAvailable = false,
+                },
             });
         }
 
@@ -486,12 +489,29 @@ public sealed class BackgroundIndexingService : IBackgroundIndexingService
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetExcludedPathsAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureInitialized();
+        if (_initializationFailure is not null)
+        {
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        return _deepIndexStore.GetExcludedSearchPathsAsync(maximumCount, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<SearchCoverage> GetCoverageAsync(CancellationToken cancellationToken = default)
     {
         EnsureInitialized();
         if (_initializationFailure is not null)
         {
-            return Task.FromResult(new SearchCoverage(0, 0, 0, 0, 0, 0));
+            return Task.FromResult(new SearchCoverage(0, 0, 0, 0, 0, 0)
+            {
+                IsAvailable = false,
+            });
         }
 
         return _deepIndexStore.GetSearchCoverageAsync(cancellationToken);
@@ -892,7 +912,11 @@ public sealed class BackgroundIndexingService : IBackgroundIndexingService
             if (work.Stage == IndexingStage.ContentFingerprinted &&
                 output.Status == IndexingStageStatus.Complete &&
                 !string.IsNullOrWhiteSpace(output.ContentHash) &&
-                work.Level != IndexingLevel.Basic)
+                work.Level != IndexingLevel.Basic &&
+                !work.SuppressOcr &&
+                !work.SuppressSummary &&
+                !work.SuppressSemantic &&
+                !work.ForceReprocess)
             {
                 var reusable = await _deepIndexStore
                     .GetReusableContentThroughStageAsync(
@@ -1065,11 +1089,16 @@ public sealed class BackgroundIndexingService : IBackgroundIndexingService
             IndexingStage.ContentFingerprinted => metadataOnly
                 ? IndexingStage.SearchIndexUpdated
                 : IndexingStage.TextExtracted,
-            IndexingStage.TextExtracted => work.Level == IndexingLevel.Deep && settings.OcrProcessingEnabled
+            IndexingStage.TextExtracted => work.Level == IndexingLevel.Deep &&
+                settings.OcrProcessingEnabled &&
+                !work.SuppressOcr
                 ? IndexingStage.OcrProcessed
                 : IndexingStage.SummaryKeywordsGenerated,
             IndexingStage.OcrProcessed => IndexingStage.SummaryKeywordsGenerated,
-            IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
+            IndexingStage.SummaryKeywordsGenerated =>
+                !settings.SemanticProcessingEnabled || work.SuppressSemantic
+                ? IndexingStage.SearchIndexUpdated
+                : IndexingStage.SemanticRepresentationGenerated,
             IndexingStage.SemanticRepresentationGenerated => IndexingStage.SearchIndexUpdated,
             IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
             IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,

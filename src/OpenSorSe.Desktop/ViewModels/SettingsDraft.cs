@@ -68,6 +68,8 @@ public sealed class SettingsDraft : ViewModelBase
     private int _pauseBelowBatteryPercentage = 20;
     private bool _deepOcrProcessingEnabled;
     private bool _deepAiProcessingEnabled;
+    private bool _deepSummaryProcessingEnabled = true;
+    private bool _deepSemanticProcessingEnabled = true;
     private bool _archiveIndexingEnabled;
     private bool _excludeGeneratedFolders = true;
     private bool _binaryAndExecutableMetadataOnly = true;
@@ -536,6 +538,20 @@ public sealed class SettingsDraft : ViewModelBase
         set => SetProperty(ref _deepAiProcessingEnabled, value);
     }
 
+    /// <summary>Gets or sets whether generated summaries and keywords may be retained.</summary>
+    public bool DeepSummaryProcessingEnabled
+    {
+        get => _deepSummaryProcessingEnabled;
+        set => SetProperty(ref _deepSummaryProcessingEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether related-concept data and selected chunks may be retained.</summary>
+    public bool DeepSemanticProcessingEnabled
+    {
+        get => _deepSemanticProcessingEnabled;
+        set => SetProperty(ref _deepSemanticProcessingEnabled, value);
+    }
+
     /// <summary>Gets or sets whether archive contents may be indexed.</summary>
     public bool ArchiveIndexingEnabled
     {
@@ -649,6 +665,8 @@ public sealed class SettingsDraft : ViewModelBase
             PauseBelowBatteryPercentage = settings.DeepIndexing.PauseBelowBatteryPercentage ?? 20,
             DeepOcrProcessingEnabled = settings.DeepIndexing.OcrProcessingEnabled,
             DeepAiProcessingEnabled = settings.DeepIndexing.AiProcessingEnabled,
+            DeepSummaryProcessingEnabled = settings.DeepIndexing.SummaryProcessingEnabled,
+            DeepSemanticProcessingEnabled = settings.DeepIndexing.SemanticProcessingEnabled,
             ArchiveIndexingEnabled = settings.DeepIndexing.ArchiveIndexingEnabled,
             ExcludeGeneratedFolders = settings.DeepIndexing.ExcludeGeneratedFolders,
             BinaryAndExecutableMetadataOnly = settings.DeepIndexing.BinaryAndExecutableMetadataOnly,
@@ -755,6 +773,8 @@ public sealed class SettingsDraft : ViewModelBase
                 PauseBelowBatteryPercentage = PauseIndexingOnLowBattery ? PauseBelowBatteryPercentage : null,
                 OcrProcessingEnabled = DeepOcrProcessingEnabled,
                 AiProcessingEnabled = DeepAiProcessingEnabled,
+                SummaryProcessingEnabled = DeepSummaryProcessingEnabled,
+                SemanticProcessingEnabled = DeepSemanticProcessingEnabled,
                 ArchiveIndexingEnabled = ArchiveIndexingEnabled,
                 ExcludeGeneratedFolders = ExcludeGeneratedFolders,
                 BinaryAndExecutableMetadataOnly = BinaryAndExecutableMetadataOnly,

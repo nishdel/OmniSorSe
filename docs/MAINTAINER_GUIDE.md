@@ -19,7 +19,7 @@ OpenSorSe release compatible, safe, and understandable.
    publish workflow. Source validation alone does not claim a release exists.
 
 The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains the
-packaging baseline. Apply the current [v1.7 manual checklist](MANUAL_TESTING_v1.7.md)
+packaging baseline. Apply the current [v1.8 manual checklist](MANUAL_TESTING_v1.8.md)
 and [Release Status](RELEASE_STATUS.md) in addition.
 
 Record Windows, Linux, and macOS results independently. A green local Windows
@@ -78,6 +78,19 @@ schemas, interrupted migration recovery copies, startup recovery of every
 quota maintenance, and rebuild source preservation. PostgreSQL is not a
 desktop dependency; alternate providers must preserve the provider-neutral
 contract.
+
+Schema 2 adds durable privacy rules. A v1-to-v2 migration must retain sources,
+files, shared content, stages, coverage, and watched/manual ownership while
+creating a pre-migration recovery copy. Validate inspection, forgetting,
+selective clearing, suppression against immediate re-index loops, targeted
+repair, duplicate-content impact reporting, and unchanged source files.
+
+For Search changes, run `Category=SearchRelevance` and
+`Category=PerformanceRegression` in addition to the full suite. Inspect the
+SQLite query plans exercised by provider tests, keep query/candidate/snippet
+bounds intact, and compare exact-match preservation, top-k recall, reciprocal
+rank, stability, cancellation, allocations, and increasing synthetic corpus
+sizes. These are regression controls, not universal quality or latency claims.
 
 Never silently reinterpret a field in a way that could authorize broader file
 operations.

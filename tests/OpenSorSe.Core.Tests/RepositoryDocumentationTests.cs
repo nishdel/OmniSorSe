@@ -109,12 +109,12 @@ public sealed partial class RepositoryDocumentationTests
         {
             "../README.md",
             "../CONTRIBUTING.md",
-            "USER_GUIDE_v1.7.md",
-            "TROUBLESHOOTING_v1.7.md",
-            "MANUAL_TESTING_v1.7.md",
-            "VERSION_NOTES_v1.7.md",
-            "V1.7_IMPLEMENTATION_REPORT.md",
-            "V1.7_VALIDATION_REPORT.md",
+            "USER_GUIDE_v1.8.md",
+            "TROUBLESHOOTING_v1.8.md",
+            "MANUAL_TESTING_v1.8.md",
+            "VERSION_NOTES_v1.8.md",
+            "V1.8_IMPLEMENTATION_REPORT.md",
+            "V1.8_VALIDATION_REPORT.md",
             "PLATFORM_COMPATIBILITY_MATRIX.md",
             "LINUX_BUILD_AND_LAUNCH.md",
             "SAFETY_AND_PRIVACY.md",
@@ -130,6 +130,8 @@ public sealed partial class RepositoryDocumentationTests
             "WATCHED_FOLDERS_LINUX_v1.5.md",
             "Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md",
             "Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md",
+            "Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md",
+            "Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md",
             "Implementation_Spec/README.md",
         };
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 
@@ -10,7 +11,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
+public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -55,7 +56,16 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                         }
 
                         using var transaction = connection.BeginTransaction();
-                        ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionOne);
+                        if (version < 1)
+                        {
+                            ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionOne);
+                        }
+
+                        if (version < 2)
+                        {
+                            ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionTwo);
+                        }
+
                         ExecuteNonQuery(
                             connection,
                             transaction,
@@ -524,12 +534,19 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                            f.length, f.creation_utc_ticks, f.modified_utc_ticks, f.attributes,
                            f.stable_identity, f.file_system_id, f.metadata_fingerprint,
                            f.indexing_level, j.stage, j.attempt, f.processor_fingerprint,
-                           f.content_hash, c.extracted_text, c.ocr_text
+                           f.content_hash, c.extracted_text, c.ocr_text,
+                           COALESCE(p.suppress_ocr, 0),
+                           COALESCE(p.suppress_summary, 0),
+                           COALESCE(p.suppress_semantic, 0),
+                           COALESCE(p.force_reprocess, 0)
                     FROM index_jobs j
                     JOIN index_runs r ON r.id = j.run_id
                     JOIN index_sources s ON s.id = r.source_id
                     JOIN index_files f ON f.id = j.file_id
                     LEFT JOIN index_content c ON c.content_hash = f.content_hash
+                    LEFT JOIN index_privacy_rules p
+                      ON p.source_id = f.source_id
+                     AND p.relative_path_key = f.relative_path_key
                     WHERE r.status = $running
                       AND f.deleted_utc_ticks IS NULL
                       AND (
@@ -579,6 +596,10 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                     ContentHash = reader.IsDBNull(17) ? null : reader.GetString(17),
                     ExtractedText = reader.IsDBNull(18) ? null : reader.GetString(18),
                     OcrText = reader.IsDBNull(19) ? null : reader.GetString(19),
+                    SuppressOcr = reader.GetBoolean(20),
+                    SuppressSummary = reader.GetBoolean(21),
+                    SuppressSemantic = reader.GetBoolean(22),
+                    ForceReprocess = reader.GetBoolean(23),
                 };
                 reader.Close();
                 var changed = ExecuteNonQuery(
@@ -780,6 +801,20 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                                 WHERE id = $file;
                                 """,
                                 ("$now", completedAtUtc.UtcTicks),
+                                ("$file", workItem.FileId));
+                            ExecuteNonQuery(
+                                connection,
+                                transaction,
+                                """
+                                UPDATE index_privacy_rules
+                                SET force_reprocess = 0, updated_utc_ticks = $now
+                                WHERE source_id = $source
+                                  AND relative_path_key = (
+                                      SELECT relative_path_key FROM index_files WHERE id = $file
+                                  );
+                                """,
+                                ("$now", completedAtUtc.UtcTicks),
+                                ("$source", workItem.SourceId),
                                 ("$file", workItem.FileId));
                         }
                     }
@@ -1293,38 +1328,149 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                     """
                     SELECT f.id, f.full_path, f.relative_path, f.length, f.modified_utc_ticks,
                            f.fully_indexed, c.extracted_text, c.ocr_text, c.summary,
-                           c.keywords_json, c.semantic_json
+                           c.keywords_json, c.semantic_json,
+                           s.id, s.display_name, s.priority, f.creation_utc_ticks,
+                           f.indexing_level,
+                           EXISTS(SELECT 1 FROM index_failures x WHERE x.file_id = f.id),
+                           f.content_hash,
+                           COALESCE(p.suppress_ocr, 0),
+                           COALESCE(p.suppress_summary, 0),
+                           COALESCE(p.suppress_semantic, 0)
                     FROM index_files f
+                    JOIN index_sources s ON s.id = f.source_id
                     LEFT JOIN index_content c ON c.content_hash = f.content_hash
+                    LEFT JOIN index_privacy_rules p
+                      ON p.source_id = f.source_id
+                     AND p.relative_path_key = f.relative_path_key
                     WHERE f.deleted_utc_ticks IS NULL
+                      AND COALESCE(p.is_excluded, 0) = 0
                     ORDER BY f.relative_path_key, f.id
                     LIMIT $maximum;
                     """;
                 command.Parameters.AddWithValue("$maximum", maximumCount);
                 using var reader = command.ExecuteReader();
                 var documents = new List<ProgressiveSearchDocument>();
+                var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
                 while (reader.Read())
                 {
                     var fullPath = reader.GetString(1);
+                    var extension = Path.GetExtension(fullPath).ToLowerInvariant();
+                    var suppressOcr = reader.GetBoolean(18);
+                    var suppressSummary = reader.GetBoolean(19);
+                    var suppressSemantic = reader.GetBoolean(20);
+                    var indexingLevel = (IndexingLevel)reader.GetInt32(15);
+                    var keywordsValid = true;
+                    var keywords = reader.IsDBNull(9)
+                        ? []
+                        : TryDeserializeStrings(reader.GetString(9), out keywordsValid);
+                    var semanticValid = true;
+                    var semantic = suppressSemantic || reader.IsDBNull(10)
+                        ? null
+                        : TryDeserializeFloats(reader.GetString(10), out semanticValid);
                     documents.Add(new ProgressiveSearchDocument
                     {
                         FileId = reader.GetString(0),
                         FullPath = fullPath,
                         FileName = Path.GetFileName(fullPath),
+                        RelativePath = reader.GetString(2),
                         FolderName = Path.GetFileName(Path.GetDirectoryName(fullPath)) ?? string.Empty,
+                        Extension = extension,
+                        FileType = SearchFileTypeClassifier.Classify(extension),
+                        SourceId = reader.GetString(11),
+                        SourceName = reader.GetString(12),
+                        SourcePriority = reader.GetInt32(13),
+                        Length = reader.GetInt64(3),
+                        CreationTimeUtc = new DateTimeOffset(reader.GetInt64(14), TimeSpan.Zero),
+                        ModifiedTimeUtc = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero),
+                        IndexingLevel = indexingLevel,
                         MetadataText = string.Create(
                             CultureInfo.InvariantCulture,
                             $"{Path.GetExtension(fullPath)} {reader.GetInt64(3)} {new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero):O} {reader.GetString(2)}"),
                         IsFullyIndexed = reader.GetBoolean(5),
-                        ExtractedText = reader.IsDBNull(6) ? null : reader.GetString(6),
-                        OcrText = reader.IsDBNull(7) ? null : reader.GetString(7),
-                        Summary = reader.IsDBNull(8) ? null : reader.GetString(8),
-                        Tags = reader.IsDBNull(9) ? [] : DeserializeStrings(reader.GetString(9)),
-                        SemanticRepresentation = reader.IsDBNull(10) ? null : DeserializeFloats(reader.GetString(10)),
+                        ExtractedText = indexingLevel == IndexingLevel.Basic || reader.IsDBNull(6)
+                            ? null
+                            : reader.GetString(6),
+                        OcrText = indexingLevel == IndexingLevel.Basic || suppressOcr || reader.IsDBNull(7)
+                            ? null
+                            : reader.GetString(7),
+                        Summary = indexingLevel == IndexingLevel.Basic || suppressSummary || reader.IsDBNull(8)
+                            ? null
+                            : reader.GetString(8),
+                        Keywords = indexingLevel == IndexingLevel.Basic || suppressSummary ? [] : keywords,
+                        SemanticRepresentation = indexingLevel == IndexingLevel.Basic ? null : semantic,
+                        HasIndexingFailure = reader.GetBoolean(16) || !keywordsValid || !semanticValid,
                     });
+                    if (indexingLevel != IndexingLevel.Basic &&
+                        !suppressSemantic &&
+                        !reader.IsDBNull(17))
+                    {
+                        hashes[reader.GetString(0)] = reader.GetString(17);
+                    }
                 }
 
-                return documents;
+                reader.Close();
+                var chunks = ReadChunks(connection, hashes.Values.Distinct(StringComparer.Ordinal));
+                return documents
+                    .Select(document =>
+                        hashes.TryGetValue(document.FileId, out var hash) &&
+                        chunks.TryGetValue(hash, out var selected)
+                            ? document with { SelectedChunks = selected }
+                            : document)
+                    .ToArray();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetExcludedSearchPathsAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (maximumCount is < 1 or > MaximumSearchDocuments)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        }
+
+        return RunExclusiveAsync<IReadOnlyList<string>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT s.root_path, p.relative_path
+                    FROM index_privacy_rules p
+                    JOIN index_sources s ON s.id = p.source_id
+                    WHERE p.is_excluded = 1
+                    ORDER BY p.source_id, p.relative_path_key
+                    LIMIT $maximum;
+                    """;
+                command.Parameters.AddWithValue("$maximum", maximumCount);
+                using var reader = command.ExecuteReader();
+                var paths = new List<string>();
+                while (reader.Read())
+                {
+                    var root = reader.GetString(0);
+                    var relative = reader.GetString(1);
+                    try
+                    {
+                        var fullPath = _pathSemantics.NormalizeAbsolutePath(
+                            Path.Combine(root, relative));
+                        if (_pathSemantics.IsWithinRoot(root, fullPath))
+                        {
+                            paths.Add(fullPath);
+                        }
+                    }
+                    catch (Exception exception) when (
+                        exception is ArgumentException or
+                        NotSupportedException or
+                        PathTooLongException)
+                    {
+                        // Corrupt exclusion paths remain retained for storage diagnostics but never affect unrelated paths.
+                    }
+                }
+
+                return Array.AsReadOnly(paths.ToArray());
             },
             cancellationToken);
     }
@@ -1370,6 +1516,418 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                 }
 
                 return failures;
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyItem?> InspectFileAsync(
+        string fileId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                return ReadPrivacyItems(connection, "f.id = $value", fileId, 1).SingleOrDefault();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<IndexPrivacyItem>> InspectSourceAsync(
+        string sourceId,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
+        if (maximumCount is < 1 or > MaximumSearchDocuments)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        }
+
+        return RunExclusiveAsync<IReadOnlyList<IndexPrivacyItem>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                return ReadPrivacyItems(connection, "f.source_id = $value", sourceId, maximumCount);
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyOperationResult> ForgetFileAsync(
+        string fileId,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var identity = ReadFileIdentity(connection, transaction, fileId);
+                if (identity is null)
+                {
+                    return MissingPrivacyItem();
+                }
+
+                UpsertPrivacyRule(
+                    connection,
+                    transaction,
+                    identity,
+                    new IndexPrivacyPolicyChange(Excluded: true),
+                    changedAtUtc,
+                    repairStage: null,
+                    forceReprocess: false);
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    "DELETE FROM index_files WHERE id = $file;",
+                    ("$file", fileId));
+                DeleteOrphanedContent(connection, transaction);
+                transaction.Commit();
+                return new IndexPrivacyOperationResult(
+                    true,
+                    identity.SourceId,
+                    1,
+                    "Indexed data for the file was forgotten and future indexing is excluded. The original file was not changed.");
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyOperationResult> ForgetSourceAsync(
+        string sourceId,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var affected = checked((int)ScalarCount(
+                    connection,
+                    "SELECT COUNT(*) FROM index_files WHERE source_id = $source;",
+                    ("$source", sourceId)));
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    """
+                    INSERT INTO index_privacy_rules(
+                        source_id, relative_path_key, relative_path, is_excluded,
+                        indexing_level_override, suppress_ocr, suppress_summary,
+                        suppress_semantic, repair_stage, force_reprocess,
+                        updated_utc_ticks)
+                    SELECT source_id, relative_path_key, relative_path, 1,
+                           NULL, 0, 0, 0, NULL, 0, $now
+                    FROM index_files
+                    WHERE source_id = $source
+                    ON CONFLICT(source_id, relative_path_key) DO UPDATE SET
+                        relative_path = excluded.relative_path,
+                        is_excluded = 1,
+                        repair_stage = NULL,
+                        force_reprocess = 0,
+                        updated_utc_ticks = excluded.updated_utc_ticks;
+                    """,
+                    ("$now", changedAtUtc.UtcTicks),
+                    ("$source", sourceId));
+
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    "DELETE FROM index_files WHERE source_id = $source;",
+                    ("$source", sourceId));
+                DeleteOrphanedContent(connection, transaction);
+                transaction.Commit();
+                return new IndexPrivacyOperationResult(
+                    affected > 0,
+                    sourceId,
+                    affected,
+                    affected > 0
+                        ? "Indexed files for the source were forgotten and excluded from future indexing. Source files and source ownership were not changed."
+                        : "The source has no indexed files to forget.");
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyOperationResult> SetFilePolicyAsync(
+        string fileId,
+        IndexPrivacyPolicyChange change,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
+        ArgumentNullException.ThrowIfNull(change);
+        if (change.LevelOverride.HasValue && !Enum.IsDefined(change.LevelOverride.Value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(change));
+        }
+
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var identity = ReadFileIdentity(connection, transaction, fileId);
+                if (identity is null)
+                {
+                    return MissingPrivacyItem();
+                }
+
+                UpsertPrivacyRule(
+                    connection,
+                    transaction,
+                    identity,
+                    change,
+                    changedAtUtc,
+                    repairStage: change.LevelOverride.HasValue ? IndexingStage.MetadataIndexed : null,
+                    forceReprocess: change.LevelOverride.HasValue);
+                if (change.LevelOverride.HasValue)
+                {
+                    if (change.LevelOverride == IndexingLevel.Basic)
+                    {
+                        var contentHash = ExecuteScalar(
+                            connection,
+                            transaction,
+                            "SELECT content_hash FROM index_files WHERE id = $file;",
+                            ("$file", fileId)) as string;
+                        var sharedCount = string.IsNullOrWhiteSpace(contentHash)
+                            ? 0
+                            : ScalarCount(
+                                connection,
+                                """
+                                SELECT COUNT(*)
+                                FROM index_files
+                                WHERE content_hash = $hash
+                                  AND deleted_utc_ticks IS NULL;
+                                """,
+                                ("$hash", contentHash));
+                        if (sharedCount <= 1)
+                        {
+                            ClearDataCore(
+                                connection,
+                                transaction,
+                                fileId,
+                                contentHash,
+                                IndexedDataKind.ExtractedText |
+                                IndexedDataKind.OcrText |
+                                IndexedDataKind.SummaryAndKeywords |
+                                IndexedDataKind.SemanticData |
+                                IndexedDataKind.Chunks,
+                                changedAtUtc);
+                        }
+                    }
+
+                    ExecuteNonQuery(
+                        connection,
+                        transaction,
+                        """
+                        UPDATE index_files
+                        SET indexing_level = $level, fully_indexed = 0, updated_utc_ticks = $now
+                        WHERE id = $file;
+                        """,
+                        ("$level", (int)change.LevelOverride.Value),
+                        ("$now", changedAtUtc.UtcTicks),
+                        ("$file", fileId));
+                }
+
+                transaction.Commit();
+                return new IndexPrivacyOperationResult(
+                    true,
+                    identity.SourceId,
+                    1,
+                    "The per-file index policy was updated. The original file was not changed.");
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyOperationResult> ClearFileDataAsync(
+        string fileId,
+        IndexedDataKind data,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
+        if (data == IndexedDataKind.None || (data & ~IndexedDataKind.AllDerived) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(data));
+        }
+
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var identity = ReadFileIdentity(connection, transaction, fileId);
+                if (identity is null)
+                {
+                    return MissingPrivacyItem();
+                }
+
+                var effectiveData = ExpandDependentData(data);
+                var contentHash = ExecuteScalar(
+                    connection,
+                    transaction,
+                    "SELECT content_hash FROM index_files WHERE id = $file;",
+                    ("$file", fileId)) as string;
+                var clearsExtractedText = effectiveData.HasFlag(IndexedDataKind.ExtractedText);
+                UpsertPrivacyRule(
+                    connection,
+                    transaction,
+                    identity,
+                    new IndexPrivacyPolicyChange(
+                        LevelOverride: clearsExtractedText ? IndexingLevel.Basic : null,
+                        SuppressOcr:
+                            effectiveData.HasFlag(IndexedDataKind.OcrText) || clearsExtractedText
+                                ? true
+                                : null,
+                        SuppressSummary:
+                            effectiveData.HasFlag(IndexedDataKind.SummaryAndKeywords) ||
+                            clearsExtractedText
+                                ? true
+                                : null,
+                        SuppressSemantic:
+                            effectiveData.HasFlag(IndexedDataKind.SemanticData) ||
+                            effectiveData.HasFlag(IndexedDataKind.Chunks) ||
+                            clearsExtractedText
+                                ? true
+                                : null),
+                    changedAtUtc,
+                    repairStage: null,
+                    forceReprocess: false);
+                if (clearsExtractedText)
+                {
+                    ExecuteNonQuery(
+                        connection,
+                        transaction,
+                        "UPDATE index_files SET indexing_level = $level WHERE id = $file;",
+                        ("$level", (int)IndexingLevel.Basic),
+                        ("$file", fileId));
+                }
+
+                var affected = string.IsNullOrWhiteSpace(contentHash)
+                    ? 1
+                    : checked((int)ScalarCount(
+                        connection,
+                        "SELECT COUNT(*) FROM index_files WHERE content_hash = $hash AND deleted_utc_ticks IS NULL;",
+                        ("$hash", contentHash)));
+                ClearDataCore(
+                    connection,
+                    transaction,
+                    fileId,
+                    contentHash,
+                    effectiveData,
+                    changedAtUtc);
+                transaction.Commit();
+                return new IndexPrivacyOperationResult(
+                    true,
+                    identity.SourceId,
+                    affected,
+                    affected > 1
+                        ? $"The selected generated data was cleared for {affected} identical-content records that shared it. Original files were not changed."
+                        : "The selected generated index data was cleared. The original file was not changed.");
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyOperationResult> PrepareFileRepairAsync(
+        string fileId,
+        IndexRepairKind repair,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
+        if (!Enum.IsDefined(repair))
+        {
+            throw new ArgumentOutOfRangeException(nameof(repair));
+        }
+
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var identity = ReadFileIdentity(connection, transaction, fileId);
+                if (identity is null)
+                {
+                    return MissingPrivacyItem();
+                }
+
+                var stage = ResolveRepairStage(connection, transaction, fileId, repair);
+                if (!stage.HasValue)
+                {
+                    return new IndexPrivacyOperationResult(
+                        false,
+                        identity.SourceId,
+                        0,
+                        "The indexed record is internally consistent and no repair was queued.");
+                }
+
+                PrepareRepairCore(connection, transaction, identity, fileId, stage.Value, changedAtUtc);
+                transaction.Commit();
+                return new IndexPrivacyOperationResult(
+                    true,
+                    identity.SourceId,
+                    1,
+                    $"Selective repair was prepared from {stage.Value}. The original file was not changed.");
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IndexPrivacyOperationResult> PrepareSourceRepairAsync(
+        string sourceId,
+        IndexRepairKind repair,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceId);
+        if (!Enum.IsDefined(repair))
+        {
+            throw new ArgumentOutOfRangeException(nameof(repair));
+        }
+
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var files = ReadFileIdentities(connection, transaction, sourceId);
+                var affected = 0;
+                foreach (var identity in files)
+                {
+                    var stage = ResolveRepairStage(connection, transaction, identity.FileId, repair);
+                    if (!stage.HasValue)
+                    {
+                        continue;
+                    }
+
+                    PrepareRepairCore(
+                        connection,
+                        transaction,
+                        identity,
+                        identity.FileId,
+                        stage.Value,
+                        changedAtUtc);
+                    affected++;
+                }
+
+                transaction.Commit();
+                return new IndexPrivacyOperationResult(
+                    affected > 0,
+                    sourceId,
+                    affected,
+                    affected > 0
+                        ? $"Selective source repair was prepared for {affected} indexed file(s). Original files were not changed."
+                        : "No indexed records required the selected repair.");
             },
             cancellationToken);
     }
@@ -1521,6 +2079,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
                 using var connection = OpenConnection();
                 using var transaction = connection.BeginTransaction();
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionOne);
+                ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionTwo);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -1648,14 +2207,24 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
         int maximumRetryCount)
     {
         ValidateObservation(source, observation);
+        var relativeKey = RelativePathKey(observation.RelativePath);
+        var privacy = ReadPrivacyRule(connection, transaction, source.Id, relativeKey);
+        if (privacy?.IsExcluded == true)
+        {
+            return;
+        }
+
+        var effectiveLevel = privacy?.LevelOverride ?? source.Level;
         var existing = FindExistingFile(connection, transaction, source.Id, observation);
         var now = DateTimeOffset.UtcNow.UtcTicks;
         var fileId = existing?.Id ?? Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         var unchanged = existing is not null &&
+            privacy?.RepairStage is null &&
+            privacy?.ForceReprocess != true &&
             existing.FullyIndexed &&
             string.Equals(existing.MetadataFingerprint, observation.MetadataFingerprint, StringComparison.Ordinal) &&
             string.Equals(existing.ProcessorFingerprint, processorFingerprint, StringComparison.Ordinal) &&
-            existing.Level == source.Level;
+            existing.Level == effectiveLevel;
         ExecuteNonQuery(
             connection,
             transaction,
@@ -1694,7 +2263,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
             ("$path", observation.FullPath),
             ("$pathKey", PathKey(observation.FullPath)),
             ("$relative", observation.RelativePath),
-            ("$relativeKey", RelativePathKey(observation.RelativePath)),
+            ("$relativeKey", relativeKey),
             ("$identity", observation.StableIdentity),
             ("$fileSystem", observation.FileSystemId),
             ("$length", observation.Length),
@@ -1704,11 +2273,12 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
             ("$metadata", observation.MetadataFingerprint),
             ("$contentHash", existing?.ContentHash),
             ("$processor", processorFingerprint),
-            ("$level", (int)source.Level),
+            ("$level", (int)effectiveLevel),
             ("$fully", unchanged ? 1 : 0),
             ("$run", runId),
             ("$now", now));
-        var startingStage = existing is null ? IndexingStage.FileDiscovered : IndexingStage.MetadataIndexed;
+        var startingStage = privacy?.RepairStage ??
+            (existing is null ? IndexingStage.FileDiscovered : IndexingStage.MetadataIndexed);
         ExecuteNonQuery(
             connection,
             transaction,
@@ -1732,6 +2302,20 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
             ("$now", now),
             ("$completed", unchanged ? now : null),
             ("$none", (int)IndexingFailureCategory.None));
+        if (privacy?.RepairStage is not null)
+        {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                """
+                UPDATE index_privacy_rules
+                SET repair_stage = NULL, updated_utc_ticks = $now
+                WHERE source_id = $source AND relative_path_key = $relative;
+                """,
+                ("$now", now),
+                ("$source", source.Id),
+                ("$relative", relativeKey));
+        }
     }
 
     private ExistingFile? FindExistingFile(
@@ -2088,27 +2672,64 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
             """
             SELECT COUNT(*),
                    SUM(CASE WHEN metadata_fingerprint <> '' THEN 1 ELSE 0 END),
-                   SUM(CASE WHEN c.extracted_text IS NOT NULL AND c.extracted_text <> '' THEN 1 ELSE 0 END),
-                   SUM(CASE WHEN c.ocr_text IS NOT NULL AND c.ocr_text <> '' THEN 1 ELSE 0 END),
-                   SUM(CASE WHEN c.semantic_json IS NOT NULL AND c.semantic_json <> '' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN f.indexing_level <> $basic
+                                 AND c.extracted_text IS NOT NULL
+                                 AND c.extracted_text <> '' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN f.indexing_level <> $basic
+                                 AND COALESCE(p.suppress_ocr, 0) = 0
+                                 AND c.ocr_text IS NOT NULL
+                                 AND c.ocr_text <> '' THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN f.indexing_level <> $basic
+                                 AND COALESCE(p.suppress_semantic, 0) = 0
+                                 AND c.semantic_json IS NOT NULL
+                                 AND c.semantic_json <> '' THEN 1 ELSE 0 END),
                    SUM(CASE WHEN f.fully_indexed = 1 THEN 1 ELSE 0 END)
             FROM index_files f
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
-            WHERE f.deleted_utc_ticks IS NULL;
+            LEFT JOIN index_privacy_rules p
+              ON p.source_id = f.source_id
+             AND p.relative_path_key = f.relative_path_key
+            WHERE f.deleted_utc_ticks IS NULL
+              AND COALESCE(p.is_excluded, 0) = 0;
             """;
+        command.Parameters.AddWithValue("$basic", (int)IndexingLevel.Basic);
         using var reader = command.ExecuteReader();
         if (!reader.Read())
         {
             return new SearchCoverage(0, 0, 0, 0, 0, 0);
         }
 
-        return new SearchCoverage(
+        var coverage = new SearchCoverage(
             reader.GetInt64(0),
             reader.IsDBNull(1) ? 0 : reader.GetInt64(1),
             reader.IsDBNull(2) ? 0 : reader.GetInt64(2),
             reader.IsDBNull(3) ? 0 : reader.GetInt64(3),
             reader.IsDBNull(4) ? 0 : reader.GetInt64(4),
             reader.IsDBNull(5) ? 0 : reader.GetInt64(5));
+        reader.Close();
+        return coverage with
+        {
+            ExcludedSourceCount = ScalarCount(
+                connection,
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM index_privacy_rules WHERE is_excluded = 1) +
+                    (SELECT COUNT(*) FROM index_sources WHERE exclusions_json <> '[]');
+                """),
+            WaitingForOcrCount = ScalarCount(
+                connection,
+                "SELECT COUNT(*) FROM index_jobs WHERE status = $status AND waiting_dependency = 'OCR';",
+                ("$status", (int)IndexingStageStatus.WaitingForDependency)),
+            WaitingForAiCount = ScalarCount(
+                connection,
+                "SELECT COUNT(*) FROM index_jobs WHERE status = $status AND waiting_dependency = 'local AI';",
+                ("$status", (int)IndexingStageStatus.WaitingForDependency)),
+            FailedStageCount = ScalarCount(
+                connection,
+                "SELECT COUNT(*) FROM index_stage_states WHERE status = $status;",
+                ("$status", (int)IndexingStageStatus.Failed)),
+            IsAvailable = true,
+        };
     }
 
     private IndexStorageBreakdown ReadStorageBreakdown(SqliteConnection connection, long maximumBytes)
@@ -2154,7 +2775,518 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
             maximumBytes);
     }
 
+    private static IReadOnlyList<IndexPrivacyItem> ReadPrivacyItems(
+        SqliteConnection connection,
+        string predicate,
+        string value,
+        int maximumCount)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"""
+            SELECT f.id, s.id, s.display_name, s.root_path, f.full_path, f.relative_path,
+                   f.indexing_level, s.managed_by_watched_folders,
+                   LENGTH(f.full_path) + LENGTH(f.relative_path) + LENGTH(f.metadata_fingerprint) + 96,
+                   CASE WHEN f.indexing_level = $basic
+                        THEN NULL ELSE LENGTH(c.extracted_text) END,
+                   CASE WHEN f.indexing_level = $basic OR COALESCE(p.suppress_ocr, 0) = 1
+                        THEN NULL ELSE LENGTH(c.ocr_text) END,
+                   CASE WHEN f.indexing_level = $basic OR COALESCE(p.suppress_summary, 0) = 1
+                        THEN NULL ELSE c.summary END,
+                   CASE WHEN f.indexing_level = $basic OR COALESCE(p.suppress_summary, 0) = 1
+                        THEN NULL ELSE c.keywords_json END,
+                   CASE WHEN f.indexing_level = $basic OR COALESCE(p.suppress_semantic, 0) = 1
+                        THEN NULL ELSE c.semantic_json END,
+                   CASE WHEN f.indexing_level = $basic OR COALESCE(p.suppress_semantic, 0) = 1
+                        THEN 0 ELSE (SELECT COUNT(*) FROM index_chunks k WHERE k.content_hash = f.content_hash) END,
+                   (SELECT COUNT(*) FROM index_files shared
+                    WHERE shared.content_hash = f.content_hash AND shared.deleted_utc_ticks IS NULL),
+                   (SELECT COUNT(*) FROM index_failures x WHERE x.file_id = f.id),
+                   (SELECT COUNT(*) FROM index_stage_states st WHERE st.file_id = f.id),
+                   f.fully_indexed, f.updated_utc_ticks, f.processor_fingerprint,
+                   COALESCE(p.is_excluded, 0), COALESCE(p.suppress_ocr, 0),
+                   COALESCE(p.suppress_summary, 0), COALESCE(p.suppress_semantic, 0)
+            FROM index_files f
+            JOIN index_sources s ON s.id = f.source_id
+            LEFT JOIN index_content c ON c.content_hash = f.content_hash
+            LEFT JOIN index_privacy_rules p
+              ON p.source_id = f.source_id
+             AND p.relative_path_key = f.relative_path_key
+            WHERE {predicate}
+            ORDER BY f.relative_path_key, f.id
+            LIMIT $maximum;
+            """;
+        AddParameters(
+            command,
+            ("$value", value),
+            ("$maximum", maximumCount),
+            ("$basic", (int)IndexingLevel.Basic));
+        using var reader = command.ExecuteReader();
+        var items = new List<IndexPrivacyItem>();
+        while (reader.Read())
+        {
+            var keywords = reader.IsDBNull(12)
+                ? []
+                : TryDeserializeStrings(reader.GetString(12));
+            items.Add(new IndexPrivacyItem
+            {
+                FileId = reader.GetString(0),
+                SourceId = reader.GetString(1),
+                SourceName = reader.GetString(2),
+                SourceRootPath = reader.GetString(3),
+                FileName = Path.GetFileName(reader.GetString(4)),
+                RelativePath = reader.GetString(5),
+                IndexingLevel = (IndexingLevel)reader.GetInt32(6),
+                ManagedByWatchedFolders = reader.GetBoolean(7),
+                MetadataBytes = reader.GetInt64(8),
+                ExtractedTextCharacters = reader.IsDBNull(9) ? 0 : reader.GetInt32(9),
+                OcrTextCharacters = reader.IsDBNull(10) ? 0 : reader.GetInt32(10),
+                HasSummary = !reader.IsDBNull(11) && !string.IsNullOrWhiteSpace(reader.GetString(11)),
+                KeywordCount = keywords.Count,
+                HasSemanticData = !reader.IsDBNull(13) && !string.IsNullOrWhiteSpace(reader.GetString(13)),
+                ChunkCount = reader.GetInt32(14),
+                SharedContentReferenceCount = reader.GetInt32(15),
+                FailureCount = reader.GetInt32(16),
+                StageHistoryCount = reader.GetInt32(17),
+                IsFullyIndexed = reader.GetBoolean(18),
+                LastIndexedUtc = new DateTimeOffset(reader.GetInt64(19), TimeSpan.Zero),
+                ProcessorVersion = DeepIndexingVersion.ProcessorVersion,
+                ProviderName = "Embedded local index",
+                IsExcluded = reader.GetBoolean(21),
+                OcrSuppressed = reader.GetBoolean(22),
+                SummarySuppressed = reader.GetBoolean(23),
+                SemanticSuppressed = reader.GetBoolean(24),
+            });
+        }
+
+        return Array.AsReadOnly(items.ToArray());
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<string>> ReadChunks(
+        SqliteConnection connection,
+        IEnumerable<string> contentHashes)
+    {
+        var hashes = contentHashes.Distinct(StringComparer.Ordinal).ToArray();
+        var output = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        const int batchSize = 400;
+        for (var offset = 0; offset < hashes.Length; offset += batchSize)
+        {
+            var batch = hashes.Skip(offset).Take(batchSize).ToArray();
+            using var command = connection.CreateCommand();
+            var parameterNames = new string[batch.Length];
+            for (var index = 0; index < batch.Length; index++)
+            {
+                parameterNames[index] = $"$hash{index}";
+                command.Parameters.AddWithValue(parameterNames[index], batch[index]);
+            }
+
+            command.CommandText =
+                $"""
+                SELECT content_hash, chunk_text
+                FROM index_chunks
+                WHERE content_hash IN ({string.Join(", ", parameterNames)})
+                ORDER BY content_hash, ordinal;
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var hash = reader.GetString(0);
+                if (!output.TryGetValue(hash, out var chunks))
+                {
+                    chunks = [];
+                    output[hash] = chunks;
+                }
+
+                chunks.Add(reader.GetString(1));
+            }
+        }
+
+        return output.ToDictionary(
+            pair => pair.Key,
+            pair => (IReadOnlyList<string>)Array.AsReadOnly(pair.Value.ToArray()),
+            StringComparer.Ordinal);
+    }
+
+    private static PrivacyRule? ReadPrivacyRule(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sourceId,
+        string relativePathKey)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            SELECT is_excluded, indexing_level_override, suppress_ocr, suppress_summary,
+                   suppress_semantic, repair_stage, force_reprocess
+            FROM index_privacy_rules
+            WHERE source_id = $source AND relative_path_key = $relative;
+            """;
+        AddParameters(command, ("$source", sourceId), ("$relative", relativePathKey));
+        using var reader = command.ExecuteReader();
+        return reader.Read()
+            ? new PrivacyRule(
+                reader.GetBoolean(0),
+                reader.IsDBNull(1) ? null : (IndexingLevel)reader.GetInt32(1),
+                reader.GetBoolean(2),
+                reader.GetBoolean(3),
+                reader.GetBoolean(4),
+                reader.IsDBNull(5) ? null : (IndexingStage)reader.GetInt32(5),
+                reader.GetBoolean(6))
+            : null;
+    }
+
+    private static FileIdentity? ReadFileIdentity(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string fileId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            SELECT id, source_id, relative_path_key, relative_path
+            FROM index_files
+            WHERE id = $file;
+            """;
+        command.Parameters.AddWithValue("$file", fileId);
+        using var reader = command.ExecuteReader();
+        return reader.Read()
+            ? new FileIdentity(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3))
+            : null;
+    }
+
+    private static IReadOnlyList<FileIdentity> ReadFileIdentities(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sourceId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText =
+            """
+            SELECT id, source_id, relative_path_key, relative_path
+            FROM index_files
+            WHERE source_id = $source
+            ORDER BY relative_path_key, id;
+            """;
+        command.Parameters.AddWithValue("$source", sourceId);
+        using var reader = command.ExecuteReader();
+        var output = new List<FileIdentity>();
+        while (reader.Read())
+        {
+            output.Add(new FileIdentity(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetString(3)));
+        }
+
+        return Array.AsReadOnly(output.ToArray());
+    }
+
+    private static void UpsertPrivacyRule(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        FileIdentity identity,
+        IndexPrivacyPolicyChange change,
+        DateTimeOffset changedAtUtc,
+        IndexingStage? repairStage,
+        bool forceReprocess)
+    {
+        ExecuteNonQuery(
+            connection,
+            transaction,
+            """
+            INSERT INTO index_privacy_rules(
+                source_id, relative_path_key, relative_path, is_excluded,
+                indexing_level_override, suppress_ocr, suppress_summary,
+                suppress_semantic, repair_stage, force_reprocess, updated_utc_ticks)
+            VALUES(
+                $source, $relativeKey, $relative, COALESCE($excluded, 0),
+                $level, COALESCE($ocr, 0), COALESCE($summary, 0),
+                COALESCE($semantic, 0), $repair, $force, $now)
+            ON CONFLICT(source_id, relative_path_key) DO UPDATE SET
+                relative_path = excluded.relative_path,
+                is_excluded = COALESCE($excluded, index_privacy_rules.is_excluded),
+                indexing_level_override = COALESCE($level, index_privacy_rules.indexing_level_override),
+                suppress_ocr = COALESCE($ocr, index_privacy_rules.suppress_ocr),
+                suppress_summary = COALESCE($summary, index_privacy_rules.suppress_summary),
+                suppress_semantic = COALESCE($semantic, index_privacy_rules.suppress_semantic),
+                repair_stage = COALESCE($repair, index_privacy_rules.repair_stage),
+                force_reprocess = MAX(index_privacy_rules.force_reprocess, $force),
+                updated_utc_ticks = excluded.updated_utc_ticks;
+            """,
+            ("$source", identity.SourceId),
+            ("$relativeKey", identity.RelativePathKey),
+            ("$relative", identity.RelativePath),
+            ("$excluded", change.Excluded.HasValue ? (change.Excluded.Value ? 1 : 0) : null),
+            ("$level", change.LevelOverride.HasValue ? (int)change.LevelOverride.Value : null),
+            ("$ocr", change.SuppressOcr.HasValue ? (change.SuppressOcr.Value ? 1 : 0) : null),
+            ("$summary", change.SuppressSummary.HasValue ? (change.SuppressSummary.Value ? 1 : 0) : null),
+            ("$semantic", change.SuppressSemantic.HasValue ? (change.SuppressSemantic.Value ? 1 : 0) : null),
+            ("$repair", repairStage.HasValue ? (int)repairStage.Value : null),
+            ("$force", forceReprocess ? 1 : 0),
+            ("$now", changedAtUtc.UtcTicks));
+    }
+
+    private static void ClearDataCore(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string fileId,
+        string? contentHash,
+        IndexedDataKind data,
+        DateTimeOffset changedAtUtc)
+    {
+        if (!string.IsNullOrWhiteSpace(contentHash))
+        {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                """
+                UPDATE index_content
+                SET extracted_text = CASE WHEN $text = 1 THEN NULL ELSE extracted_text END,
+                    ocr_text = CASE WHEN $ocr = 1 THEN NULL ELSE ocr_text END,
+                    summary = CASE WHEN $summary = 1 THEN NULL ELSE summary END,
+                    keywords_json = CASE WHEN $summary = 1 THEN NULL ELSE keywords_json END,
+                    semantic_json = CASE WHEN $semantic = 1 THEN NULL ELSE semantic_json END,
+                    coverage_level = CASE
+                        WHEN $text = 1 OR $ocr = 1 OR $summary = 1 OR $semantic = 1 THEN -1
+                        ELSE coverage_level
+                    END,
+                    updated_utc_ticks = $now
+                WHERE content_hash = $hash;
+                """,
+                ("$text", data.HasFlag(IndexedDataKind.ExtractedText) ? 1 : 0),
+                ("$ocr", data.HasFlag(IndexedDataKind.OcrText) ? 1 : 0),
+                ("$summary", data.HasFlag(IndexedDataKind.SummaryAndKeywords) ? 1 : 0),
+                ("$semantic", data.HasFlag(IndexedDataKind.SemanticData) ? 1 : 0),
+                ("$now", changedAtUtc.UtcTicks),
+                ("$hash", contentHash));
+            if (data.HasFlag(IndexedDataKind.Chunks))
+            {
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    "DELETE FROM index_chunks WHERE content_hash = $hash;",
+                    ("$hash", contentHash));
+            }
+        }
+
+        if (data.HasFlag(IndexedDataKind.ProcessingHistory))
+        {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                "DELETE FROM index_failures WHERE file_id = $file;",
+                ("$file", fileId));
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                "DELETE FROM index_stage_states WHERE file_id = $file;",
+                ("$file", fileId));
+        }
+
+        ExecuteNonQuery(
+            connection,
+            transaction,
+            """
+            UPDATE index_files
+            SET content_hash = CASE WHEN $relationships = 1 THEN NULL ELSE content_hash END,
+                fully_indexed = CASE WHEN $relationships = 1 THEN 0 ELSE 1 END,
+                updated_utc_ticks = $now
+            WHERE id = $file;
+            """,
+            ("$relationships", data.HasFlag(IndexedDataKind.Relationships) ? 1 : 0),
+            ("$now", changedAtUtc.UtcTicks),
+            ("$file", fileId));
+        DeleteOrphanedContentStatic(connection, transaction);
+    }
+
+    private static IndexedDataKind ExpandDependentData(IndexedDataKind data)
+    {
+        if (data.HasFlag(IndexedDataKind.ExtractedText))
+        {
+            data |= IndexedDataKind.OcrText |
+                IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.SemanticData |
+                IndexedDataKind.Chunks;
+        }
+
+        if (data.HasFlag(IndexedDataKind.OcrText))
+        {
+            data |= IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.SemanticData |
+                IndexedDataKind.Chunks;
+        }
+
+        if (data.HasFlag(IndexedDataKind.SummaryAndKeywords))
+        {
+            data |= IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+        }
+
+        return data;
+    }
+
+    private static IndexingStage? ResolveRepairStage(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string fileId,
+        IndexRepairKind repair)
+    {
+        if (repair == IndexRepairKind.RetryFailedStage)
+        {
+            var value = ExecuteScalar(
+                connection,
+                transaction,
+                """
+                SELECT MIN(stage)
+                FROM index_stage_states
+                WHERE file_id = $file
+                  AND status IN ($failed, $waiting, $retry, $cancelled);
+                """,
+                ("$file", fileId),
+                ("$failed", (int)IndexingStageStatus.Failed),
+                ("$waiting", (int)IndexingStageStatus.WaitingForDependency),
+                ("$retry", (int)IndexingStageStatus.RetryScheduled),
+                ("$cancelled", (int)IndexingStageStatus.Cancelled));
+            return value is null or DBNull
+                ? null
+                : (IndexingStage)Convert.ToInt32(value, CultureInfo.InvariantCulture);
+        }
+
+        if (repair == IndexRepairKind.Verify)
+        {
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText =
+                """
+                SELECT f.metadata_fingerprint, f.indexing_level, f.fully_indexed,
+                       f.content_hash, c.extracted_text
+                FROM index_files f
+                LEFT JOIN index_content c ON c.content_hash = f.content_hash
+                WHERE f.id = $file;
+                """;
+            command.Parameters.AddWithValue("$file", fileId);
+            using var reader = command.ExecuteReader();
+            if (!reader.Read() || string.IsNullOrWhiteSpace(reader.GetString(0)))
+            {
+                return IndexingStage.MetadataIndexed;
+            }
+
+            var level = (IndexingLevel)reader.GetInt32(1);
+            var fullyIndexed = reader.GetBoolean(2);
+            if (fullyIndexed && level != IndexingLevel.Basic && reader.IsDBNull(3))
+            {
+                return IndexingStage.ContentFingerprinted;
+            }
+
+            if (fullyIndexed &&
+                level != IndexingLevel.Basic &&
+                (reader.IsDBNull(4) || string.IsNullOrWhiteSpace(reader.GetString(4))))
+            {
+                return IndexingStage.TextExtracted;
+            }
+
+            return null;
+        }
+
+        return repair switch
+        {
+            IndexRepairKind.Rebuild => IndexingStage.FileDiscovered,
+            IndexRepairKind.RefreshMetadata => IndexingStage.MetadataIndexed,
+            IndexRepairKind.RefreshText => IndexingStage.TextExtracted,
+            IndexRepairKind.RefreshOcr => IndexingStage.OcrProcessed,
+            IndexRepairKind.RegenerateSummaryAndKeywords => IndexingStage.SummaryKeywordsGenerated,
+            IndexRepairKind.RegenerateSemanticData => IndexingStage.SemanticRepresentationGenerated,
+            _ => null,
+        };
+    }
+
+    private static void PrepareRepairCore(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        FileIdentity identity,
+        string fileId,
+        IndexingStage stage,
+        DateTimeOffset changedAtUtc)
+    {
+        var clear = stage switch
+        {
+            <= IndexingStage.ContentFingerprinted => IndexedDataKind.AllDerived,
+            IndexingStage.TextExtracted =>
+                IndexedDataKind.ExtractedText |
+                IndexedDataKind.OcrText |
+                IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.SemanticData |
+                IndexedDataKind.Chunks,
+            IndexingStage.OcrProcessed =>
+                IndexedDataKind.OcrText |
+                IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.SemanticData |
+                IndexedDataKind.Chunks,
+            IndexingStage.SummaryKeywordsGenerated =>
+                IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.SemanticData |
+                IndexedDataKind.Chunks,
+            IndexingStage.SemanticRepresentationGenerated =>
+                IndexedDataKind.SemanticData | IndexedDataKind.Chunks,
+            _ => IndexedDataKind.ProcessingHistory,
+        };
+        var contentHash = ExecuteScalar(
+            connection,
+            transaction,
+            "SELECT content_hash FROM index_files WHERE id = $file;",
+            ("$file", fileId)) as string;
+        ClearDataCore(connection, transaction, fileId, contentHash, clear, changedAtUtc);
+        ExecuteNonQuery(
+            connection,
+            transaction,
+            "DELETE FROM index_stage_states WHERE file_id = $file AND stage >= $stage;",
+            ("$file", fileId),
+            ("$stage", (int)stage));
+        ExecuteNonQuery(
+            connection,
+            transaction,
+            "DELETE FROM index_failures WHERE file_id = $file AND stage >= $stage;",
+            ("$file", fileId),
+            ("$stage", (int)stage));
+        UpsertPrivacyRule(
+            connection,
+            transaction,
+            identity,
+            new IndexPrivacyPolicyChange(
+                Excluded: false,
+                SuppressOcr: stage <= IndexingStage.OcrProcessed ? false : null,
+                SuppressSummary: stage <= IndexingStage.SummaryKeywordsGenerated ? false : null,
+                SuppressSemantic: stage <= IndexingStage.SemanticRepresentationGenerated ? false : null),
+            changedAtUtc,
+            stage,
+            forceReprocess: true);
+    }
+
+    private static long ScalarCount(
+        SqliteConnection connection,
+        string sql,
+        params (string Name, object? Value)[] parameters) =>
+        Convert.ToInt64(ExecuteScalar(connection, sql, parameters) ?? 0, CultureInfo.InvariantCulture);
+
+    private static IndexPrivacyOperationResult MissingPrivacyItem() => new(
+        false,
+        null,
+        0,
+        "The selected indexed file no longer exists.");
+
     private int DeleteOrphanedContent(SqliteConnection connection, SqliteTransaction transaction) =>
+        DeleteOrphanedContentStatic(connection, transaction);
+
+    private static int DeleteOrphanedContentStatic(
+        SqliteConnection connection,
+        SqliteTransaction transaction) =>
         ExecuteNonQuery(
             connection,
             transaction,
@@ -2346,6 +3478,19 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
         return command.ExecuteScalar();
     }
 
+    private static object? ExecuteScalar(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sql,
+        params (string Name, object? Value)[] parameters)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        AddParameters(command, parameters);
+        return command.ExecuteScalar();
+    }
+
     private static void AddParameters(SqliteCommand command, params (string Name, object? Value)[] parameters)
     {
         foreach (var (name, value) in parameters)
@@ -2357,8 +3502,54 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
     private static IReadOnlyList<string> DeserializeStrings(string value) =>
         JsonSerializer.Deserialize<string[]>(value) ?? [];
 
-    private static IReadOnlyList<float> DeserializeFloats(string value) =>
-        JsonSerializer.Deserialize<float[]>(value) ?? [];
+    private static IReadOnlyList<string> TryDeserializeStrings(string value) =>
+        TryDeserializeStrings(value, out _);
+
+    private static IReadOnlyList<string> TryDeserializeStrings(string value, out bool isValid)
+    {
+        try
+        {
+            var values = JsonSerializer.Deserialize<string[]>(value);
+            if (values is null ||
+                values.Length > 256 ||
+                values.Any(item => string.IsNullOrWhiteSpace(item) || item.Length > 1024))
+            {
+                isValid = false;
+                return [];
+            }
+
+            isValid = true;
+            return Array.AsReadOnly(values);
+        }
+        catch (JsonException)
+        {
+            isValid = false;
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<float>? TryDeserializeFloats(string value, out bool isValid)
+    {
+        try
+        {
+            var values = JsonSerializer.Deserialize<float[]>(value);
+            if (values is null ||
+                values.Length is 0 or > 4096 ||
+                values.Any(item => !float.IsFinite(item)))
+            {
+                isValid = false;
+                return null;
+            }
+
+            isValid = true;
+            return Array.AsReadOnly(values);
+        }
+        catch (JsonException)
+        {
+            isValid = false;
+            return null;
+        }
+    }
 
     private static string Bound(string value, int maximumLength) =>
         value.Length <= maximumLength ? value : value[..maximumLength];
@@ -2373,4 +3564,19 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IDisposable
         IndexingLevel Level,
         bool FullyIndexed,
         string? ContentHash);
+
+    private sealed record FileIdentity(
+        string FileId,
+        string SourceId,
+        string RelativePathKey,
+        string RelativePath);
+
+    private sealed record PrivacyRule(
+        bool IsExcluded,
+        IndexingLevel? LevelOverride,
+        bool SuppressOcr,
+        bool SuppressSummary,
+        bool SuppressSemantic,
+        IndexingStage? RepairStage,
+        bool ForceReprocess);
 }

@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the OpenSorSe 1.7 solution as it exists in source. It describes
+This guide maps the OpenSorSe 1.8 solution as it exists in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 

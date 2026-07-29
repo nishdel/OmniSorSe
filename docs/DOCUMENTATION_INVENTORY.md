@@ -80,14 +80,20 @@ product architecture.
 
 ## Current version-specific documentation
 
-These files are authoritative for v1.7 within their scope:
+These files are authoritative for v1.8 within their scope:
 
-- `docs/USER_GUIDE_v1.7.md`
-- `docs/TROUBLESHOOTING_v1.7.md`
-- `docs/MANUAL_TESTING_v1.7.md`
-- `docs/VERSION_NOTES_v1.7.md`
-- `docs/V1.7_IMPLEMENTATION_REPORT.md`
-- `docs/V1.7_VALIDATION_REPORT.md`
+- `docs/USER_GUIDE_v1.8.md`
+- `docs/TROUBLESHOOTING_v1.8.md`
+- `docs/MANUAL_TESTING_v1.8.md`
+- `docs/VERSION_NOTES_v1.8.md`
+- `docs/V1.8_IMPLEMENTATION_REPORT.md`
+- `docs/V1.8_VALIDATION_REPORT.md`
+- `docs/Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md`
+- `docs/Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md`
+
+The v1.7 deep-indexing documents remain authoritative for the durable pipeline
+foundation reused by v1.8:
+
 - `docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md`
 - `docs/Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md`
 

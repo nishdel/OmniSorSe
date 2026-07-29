@@ -17,8 +17,10 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly ISemanticSearchService? _searchService;
     private readonly ISemanticIndexStore? _indexStore;
     private readonly IExternalFileLauncher? _launcher;
+    private readonly IIndexPrivacyService? _privacyService;
     private readonly IAdvancedDiagnosticsWindowService? _advancedDiagnosticsWindowService;
     private readonly ObservableCollection<SemanticSearchHit> _hits = [];
+    private readonly ObservableCollection<SearchFilter> _activeFilters = [];
     private readonly ObservableCollection<IndexingSource> _sources = [];
     private readonly ObservableCollection<IndexingFailure> _indexingFailures = [];
     private CancellationTokenSource? _operationCancellation;
@@ -33,6 +35,15 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private string _coverageText = "Search coverage has not been inspected.";
     private string _storageText = "Index storage has not been inspected.";
     private string _storageBreakdownText = string.Empty;
+    private string _topicText = string.Empty;
+    private bool _areFiltersVisible;
+    private SemanticSearchHit? _selectedHit;
+    private IndexPrivacyItem? _privacyItem;
+    private string _privacyText = "Select Inspect indexed data on a Search result to review retained categories.";
+    private bool _isForgetFilePending;
+    private bool _isForgetSourcePending;
+    private bool _filtersWereEdited;
+    private long _queryVersion;
 
     /// <summary>Initializes a preview instance with Search unavailable.</summary>
     public SemanticSearchViewModel()
@@ -48,7 +59,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         ISemanticIndexStore? indexStore,
         IExternalFileLauncher? launcher,
         IBackgroundIndexingService? backgroundIndexingService = null,
-        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null)
+        IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null,
+        IIndexPrivacyService? privacyService = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _indexer = indexer;
@@ -56,8 +68,10 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _indexStore = indexStore;
         _launcher = launcher;
         _backgroundIndexingService = backgroundIndexingService;
+        _privacyService = privacyService ?? backgroundIndexingService as IIndexPrivacyService;
         _advancedDiagnosticsWindowService = advancedDiagnosticsWindowService;
         Hits = new ReadOnlyObservableCollection<SemanticSearchHit>(_hits);
+        ActiveFilters = new ReadOnlyObservableCollection<SearchFilter>(_activeFilters);
         Sources = new ReadOnlyObservableCollection<IndexingSource>(_sources);
         IndexingFailures = new ReadOnlyObservableCollection<IndexingFailure>(_indexingFailures);
         SearchCommand = new AsyncRelayCommand(SearchAsync, CanSearch);
@@ -70,6 +84,51 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         CancelClearIndexCommand = new RelayCommand(CancelClearIndex, () => !IsBusy && IsClearPending);
         OpenFileCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFileAsync, CanOpenHit);
         OpenContainingFolderCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFolderAsync, CanOpenHit);
+        ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
+        RemoveFilterCommand = new AsyncRelayCommand<SearchFilter>(RemoveFilterAsync, filter => filter is not null && !IsBusy);
+        ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync, () => _activeFilters.Count > 0 && !IsBusy);
+        InspectIndexedDataCommand = new AsyncRelayCommand<SemanticSearchHit>(InspectIndexedDataAsync, CanInspectHit);
+        RequestForgetFileCommand = new RelayCommand(
+            () => IsForgetFilePending = true,
+            () => PrivacyItem is not null && !IsBusy && !IsForgetFilePending);
+        ConfirmForgetFileCommand = new AsyncRelayCommand(ForgetFileAsync, () => PrivacyItem is not null && !IsBusy && IsForgetFilePending);
+        CancelForgetFileCommand = new RelayCommand(() => IsForgetFilePending = false, () => IsForgetFilePending && !IsBusy);
+        RequestForgetSourceCommand = new RelayCommand(
+            () => IsForgetSourcePending = true,
+            () => SelectedSource is not null && !IsBusy && !IsForgetSourcePending);
+        ConfirmForgetSourceCommand = new AsyncRelayCommand(ForgetSourceAsync, () => SelectedSource is not null && !IsBusy && IsForgetSourcePending);
+        CancelForgetSourceCommand = new RelayCommand(() => IsForgetSourcePending = false, () => IsForgetSourcePending && !IsBusy);
+        ReindexFileCommand = new AsyncRelayCommand(() => RepairFileAsync(IndexRepairKind.Rebuild), CanRepairFile);
+        VerifyFileCommand = new AsyncRelayCommand(() => RepairFileAsync(IndexRepairKind.Verify), CanRepairFile);
+        RetryFileCommand = new AsyncRelayCommand(() => RepairFileAsync(IndexRepairKind.RetryFailedStage), CanRepairFile);
+        RefreshMetadataCommand = new AsyncRelayCommand(() => RepairFileAsync(IndexRepairKind.RefreshMetadata), CanRepairFile);
+        RefreshTextCommand = new AsyncRelayCommand(() => RepairFileAsync(IndexRepairKind.RefreshText), CanRepairFile);
+        RefreshOcrCommand = new AsyncRelayCommand(() => RepairFileAsync(IndexRepairKind.RefreshOcr), CanRepairFile);
+        RegenerateSummaryCommand = new AsyncRelayCommand(
+            () => RepairFileAsync(IndexRepairKind.RegenerateSummaryAndKeywords),
+            CanRepairFile);
+        RegenerateSemanticCommand = new AsyncRelayCommand(
+            () => RepairFileAsync(IndexRepairKind.RegenerateSemanticData),
+            CanRepairFile);
+        RebuildSelectedSourceCommand = new AsyncRelayCommand(
+            () => RepairSourceAsync(IndexRepairKind.Rebuild),
+            () => _privacyService is not null && SelectedSource is not null && !IsBusy);
+        ClearOcrDataCommand = new AsyncRelayCommand(
+            () => ClearSelectedDataAsync(IndexedDataKind.OcrText),
+            CanRepairFile);
+        ClearSemanticDataCommand = new AsyncRelayCommand(
+            () => ClearSelectedDataAsync(IndexedDataKind.SemanticData | IndexedDataKind.Chunks),
+            CanRepairFile);
+        UseMetadataOnlyCommand = new AsyncRelayCommand(
+            () => SetSelectedPolicyAsync(new IndexPrivacyPolicyChange(
+                LevelOverride: IndexingLevel.Basic,
+                SuppressOcr: true,
+                SuppressSummary: true,
+                SuppressSemantic: true)),
+            CanRepairFile);
+        ExcludeFileCommand = new AsyncRelayCommand(
+            () => SetSelectedPolicyAsync(new IndexPrivacyPolicyChange(Excluded: true)),
+            CanRepairFile);
         RefreshIndexingStatusCommand = new AsyncRelayCommand(RefreshIndexingStatusAsync, () => _backgroundIndexingService is not null);
         PauseIndexingCommand = new AsyncRelayCommand(PauseIndexingAsync, CanPauseIndexing);
         ResumeIndexingCommand = new AsyncRelayCommand(ResumeIndexingAsync, CanResumeIndexing);
@@ -97,6 +156,13 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _queryText, value))
             {
+                Interlocked.Increment(ref _queryVersion);
+                _operationCancellation?.Cancel();
+                _activeFilters.Clear();
+                _topicText = string.Empty;
+                _filtersWereEdited = false;
+                OnPropertyChanged(nameof(HasActiveFilters));
+                ClearFiltersCommand.NotifyCanExecuteChanged();
                 SearchCommand.NotifyCanExecuteChanged();
                 ClearQueryCommand.NotifyCanExecuteChanged();
             }
@@ -105,6 +171,82 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets local explained results.</summary>
     public ReadOnlyObservableCollection<SemanticSearchHit> Hits { get; }
+
+    /// <summary>Gets visible interpreted filters applied to the current Search.</summary>
+    public ReadOnlyObservableCollection<SearchFilter> ActiveFilters { get; }
+
+    /// <summary>Gets whether any visible interpreted filter is active.</summary>
+    public bool HasActiveFilters => ActiveFilters.Count > 0;
+
+    /// <summary>Gets or sets whether the contextual filter area is expanded.</summary>
+    public bool AreFiltersVisible
+    {
+        get => _areFiltersVisible;
+        set => SetProperty(ref _areFiltersVisible, value);
+    }
+
+    /// <summary>Gets the selected Search result for privacy inspection.</summary>
+    public SemanticSearchHit? SelectedHit
+    {
+        get => _selectedHit;
+        private set
+        {
+            if (SetProperty(ref _selectedHit, value))
+            {
+                NotifyPrivacyCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets the provider-neutral indexed-data inspection record.</summary>
+    public IndexPrivacyItem? PrivacyItem
+    {
+        get => _privacyItem;
+        private set
+        {
+            if (SetProperty(ref _privacyItem, value))
+            {
+                OnPropertyChanged(nameof(HasPrivacyItem));
+                NotifyPrivacyCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets whether indexed-data categories are available for inspection.</summary>
+    public bool HasPrivacyItem => PrivacyItem is not null;
+
+    /// <summary>Gets a content-free description of retained index categories.</summary>
+    public string PrivacyText
+    {
+        get => _privacyText;
+        private set => SetProperty(ref _privacyText, value);
+    }
+
+    /// <summary>Gets whether forgetting one file awaits explicit confirmation.</summary>
+    public bool IsForgetFilePending
+    {
+        get => _isForgetFilePending;
+        private set
+        {
+            if (SetProperty(ref _isForgetFilePending, value))
+            {
+                NotifyPrivacyCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets whether forgetting one source awaits explicit confirmation.</summary>
+    public bool IsForgetSourcePending
+    {
+        get => _isForgetSourcePending;
+        private set
+        {
+            if (SetProperty(ref _isForgetSourcePending, value))
+            {
+                NotifyPrivacyCommands();
+            }
+        }
+    }
 
     /// <summary>Gets configured durable indexing sources.</summary>
     public ReadOnlyObservableCollection<IndexingSource> Sources { get; }
@@ -130,6 +272,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             {
                 PrioritizeSourceCommand.NotifyCanExecuteChanged();
                 RemoveSourceCommand.NotifyCanExecuteChanged();
+                RequestForgetSourceCommand.NotifyCanExecuteChanged();
+                ConfirmForgetSourceCommand.NotifyCanExecuteChanged();
+                RebuildSelectedSourceCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -302,6 +447,75 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the controlled containing-folder command for one known hit.</summary>
     public IAsyncRelayCommand<SemanticSearchHit> OpenContainingFolderCommand { get; }
 
+    /// <summary>Gets the command that expands or collapses contextual filters.</summary>
+    public IRelayCommand ToggleFiltersCommand { get; }
+
+    /// <summary>Gets the command that removes one visible interpreted filter.</summary>
+    public IAsyncRelayCommand<SearchFilter> RemoveFilterCommand { get; }
+
+    /// <summary>Gets the command that removes every visible filter while retaining topic terms.</summary>
+    public IAsyncRelayCommand ClearFiltersCommand { get; }
+
+    /// <summary>Gets the command that inspects retained index categories for one result.</summary>
+    public IAsyncRelayCommand<SemanticSearchHit> InspectIndexedDataCommand { get; }
+
+    /// <summary>Gets the command that requests file-forget confirmation.</summary>
+    public IRelayCommand RequestForgetFileCommand { get; }
+
+    /// <summary>Gets the confirmed index-only file-forget command.</summary>
+    public IAsyncRelayCommand ConfirmForgetFileCommand { get; }
+
+    /// <summary>Gets the file-forget cancellation command.</summary>
+    public IRelayCommand CancelForgetFileCommand { get; }
+
+    /// <summary>Gets the command that requests source-forget confirmation.</summary>
+    public IRelayCommand RequestForgetSourceCommand { get; }
+
+    /// <summary>Gets the confirmed index-only source-forget command.</summary>
+    public IAsyncRelayCommand ConfirmForgetSourceCommand { get; }
+
+    /// <summary>Gets the source-forget cancellation command.</summary>
+    public IRelayCommand CancelForgetSourceCommand { get; }
+
+    /// <summary>Gets the selective full-file re-index command.</summary>
+    public IAsyncRelayCommand ReindexFileCommand { get; }
+
+    /// <summary>Gets the selected-file consistency-verification command.</summary>
+    public IAsyncRelayCommand VerifyFileCommand { get; }
+
+    /// <summary>Gets the selected-file failed-stage retry command.</summary>
+    public IAsyncRelayCommand RetryFileCommand { get; }
+
+    /// <summary>Gets the selected-file metadata refresh command.</summary>
+    public IAsyncRelayCommand RefreshMetadataCommand { get; }
+
+    /// <summary>Gets the selected-file extracted-text refresh command.</summary>
+    public IAsyncRelayCommand RefreshTextCommand { get; }
+
+    /// <summary>Gets the selected-file OCR refresh command.</summary>
+    public IAsyncRelayCommand RefreshOcrCommand { get; }
+
+    /// <summary>Gets the selected-file summary/keyword regeneration command.</summary>
+    public IAsyncRelayCommand RegenerateSummaryCommand { get; }
+
+    /// <summary>Gets the selected-file related-concept regeneration command.</summary>
+    public IAsyncRelayCommand RegenerateSemanticCommand { get; }
+
+    /// <summary>Gets the selective selected-source rebuild command.</summary>
+    public IAsyncRelayCommand RebuildSelectedSourceCommand { get; }
+
+    /// <summary>Gets the index-only OCR-data clear command.</summary>
+    public IAsyncRelayCommand ClearOcrDataCommand { get; }
+
+    /// <summary>Gets the index-only related-concept data clear command.</summary>
+    public IAsyncRelayCommand ClearSemanticDataCommand { get; }
+
+    /// <summary>Gets the selected-file metadata-only policy command.</summary>
+    public IAsyncRelayCommand UseMetadataOnlyCommand { get; }
+
+    /// <summary>Gets the selected-file future deep-index exclusion command.</summary>
+    public IAsyncRelayCommand ExcludeFileCommand { get; }
+
     /// <summary>Gets the persistent-progress refresh command.</summary>
     public IAsyncRelayCommand RefreshIndexingStatusCommand { get; }
 
@@ -360,12 +574,89 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        var queryVersion = Volatile.Read(ref _queryVersion);
         using var operation = BeginOperation();
         try
         {
-            var result = await _searchService.SearchAsync(QueryText ?? string.Empty, operation.Token);
+            var request = _filtersWereEdited
+                ? new SearchRequest(
+                    QueryText ?? string.Empty,
+                    _activeFilters.ToArray(),
+                    InterpretFilters: false,
+                    TopicTextOverride: _topicText)
+                : new SearchRequest(QueryText ?? string.Empty);
+            var result = await _searchService.SearchAsync(request, operation.Token);
+            if (queryVersion != Volatile.Read(ref _queryVersion))
+            {
+                return;
+            }
+
             _hits.Clear();
-            foreach (var hit in result.Value)
+            foreach (var hit in result.Hits)
+            {
+                _hits.Add(hit);
+            }
+
+            _activeFilters.Clear();
+            foreach (var filter in result.Interpretation.Filters)
+            {
+                _activeFilters.Add(filter);
+            }
+
+            _topicText = result.Interpretation.TopicText;
+            AreFiltersVisible = _activeFilters.Count > 0 || AreFiltersVisible;
+            OnPropertyChanged(nameof(HasActiveFilters));
+            ClearFiltersCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(HasHits));
+            Status = Present(result.State, result.Message);
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task RemoveFilterAsync(SearchFilter? filter)
+    {
+        if (filter is null || !_activeFilters.Remove(filter))
+        {
+            return;
+        }
+
+        _filtersWereEdited = true;
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        await SearchAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        if (_activeFilters.Count == 0)
+        {
+            return;
+        }
+
+        _activeFilters.Clear();
+        _filtersWereEdited = true;
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        if (_searchService is null || string.IsNullOrWhiteSpace(QueryText))
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var result = await _searchService.SearchAsync(
+                new SearchRequest(
+                    QueryText,
+                    [],
+                    InterpretFilters: false,
+                    TopicTextOverride: _topicText),
+                operation.Token);
+            _hits.Clear();
+            foreach (var hit in result.Hits)
             {
                 _hits.Add(hit);
             }
@@ -410,14 +701,24 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     {
         QueryText = null;
         _hits.Clear();
+        _activeFilters.Clear();
+        _topicText = string.Empty;
+        _filtersWereEdited = false;
+        SelectedHit = null;
+        PrivacyItem = null;
+        PrivacyText = "Select Inspect indexed data on a Search result to review retained categories.";
+        IsForgetFilePending = false;
         OnPropertyChanged(nameof(HasHits));
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
         Status = StatusPresentation.Information("Query cleared. The local index was not changed.");
     }
 
     private void RequestClearIndex()
     {
         IsClearPending = true;
-        Status = StatusPresentation.Warning("Confirm clearing only the application-owned Search index. Source files remain untouched.");
+        Status = StatusPresentation.Warning(
+            "Confirm clearing application-owned generated Search data. Indexed sources remain registered and source files remain untouched.");
     }
 
     private async Task ConfirmClearIndexAsync()
@@ -427,31 +728,50 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        IsBusy = true;
+        using var operation = BeginOperation();
         try
         {
-            await _indexStore.ClearAsync(CancellationToken.None);
+            await _indexStore.ClearAsync(operation.Token);
+            if (_privacyService is not null && _backgroundIndexingService is not null)
+            {
+                var sources = await _backgroundIndexingService.GetSourcesAsync(operation.Token);
+                foreach (var source in sources)
+                {
+                    operation.Token.ThrowIfCancellationRequested();
+                    await _privacyService.ForgetSourceAsync(source.Id, operation.Token);
+                }
+            }
+
             _hits.Clear();
             OnPropertyChanged(nameof(HasHits));
             IsClearPending = false;
             ProgressValue = 0;
-            ProgressText = "The local Search index is empty.";
-            Status = StatusPresentation.Success("The local Search index was cleared. Source files were not changed.");
+            ProgressText = "Generated local Search data is empty.";
+            Status = StatusPresentation.Success(
+                "Generated local Search data was cleared. Indexed sources remain registered and source files were not changed.");
+        }
+        catch (OperationCanceledException) when (operation.IsCancellationRequested)
+        {
+            IsClearPending = false;
+            Status = StatusPresentation.Warning(
+                "Index clearing was cancelled safely. Any completed index-only clears remain applied; source files were not changed.");
         }
         catch (Exception)
         {
-            Status = StatusPresentation.Error("The local Search index could not be cleared.");
+            IsClearPending = false;
+            Status = StatusPresentation.Error(
+                "Generated Search data could not be completely cleared. Review indexed sources and retry; source files were not changed.");
         }
         finally
         {
-            IsBusy = false;
+            EndOperation(operation);
         }
     }
 
     private void CancelClearIndex()
     {
         IsClearPending = false;
-        Status = StatusPresentation.Information("Index clear cancelled.");
+        Status = StatusPresentation.Information("Generated Search-data clear cancelled.");
     }
 
     private bool CanOpenHit(SemanticSearchHit? hit) =>
@@ -480,6 +800,221 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             ? StatusPresentation.Success(result.Message)
             : StatusPresentation.Warning(result.Message);
     }
+
+    private bool CanInspectHit(SemanticSearchHit? hit) =>
+        _privacyService is not null &&
+        !IsBusy &&
+        hit is { FileId.Length: > 0 } &&
+        Hits.Contains(hit);
+
+    private bool CanRepairFile() =>
+        _privacyService is not null &&
+        PrivacyItem is not null &&
+        !IsBusy;
+
+    private async Task InspectIndexedDataAsync(SemanticSearchHit? hit)
+    {
+        if (!CanInspectHit(hit) || _privacyService is null || hit?.FileId is null)
+        {
+            Status = StatusPresentation.Information(
+                "Detailed index inspection is available after this result enters the background index.");
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            SelectedHit = hit;
+            PrivacyItem = await _privacyService
+                .InspectFileAsync(hit.FileId, operation.Token);
+            IsForgetFilePending = false;
+            PrivacyText = PrivacyItem is null
+                ? "The selected indexed record is no longer available."
+                : FormatPrivacyItem(PrivacyItem);
+            Status = PrivacyItem is null
+                ? StatusPresentation.Warning("The indexed record changed while it was being inspected.")
+                : StatusPresentation.Information(
+                    "Stored index categories are shown below. Original file contents are not displayed.");
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task ForgetFileAsync()
+    {
+        if (_privacyService is null || PrivacyItem is null)
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var fileId = PrivacyItem.FileId;
+            var result = await _privacyService.ForgetFileAsync(fileId, operation.Token);
+            if (result.Applied && SelectedHit is not null)
+            {
+                _hits.Remove(SelectedHit);
+                OnPropertyChanged(nameof(HasHits));
+            }
+
+            SelectedHit = null;
+            PrivacyItem = null;
+            IsForgetFilePending = false;
+            PrivacyText = result.Message;
+            Status = result.Applied
+                ? StatusPresentation.Success(result.Message)
+                : StatusPresentation.Warning(result.Message);
+            await RefreshIndexingStatusAsync();
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task ForgetSourceAsync()
+    {
+        if (_privacyService is null || SelectedSource is null)
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var result = await _privacyService
+                .ForgetSourceAsync(SelectedSource.Id, operation.Token);
+            _hits.Clear();
+            OnPropertyChanged(nameof(HasHits));
+            SelectedHit = null;
+            PrivacyItem = null;
+            IsForgetSourcePending = false;
+            PrivacyText = result.Message;
+            Status = result.Applied
+                ? StatusPresentation.Success(result.Message)
+                : StatusPresentation.Warning(result.Message);
+            await RefreshIndexingStatusAsync();
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task RepairFileAsync(IndexRepairKind repair)
+    {
+        if (_privacyService is null || PrivacyItem is null)
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var result = await _privacyService
+                .RepairFileAsync(PrivacyItem.FileId, repair, operation.Token);
+            PrivacyText = result.Message;
+            Status = result.Applied
+                ? StatusPresentation.Progress(result.Message)
+                : StatusPresentation.Information(result.Message);
+            await RefreshIndexingStatusAsync();
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task RepairSourceAsync(IndexRepairKind repair)
+    {
+        if (_privacyService is null || SelectedSource is null)
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var result = await _privacyService
+                .RepairSourceAsync(SelectedSource.Id, repair, operation.Token);
+            Status = result.Applied
+                ? StatusPresentation.Progress(result.Message)
+                : StatusPresentation.Information(result.Message);
+            await RefreshIndexingStatusAsync();
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task ClearSelectedDataAsync(IndexedDataKind data)
+    {
+        if (_privacyService is null || PrivacyItem is null)
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var result = await _privacyService
+                .ClearFileDataAsync(PrivacyItem.FileId, data, operation.Token);
+            PrivacyItem = await _privacyService
+                .InspectFileAsync(PrivacyItem.FileId, operation.Token);
+            PrivacyText = PrivacyItem is null ? result.Message : FormatPrivacyItem(PrivacyItem);
+            Status = result.Applied
+                ? StatusPresentation.Success(result.Message)
+                : StatusPresentation.Warning(result.Message);
+            await RefreshIndexingStatusAsync();
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private async Task SetSelectedPolicyAsync(IndexPrivacyPolicyChange change)
+    {
+        if (_privacyService is null || PrivacyItem is null)
+        {
+            return;
+        }
+
+        using var operation = BeginOperation();
+        try
+        {
+            var fileId = PrivacyItem.FileId;
+            var result = await _privacyService
+                .SetFilePolicyAsync(fileId, change, operation.Token);
+            PrivacyItem = await _privacyService.InspectFileAsync(fileId, operation.Token);
+            PrivacyText = PrivacyItem is null ? result.Message : FormatPrivacyItem(PrivacyItem);
+            Status = result.Applied
+                ? StatusPresentation.Success(result.Message)
+                : StatusPresentation.Warning(result.Message);
+            await RefreshIndexingStatusAsync();
+        }
+        finally
+        {
+            EndOperation(operation);
+        }
+    }
+
+    private static string FormatPrivacyItem(IndexPrivacyItem item) =>
+        $"Indexed data for {item.FileName}: source {item.SourceName} " +
+        $"({(item.ManagedByWatchedFolders ? "watched-folder managed" : "manually managed")}); " +
+        $"provider {item.ProviderName}; level {item.IndexingLevel}; processing version {item.ProcessorVersion}; " +
+        $"metadata about {FormatBytes(item.MetadataBytes)}; extracted text {item.ExtractedTextCharacters:N0} characters; " +
+        $"OCR text {item.OcrTextCharacters:N0} characters; summary {(item.HasSummary ? "stored" : "not stored")}; " +
+        $"keywords {item.KeywordCount:N0}; related-concept data {(item.HasSemanticData ? "stored" : "not stored")}; " +
+        $"selected chunks {item.ChunkCount:N0}; identical-content references {item.SharedContentReferenceCount:N0}; " +
+        $"failures {item.FailureCount:N0}; stage-history records {item.StageHistoryCount:N0}; " +
+        $"policy: {(item.IsExcluded ? "excluded" : "included")}, OCR {(item.OcrSuppressed ? "off" : "allowed")}, " +
+        $"summaries {(item.SummarySuppressed ? "off" : "allowed")}, related concepts {(item.SemanticSuppressed ? "off" : "allowed")}; " +
+        $"last indexed {item.LastIndexedUtc.LocalDateTime:g}. Related-concept data is described by presence only; raw numeric vectors are never shown.";
 
     private CancellationTokenSource BeginOperation()
     {
@@ -512,9 +1047,36 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         CancelClearIndexCommand.NotifyCanExecuteChanged();
         OpenFileCommand.NotifyCanExecuteChanged();
         OpenContainingFolderCommand.NotifyCanExecuteChanged();
+        RemoveFilterCommand.NotifyCanExecuteChanged();
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        InspectIndexedDataCommand.NotifyCanExecuteChanged();
         RebuildBackgroundIndexCommand.NotifyCanExecuteChanged();
         MaintainIndexCommand.NotifyCanExecuteChanged();
+        NotifyPrivacyCommands();
         NotifyBackgroundCommands();
+    }
+
+    private void NotifyPrivacyCommands()
+    {
+        RequestForgetFileCommand.NotifyCanExecuteChanged();
+        ConfirmForgetFileCommand.NotifyCanExecuteChanged();
+        CancelForgetFileCommand.NotifyCanExecuteChanged();
+        RequestForgetSourceCommand.NotifyCanExecuteChanged();
+        ConfirmForgetSourceCommand.NotifyCanExecuteChanged();
+        CancelForgetSourceCommand.NotifyCanExecuteChanged();
+        ReindexFileCommand.NotifyCanExecuteChanged();
+        VerifyFileCommand.NotifyCanExecuteChanged();
+        RetryFileCommand.NotifyCanExecuteChanged();
+        RefreshMetadataCommand.NotifyCanExecuteChanged();
+        RefreshTextCommand.NotifyCanExecuteChanged();
+        RefreshOcrCommand.NotifyCanExecuteChanged();
+        RegenerateSummaryCommand.NotifyCanExecuteChanged();
+        RegenerateSemanticCommand.NotifyCanExecuteChanged();
+        RebuildSelectedSourceCommand.NotifyCanExecuteChanged();
+        ClearOcrDataCommand.NotifyCanExecuteChanged();
+        ClearSemanticDataCommand.NotifyCanExecuteChanged();
+        UseMetadataOnlyCommand.NotifyCanExecuteChanged();
+        ExcludeFileCommand.NotifyCanExecuteChanged();
     }
 
     private bool CanPauseIndexing() =>
@@ -703,9 +1265,43 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         BackgroundProgress = snapshot;
         StorageText = $"Index storage: {FormatBytes(snapshot.IndexSizeBytes)} of {FormatBytes(snapshot.MaximumIndexSizeBytes)}";
         var coverage = snapshot.Coverage;
+        if (!coverage.IsAvailable)
+        {
+            CoverageText = "The deep Search index is temporarily unavailable. Existing filename and metadata Search remains available.";
+            return;
+        }
+
+        var limitations = new List<string>();
+        if (coverage.IsIncomplete)
+        {
+            limitations.Add("background indexing is incomplete");
+        }
+
+        if (coverage.ExcludedSourceCount > 0)
+        {
+            limitations.Add($"{coverage.ExcludedSourceCount:N0} source or file exclusion(s) affect coverage");
+        }
+
+        if (coverage.WaitingForOcrCount > 0)
+        {
+            limitations.Add($"{coverage.WaitingForOcrCount:N0} OCR stage(s) are waiting");
+        }
+
+        if (coverage.WaitingForAiCount > 0)
+        {
+            limitations.Add($"{coverage.WaitingForAiCount:N0} optional local-AI stage(s) are waiting");
+        }
+
+        if (coverage.FailedStageCount > 0)
+        {
+            limitations.Add($"{coverage.FailedStageCount:N0} stage(s) failed");
+        }
+
         CoverageText =
             $"Search coverage: names and metadata {coverage.FilenameAndMetadataCount:N0}/{coverage.KnownFileCount:N0}, document text {coverage.ExtractedTextCount:N0}/{coverage.KnownFileCount:N0}, OCR {coverage.OcrCount:N0}/{coverage.KnownFileCount:N0}, related concepts {coverage.SemanticCount:N0}/{coverage.KnownFileCount:N0}, fully indexed {coverage.FullyIndexedCount:N0}/{coverage.KnownFileCount:N0}." +
-            (coverage.IsIncomplete ? " Search coverage is still being built. Some files may not appear yet." : string.Empty);
+            (limitations.Count > 0
+                ? $" Search coverage is still being built. Some files may not appear yet because {string.Join(", ", limitations)}."
+                : " All known files have complete indexing coverage.");
     }
 
     private void NotifyBackgroundCommands()

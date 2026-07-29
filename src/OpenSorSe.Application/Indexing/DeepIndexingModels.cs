@@ -6,10 +6,10 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
-    public const string ProcessorVersion = "1.7.0";
+    public const string ProcessorVersion = "1.8.0";
 }
 
 /// <summary>Identifies a durable stage in the background-indexing pipeline.</summary>
@@ -242,6 +242,18 @@ public sealed record IndexingWorkItem
     /// <summary>Gets bounded OCR text needed by a later stage.</summary>
     public string? OcrText { get; init; }
 
+    /// <summary>Gets whether per-file policy disables OCR processing.</summary>
+    public bool SuppressOcr { get; init; }
+
+    /// <summary>Gets whether per-file policy disables generated summaries.</summary>
+    public bool SuppressSummary { get; init; }
+
+    /// <summary>Gets whether per-file policy disables related-concept data and chunks.</summary>
+    public bool SuppressSemantic { get; init; }
+
+    /// <summary>Gets whether explicit repair disables duplicate-content reuse for this run.</summary>
+    public bool ForceReprocess { get; init; }
+
     /// <summary>Gets the file metadata observed when the job was queued.</summary>
     public required IndexingFileObservation Observation { get; init; }
 }
@@ -300,6 +312,21 @@ public sealed record SearchCoverage(
 {
     /// <summary>Gets whether some known files are not yet fully indexed.</summary>
     public bool IsIncomplete => FullyIndexedCount < KnownFileCount;
+
+    /// <summary>Gets the number of configured source exclusions and explicit file privacy exclusions.</summary>
+    public long ExcludedSourceCount { get; init; }
+
+    /// <summary>Gets the number of jobs waiting for OCR.</summary>
+    public long WaitingForOcrCount { get; init; }
+
+    /// <summary>Gets the number of jobs waiting for optional local AI.</summary>
+    public long WaitingForAiCount { get; init; }
+
+    /// <summary>Gets the number of retained failed stages.</summary>
+    public long FailedStageCount { get; init; }
+
+    /// <summary>Gets whether the progressive provider can currently serve Search records.</summary>
+    public bool IsAvailable { get; init; } = true;
 }
 
 /// <summary>Describes retained storage by durable data category.</summary>
@@ -390,8 +417,38 @@ public sealed record ProgressiveSearchDocument
     /// <summary>Gets the file name.</summary>
     public required string FileName { get; init; }
 
+    /// <summary>Gets the source-relative path.</summary>
+    public string RelativePath { get; init; } = string.Empty;
+
     /// <summary>Gets the folder-name search text.</summary>
     public required string FolderName { get; init; }
+
+    /// <summary>Gets the filename extension including its leading dot.</summary>
+    public string Extension { get; init; } = string.Empty;
+
+    /// <summary>Gets a stable plain-language file category.</summary>
+    public string FileType { get; init; } = string.Empty;
+
+    /// <summary>Gets the durable source identifier.</summary>
+    public string? SourceId { get; init; }
+
+    /// <summary>Gets the display-safe source name.</summary>
+    public string? SourceName { get; init; }
+
+    /// <summary>Gets the configured source priority.</summary>
+    public int SourcePriority { get; init; }
+
+    /// <summary>Gets the observed file size.</summary>
+    public long Length { get; init; }
+
+    /// <summary>Gets the observed creation time.</summary>
+    public DateTimeOffset? CreationTimeUtc { get; init; }
+
+    /// <summary>Gets the observed modification time.</summary>
+    public DateTimeOffset? ModifiedTimeUtc { get; init; }
+
+    /// <summary>Gets the file's effective indexing level.</summary>
+    public IndexingLevel? IndexingLevel { get; init; }
 
     /// <summary>Gets bounded basic metadata search text.</summary>
     public string MetadataText { get; init; } = string.Empty;
@@ -405,14 +462,29 @@ public sealed record ProgressiveSearchDocument
     /// <summary>Gets bounded tags or generated keywords.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    /// <summary>Gets bounded generated keywords separately from accepted tags.</summary>
+    public IReadOnlyList<string> Keywords { get; init; } = [];
+
     /// <summary>Gets a bounded derived summary.</summary>
     public string? Summary { get; init; }
 
     /// <summary>Gets one document-level search representation.</summary>
     public IReadOnlyList<float>? SemanticRepresentation { get; init; }
 
+    /// <summary>Gets bounded selected chunks retained by Deep indexing.</summary>
+    public IReadOnlyList<string> SelectedChunks { get; init; } = [];
+
     /// <summary>Gets whether all applicable work is complete.</summary>
     public bool IsFullyIndexed { get; init; }
+
+    /// <summary>Gets whether a retained failed stage is associated with this file.</summary>
+    public bool HasIndexingFailure { get; init; }
+
+    /// <summary>
+    /// Gets whether this path is an index-forget marker used to suppress compatible
+    /// legacy Search entries without exposing it as a result.
+    /// </summary>
+    public bool IsExcluded { get; init; }
 }
 
 /// <summary>Describes a privacy-safe indexing failure for user review.</summary>

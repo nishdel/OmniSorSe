@@ -70,6 +70,8 @@ public sealed class JsonConfigurationServiceTests
         Assert.True(service.Current.DeepIndexing.Enabled);
         Assert.Equal(IndexingLevel.Basic, service.Current.DeepIndexing.DefaultLevel);
         Assert.Equal(1, service.Current.DeepIndexing.MaximumConcurrency);
+        Assert.True(service.Current.DeepIndexing.SummaryProcessingEnabled);
+        Assert.True(service.Current.DeepIndexing.SemanticProcessingEnabled);
     }
 
     /// <summary>Verifies the master, category, and privacy controls persist independently.</summary>
@@ -378,6 +380,8 @@ public sealed class JsonConfigurationServiceTests
                 PauseBelowBatteryPercentage = 20,
                 OcrProcessingEnabled = true,
                 AiProcessingEnabled = true,
+                SummaryProcessingEnabled = false,
+                SemanticProcessingEnabled = false,
                 ArchiveIndexingEnabled = true,
                 ExcludeGeneratedFolders = false,
                 BinaryAndExecutableMetadataOnly = false,
@@ -432,6 +436,8 @@ public sealed class JsonConfigurationServiceTests
             Assert.Equal(20, reader.Current.DeepIndexing.PauseBelowBatteryPercentage);
             Assert.True(reader.Current.DeepIndexing.OcrProcessingEnabled);
             Assert.True(reader.Current.DeepIndexing.AiProcessingEnabled);
+            Assert.False(reader.Current.DeepIndexing.SummaryProcessingEnabled);
+            Assert.False(reader.Current.DeepIndexing.SemanticProcessingEnabled);
             Assert.Equal(23, reader.Current.DeepIndexing.ProcessingWindowStartHour);
             Assert.Equal(6, reader.Current.DeepIndexing.ProcessingWindowEndHour);
         }

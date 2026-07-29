@@ -152,16 +152,24 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
-        services.AddSingleton<IDeepIndexStore>(serviceProvider =>
+        services.AddSingleton<SqliteDeepIndexStore>(serviceProvider =>
         {
             return new SqliteDeepIndexStore(
                 Path.Combine(paths.DataDirectory, "index", "deep-index.db"),
                 serviceProvider.GetRequiredService<IPathSemantics>());
         });
+        services.AddSingleton<IDeepIndexStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<IIndexPrivacyStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IIndexFileDiscovery, PhysicalIndexFileDiscovery>();
         services.AddSingleton<IBackgroundResourceMonitor, PortableBackgroundResourceMonitor>();
         services.AddSingleton<IIndexingStageProcessor, DefaultIndexingStageProcessor>();
-        services.AddSingleton<IBackgroundIndexingService, BackgroundIndexingService>();
+        services.AddSingleton<BackgroundIndexingService>();
+        services.AddSingleton<IBackgroundIndexingService>(serviceProvider =>
+            serviceProvider.GetRequiredService<BackgroundIndexingService>());
+        services.AddSingleton<IIndexPrivacyService>(serviceProvider =>
+            serviceProvider.GetRequiredService<BackgroundIndexingService>());
         services.AddSingleton<IProgressiveSearchSource>(serviceProvider =>
             serviceProvider.GetRequiredService<IBackgroundIndexingService>());
         services.AddSingleton<ISemanticIndexStore>(serviceProvider =>
@@ -171,6 +179,9 @@ public partial class App : Avalonia.Application
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<ISemanticIndexer, SemanticIndexer>();
+        services.AddSingleton<ISearchQueryInterpreter, DeterministicSearchQueryInterpreter>();
+        services.AddSingleton<ISearchSnippetFactory, SearchSnippetFactory>();
+        services.AddSingleton<ISearchRanker, HybridSearchRanker>();
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
         services.AddSingleton<IFolderStructureSnapshotService, FolderStructureSnapshotService>();
         services.AddSingleton<IStructureComparisonService, StructureComparisonService>();

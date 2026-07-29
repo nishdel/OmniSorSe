@@ -22,17 +22,21 @@ This index distinguishes historical foundation specifications from release-speci
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; exact platform validation tracked in Release Status | [Specification 057](v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md), [platform architecture](../Architecture/00_System/08_v1.5_Platform_Architecture.md), [matrix](../PLATFORM_COMPATIBILITY_MATRIX.md), [user guide](../USER_GUIDE_v1.5.md), and [manual checklist](../MANUAL_TESTING_v1.5.md) |
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation complete; exact final validation tracked in the v1.6 report | [Specification 058](v1.6/058_Reliability_Performance_and_Production_Hardening.md), [reliability architecture](../Architecture/00_System/09_v1.6_Reliability_Architecture.md), [implementation report](../V1.6_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.6.md) |
 | v1.7 Deep Indexing Foundation | Source implementation complete; exact final validation tracked in the v1.7 report | [Specification 059](v1.7/059_Deep_Indexing_Foundation.md), [deep-indexing architecture](../Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md), [implementation report](../V1.7_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.7.md) |
+| v1.8 Search Intelligence, Quality and Privacy | Source implementation complete; final automated validation and interactive manual verification tracked separately | [Specification 060](v1.8/060_Search_Intelligence_Quality_and_Privacy.md), [Search architecture](../Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md), [implementation report](../V1.8_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.8.md) |
 
 ## Current boundary
 
-v1.7 preserves the local-first, suggestion-only AI and v1.1 execution boundary
-while adding provider-independent, durable, progressive background indexing.
+v1.8 preserves the local-first, suggestion-only AI and v1.1 execution boundary,
+reuses v1.7 provider-independent durable indexing, and adds deterministic hybrid
+ranking, visible query interpretation, result evidence, and index-only privacy
+and repair controls.
 Reusable profiles and local plugin contributions resolve typed scan/analysis
 policy and recipes create proposals; neither grants approval. No specification
 authorizes autonomous AI filesystem control, permanent deletion, plugin direct
 mutation, cloud indexing, or unreviewed execution.
 
-The current release is `v1.7`, **Deep Indexing Foundation**, on
-`v1.7-deep-indexing-foundation`.
+The current development release is `v1.8`, **Search Intelligence, Quality and
+Privacy**, on `v1.8-search-intelligence-privacy`. Interactive manual validation
+is not complete.
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.

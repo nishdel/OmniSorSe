@@ -114,6 +114,12 @@ public interface IDeepIndexStore : IAsyncDisposable
         int maximumCount,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Returns bounded absolute paths excluded from Search by durable privacy rules.</summary>
+    Task<IReadOnlyList<string>> GetExcludedSearchPathsAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
+
     /// <summary>Returns privacy-safe failures for the current or most recent run.</summary>
     Task<IReadOnlyList<IndexingFailure>> GetFailuresAsync(
         int maximumCount,
@@ -177,6 +183,12 @@ public interface IProgressiveSearchSource
 
     /// <summary>Returns current Search coverage.</summary>
     Task<SearchCoverage> GetCoverageAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Returns bounded paths that must suppress compatible Search records.</summary>
+    Task<IReadOnlyList<string>> GetExcludedPathsAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
 }
 
 /// <summary>Controls durable background indexing from application services and ViewModels.</summary>

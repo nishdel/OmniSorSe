@@ -6,7 +6,7 @@
 
 OpenSorSe is a local-first, review-oriented desktop application for analyzing selected folders and organizing explicitly reviewed disposable/user-approved roots. The project is implemented in .NET 8, C#, Avalonia UI, and MVVM.
 
-OpenSorSe 1.7 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, Search/background indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Platform adapters make Windows and Linux behavior explicit. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. Search and OCR remain local and do not require AI.
+OpenSorSe 1.8 keeps scanning, watched-folder detection/reconciliation, extraction, page-aware OCR, Search/background indexing, duplicate review, diagrams, workflow resolution, plugin analysis, recipe preview, and AI generation non-mutating. Platform adapters make Windows and Linux behavior explicit. Watched and manually generated organization suggestions enter the existing user-reviewed Change Plan. Only approved, valid actions can be explicitly applied through the journalled execution service. Search and OCR remain local and do not require AI.
 
 ## Completed releases
 
@@ -268,6 +268,30 @@ v1.7 report and final handoff.
 - No conversational Search, final hybrid ranker, PostgreSQL runtime, cloud
   index, autonomous organization, or new file-mutation path.
 
+## v1.8 - Search Intelligence, Quality and Privacy
+
+Source implementation is complete on the v1.8 branch. Automated validation is
+recorded in the v1.8 validation report; every interactive scenario remains
+unchecked for maintainer verification.
+
+- Version: `v1.8`
+- Release name: **Search Intelligence, Quality and Privacy**
+- Git branch: `v1.8-search-intelligence-privacy`
+- One bounded deterministic hybrid ranker preserves exact and literal evidence
+  above optional related-concept similarity.
+- A local constrained interpreter exposes editable file-type, extension, date,
+  size, source, folder, tag, indexing, OCR, semantic, and failure filters.
+- Results expose actual ranking reasons, bounded source-labelled snippets, and
+  richer incomplete-coverage causes.
+- Provider-neutral inspection, forgetting, policy, and selective-repair
+  contracts operate only on indexed data and never mutate source files.
+- Schema 2 adds durable privacy rules through a transactional migration with a
+  pre-migration recovery copy.
+- A deterministic synthetic relevance corpus and separate bounded performance
+  tests make ranking changes measurable without developer files or live AI.
+- No conversational assistant, remote query service, improvised encryption,
+  PostgreSQL runtime, autonomous organization, or new file-mutation path.
+
 Release branches follow `v<version>-<primary-feature>`, for example:
 
 - `v1.1-safe-file-operations`
@@ -277,6 +301,7 @@ Release branches follow `v<version>-<primary-feature>`, for example:
 - `v1.5-cross-platform-foundation`
 - `v1.6-reliability-performance`
 - `v1.7-deep-indexing-foundation`
+- `v1.8-search-intelligence-privacy`
 
 ## Future release ideas
 

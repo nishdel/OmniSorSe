@@ -982,5 +982,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private static bool ActiveIndexingWorkersChanged(DeepIndexingSettings previous, DeepIndexingSettings current) =>
         previous.Enabled != current.Enabled ||
         previous.ResourceMode != current.ResourceMode ||
-        previous.MaximumConcurrency != current.MaximumConcurrency;
+        previous.MaximumConcurrency != current.MaximumConcurrency ||
+        previous.OcrProcessingEnabled != current.OcrProcessingEnabled ||
+        previous.AiProcessingEnabled != current.AiProcessingEnabled ||
+        previous.SummaryProcessingEnabled != current.SummaryProcessingEnabled ||
+        previous.SemanticProcessingEnabled != current.SemanticProcessingEnabled;
 }

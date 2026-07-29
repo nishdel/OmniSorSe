@@ -1,4 +1,4 @@
-# OpenSorSe 1.7 System Overview
+# OpenSorSe 1.8 System Overview
 
 OpenSorSe is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, and an embedded provider-isolated SQLite Search index.
 
@@ -12,7 +12,10 @@ application-data persistence, cancellation, lifecycle, bounded memory,
 performance, diagnostics, accessibility, and Windows/Linux/macOS validation.
 v1.7 adds provider-neutral durable staged indexing, progressive Search
 coverage, bounded storage policy, and interruption recovery without requiring
-a database server or adding a mutation path.
+a database server or adding a mutation path. v1.8 adds bounded deterministic
+query interpretation, coherent hybrid ranking, evidence-backed explanations and
+snippets, relevance measurement, and provider-neutral index privacy/repair
+operations.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 
@@ -27,9 +30,9 @@ reports remain analysis inputs, not authorization or filesystem truth.
 | `OpenSorSe.Scanner` | Read-only traversal, filesystem metadata, hashing, deterministic classification, and exact duplicate detection. |
 | `OpenSorSe.Rules` | Deterministic rule evaluation/planning and conflict resolution; no Desktop execution workflow. |
 | `OpenSorSe.Executor` | v1.1 Change Plan factory/validator/stores, durable journal, filesystem gateway, deterministic execution, rollback, Undo, restart recovery, and report export; historical generic components remain unregistered. |
-| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
+| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, deterministic query interpretation and hybrid ranking, privacy/repair orchestration, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
 | `OpenSorSe.AI` | Optional Ollama-compatible HTTP transport and bounded AI review-decision persistence. |
-| `OpenSorSe.Indexing.Sqlite` | Embedded schema-versioned implementation of provider-neutral durable indexing, recovery, coverage, and quota contracts. |
+| `OpenSorSe.Indexing.Sqlite` | Embedded schema-versioned implementation of provider-neutral durable indexing, Search projection, recovery, coverage, quota, privacy, and targeted-repair contracts. |
 | `OpenSorSe.Desktop` | Avalonia shell, Windows/Linux desktop adapters, platform diagnostics, global feature controls, Workflows/profile/recipe management and preview, manual profile selection, Watched Folders management/status/actions/activity, MVVM pages, Review Changes, Operation History/details/report/Undo, Help, diagnostics, and explicit confirmation. |
 
 ```mermaid
@@ -88,3 +91,5 @@ An online plugin marketplace/download/update service, out-of-process plugin sand
 - [v1.6 specification](../../Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md)
 - [v1.7 deep indexing architecture](10_v1.7_Deep_Indexing_Architecture.md)
 - [v1.7 specification](../../Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md)
+- [v1.8 Search architecture](../06_Search/09_v1.8_Search_Intelligence_Privacy.md)
+- [v1.8 specification](../../Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md)

@@ -1,6 +1,6 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the OpenSorSe 1.7 source
+This is the authoritative top-level architecture for the OpenSorSe 1.8 source
 tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -30,7 +30,8 @@ internal services.
 | Basic analysis | `FileMetadataReader`, `FileHasher`, `FileClassifier`, and `DuplicateDetector`. |
 | Text and OCR | `ContentIndexingService` → `MetadataExtractionPipeline`; `OcrService`, `PdfPageRasterizer`, and `TesseractCliOcrEngine` supply bounded local OCR where enabled and needed. |
 | Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
-| Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource` documents and coverage while deeper indexing is incomplete. |
+| Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
+| Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
 | Rules and planning | `RuleEngine`, `ActionPlanner`, and `ConflictResolver` produce deterministic proposals; they do not execute them. |
 | Optional AI | `AiSuggestionService` owns gates, prompts, parsing, validation, and review outcomes. `OllamaSuggestionProvider` owns HTTP transport. |
 | Workflows and recipes | `WorkflowLibraryService`, `WorkflowConfigurationResolver`, `WorkflowTemplateEngine`, and `WorkflowRecipePlanService`. |
@@ -68,7 +69,7 @@ The current plugin foundation exposes all eight bounded invocation surfaces.
 Workflow dependency checks and plugin recipe fields are integrated with
 Workflow/Profile resolution and recipe planning. Other extension-point adapters
 are host-callable through `IPluginExtensionHost`; broad insertion into every
-legacy scanner/content pipeline stage is deliberately not implied by v1.7.
+legacy scanner/content pipeline stage is deliberately not implied by v1.8.
 
 ## v1.6 reliability boundary
 
@@ -91,6 +92,24 @@ completed compatible work is reused, content-derived values can be shared by
 hash, and quota maintenance is explicit. PostgreSQL is not a desktop runtime
 dependency; a future server adapter can implement the same contracts. See
 [Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md).
+
+## v1.8 Search-intelligence and privacy boundary
+
+`ISearchQueryInterpreter` turns bounded ordinary text into visible removable
+filters while preserving uncertain words as topic terms. `IHybridSearchRanker`
+owns all score tiers and deterministic tie-breaking; Views and ViewModels never
+calculate ranking weights. `ISearchSnippetService` derives bounded snippets only
+from retained indexed material, and explanations are assembled from the actual
+ranking components. The JSON compatibility index and SQLite progressive source
+may fail independently; Search uses whichever remains available and reports
+coverage limits.
+
+Index inspection, forgetting, policy, and selective repair use Application
+contracts. The SQLite provider owns transactions and schema 2 privacy rules;
+the background coordinator owns cancellation, durable queued repair, and
+coverage refresh. Every such action changes application-owned index state only.
+See [Search Intelligence and Privacy
+Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md).
 
 ## Platform boundary
 
@@ -210,7 +229,7 @@ them.
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
 | Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
 | Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
-| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v1; transactional stages, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
+| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v2; v1 migrates transactionally with a recovery copy; transactional stages, privacy rules, targeted repair, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
 | AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
 | Structure history | `JsonStructureHistoryStore` | `structure-history.json` | Schema v1; bounded snapshots and relative paths. |
 | Workflow Profiles and Sorting Recipes | `JsonWorkflowLibraryStore` | `workflow-library.json` | Library schema v2; migration occurs on load/save; a corrupt source is preserved where possible before built-in recovery. |
@@ -262,6 +281,9 @@ never be committed.
 - The durable Search provider serializes provider operations, moves synchronous
   SQLite work off the UI thread, uses short transactions, supports concurrent
   external readers through WAL, and cooperatively cancels discovery/workers.
+- Search admits at most four overlapping queries per service instance; query
+  size, token/filter count, fuzzy candidates, result count, snippets, and
+  provider projections are bounded and cancellation-aware.
 - Plugin lifecycle and package operations are serialized by `PluginManager`;
   extension calls receive linked timeout/caller cancellation.
 - Executor cancellation is checked at safe action boundaries so a partially

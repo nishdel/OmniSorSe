@@ -176,6 +176,54 @@ public sealed class DeepIndexingStageTests
         Assert.Equal(4, semantic.SemanticRepresentation!.Count);
     }
 
+    /// <summary>Verifies summary privacy controls retain no summary or generated keywords.</summary>
+    [Fact]
+    public async Task SummaryPrivacyControlSuppressesSummaryAndKeywords()
+    {
+        var processor = CreateProcessor();
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.SummaryKeywordsGenerated) with
+            {
+                Level = IndexingLevel.Deep,
+                ExtractedText = "private source document text",
+            },
+            new DeepIndexingSettings
+            {
+                SummaryProcessingEnabled = false,
+                SemanticProcessingEnabled = true,
+            });
+
+        Assert.Null(output.Summary);
+        Assert.Empty(output.Keywords!);
+        Assert.NotEmpty(output.SelectedChunks!);
+    }
+
+    /// <summary>Verifies the related-concept privacy control suppresses vectors and selected chunks.</summary>
+    [Fact]
+    public async Task SemanticPrivacyControlSuppressesRepresentationsAndChunks()
+    {
+        var processor = CreateProcessor();
+        var settings = new DeepIndexingSettings
+        {
+            SummaryProcessingEnabled = true,
+            SemanticProcessingEnabled = false,
+        };
+        var summary = await processor.ProcessAsync(
+            Work(IndexingStage.SummaryKeywordsGenerated) with
+            {
+                Level = IndexingLevel.Deep,
+                ExtractedText = "private source document text",
+            },
+            settings);
+        var semantic = await processor.ProcessAsync(
+            Work(IndexingStage.SemanticRepresentationGenerated),
+            settings);
+
+        Assert.Null(summary.SelectedChunks);
+        Assert.Equal(IndexingStageStatus.Skipped, semantic.Status);
+        Assert.Null(semantic.SemanticRepresentation);
+    }
+
     /// <summary>Verifies metadata changes during queueing are retryable instead of publishing stale state.</summary>
     [Fact]
     public async Task MetadataChangeDuringProcessingSchedulesRetry()
@@ -250,8 +298,13 @@ public sealed class DeepIndexingStageTests
         {
             MaximumSemanticChunksPerDocument = 9,
         });
+        var privacyChanged = processor.CreateProcessorFingerprint(new DeepIndexingSettings
+        {
+            SemanticProcessingEnabled = false,
+        });
 
         Assert.NotEqual(first, second);
+        Assert.NotEqual(first, privacyChanged);
         Assert.Equal(64, first.Length);
     }
 

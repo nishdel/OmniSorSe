@@ -11,10 +11,10 @@
 
 OpenSorSe is a modern, open-source Windows desktop application with a Linux preview for scanning, searching, understanding, and safely organizing selected folders. It combines fast local analysis, exact duplicate review, OCR, progressive local Search, and optional Ollama-assisted suggestions without turning file management over to an autonomous agent.
 
-> OpenSorSe 1.7.0 adds a durable, resumable background-indexing foundation,
-> progressive Search coverage, storage controls, and provider-independent
-> persistence while preserving every v1.6 feature and safety boundary. Exact
-> implementation and validation status is recorded in the v1.7 reports.
+> OpenSorSe 1.8.0 builds on the durable v1.7 index with deterministic hybrid
+> ranking, visible natural-language filters, evidence-backed result
+> explanations and snippets, and index-only privacy and repair controls.
+> Interactive manual validation is tracked separately and is not yet complete.
 
 
 <img width="1424" height="859" alt="image" src="https://github.com/user-attachments/assets/f25363fb-08ab-4bf9-b6d7-0aa468a02c76" />
@@ -95,8 +95,11 @@ File Assistant clearly reports local-model readiness and presents unverified sug
 
 <!-- Search Screenshot: ![OpenSorSe Search](docs/images/meaning-search.png) -->
 
-Search explains why each result matched and remains usable while deeper indexing
-coverage is still being built.
+Search combines exact names, folders, metadata, indexed text, OCR, summaries,
+keywords, and optional related-concept signals. It exposes interpreted filters,
+explains actual ranking evidence, shows bounded source-labelled snippets, and
+remains useful without Ollama or while deeper indexing coverage is still being
+built.
 
 ### Settings
 
@@ -108,9 +111,9 @@ Settings keeps AI, Advanced mode, OCR, local indexing, provider configuration, a
 
 ### Binary availability
 
-This source tree does not claim a v1.7 package, installer, tag, or published
+This source tree does not claim a v1.8 package, installer, tag, or published
 release. The immutable historical v1.0 Windows package does not represent the
-current source. Build v1.7 from source; packaging, signing, and distribution
+current source. Build v1.8 from source; packaging, signing, and distribution
 remain separate release activities.
 
 ### Windows executable
@@ -166,7 +169,7 @@ Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
 
 ## Known limitations
 
-- The previously produced v1.0 portable package targets Windows x64. No v1.7 package, installer, or updater is claimed.
+- The previously produced v1.0 portable package targets Windows x64. No v1.8 package, installer, or updater is claimed.
 - Tesseract and its language data are external and required for image/scanned-page OCR. Rendered OCR page previews are not retained in diagnostics.
 - Real approximately 2B, 4B, and 7B/8B Ollama compatibility remains pending the documented manual matrix.
 - Folder-structure AI requests accept at most 12 selected files. Larger selections are rejected as a whole with the exact count shown; no file is silently omitted and no partial plan is generated.
@@ -176,7 +179,7 @@ Read [Safety and Privacy](docs/SAFETY_AND_PRIVACY.md) for the complete boundary.
 - Background indexing runs only while OpenSorSe is open. Portable time windows
   are enforced; idle/power/battery settings degrade gracefully where platform
   signals are unavailable.
-- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.7.
+- Permanent deletion, automatic unattended organization, cloud AI, and cloud synchronization remain outside v1.8.
 - The legacy recipe ID `current` is not silently persisted; affected watched folders require a deliberate persistent replacement.
 - Workflow transfer uses versioned JSON in the Workflows area. There is no cloud library, synchronization, marketplace, or arbitrary scripting.
 - Plugins are in-process. Assembly-load-context isolation and SHA-256 integrity checking are not an OS sandbox, code review, signature authority, or publisher authentication. Native plugins require an exact supported runtime identifier.
@@ -200,7 +203,7 @@ dotnet publish .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj `
   --configuration Release `
   --runtime win-x64 `
   --self-contained true `
-  --output $env:TEMP\OpenSorSe-v1.7.0-win-x64
+  --output $env:TEMP\OpenSorSe-v1.8.0-win-x64
 ```
 
 For Linux framework-dependent validation, use the
@@ -212,12 +215,12 @@ local build output only; they do not publish a release.
 - [Documentation index](docs/README.md)
 - [Installation](docs/INSTALLATION.md)
 - [Release status](docs/RELEASE_STATUS.md)
-- [v1.7 user guide](docs/USER_GUIDE_v1.7.md)
-- [v1.7 manual testing](docs/MANUAL_TESTING_v1.7.md)
-- [v1.7 version notes](docs/VERSION_NOTES_v1.7.md)
-- [v1.7 troubleshooting](docs/TROUBLESHOOTING_v1.7.md)
-- [v1.7 implementation report](docs/V1.7_IMPLEMENTATION_REPORT.md)
-- [v1.7 validation report](docs/V1.7_VALIDATION_REPORT.md)
+- [v1.8 user guide](docs/USER_GUIDE_v1.8.md)
+- [v1.8 manual testing](docs/MANUAL_TESTING_v1.8.md)
+- [v1.8 version notes](docs/VERSION_NOTES_v1.8.md)
+- [v1.8 troubleshooting](docs/TROUBLESHOOTING_v1.8.md)
+- [v1.8 implementation report](docs/V1.8_IMPLEMENTATION_REPORT.md)
+- [v1.8 validation report](docs/V1.8_VALIDATION_REPORT.md)
 - [Platform compatibility matrix](docs/PLATFORM_COMPATIBILITY_MATRIX.md)
 - [Linux build and launch](docs/LINUX_BUILD_AND_LAUNCH.md)
 - [Extension SDK](docs/EXTENSION_SDK_v1.4.md)
@@ -231,6 +234,7 @@ local build output only; they do not publish a release.
 - [Platform architecture](docs/Architecture/00_System/08_v1.5_Platform_Architecture.md)
 - [Reliability architecture](docs/Architecture/00_System/09_v1.6_Reliability_Architecture.md)
 - [Deep indexing architecture](docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md)
+- [Search intelligence and privacy architecture](docs/Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md)
 - [Workflow architecture](docs/Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
 - [Safety and privacy](docs/SAFETY_AND_PRIVACY.md)
 - [Advanced diagnostics architecture](docs/Architecture/01_Core/10_Advanced_Diagnostics.md)
@@ -247,9 +251,9 @@ local build output only; they do not publish a release.
 
 ## Roadmap
 
-**v1.7 — Deep Indexing Foundation** is implemented in source on
-`v1.7-deep-indexing-foundation`; exact automated and manual completion status
-is tracked in the release documentation. Autonomous AI file
+**v1.8 — Search Intelligence, Quality and Privacy** is implemented in source on
+`v1.8-search-intelligence-privacy`; exact automated and manual completion status
+is tracked separately in the release documentation. Autonomous AI file
 management and unrestricted filesystem control are not roadmap goals.
 
 See the detailed [roadmap](docs/roadmap.md).

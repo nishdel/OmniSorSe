@@ -54,8 +54,22 @@ shape, key entry points, SDK XML documentation, and the production project
 reference policy.
 
 GitHub Actions repeats restore, Debug/Release builds and complete tests,
-formatting, and documentation/dependency checks on `windows-latest` and
-`ubuntu-latest`. It does not publish artifacts.
+formatting, and documentation/dependency checks on `windows-latest`,
+`ubuntu-latest`, and `macos-latest`. It does not publish artifacts.
+
+Run the deterministic Search-quality and bounded performance groups separately
+when changing interpretation, ranking, snippets, coverage, or provider queries:
+
+```powershell
+dotnet test .\tests\OpenSorSe.Application.Tests\OpenSorSe.Application.Tests.csproj `
+  --configuration Release --filter Category=SearchRelevance
+dotnet test .\tests\OpenSorSe.Application.Tests\OpenSorSe.Application.Tests.csproj `
+  --configuration Release --filter Category=PerformanceRegression
+```
+
+The relevance corpus is synthetic and reports regression-oriented metrics; it
+does not claim universal quality. Performance tests use bounded synthetic
+candidate sets and are not desktop latency guarantees.
 
 ## 5. Locate the major systems
 
@@ -96,7 +110,32 @@ Set breakpoints at `MainViewModel.StartProcessingAsync`,
 `ProcessingOrchestrator.ProcessAsync`, and `FileScanner.ScanAsync` to observe
 the request crossing layers.
 
-## 7. Trace a Change Plan
+## 7. Trace Search and index privacy
+
+1. `SemanticSearchView` binds ordinary query text and visible active filters to
+   `SemanticSearchViewModel`.
+2. `DeterministicSearchQueryInterpreter` validates bounds and produces topic
+   terms plus explicit `SearchFilter` values.
+3. `SemanticSearchService` concurrently loads the compatible JSON index and
+   progressive provider documents, tolerating an independent recoverable store
+   failure.
+4. `HybridSearchRanker` evaluates explicit signals, exact/literal tiers,
+   bounded typo candidates, optional semantic similarity, completeness,
+   recency, and deterministic ties.
+5. `SearchSnippetService` creates a bounded source-labelled snippet from
+   content already present in the candidate. It never extracts a source file at
+   query time.
+6. The ViewModel projects actual components into **Why this result?** and
+   displays coverage limitations.
+7. Inspection/forget/clear/policy/repair commands use `IIndexPrivacyService`;
+   `BackgroundIndexingService` coordinates cancellation and durable repair,
+   while `SqliteDeepIndexStore` owns transactional provider state.
+
+Views and ViewModels must not create SQL, parse SQLite/FTS syntax, call Ollama,
+or calculate ranking scores. New provider implementations must satisfy the same
+Application contracts without exposing database details.
+
+## 8. Trace a Change Plan
 
 1. A rule, Sorting Recipe, reviewed AI suggestion, or watched suggestion
    produces a proposal.
@@ -118,7 +157,7 @@ the request crossing layers.
 Never add a shortcut from a suggestion service or ViewModel to raw
 `File.Move`, `Directory.Move`, or the compatibility executor.
 
-## 8. Add a small feature
+## 9. Add a small feature
 
 1. Identify the owning project using `REPOSITORY_STRUCTURE.md`.
 2. Start with the narrow contract and domain behavior.
@@ -134,7 +173,7 @@ Avoid moving logic between projects merely for aesthetics. A small extraction
 is useful when it makes ownership or a safety phase explicit and preserves
 behavior.
 
-## 9. Add a test
+## 10. Add a test
 
 - Put deterministic domain tests beside the owning production project.
 - Use fakes for filesystem/provider/plugin failures unless the test explicitly
@@ -145,7 +184,7 @@ behavior.
   details.
 - Do not rely on test order or machine-installed Ollama/Tesseract.
 
-## 10. Add a plugin contribution
+## 11. Add a plugin contribution
 
 1. Reference `OpenSorSe.Extensions.Abstractions` only.
 2. Implement `IOpenSorSePlugin` and a supported contribution interface.

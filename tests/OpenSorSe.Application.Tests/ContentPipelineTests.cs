@@ -94,6 +94,85 @@ public sealed class ContentPipelineTests
         Assert.Contains("finance forecast", result.NativeText, StringComparison.Ordinal);
     }
 
+    /// <summary>Verifies a highly compressed oversized XML part is rejected before decompression can expand it.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_CompressedOversizedPart_IsSkipped()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("compressed-bomb.docx");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "word/document.xml", new string('x', 4_000_001));
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.False(result.HasReliableNativeText);
+    }
+
+    /// <summary>Verifies traversal-shaped archive names cannot substitute for an approved Open XML part.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_TraversalShapedEntry_IsIgnored()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("traversal.docx");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            WriteEntry(
+                archive,
+                "../word/document.xml",
+                "<w:document xmlns:w=\"urn:w\"><w:t>must not be indexed</w:t></w:document>");
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.DoesNotContain(result.Fields, field => field.Value.Contains("must not", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies nested archive payloads are not recursively opened by document extraction.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_DeepNestedArchive_IsIgnored()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("nested.docx");
+        using var nestedStream = new MemoryStream();
+        using (var nested = new ZipArchive(nestedStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            WriteEntry(
+                nested,
+                "word/document.xml",
+                "<w:document xmlns:w=\"urn:w\"><w:t>nested private text</w:t></w:document>");
+        }
+
+        nestedStream.Position = 0;
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            var nestedEntry = archive.CreateEntry(
+                string.Join('/', Enumerable.Repeat("nested", 32)) + "/payload.docx");
+            using var output = nestedEntry.Open();
+            await nestedStream.CopyToAsync(output);
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.DoesNotContain(result.Fields, field => field.Value.Contains("nested private", StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies PNG dimensions are read from a bounded header.</summary>
     [Fact]
     public async Task ImageExtractor_Png_ReadsDimensions()
