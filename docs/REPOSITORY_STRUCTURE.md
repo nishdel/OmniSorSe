@@ -226,6 +226,10 @@ projects.
 
 ## Repository-level directories
 
+- Root living documents: `README.md`, `PRODUCT_VISION.md`,
+  `PRODUCT_ROADMAP.md`, `ENGINEERING_PRINCIPLES.md`, `RELEASE_HISTORY.md`, and
+  `CONTRIBUTING.md` define the product, direction, policy, history, and
+  contribution entry points.
 - `docs/`: Current guides, historical release records, architecture, and
   implementation specifications. Start at [docs/README.md](README.md).
 - `docs/Architecture/`: Current architectural summaries plus clearly indexed

@@ -1,5 +1,7 @@
 # OpenSorSe Safety and Privacy
 
+**Document type:** Living current safety and privacy contract
+
 OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, Search/background indexing, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.

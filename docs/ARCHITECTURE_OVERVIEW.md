@@ -5,6 +5,11 @@ tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
 
+The root [Product Vision](../PRODUCT_VISION.md) explains the product reasons
+for local-first, review-before-change, Search, SQLite, and provider neutrality.
+[Engineering Principles](../ENGINEERING_PRINCIPLES.md) explains the
+cross-cutting implementation and validation policy.
+
 ## Architectural shape
 
 OpenSorSe is a local-first Windows desktop application with a Linux preview, built with .NET 8,

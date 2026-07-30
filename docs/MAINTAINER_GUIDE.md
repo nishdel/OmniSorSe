@@ -3,6 +3,10 @@
 This guide records the cross-cutting responsibilities required to keep an
 OpenSorSe release compatible, safe, and understandable.
 
+Use [Engineering Principles](../ENGINEERING_PRINCIPLES.md) for the reasoning
+behind these operational requirements and
+[Product Roadmap](../PRODUCT_ROADMAP.md) for version/integration status.
+
 ## Release checklist
 
 1. Confirm the release branch, base commit, upstream, worktrees, and absence of
@@ -37,7 +41,8 @@ passed-CI claim.
 | `src/OpenSorSe.Desktop/app.manifest` | Windows assembly identity |
 | `src/OpenSorSe.Desktop/ViewModels/AboutViewModel.cs` | User-visible short version |
 | `README.md`, `docs/CHANGELOG.md`, `docs/VERSION_NOTES_v*.md` | User/release narrative |
-| `docs/RELEASE_STATUS.md`, `docs/roadmap.md` | Readiness and branch identity |
+| `docs/RELEASE_STATUS.md` | Current integration, validation, package, tag, and publication readiness |
+| `PRODUCT_ROADMAP.md`, `RELEASE_HISTORY.md` | Planned direction and concise historical branch/date/merge index |
 | Workflow/plugin constants and import envelopes | Compatibility/schema identity, not marketing text |
 
 Tests should assert compiled metadata and About presentation. Do not update only
@@ -148,11 +153,13 @@ requires interruption tests at every durable boundary.
 Every release must keep these entry points current:
 
 - root README;
+- Product Vision, Product Roadmap, Engineering Principles, and Release History
+  when their scope changes;
 - `docs/README.md`;
 - User Guide, Troubleshooting, Manual Testing, and Version Notes;
 - Architecture Overview, Repository Structure, and System Map;
 - Safety and Privacy;
-- Changelog, Roadmap, and Release Status;
+- Changelog and Release Status;
 - relevant implementation specification and subsystem architecture;
 - Extension SDK/plugin documents when applicable.
 

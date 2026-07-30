@@ -1,5 +1,20 @@
 # Release Status
 
+**Document type:** Living release-readiness record
+
+This document answers whether implementation, integration, automated
+validation, manual validation, packaging, tagging, and publication are
+complete. It is not the product roadmap or the concise version history.
+
+- Use [Release History](../RELEASE_HISTORY.md) for dates, branches, test totals,
+  and links to historical evidence.
+- Use [Product Roadmap](../PRODUCT_ROADMAP.md) for completed, in-progress,
+  planned, research, and backlog work.
+- Use [Changelog](CHANGELOG.md) for detailed user-visible changes.
+
+Repository history currently places `main` at the v1.6 integration line. v1.7
+and v1.8 are implemented on their own branches and remain unmerged.
+
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
 | v0.1 Foundation | Complete | Restore, build, automated tests, and manual UI validation complete. | Read-only scan pipeline, metadata, hashing, deterministic rules, Dashboard, Settings, Diagnostics, and supporting application infrastructure. |
@@ -19,8 +34,8 @@
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
-| v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; post-push hosted validation is a handoff gate; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
-| v1.8 Search Intelligence, Quality and Privacy | Source implementation complete; final clean automated validation is tracked in the v1.8 report; interactive manual validation is not claimed | Exact totals and every automated gate are recorded in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
+| v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
+| v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
 
 ## Current product boundary
 
@@ -57,10 +72,11 @@ OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisio
 
 ## v1.8 validation
 
-The exact clean automated results, independently parsed Debug and Release TRX
-totals, relevance/performance gates, target builds, advisory audit, final commit,
-push, and exact-tip CI result are recorded in the
-[v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). No interactive manual
+The exact clean local automated results, independently parsed Debug and Release
+TRX totals, relevance/performance gates, target builds, and advisory audit are
+recorded in the [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). The report
+explicitly leaves exact-tip hosted evidence to a post-commit handoff; that
+hosted result is not self-recorded in the repository. No interactive manual
 scenario is marked complete.
 
 ## v1.7 validation
@@ -69,9 +85,10 @@ The final clean local sequence passed restore, zero-warning Debug and Release
 builds, and **987 tests in each configuration** with zero failures and zero
 skips. Analyzer, style, whitespace, documentation/dependency/architecture,
 vulnerability, patch, artifact, privacy, and four-runtime target-compilation
-gates passed. The exact immutable commit, push, synchronization, and native
-Windows/Ubuntu/macOS GitHub Actions result are post-commit evidence reported in
-the final handoff. Interactive manual validation is not claimed. See the
+gates passed. The validation report leaves exact immutable
+push/synchronization and native Windows/Ubuntu/macOS GitHub Actions evidence to
+the post-commit handoff; that hosted result is not self-recorded in the
+repository. Interactive manual validation is not claimed. See the
 [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md).
 
 ## v1.6 validation
@@ -127,10 +144,13 @@ The architecture directory contains both current implementation documentation an
 ## Current release
 
 OpenSorSe 1.8 source implementation is on
-`v1.8-search-intelligence-privacy`. Final local automated validation, commit,
-push, and exact GitHub Actions evidence are recorded separately from the
-uncompleted manual checklist.
-Packaging, signing, tagging, and publishing remain separate release activities.
+`v1.8-search-intelligence-privacy`, based on the unmerged v1.7 branch. The
+source branch is present on `origin` and is not an ancestor of `main`. Final
+local automated validation is recorded separately from the uncompleted manual
+checklist. The repository does not contain a v1.8 tag or package.
+
+Integration, packaging, signing, tagging, and publishing remain separate
+release activities.
 See the [user guide](USER_GUIDE_v1.8.md), [implementation
 specification](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md),
 [implementation report](V1.8_IMPLEMENTATION_REPORT.md), and
@@ -141,6 +161,12 @@ specification](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Priv
 - Version: `v1.8`
 - Release name: **Search Intelligence, Quality and Privacy**
 - Git branch: `v1.8-search-intelligence-privacy`
-- Status: source implementation complete; exact local/hosted automated results are tracked in the validation report; no interactive manual result, package, tag, or published release is claimed.
+- Status: source implementation and local automated validation complete;
+  unmerged from `main`; no interactive manual result, package, tag, or
+  published release is claimed.
 
-The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, `v1.3-workflow-profiles`, `v1.4-plugin-foundation`, and `v1.5-cross-platform-foundation`.
+Release branches normally use `v<version>-<primary-feature>`, as demonstrated
+by v1.2-v1.8. Historical branch names are retained as created: v1.1 used
+`v1.1`, v0.1/v0.2 used `coding/v0.1` and `coding/v0.2`, and v0.4-v0.9 were
+delivered together on `v0.9`. Planned roadmap entries have no branch until
+implementation actually begins.

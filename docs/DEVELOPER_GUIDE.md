@@ -2,7 +2,9 @@
 
 This guide takes a new contributor from clone to a small, safely tested change.
 Use it with the [Repository Structure](REPOSITORY_STRUCTURE.md) and
-[Architecture Overview](ARCHITECTURE_OVERVIEW.md).
+[Architecture Overview](ARCHITECTURE_OVERVIEW.md). Read the root
+[Engineering Principles](../ENGINEERING_PRINCIPLES.md) before a cross-cutting
+change.
 
 ## 1. Clone and inspect
 
@@ -10,6 +12,7 @@ Use it with the [Repository Structure](REPOSITORY_STRUCTURE.md) and
 git clone https://github.com/nishdel/OpenSorSe.git
 Set-Location .\OpenSorSe
 git status --short --branch
+git branch --all
 dotnet --info
 ```
 
@@ -17,6 +20,11 @@ Windows is the primary Desktop target and Linux remains a preview
 target. The solution targets .NET 8 and the exact SDK selection is in
 `global.json`. Linux contributors should also read
 [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
+
+Confirm the intended base before creating a branch. Repository history
+currently places `main` through v1.6; v1.7 and v1.8 are implemented on
+unmerged release branches. Do not assume the newest version string is already
+integrated into `main`.
 
 ## 2. Restore and build
 

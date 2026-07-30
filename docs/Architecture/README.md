@@ -5,6 +5,11 @@ Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 v1.8 system and take precedence when an older document uses future-oriented
 language.
 
+The [Product Vision](../../PRODUCT_VISION.md) defines why these boundaries
+exist, and [Engineering Principles](../../ENGINEERING_PRINCIPLES.md) defines
+the cross-cutting reasoning for MVVM, providers, testing, validation,
+compatibility, and recovery.
+
 ## Current implementation references
 
 - `00_System/00_Overview.md`: concise current component summary.
@@ -54,3 +59,8 @@ When changing the implementation:
 3. preserve historical documents unless their useful information has been
    consolidated and there is clear evidence they are obsolete;
 4. label future architecture explicitly rather than presenting it as shipped.
+
+The remaining historical/long-term files are retained deliberately. Their
+presence is not a roadmap commitment. See the
+[Documentation Inventory](../DOCUMENTATION_INVENTORY.md) for the exhaustive
+authority and retention model.

@@ -1,5 +1,12 @@
 # Changelog
 
+**Document type:** Cumulative historical change record
+
+Entries below preserve release-specific terminology and claims. Use
+[Release History](../RELEASE_HISTORY.md) for the concise branch/date/merge
+index, [Release Status](RELEASE_STATUS.md) for current readiness, and
+[Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
+
 ## v1.8.0
 
 Release branch: `v1.8-search-intelligence-privacy`.

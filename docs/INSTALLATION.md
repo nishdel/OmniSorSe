@@ -1,78 +1,86 @@
 # Installing OpenSorSe
 
-## Current release status
+**Document type:** Living installation and update guidance
 
-OpenSorSe 1.5 is implemented in source, but this
-repository does not claim that a v1.5 binary package has been published. The
-previously produced portable package was v1.0 for Windows x64. Check the
-[Release Status](RELEASE_STATUS.md) and the repository's Releases page before
-expecting a newer download.
+## Availability
 
-Do not download an `OpenSorSe` package from an unrelated site. A release archive
-should be accompanied by version notes and a SHA-256 checksum in the same
-official release.
+The current repository source identifies as OpenSorSe 1.8 on
+`v1.8-search-intelligence-privacy`. That branch is not merged into `main`, and
+the repository does not contain a v1.8 installer, package, tag, or published
+release.
 
-## Build and run v1.5 from source
+The only tagged and packaged repository release is the frozen v1.0 Windows x64
+portable snapshot. It does not represent current v1.8 behavior. Check
+[Release Status](RELEASE_STATUS.md) before expecting a download.
+
+Do not download an OpenSorSe package from an unrelated site. A future official
+archive should identify its source commit/version and include release notes plus
+a checksum from the same official release location.
+
+## Build and run current source
 
 Prerequisites:
 
-- Windows 10 or later, or a Linux x64 graphical environment for the preview;
+- Windows 10 or later, or a Linux x64 graphical environment for the
+  source-build preview;
 - the .NET SDK selected by [`global.json`](../global.json);
-- Git if cloning the repository.
+- Git when cloning the repository.
 
 ```powershell
 git clone https://github.com/nishdel/OpenSorSe.git
 Set-Location .\OpenSorSe
+git switch v1.8-search-intelligence-privacy
 dotnet restore .\OpenSorSe.sln
 dotnet build .\OpenSorSe.sln --configuration Debug --no-restore
+dotnet test .\OpenSorSe.sln --configuration Debug --no-build --no-restore
 dotnet run --project .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj
 ```
 
-Use disposable folders when evaluating Change Plan Apply, recovery, or Undo.
-For Linux prerequisites, XDG locations, framework-dependent publish, launch,
-and limitations, follow [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
+Use disposable folders when evaluating Change Plan Apply, rollback, recovery,
+or Undo. A successful local build is not a signed or published release.
 
-## Install an official portable release
+For Linux prerequisites, XDG locations, framework-dependent publishing,
+launch, and limitations, follow
+[Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
 
-When a release is available:
+## Historical v1.0 portable package
 
-1. Download its Windows x64 ZIP and `.sha256` file from the same official
-   GitHub release.
-2. Verify the checksum. Replace the example name with the downloaded archive:
+The repository’s v1.0 snapshot describes a self-contained Windows x64 portable
+layout. If obtaining that historical release from the official project:
+
+1. Download the ZIP and its `.sha256` file from the same official release.
+2. Calculate the archive hash:
 
    ```powershell
    (Get-FileHash .\OpenSorSe-v1.0.0-win-x64.zip -Algorithm SHA256).Hash
    ```
 
-3. Compare the complete hexadecimal result with the published checksum.
-4. Extract the complete archive into a writable directory. Do not run it from
-   the compressed-folder preview.
+3. Compare the complete hexadecimal value with the published checksum.
+4. Extract the entire archive into a writable directory.
 5. Keep all runtime files together and start `OpenSorSe.exe`.
 
-The portable package is self-contained; it does not require a separate .NET
-runtime installation.
+A checksum detects changed bytes; it does not by itself authenticate a
+publisher. The historical executable is not code-signed, so Windows
+SmartScreen may report it as unrecognized.
 
-## Windows security prompt
+## Optional Ollama-compatible AI
 
-The existing portable build is not code-signed. Windows SmartScreen may call it
-unrecognized. Confirm the archive origin and checksum before selecting
-**More info** and **Run anyway**. A checksum detects changed bytes but does not
-by itself authenticate a publisher.
+OpenSorSe does not bundle, install, or start Ollama.
 
-## Optional Ollama support
+1. Install and manage a compatible provider separately.
+2. Install a model supported by that provider.
+3. In Settings, enable AI, verify the exact endpoint/model, and enable only the
+   capability required.
 
-Ollama is not bundled or started automatically.
+AI and individual capabilities are disabled by default. Ordinary scanning,
+OCR, Search interpretation/ranking, snippets, explanations, Change Plan
+review, and Undo do not require AI.
 
-1. Install and manage Ollama separately.
-2. Install a model supported by that Ollama version.
-3. In OpenSorSe Settings, enable AI, discover/select the exact model, and
-   enable only the capabilities required.
+A custom Ollama-compatible endpoint can be remote. An explicitly requested AI
+flow can then send its bounded input away from the machine. Review the endpoint
+and privacy warning before enabling a capability.
 
-AI is disabled by default. A custom Ollama-compatible endpoint can be remote;
-explicitly requested metadata or separately enabled bounded document text can
-then leave the machine. Review the endpoint and privacy warning first.
-
-## Optional OCR support
+## Optional OCR
 
 Tesseract is not bundled.
 
@@ -81,77 +89,85 @@ Tesseract is not bundled.
 3. Configure the executable and languages in Settings.
 
 Supported PDF/Open XML native-text extraction is built in. Tesseract is used
-only for enabled OCR recognition of images and scanned PDF pages.
+only for enabled recognition of supported images and scanned PDF pages.
 
 ## Optional local plugins
 
-v1.4 accepts local ZIP packages only. OpenSorSe does not search a marketplace,
-download dependencies, or update plugins automatically. External plugins start
-disabled and require explicit capability grants.
+OpenSorSe accepts local ZIP packages; it does not search a marketplace,
+download plugin dependencies, or update plugins automatically. External
+plugins start disabled and require explicit capability grants.
 
-Plugin code runs in-process with the current user's operating-system
+Plugin code runs in-process with the current user’s operating-system
 permissions. Install only packages whose source and publisher you trust.
 Assembly-load-context isolation and SHA-256 integrity checks are not a sandbox
-or publisher authentication. See [Local Plugin Packages](LOCAL_PLUGIN_PACKAGES_v1.4.md).
+or publisher authentication. See
+[Local Plugin Packages](LOCAL_PLUGIN_PACKAGES_v1.4.md).
 
 ## Application data
 
-OpenSorSe-owned runtime state is stored below:
+Application-owned runtime state uses the platform path provider:
 
-`%LOCALAPPDATA%\OpenSorSe`
+- Windows: below `%LOCALAPPDATA%\OpenSorSe`;
+- Linux: XDG configuration/data/state/cache locations described in
+  [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) and Platform Diagnostics.
 
-It can include settings, logs, saved scans, searches, extracted content,
-semantic indexes, AI decision history, structure history, Workflow Profiles,
-Sorting Recipes, Watched Folder configuration/catalogues/activity, plugin
-state/installed versions, Change Plans, and the Operation Journal. Scanned
-source files remain in their selected locations.
+Depending on enabled features, state can include settings, logs, saved scans,
+saved searches, extracted content, the compatible semantic index, the embedded
+SQLite durable Search index and managed backups, AI decisions, structure
+history, Workflow Profiles, Sorting Recipes, Watched Folder
+configuration/catalogues/activity, plugin state/packages, Change Plans, and the
+Operation Journal.
 
-Protect this directory like other user data: extracted content and diagnostic
-exports can contain sensitive local information. Do not copy it into the source
+Source files remain in their selected locations. Extracted text, Search indexes,
+paths, journals, and diagnostic exports can still be sensitive; protect
+application data like the source material and do not copy it into the
 repository.
 
-## Update
+## Update a source build or future portable release
 
-1. Close OpenSorSe so stores and plugin lifecycles shut down cleanly.
-2. Extract the new release into a new program directory.
-3. Review its Version Notes and migration information.
-4. Start the new executable and verify Settings, Workflows, Plugins, Watched
+1. Close OpenSorSe so stores, indexing, watchers, and plugins shut down.
+2. Read Version Notes, Release Status, and migration information.
+3. Keep the previous program directory and a reviewed backup of important
+   application-owned state.
+4. Build or extract the new version into a separate program directory.
+5. Start it and verify Settings, Search/indexing, Workflows, Plugins, Watched
    Folders, Operation History, and saved scans.
-5. Keep the previous program directory until the update is verified.
+6. Retain the prior program/data backup until the update is verified.
 
-Do not overwrite a running installation. User-local data remains under
-`%LOCALAPPDATA%\OpenSorSe` and is handled by each store's schema rules.
+Do not overwrite a running installation. Each store/provider owns its schema,
+migration, newer-version rejection, corruption, and recovery behavior.
 
 ## Uninstall
 
 1. Close OpenSorSe.
-2. Delete the extracted program directory.
-3. Optionally delete `%LOCALAPPDATA%\OpenSorSe` to remove OpenSorSe-owned
-   settings, indexes, plugins, plans, journals, history, and logs.
+2. Delete the extracted/build program directory.
+3. Optionally remove the exact OpenSorSe-owned application-data directories.
 
-Deleting OpenSorSe application data does not delete scanned source files, but
-it removes local recovery/Undo records and should not be done while an operation
-needs review.
+Removing application data does not delete scanned source files. It does remove
+local indexes, settings, plugins, plans, journal/recovery facts, Undo evidence,
+and history. Do not remove it while an interrupted operation needs review.
 
 ## Installer status
 
-No installer is currently provided. The portable distribution avoids adding an
-unsigned installer/signing surface. A future installer requires explicit
-identity, signing, update, migration, and uninstall policy.
+No current installer is provided. A future installer/updater requires explicit
+identity, signing, reproducibility, migration, rollback, and uninstall policy.
 
 ## Troubleshooting
 
-- **The application does not start:** extract the whole archive and keep every
-  runtime file beside `OpenSorSe.exe`.
-- **Ollama is unavailable:** verify the endpoint, running service, selected
-  model, and enabled capability.
+- **Source does not build:** verify the SDK selected by `global.json`, restore,
+  then build from a clean generated-output state.
+- **The historical portable app does not start:** extract the complete archive
+  and keep every runtime file beside the executable.
+- **Ollama is unavailable:** verify endpoint, service, exact model, global AI,
+  and the individual capability.
 - **OCR is unavailable:** verify the Tesseract executable and every configured
   language data file.
-- **Search is unavailable:** enable it separately and build/rebuild the
-  local index.
-- **Settings do not persist:** verify write access to
-  `%LOCALAPPDATA%\OpenSorSe`.
+- **Search is incomplete:** review Background indexing coverage, exclusions,
+  dependencies, failures, quota, pause state, and index availability.
+- **Settings do not persist:** verify the current platform’s application-data
+  location and permissions.
 - **A plugin is blocked:** review compatibility, dependencies, integrity,
-  requested grants, quarantine diagnostics, and restart requirements.
+  grants, quarantine, native runtime identifier, and restart requirements.
 
-See the current [Troubleshooting Guide](TROUBLESHOOTING_v1.4.md).
+See [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) and
+[Safety and Privacy](SAFETY_AND_PRIVACY.md).

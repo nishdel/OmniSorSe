@@ -4,7 +4,12 @@
 
 ---
 
-# Purpose
+**Document type:** Living general naming guidance. The
+[Glossary](Glossary.md) is authoritative for product/domain terminology, and
+the existing public/persisted source vocabulary takes precedence when a rename
+would break compatibility.
+
+## Purpose
 
 The Naming Conventions document establishes consistent naming practices for source code, documentation, configuration, and project structure.
 
@@ -14,7 +19,7 @@ Consistent naming reduces ambiguity and improves collaboration.
 
 ---
 
-# General Principles
+## General Principles
 
 Names should be:
 
@@ -28,7 +33,7 @@ Avoid abbreviations unless they are universally recognized.
 
 ---
 
-# Classes
+## Classes
 
 Class names should:
 
@@ -52,7 +57,7 @@ Avoid vague names such as:
 
 ---
 
-# Interfaces
+## Interfaces
 
 Interfaces should:
 
@@ -69,7 +74,7 @@ Interface names should describe *what* they provide, not *how* they work.
 
 ---
 
-# Methods
+## Methods
 
 Method names should:
 
@@ -88,7 +93,7 @@ Methods should communicate intent clearly.
 
 ---
 
-# Properties
+## Properties
 
 Property names should:
 
@@ -103,7 +108,7 @@ Examples:
 
 ---
 
-# Variables
+## Variables
 
 Variable names should:
 
@@ -128,7 +133,7 @@ unless their meaning is immediately obvious.
 
 ---
 
-# Files
+## Files
 
 File names should:
 
@@ -144,7 +149,7 @@ Examples:
 
 ---
 
-# Folders
+## Folders
 
 Folder names should:
 
@@ -161,7 +166,7 @@ Examples:
 
 ---
 
-# Events
+## Events
 
 Event names should describe what has happened.
 
@@ -175,7 +180,7 @@ Event names should represent completed occurrences rather than commands.
 
 ---
 
-# Constants
+## Constants
 
 Constants should:
 
@@ -185,7 +190,7 @@ Constants should:
 
 ---
 
-# Acronyms
+## Acronyms
 
 Widely recognized acronyms may be used consistently.
 
@@ -202,7 +207,7 @@ Avoid inventing project-specific abbreviations.
 
 ---
 
-# Design Principles
+## Design Principles
 
 Naming should remain:
 
@@ -216,7 +221,7 @@ Names should communicate intent rather than implementation details.
 
 ---
 
-# Future Considerations
+## Future Considerations
 
 As the project evolves, additional guidance may be introduced for:
 
@@ -230,8 +235,9 @@ The primary objective should remain clear and consistent communication.
 
 ---
 
-# Related Documents
+## Related Documents
 
 * [Glossary](Glossary.md)
 * [Coding Standards](Coding_Standards.md)
 * [Architecture Decision Records](ADR.md)
+* [Engineering Principles](../../../ENGINEERING_PRINCIPLES.md)

@@ -2,6 +2,12 @@
 
 This index distinguishes historical foundation specifications from release-specific packages. Implemented code and the latest release proposal are authoritative when an older planning document describes a then-future boundary.
 
+Specifications record intended and delivered implementation boundaries; they
+are not the roadmap or current release-readiness authority. Use
+[Product Roadmap](../../PRODUCT_ROADMAP.md),
+[Release History](../../RELEASE_HISTORY.md), and
+[Release Status](../RELEASE_STATUS.md) for those questions.
+
 | Release | Status | Specification package |
 | --- | --- | --- |
 | v0.1 Foundation | Historical / complete | [Specifications 001–028](../Implementation_Spec/) and archived coding prompts |
@@ -35,8 +41,8 @@ policy and recipes create proposals; neither grants approval. No specification
 authorizes autonomous AI filesystem control, permanent deletion, plugin direct
 mutation, cloud indexing, or unreviewed execution.
 
-The current development release is `v1.8`, **Search Intelligence, Quality and
-Privacy**, on `v1.8-search-intelligence-privacy`. Interactive manual validation
-is not complete.
+The newest implemented source milestone is `v1.8`, **Search Intelligence,
+Quality and Privacy**, on `v1.8-search-intelligence-privacy`. It remains
+unmerged from `main`, and interactive manual validation is not complete.
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.
