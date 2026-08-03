@@ -49,6 +49,10 @@
                                VerticalAlignment="Center"
                                TextWrapping="Wrap" />
                 </Grid>
+                <CheckBox Content="Include explainable related files"
+                          IsChecked="{Binding IncludeRelationshipContext, Mode=TwoWay}"
+                          AutomationProperties.Name="Include relationship context in Search"
+                          AutomationProperties.HelpText="When enabled, Search may add directly related files below exact and literal matches. Every contextual result includes retained evidence." />
                 <Border IsVisible="{Binding AreFiltersVisible}"
                         Classes="subtle-card"
                         Padding="8">

@@ -1,6 +1,7 @@
 using System.Text;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Scanner;
 using OpenSorSe.Scanner.Models;
@@ -20,6 +21,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
     private readonly IEmbeddingProvider _embeddingProvider;
     private readonly IFileHasher _fileHasher;
     private readonly IIndexingEnrichmentProvider? _enrichmentProvider;
+    private readonly IRelationshipService? _relationshipService;
 
     /// <summary>Initializes the provider-independent application stage processor.</summary>
     public DefaultIndexingStageProcessor(
@@ -28,7 +30,8 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         IContentIndexingService contentIndexingService,
         IContentStore contentStore,
         IEmbeddingProvider embeddingProvider,
-        IIndexingEnrichmentProvider? enrichmentProvider = null)
+        IIndexingEnrichmentProvider? enrichmentProvider = null,
+        IRelationshipService? relationshipService = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _fileHasher = fileHasher ?? throw new ArgumentNullException(nameof(fileHasher));
@@ -36,6 +39,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         _contentStore = contentStore ?? throw new ArgumentNullException(nameof(contentStore));
         _embeddingProvider = embeddingProvider ?? throw new ArgumentNullException(nameof(embeddingProvider));
         _enrichmentProvider = enrichmentProvider;
+        _relationshipService = relationshipService;
     }
 
     /// <inheritdoc />
@@ -59,8 +63,8 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
                 IndexingStage.SummaryKeywordsGenerated => await EnrichAsync(workItem, settings, cancellationToken).ConfigureAwait(false),
                 IndexingStage.SemanticRepresentationGenerated => ProcessSemanticRepresentation(workItem, settings),
                 IndexingStage.SearchIndexUpdated or
-                IndexingStage.RelationshipAnalysisCompleted or
                 IndexingStage.FileFullyIndexed => Complete(),
+                IndexingStage.RelationshipAnalysisCompleted => await AnalyzeRelationshipsAsync(workItem, settings, cancellationToken).ConfigureAwait(false),
                 _ => Permanent("unsupported-stage"),
             };
         }
@@ -106,6 +110,11 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             settings.AiProcessingEnabled,
             settings.SummaryProcessingEnabled,
             settings.SemanticProcessingEnabled,
+            settings.RelationshipAnalysisEnabled,
+            settings.MaximumRelationshipCandidates,
+            settings.MaximumRelationshipsPerFile,
+            settings.MaximumSmartCollectionMembers,
+            string.Join(',', settings.RelationshipExcludedExtensions.OrderBy(value => value, StringComparer.OrdinalIgnoreCase)),
             settings.ArchiveIndexingEnabled,
             settings.BinaryAndExecutableMetadataOnly,
             content.MaximumPagesPerDocument,
@@ -323,6 +332,26 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         {
             Status = IndexingStageStatus.Complete,
             SemanticRepresentation = _embeddingProvider.Embed(input),
+        };
+    }
+
+    private async Task<IndexingStageOutput> AnalyzeRelationshipsAsync(
+        IndexingWorkItem workItem,
+        DeepIndexingSettings settings,
+        CancellationToken cancellationToken)
+    {
+        if (!settings.RelationshipAnalysisEnabled || _relationshipService is null)
+        {
+            return new IndexingStageOutput { Status = IndexingStageStatus.Skipped };
+        }
+
+        var result = await _relationshipService
+            .AnalyzeFileAsync(workItem.FileId, cancellationToken)
+            .ConfigureAwait(false);
+        return new IndexingStageOutput
+        {
+            Status = result.Skipped ? IndexingStageStatus.Skipped : IndexingStageStatus.Complete,
+            ErrorCode = result.Skipped ? "relationship-analysis-excluded" : null,
         };
     }
 

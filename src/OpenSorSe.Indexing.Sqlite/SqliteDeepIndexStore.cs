@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
@@ -11,7 +12,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IDisposable
+public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IRelationshipStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -64,6 +65,11 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                         if (version < 2)
                         {
                             ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionTwo);
+                        }
+
+                        if (version < 3)
+                        {
+                            ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionThree);
                         }
 
                         ExecuteNonQuery(
@@ -2080,6 +2086,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                 using var transaction = connection.BeginTransaction();
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionOne);
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionTwo);
+                ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionThree);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -2106,6 +2113,20 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                 ExecuteNonQuery(connection, transaction, "DELETE FROM index_runs;");
                 ExecuteNonQuery(connection, transaction, "DELETE FROM index_chunks;");
                 ExecuteNonQuery(connection, transaction, "DELETE FROM index_content;");
+                ExecuteNonQuery(connection, transaction, "DELETE FROM index_relationship_features;");
+                ExecuteNonQuery(connection, transaction, "DELETE FROM index_relationships WHERE is_manual = 0;");
+                CleanupAutomaticCollections(connection, transaction);
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    """
+                    UPDATE relationship_diagnostics
+                    SET last_analysis_utc_ticks = NULL,
+                        last_duration_milliseconds = NULL,
+                        last_candidate_count = 0,
+                        last_relationship_count = 0,
+                        last_collection_count = 0;
+                    """);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -2755,7 +2776,14 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
             ScalarInt64(connection, "SELECT COALESCE(SUM(LENGTH(chunk_text)), 0) FROM index_chunks;");
         var relationships = ScalarInt64(
             connection,
-            "SELECT COALESCE(COUNT(*) * 32, 0) FROM index_files WHERE content_hash IS NOT NULL;");
+            "SELECT COALESCE(SUM(LENGTH(id) + LENGTH(first_file_id) + LENGTH(second_file_id) + LENGTH(algorithm) + LENGTH(algorithm_version) + 64), 0) FROM index_relationships;") +
+            ScalarInt64(
+                connection,
+                "SELECT COALESCE(SUM(LENGTH(evidence_key) + LENGTH(explanation) + 24), 0) FROM index_relationship_evidence;") +
+            ScalarInt64(
+                connection,
+                "SELECT COALESCE(SUM(LENGTH(title) + LENGTH(description) + LENGTH(relationship_summary) + 64), 0) FROM smart_collections;") +
+            ScalarInt64(connection, "SELECT COALESCE(COUNT(*) * 64, 0) FROM smart_collection_members;");
         var jobs = ScalarInt64(
             connection,
             "SELECT COALESCE(COUNT(*) * 128, 0) FROM index_jobs;") +
@@ -2805,7 +2833,11 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                    (SELECT COUNT(*) FROM index_stage_states st WHERE st.file_id = f.id),
                    f.fully_indexed, f.updated_utc_ticks, f.processor_fingerprint,
                    COALESCE(p.is_excluded, 0), COALESCE(p.suppress_ocr, 0),
-                   COALESCE(p.suppress_summary, 0), COALESCE(p.suppress_semantic, 0)
+                   COALESCE(p.suppress_summary, 0), COALESCE(p.suppress_semantic, 0),
+                   COALESCE(p.suppress_relationships, 0),
+                   (SELECT COUNT(*) FROM index_relationships r
+                    WHERE r.first_file_id = f.id OR r.second_file_id = f.id),
+                   (SELECT COUNT(*) FROM smart_collection_members m WHERE m.file_id = f.id)
             FROM index_files f
             JOIN index_sources s ON s.id = f.source_id
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -2856,6 +2888,9 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                 OcrSuppressed = reader.GetBoolean(22),
                 SummarySuppressed = reader.GetBoolean(23),
                 SemanticSuppressed = reader.GetBoolean(24),
+                RelationshipAnalysisSuppressed = reader.GetBoolean(25),
+                RelationshipCount = reader.GetInt32(26),
+                CollectionCount = reader.GetInt32(27),
             });
         }
 
@@ -2918,7 +2953,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
         command.CommandText =
             """
             SELECT is_excluded, indexing_level_override, suppress_ocr, suppress_summary,
-                   suppress_semantic, repair_stage, force_reprocess
+                   suppress_semantic, suppress_relationships, repair_stage, force_reprocess
             FROM index_privacy_rules
             WHERE source_id = $source AND relative_path_key = $relative;
             """;
@@ -2931,8 +2966,9 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                 reader.GetBoolean(2),
                 reader.GetBoolean(3),
                 reader.GetBoolean(4),
-                reader.IsDBNull(5) ? null : (IndexingStage)reader.GetInt32(5),
-                reader.GetBoolean(6))
+                reader.GetBoolean(5),
+                reader.IsDBNull(6) ? null : (IndexingStage)reader.GetInt32(6),
+                reader.GetBoolean(7))
             : null;
     }
 
@@ -3005,11 +3041,11 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
             INSERT INTO index_privacy_rules(
                 source_id, relative_path_key, relative_path, is_excluded,
                 indexing_level_override, suppress_ocr, suppress_summary,
-                suppress_semantic, repair_stage, force_reprocess, updated_utc_ticks)
+                suppress_semantic, suppress_relationships, repair_stage, force_reprocess, updated_utc_ticks)
             VALUES(
                 $source, $relativeKey, $relative, COALESCE($excluded, 0),
                 $level, COALESCE($ocr, 0), COALESCE($summary, 0),
-                COALESCE($semantic, 0), $repair, $force, $now)
+                COALESCE($semantic, 0), COALESCE($relationships, 0), $repair, $force, $now)
             ON CONFLICT(source_id, relative_path_key) DO UPDATE SET
                 relative_path = excluded.relative_path,
                 is_excluded = COALESCE($excluded, index_privacy_rules.is_excluded),
@@ -3017,6 +3053,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                 suppress_ocr = COALESCE($ocr, index_privacy_rules.suppress_ocr),
                 suppress_summary = COALESCE($summary, index_privacy_rules.suppress_summary),
                 suppress_semantic = COALESCE($semantic, index_privacy_rules.suppress_semantic),
+                suppress_relationships = COALESCE($relationships, index_privacy_rules.suppress_relationships),
                 repair_stage = COALESCE($repair, index_privacy_rules.repair_stage),
                 force_reprocess = MAX(index_privacy_rules.force_reprocess, $force),
                 updated_utc_ticks = excluded.updated_utc_ticks;
@@ -3029,6 +3066,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
             ("$ocr", change.SuppressOcr.HasValue ? (change.SuppressOcr.Value ? 1 : 0) : null),
             ("$summary", change.SuppressSummary.HasValue ? (change.SuppressSummary.Value ? 1 : 0) : null),
             ("$semantic", change.SuppressSemantic.HasValue ? (change.SuppressSemantic.Value ? 1 : 0) : null),
+            ("$relationships", change.SuppressRelationships.HasValue ? (change.SuppressRelationships.Value ? 1 : 0) : null),
             ("$repair", repairStage.HasValue ? (int)repairStage.Value : null),
             ("$force", forceReprocess ? 1 : 0),
             ("$now", changedAtUtc.UtcTicks));
@@ -3091,17 +3129,15 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
                 ("$file", fileId));
         }
 
+        if (data.HasFlag(IndexedDataKind.Relationships))
+        {
+            DeleteFileRelationshipData(connection, transaction, fileId, keepManualRelationships: false);
+        }
+
         ExecuteNonQuery(
             connection,
             transaction,
-            """
-            UPDATE index_files
-            SET content_hash = CASE WHEN $relationships = 1 THEN NULL ELSE content_hash END,
-                fully_indexed = CASE WHEN $relationships = 1 THEN 0 ELSE 1 END,
-                updated_utc_ticks = $now
-            WHERE id = $file;
-            """,
-            ("$relationships", data.HasFlag(IndexedDataKind.Relationships) ? 1 : 0),
+            "UPDATE index_files SET updated_utc_ticks = $now WHERE id = $file;",
             ("$now", changedAtUtc.UtcTicks),
             ("$file", fileId));
         DeleteOrphanedContentStatic(connection, transaction);
@@ -3577,6 +3613,7 @@ public sealed class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, 
         bool SuppressOcr,
         bool SuppressSummary,
         bool SuppressSemantic,
+        bool SuppressRelationships,
         IndexingStage? RepairStage,
         bool ForceReprocess);
 }

@@ -2,7 +2,7 @@
 
 **Document type:** Living current safety and privacy contract
 
-OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, Search/background indexing, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
+OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, Search/background indexing, relationship analysis, virtual Smart Collections, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
@@ -125,6 +125,27 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   watched/manual source ownership remains intact.
 - Clearing content, Search, or deep-index stores never changes source files.
 
+## Relationships and virtual collections
+
+- Automatic relationships are produced only from retained bounded evidence;
+  semantic similarity alone cannot create an edge. Evidence, algorithm/version,
+  timestamps, and deterministic confidence levels remain inspectable.
+- Smart Collections, context, and timelines are application-owned virtual
+  projections. Rename, pin, merge, split, link, unlink, forget, rebuild, and
+  repair actions never move, edit, rename, or delete original files.
+- Manual links and confirm/reject/always/never corrections are user-owned index
+  data. They persist across automatic refresh until explicitly changed.
+- File/source forgetting can remove relationship output and suppress future
+  analysis without removing a manually managed or watched indexing source.
+  Suppression also removes the file from relationship lists, collection
+  membership/timelines, and contextual Search expansion.
+- Relationship diagnostics retain aggregate counts, bounded timing, algorithm
+  version, and repair counts. They exclude extracted/OCR text, summaries,
+  vectors, complete paths, and document-derived evidence text.
+- Relationship and collection graphs are bounded. The implementation performs
+  direct non-recursive queries, caps candidates/edges/evidence/membership, and
+  repairs orphan or corrupt derived rows to resist hostile graph expansion.
+
 ## OpenSorSe-owned storage
 
 By default, runtime files are below `Environment.SpecialFolder.LocalApplicationData/OpenSorSe`.
@@ -138,7 +159,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
-| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Schema 2 embedded SQLite sources, runs, files, stage state, bounded shared text/OCR/summary/chunks/representations, failures, maintenance history, and per-file privacy rules. Schema 1 migrates transactionally with a recovery copy. Corrupt/newer storage is preserved only after explicit rebuild; no source-file copies; explicit quota and retention policy. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Schema 3 embedded SQLite sources, runs, files, stage state, bounded shared text/OCR/summary/chunks/representations, failures, relationship features/evidence/edges, user corrections, virtual collections/membership, maintenance history, and per-file privacy rules. Schema 1/2 migrates transactionally with a recovery copy. Corrupt/newer storage is preserved only after explicit rebuild; no source-file copies; explicit quota and retention policy. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
 | Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
 | Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
@@ -149,7 +170,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
 | Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
 
-Content and Search stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, Search representations, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs. The v1.8 Search-ranking diagnostic event records duration, bounded counts, filter count, coverage state, and ranking-stage names, but not the complete query, result snippets, extracted paragraphs, summaries, vectors, or absolute paths. An export remains user-initiated and reviewable before sharing.
+Content and Search stores can contain sensitive words extracted from selected documents. Relationship evidence and virtual membership can also reveal associations between selected files. They remain local but should be protected like other application data. Raw OCR/native text, Search representations, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs. Search-ranking and relationship diagnostic events record duration, bounded counts, filters/coverage/ranking stages, algorithm version, and repair activity, but not the complete query, result snippets, extracted paragraphs, summaries, vectors, source-derived evidence text, or absolute paths. An export remains user-initiated and reviewable before sharing.
 
 Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
 

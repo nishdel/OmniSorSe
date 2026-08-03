@@ -76,6 +76,11 @@ public sealed class SettingsDraft : ViewModelBase
     private bool _useIndexingTimeWindow;
     private int _indexingWindowStartHour = 22;
     private int _indexingWindowEndHour = 7;
+    private bool _relationshipAnalysisEnabled = true;
+    private string _relationshipExcludedExtensions = string.Empty;
+    private int _maximumRelationshipCandidates = 256;
+    private int _maximumRelationshipsPerFile = 64;
+    private int _maximumSmartCollectionMembers = 1000;
 
     /// <summary>Gets or sets whether specialist and troubleshooting interface features are shown.</summary>
     public bool ShowAdvancedFeatures
@@ -447,6 +452,41 @@ public sealed class SettingsDraft : ViewModelBase
         set => SetProperty(ref _maximumIndexSizeMiB, value);
     }
 
+    /// <summary>Gets or sets whether evidence-backed relationship analysis may run.</summary>
+    public bool RelationshipAnalysisEnabled
+    {
+        get => _relationshipAnalysisEnabled;
+        set => SetProperty(ref _relationshipAnalysisEnabled, value);
+    }
+
+    /// <summary>Gets or sets comma-separated file extensions excluded only from relationship analysis.</summary>
+    public string RelationshipExcludedExtensions
+    {
+        get => _relationshipExcludedExtensions;
+        set => SetProperty(ref _relationshipExcludedExtensions, value ?? string.Empty);
+    }
+
+    /// <summary>Gets or sets the bounded candidate count for one incremental relationship pass.</summary>
+    public int MaximumRelationshipCandidates
+    {
+        get => _maximumRelationshipCandidates;
+        set => SetProperty(ref _maximumRelationshipCandidates, value);
+    }
+
+    /// <summary>Gets or sets the bounded direct relationships retained per file.</summary>
+    public int MaximumRelationshipsPerFile
+    {
+        get => _maximumRelationshipsPerFile;
+        set => SetProperty(ref _maximumRelationshipsPerFile, value);
+    }
+
+    /// <summary>Gets or sets the bounded member count retained per Smart Collection.</summary>
+    public int MaximumSmartCollectionMembers
+    {
+        get => _maximumSmartCollectionMembers;
+        set => SetProperty(ref _maximumSmartCollectionMembers, value);
+    }
+
     /// <summary>Gets or sets maximum retained extracted text characters per file.</summary>
     public int MaximumExtractedTextCharacters
     {
@@ -673,6 +713,11 @@ public sealed class SettingsDraft : ViewModelBase
             UseIndexingTimeWindow = settings.DeepIndexing.ProcessingWindowStartHour.HasValue,
             IndexingWindowStartHour = settings.DeepIndexing.ProcessingWindowStartHour ?? 22,
             IndexingWindowEndHour = settings.DeepIndexing.ProcessingWindowEndHour ?? 7,
+            RelationshipAnalysisEnabled = settings.DeepIndexing.RelationshipAnalysisEnabled,
+            RelationshipExcludedExtensions = string.Join(", ", settings.DeepIndexing.RelationshipExcludedExtensions),
+            MaximumRelationshipCandidates = settings.DeepIndexing.MaximumRelationshipCandidates,
+            MaximumRelationshipsPerFile = settings.DeepIndexing.MaximumRelationshipsPerFile,
+            MaximumSmartCollectionMembers = settings.DeepIndexing.MaximumSmartCollectionMembers,
         };
     }
 
@@ -780,6 +825,15 @@ public sealed class SettingsDraft : ViewModelBase
                 BinaryAndExecutableMetadataOnly = BinaryAndExecutableMetadataOnly,
                 ProcessingWindowStartHour = UseIndexingTimeWindow ? IndexingWindowStartHour : null,
                 ProcessingWindowEndHour = UseIndexingTimeWindow ? IndexingWindowEndHour : null,
+                RelationshipAnalysisEnabled = RelationshipAnalysisEnabled,
+                RelationshipExcludedExtensions = RelationshipExcludedExtensions
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(extension => "." + extension.TrimStart('.').ToLowerInvariant())
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                MaximumRelationshipCandidates = MaximumRelationshipCandidates,
+                MaximumRelationshipsPerFile = MaximumRelationshipsPerFile,
+                MaximumSmartCollectionMembers = MaximumSmartCollectionMembers,
             },
         };
     }

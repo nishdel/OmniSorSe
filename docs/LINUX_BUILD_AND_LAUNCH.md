@@ -1,8 +1,9 @@
 # Linux Build and Launch
 
 OpenSorSe provides a framework-dependent Linux x64 source-build preview. The
-current v1.8 source adds an embedded SQLite provider and selects a Linux native
-SQLite library when cross-targeted, but interactive Linux v1.8 validation is not
+current v1.9 source extends the embedded SQLite provider for relationships and
+selects a Linux native SQLite library when cross-targeted, but interactive Linux
+v1.9 validation is not
 recorded. No Linux package or installer is published by this repository.
 
 Read the living [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md)
@@ -62,7 +63,7 @@ behavior must be checked on the target distribution.
 
 Repository CI is configured for `windows-latest`, `ubuntu-latest`, and
 `macos-latest`; it does not publish artifacts. The immutable v1.6 report proves
-a successful three-host run, while the current v1.8 source report proves local
+a successful three-host run, while the current v1.9 source report records local
 Windows execution and cross-target compilation only. Use the relevant current
-[manual checklist](MANUAL_TESTING_v1.8.md) before making a broader support
+[manual checklist](MANUAL_TESTING_v1.9.md) before making a broader support
 statement.

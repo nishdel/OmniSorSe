@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-07-30
+**Last repository review:** 2026-08-03
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -251,6 +251,7 @@ work explicit.
 | --- | --- | --- | --- |
 | v1.7 | `v1.7-deep-indexing-foundation` | Deep Indexing Foundation | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
 | v1.8 | `v1.8-search-intelligence-privacy` | Search Intelligence, Quality and Privacy | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
+| v1.9 | `v1.9-relationships-context` | Relationships, Context & Smart Collections | Unmerged from `main`; source implementation complete, automated validation tracked on the branch, interactive manual validation not claimed. |
 
 ### v1.7 — Deep Indexing Foundation
 
@@ -287,29 +288,32 @@ foundation. Ollama remains optional and is not required for ordinary Search.
 separate package, tag, and publication decisions. The repository contains no
 v1.8 package or tag.
 
+### v1.9 — Relationships, Context & Smart Collections
+
+v1.9 builds directly on v1.8 with provider-neutral, evidence-backed
+relationships, virtual Smart Collections, bounded context/timelines, persistent
+user corrections, privacy/repair operations, and optional relationship-aware
+Search expansion.
+
+**Major capabilities:** deterministic versioned relationship evidence and
+confidence levels; incremental SQLite schema-3 projection; Related Files and
+collection inspectors; manual link/unlink and collection control; index-only
+forget/rebuild; graph bounds and corruption repair; accessible Collections UI;
+exact-first contextual Search.
+
+**Dependencies:** exact validated v1.8 branch tip and its durable index/Search
+contracts. No database server, new AI provider, or online service is required.
+
+**Open work:** integration into `main`; the fully unchecked v1.9 interactive
+manual checklist; separate package, tag, and publication decisions. The
+repository contains no v1.9 package or tag.
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.
 The repository contains no corresponding branches, implementation
 specifications, source, commits, tags, or release promises. Titles, order, and
 scope may change after research and review.
-
-### v1.9 — Relationships, Collections and Context
-
-**Branch:** None; no branch exists.
-
-**Merged status:** Not applicable; planned concept only.
-
-The concept is to let users create and inspect explicit collections and
-relationships around indexed files, with context and provenance kept distinct
-from source-file content.
-
-**Potential major capabilities:** user-managed collections; typed
-relationships; contextual grouping; explainable provenance; bounded local
-persistence; Search integration.
-
-**Conceptual dependencies:** integrated v1.8 Search/index privacy model,
-provider-neutral identities, and a migration/ownership design.
 
 ### v2.0 — Knowledge Graph
 

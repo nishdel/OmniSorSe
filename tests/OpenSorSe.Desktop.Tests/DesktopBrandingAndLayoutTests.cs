@@ -56,6 +56,7 @@ public sealed class DesktopBrandingAndLayoutTests
             ["PluginsView.axaml"] = 5,
             ["NotificationCenterView.axaml"] = 2,
             ["SemanticSearchView.axaml"] = 10,
+            ["CollectionsView.axaml"] = 12,
         };
         var viewsDirectory = Path.Combine(
             FindRepositoryRoot(),
@@ -89,11 +90,37 @@ public sealed class DesktopBrandingAndLayoutTests
                      "PluginsView.axaml",
                      "NotificationCenterView.axaml",
                      "SemanticSearchView.axaml",
+                     "CollectionsView.axaml",
                  })
         {
             var source = File.ReadAllText(Path.Combine(viewsDirectory, fileName));
             Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>Verifies relationship explanations and index-only controls are keyboard and screen-reader reachable.</summary>
+    [Fact]
+    public void CollectionsView_ExposesEvidencePrivacyAndManualControlsAccessibly()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "CollectionsView.axaml"));
+
+        Assert.Contains("Relationship.Explanation", source, StringComparison.Ordinal);
+        Assert.Contains("Relationship.Algorithm", source, StringComparison.Ordinal);
+        Assert.Contains("ConfirmRelationshipCommand", source, StringComparison.Ordinal);
+        Assert.Contains("AlwaysRelateRelationshipCommand", source, StringComparison.Ordinal);
+        Assert.Contains("NeverRelateCommand", source, StringComparison.Ordinal);
+        Assert.Contains("MergeCollectionCommand", source, StringComparison.Ordinal);
+        Assert.Contains("SplitMemberCommand", source, StringComparison.Ordinal);
+        Assert.Contains("ForgetFileRelationshipsCommand", source, StringComparison.Ordinal);
+        Assert.Contains("ForgetSourceRelationshipsCommand", source, StringComparison.Ordinal);
+        Assert.Contains("original file remains unchanged", source, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("AutomationProperties.Name", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.HelpText", source, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies Search naming and help remain plain-language and available beyond pointer hover.</summary>

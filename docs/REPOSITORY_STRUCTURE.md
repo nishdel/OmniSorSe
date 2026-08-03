@@ -138,7 +138,8 @@ reference cycles.
 - **Owns:** Manual processing sessions, Results projection, local content/OCR,
   catalog/search/comparison, semantic indexing, tags, structure planning and
   history, provider-neutral AI policy, watched-folder coordination, workflows,
-  plugin host/lifecycle/packages, and suggestion-to-Change-Plan adapters.
+  plugin host/lifecycle/packages, relationship/context contracts and engine,
+  and suggestion-to-Change-Plan adapters.
 - **Must not own:** Avalonia views, shell navigation, Ollama HTTP details, or
   direct approved user-file mutation.
 - **Principal entry points:** `IApplicationController`,
@@ -154,6 +155,9 @@ reference cycles.
   - `Content`: bounded metadata/text extraction, PDF rendering, OCR, and cache.
   - `Plugins`: manifest, discovery, integrity, dependencies, packages,
     lifecycle, registry, invocation, provenance, and built-ins.
+  - `Relationships`: evidence, confidence, deterministic discovery, Smart
+    Collection/context projections, service/store contracts, Search expansion,
+    privacy, repair, and diagnostics.
   - `Semantic`: deterministic local index and explained search.
   - `Structure`: snapshots, preview plans, history, and comparisons.
   - `Tags`: provenance-aware generated tag candidates.
@@ -183,13 +187,15 @@ reference cycles.
   background-index store.
 - **Owns:** SQLite schema/versioning, migrations/backups, transactions,
   integrity checks, durable sources/runs/jobs/stages, shared bounded content,
-  coverage/search projections, retention, quota maintenance, and compaction.
+  coverage/search projections, relationship evidence/edges/corrections,
+  virtual collections/membership, retention, quota maintenance, and compaction.
 - **Must not own:** Views, ViewModels, Search ranking, discovery/processing
   policy, source-file mutation, PostgreSQL clients, or server configuration.
 - **Principal entry point:** `SqliteDeepIndexStore`.
 - **Dependencies:** Application and Core.
-- **Reference rule:** Desktop composes this provider behind `IDeepIndexStore`.
-  No Application, ViewModel, or View may use SQLite-specific APIs.
+- **Reference rule:** Desktop composes this provider behind `IDeepIndexStore`,
+  `IIndexPrivacyStore`, and `IRelationshipStore`. No Application, ViewModel, or
+  View may use SQLite-specific APIs.
 
 ### `OpenSorSe.Desktop`
 

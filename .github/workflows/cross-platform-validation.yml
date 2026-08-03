@@ -6,6 +6,7 @@ on:
       - main
       - v1.7-deep-indexing-foundation
       - v1.8-search-intelligence-privacy
+      - v1.9-relationships-context
   pull_request:
 
 permissions:

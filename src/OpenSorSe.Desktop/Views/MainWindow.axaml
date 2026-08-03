@@ -192,6 +192,9 @@
                             Command="{Binding BackToFilesCommand}" />
                     <views:SemanticSearchView Grid.Row="1" DataContext="{Binding SemanticSearch}" />
                 </Grid>
+                <Grid IsVisible="{Binding IsCollectionsSelected}">
+                    <views:CollectionsView DataContext="{Binding Collections}" />
+                </Grid>
                 <Grid IsVisible="{Binding IsStructureHistorySelected}">
                     <views:StructureHistoryView DataContext="{Binding StructureHistory}" />
                 </Grid>

@@ -247,6 +247,11 @@ public sealed class SettingsViewModelTests
         viewModel.Draft.DeepAiProcessingEnabled = true;
         viewModel.Draft.DeepSummaryProcessingEnabled = false;
         viewModel.Draft.DeepSemanticProcessingEnabled = false;
+        viewModel.Draft.RelationshipAnalysisEnabled = false;
+        viewModel.Draft.RelationshipExcludedExtensions = ".pem, key, .pem";
+        viewModel.Draft.MaximumRelationshipCandidates = 320;
+        viewModel.Draft.MaximumRelationshipsPerFile = 80;
+        viewModel.Draft.MaximumSmartCollectionMembers = 1200;
         viewModel.Draft.ArchiveIndexingEnabled = true;
         viewModel.Draft.ExcludeGeneratedFolders = false;
         viewModel.Draft.BinaryAndExecutableMetadataOnly = false;
@@ -274,6 +279,11 @@ public sealed class SettingsViewModelTests
         Assert.True(saved.AiProcessingEnabled);
         Assert.False(saved.SummaryProcessingEnabled);
         Assert.False(saved.SemanticProcessingEnabled);
+        Assert.False(saved.RelationshipAnalysisEnabled);
+        Assert.Equal([".pem", ".key"], saved.RelationshipExcludedExtensions);
+        Assert.Equal(320, saved.MaximumRelationshipCandidates);
+        Assert.Equal(80, saved.MaximumRelationshipsPerFile);
+        Assert.Equal(1200, saved.MaximumSmartCollectionMembers);
         Assert.True(saved.ArchiveIndexingEnabled);
         Assert.False(saved.ExcludeGeneratedFolders);
         Assert.False(saved.BinaryAndExecutableMetadataOnly);
@@ -288,6 +298,20 @@ public sealed class SettingsViewModelTests
         var configuration = new TestConfigurationService();
         using var viewModel = new SettingsViewModel(configuration);
         viewModel.Draft.MaximumIndexSizeMiB = 15;
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, configuration.ReplacementSaveCount);
+        Assert.Equal("Background indexing settings are invalid.", viewModel.StatusText);
+    }
+
+    /// <summary>Verifies malformed relationship exclusions are rejected without replacing valid settings.</summary>
+    [Fact]
+    public async Task SaveAsync_MalformedRelationshipExclusion_IsRejected()
+    {
+        var configuration = new TestConfigurationService();
+        using var viewModel = new SettingsViewModel(configuration);
+        viewModel.Draft.RelationshipExcludedExtensions = ".";
 
         await viewModel.SaveCommand.ExecuteAsync(null);
 

@@ -1,11 +1,46 @@
 using System.Diagnostics;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Relationships;
 
 namespace OpenSorSe.Application.Tests;
 
 /// <summary>Runs bounded synthetic Search cost checks separately identifiable from functional tests.</summary>
 public sealed class SearchPerformanceRegressionTests
 {
+    /// <summary>Verifies one incremental relationship pass remains bounded at configured candidate limits.</summary>
+    [Theory]
+    [Trait("Category", "PerformanceRegression")]
+    [InlineData(100)]
+    [InlineData(RelationshipLimits.MaximumCandidates)]
+    public void RelationshipDiscoveryRemainsBounded(int candidateCount)
+    {
+        var engine = new DeterministicRelationshipEngine();
+        var target = RelationshipDocument("target", "battery-project-2026-1234.txt");
+        var candidates = Enumerable.Range(0, candidateCount)
+            .Select(index => RelationshipDocument(
+                index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                $"battery-project-2026-{1234 + index}.txt"))
+            .ToArray();
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var stopwatch = Stopwatch.StartNew();
+
+        var relationships = engine.Discover(
+            target,
+            candidates,
+            RelationshipLimits.MaximumRelationshipsPerFile,
+            CancellationToken.None);
+
+        stopwatch.Stop();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.InRange(relationships.Count, 1, RelationshipLimits.MaximumRelationshipsPerFile);
+        Assert.True(
+            stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+            $"Relationship analysis of {candidateCount:N0} bounded candidates took {stopwatch.Elapsed}.");
+        Assert.True(
+            allocated < Math.Max(8_000_000, candidateCount * 50_000L),
+            $"{candidateCount:N0} relationship candidates allocated {allocated:N0} bytes.");
+    }
+
     /// <summary>Verifies cold/warm ranking, filtering, and snippet costs remain bounded as synthetic data grows.</summary>
     [Theory]
     [Trait("Category", "PerformanceRegression")]
@@ -95,4 +130,21 @@ public sealed class SearchPerformanceRegressionTests
         stopwatch.Stop();
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
     }
+
+    private static RelationshipFileDocument RelationshipDocument(string id, string fileName) => new()
+    {
+        FileId = id,
+        SourceId = "synthetic",
+        SourceName = "Synthetic source",
+        FullPath = "/synthetic/projects/" + fileName,
+        RelativePath = "projects/" + fileName,
+        FileName = fileName,
+        FolderName = "projects",
+        Extension = ".txt",
+        CreationTimeUtc = DateTimeOffset.UnixEpoch,
+        ModifiedTimeUtc = DateTimeOffset.UnixEpoch.AddMinutes(30),
+        Keywords = ["battery", "project"],
+        Summary = "Synthetic battery project record",
+        IsFullyIndexed = true,
+    };
 }

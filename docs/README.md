@@ -57,16 +57,17 @@ Roadmap.
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
 | [Installation](INSTALLATION.md) | Current source-build instructions, historical package boundary, optional dependencies, update/uninstall, and application data. | Before installing, building, updating, or removing OpenSorSe. | Living |
-| [OpenSorSe 1.8 User Guide](USER_GUIDE_v1.8.md) | v1.8 Search, filters, explanations, coverage, index privacy, and repair. | When using the current source branch. | Current version-specific |
-| [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) | Search/index failure, coverage, privacy, repair, and diagnostic guidance. | When current Search behavior is unclear or fails. | Current version-specific |
-| [OpenSorSe 1.8 Manual Testing](MANUAL_TESTING_v1.8.md) | Interactive validation scenarios, intentionally unchecked until observed. | During maintainer manual validation. | Current version-specific evidence template |
-| [OpenSorSe 1.8 Version Notes](VERSION_NOTES_v1.8.md) | Concise v1.8 user-visible changes and limits. | For the v1.8 milestone overview. | Historical/version snapshot |
-| [v1.8 Implementation Report](V1.8_IMPLEMENTATION_REPORT.md) | What v1.8 changed and reused. | For implementation evidence, not general onboarding. | Historical snapshot |
-| [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.8 validation totals. | Historical snapshot |
+| [OpenSorSe 1.9 User Guide](USER_GUIDE_v1.9.md) | v1.9 relationships, Smart Collections, Search context, privacy, and repair. | When using the current source branch. | Current version-specific |
+| [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence/confidence, virtual collections, user control, Search context, privacy, and limits. | Before relying on or changing relationship behavior. | Current feature guide |
+| [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) | Inherited Search/index failure, coverage, privacy, repair, and diagnostic guidance. | When Search or indexing is unclear or fails. | Current inherited guidance |
+| [OpenSorSe 1.9 Manual Testing](MANUAL_TESTING_v1.9.md) | Interactive relationship/collection scenarios, intentionally unchecked until observed. | During maintainer manual validation. | Current version-specific evidence template |
+| [OpenSorSe 1.9 Version Notes](VERSION_NOTES_v1.9.md) | Concise v1.9 user-visible changes and limits. | For the v1.9 milestone overview. | Current version snapshot |
+| [v1.9 Implementation Report](V1.9_IMPLEMENTATION_REPORT.md) | What v1.9 changed and reused. | For implementation evidence, not general onboarding. | Current version snapshot |
+| [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.9 validation totals. | Current version snapshot |
 | [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md) | Current support vocabulary and Windows/Linux/macOS capability evidence. | Before making a platform claim. | Living |
 | [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) | Linux source validation, run, and framework-dependent publish steps. | For Linux source work. | Living, conservative preview guidance |
 
-The v1.8 guide builds on stable earlier workflows. Use the versioned v1.1-v1.7
+The v1.9 guide builds on stable earlier workflows. Use the versioned v1.1-v1.8
 guides only when the current guide links to an inherited subsystem or when
 researching that release.
 
@@ -78,8 +79,9 @@ researching that release.
 | [System Map](Architecture/OpenSorSe_System_Map.md) | Five Mermaid views of adapters, communication, processing, safe execution, and plugins. | When relationships are easier to understand visually. | Living and authoritative |
 | [Repository Structure](REPOSITORY_STRUCTURE.md) | Actual project reference graph, project responsibilities, tests, and change locations. | Before selecting a project to edit. | Living and authoritative |
 | [Architecture Library Index](Architecture/README.md) | Which detailed subsystem documents are current versus historical/long-term design. | Before reading any detailed architecture file. | Living |
-| [v1.7 Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md) | Provider-neutral durable stages, SQLite boundary, recovery, identity, quota, and coverage. | For indexing/provider/storage work. | Current subsystem contract inherited by v1.8 |
-| [v1.8 Search Intelligence and Privacy Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md) | Ranking, filters, snippets, concurrency, schema 2, privacy, and repair. | For current Search and index-privacy work. | Current subsystem contract |
+| [v1.7 Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md) | Provider-neutral durable stages, SQLite boundary, recovery, identity, quota, and coverage. | For indexing/provider/storage work. | Current subsystem contract inherited by v1.9 |
+| [v1.8 Search Intelligence and Privacy Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md) | Ranking, filters, snippets, concurrency, schema 2, privacy, and repair. | For Search and index-privacy work. | Current subsystem contract inherited by v1.9 |
+| [v1.9 Relationships and Context Architecture](Architecture/06_Search/10_v1.9_Relationships_Context.md) | Evidence, confidence, incremental discovery, schema 3, virtual collections, Search context, privacy, and graph bounds. | For current relationship/collection work. | Current subsystem contract |
 | [Advanced Diagnostics](Architecture/01_Core/10_Advanced_Diagnostics.md) | Current detailed diagnostics model and privacy. | For instrumentation/export changes. | Current subsystem contract |
 | [OCR and Metadata](Architecture/03_Readers/10_v1_OCR_and_Metadata.md) | Implemented extraction/OCR capability and bounds. | For extraction or OCR work. | Current subsystem contract |
 | [Small-model Prompt Contracts](Architecture/04_AI/11_Small_Model_Prompt_Contracts.md) | Implemented prompt/structured-output rules. | For optional AI changes. | Current subsystem contract |
@@ -89,7 +91,8 @@ researching that release.
 | [Plugin Foundation](Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md) | Current plugin host/SDK/package/trust boundary. | For host or extension changes. | Current subsystem contract |
 
 [Implementation specification 059](Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md)
-and [implementation specification 060](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md)
+and [implementation specification 060](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md),
+plus [implementation specification 061](Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md),
 are release-specific implementation records. Use the architecture documents
 above for the living subsystem model.
 
@@ -132,7 +135,7 @@ authentication.
 | [Implementation Specification Index](Implementation_Spec/README.md) | Numbered specifications, proposals, decisions, and acceptance boundaries. | Implementation archaeology and release-specific rationale. | Living index over historical records |
 | `VERSION_NOTES_v*.md` | User-facing change summary for one version. | When researching that version. | Historical/version snapshots |
 | `MANUAL_TESTING_v*.md` | Interactive checklist and observed/unobserved state for one version. | Manual validation or evidence review. | Historical/version snapshots |
-| `USER_GUIDE_v*.md` and `TROUBLESHOOTING_v*.md` | User behavior and support at that version. | Compatibility and historical UX research. | Historical except current v1.8 guidance |
+| `USER_GUIDE_v*.md` and `TROUBLESHOOTING_v*.md` | User behavior and support at that version. | Compatibility and historical UX research. | Historical except current v1.9/inherited guidance |
 | `V1.*_IMPLEMENTATION_REPORT.md` | What a major branch implemented. | Detailed implementation evidence. | Historical snapshots; preserve |
 | `V1.*_VALIDATION_REPORT.md` | Exact local/hosted/manual evidence and exclusions. | Before quoting validation. | Historical snapshots; preserve |
 | `DATA_MODEL_v1.0.md`, `MIGRATION_v1.0.md`, `RELEASE_CHECKLIST_v1.0.md` | v1.0 data, migration, and packaging assumptions. | v1.0 compatibility or package research. | Historical snapshots |

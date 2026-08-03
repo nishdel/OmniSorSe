@@ -23,7 +23,7 @@ behind these operational requirements and
    publish workflow. Source validation alone does not claim a release exists.
 
 The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains the
-packaging baseline. Apply the current [v1.8 manual checklist](MANUAL_TESTING_v1.8.md)
+packaging baseline. Apply the current [v1.9 manual checklist](MANUAL_TESTING_v1.9.md)
 and [Release Status](RELEASE_STATUS.md) in addition.
 
 Record Windows, Linux, and macOS results independently. A green local Windows
@@ -90,12 +90,27 @@ creating a pre-migration recovery copy. Validate inspection, forgetting,
 selective clearing, suppression against immediate re-index loops, targeted
 repair, duplicate-content impact reporting, and unchanged source files.
 
+Schema 3 adds relationship features, evidence-backed edges, pair corrections,
+virtual collections/membership, forgotten projections, diagnostics, and the
+relationship-suppression privacy bit. A v2-to-v3 migration must be
+transactional and recovery-copy protected. Validate manual correction
+retention, collection/member bounds, privacy filtering, source ownership,
+orphan/corrupt derived-row repair, exact-first Search expansion, and unchanged
+source files.
+
 For Search changes, run `Category=SearchRelevance` and
 `Category=PerformanceRegression` in addition to the full suite. Inspect the
 SQLite query plans exercised by provider tests, keep query/candidate/snippet
 bounds intact, and compare exact-match preservation, top-k recall, reciprocal
 rank, stability, cancellation, allocations, and increasing synthetic corpus
 sizes. These are regression controls, not universal quality or latency claims.
+
+For relationship changes, additionally inspect the deterministic evidence
+matrix, false-positive/false-negative fixtures, algorithm version, feature
+indexes/query plans, candidate and member caps, cancellation, user override
+semantics, virtual collection tombstones, Search fallback, diagnostics
+redaction, and `MANUAL_TESTING_v1.9.md`. Never replace evidence with a model's
+unsupported explanation or present a rule score as a probability.
 
 Never silently reinterpret a field in a way that could authorize broader file
 operations.
@@ -119,6 +134,8 @@ Review these on every release:
 - Plugin integrity and load-context isolation are not described as publisher
   authentication or sandboxing.
 - Application stores cannot escape their controlled files/directories.
+- Relationship and collection actions affect derived index data only; they do
+  not acquire a source-file mutation path.
 
 ## Journal compatibility
 

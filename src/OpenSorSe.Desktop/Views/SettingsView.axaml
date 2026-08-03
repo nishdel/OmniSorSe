@@ -192,6 +192,34 @@
                                IsVisible="{Binding IsAdvancedSettingsVisible}"
                                TextWrapping="Wrap"
                                Classes="page-subtitle" />
+                    <CheckBox Content="Build evidence-backed file relationships and Smart Collections"
+                              IsChecked="{Binding Draft.RelationshipAnalysisEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable relationship analysis" />
+                    <TextBox Text="{Binding Draft.RelationshipExcludedExtensions, Mode=TwoWay}"
+                             PlaceholderText="Relationship-only file-type exclusions, for example: .key, .pem"
+                             AutomationProperties.Name="File extensions excluded from relationship analysis" />
+                    <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
+                          ColumnDefinitions="*,*,*"
+                          ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Relationship candidates per file" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumRelationshipCandidates, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum relationship candidates per file" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Relationships per file" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumRelationshipsPerFile, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum relationships per file" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Collection members" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumSmartCollectionMembers, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum Smart Collection members" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Relationships use retained index evidence, never move source files, and can be disabled or forgotten independently."
+                               TextWrapping="Wrap"
+                               Classes="page-subtitle" />
                 </StackPanel>
             </Border>
 

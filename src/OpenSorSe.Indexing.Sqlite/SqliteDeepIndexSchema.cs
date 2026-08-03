@@ -176,4 +176,140 @@ internal static class SqliteDeepIndexSchema
         CREATE INDEX IF NOT EXISTS ix_index_privacy_rules_excluded
             ON index_privacy_rules(is_excluded, source_id);
         """;
+
+    public const string CreateVersionThree = """
+        ALTER TABLE index_privacy_rules
+            ADD COLUMN suppress_relationships INTEGER NOT NULL DEFAULT 0;
+
+        CREATE TABLE IF NOT EXISTS index_relationship_features (
+            file_id TEXT PRIMARY KEY,
+            normalized_stem TEXT NOT NULL,
+            folder_key TEXT NOT NULL,
+            content_hash TEXT,
+            date_bucket INTEGER,
+            extracted_text_fingerprint TEXT,
+            ocr_text_fingerprint TEXT,
+            summary_fingerprint TEXT,
+            keyword_keys_json TEXT NOT NULL,
+            feature_version TEXT NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_content
+            ON index_relationship_features(content_hash) WHERE content_hash IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_folder
+            ON index_relationship_features(folder_key) WHERE folder_key <> '';
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_date
+            ON index_relationship_features(date_bucket) WHERE date_bucket IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_stem
+            ON index_relationship_features(normalized_stem);
+
+        CREATE TABLE IF NOT EXISTS index_relationships (
+            id TEXT PRIMARY KEY,
+            first_file_id TEXT NOT NULL,
+            second_file_id TEXT NOT NULL,
+            relationship_type INTEGER NOT NULL,
+            custom_type TEXT,
+            confidence INTEGER NOT NULL,
+            algorithm TEXT NOT NULL,
+            algorithm_version TEXT NOT NULL,
+            created_utc_ticks INTEGER NOT NULL,
+            validated_utc_ticks INTEGER NOT NULL,
+            decision INTEGER NOT NULL DEFAULT 0,
+            is_manual INTEGER NOT NULL DEFAULT 0,
+            context_key TEXT,
+            CHECK(first_file_id < second_file_id),
+            UNIQUE(first_file_id, second_file_id, relationship_type, custom_type),
+            FOREIGN KEY(first_file_id) REFERENCES index_files(id) ON DELETE CASCADE,
+            FOREIGN KEY(second_file_id) REFERENCES index_files(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_relationships_first ON index_relationships(first_file_id, confidence);
+        CREATE INDEX IF NOT EXISTS ix_relationships_second ON index_relationships(second_file_id, confidence);
+        CREATE INDEX IF NOT EXISTS ix_relationships_context ON index_relationships(context_key);
+
+        CREATE TABLE IF NOT EXISTS index_relationship_evidence (
+            relationship_id TEXT NOT NULL,
+            ordinal INTEGER NOT NULL,
+            evidence_kind INTEGER NOT NULL,
+            evidence_key TEXT NOT NULL,
+            explanation TEXT NOT NULL,
+            PRIMARY KEY(relationship_id, ordinal),
+            FOREIGN KEY(relationship_id) REFERENCES index_relationships(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS relationship_pair_overrides (
+            first_file_id TEXT NOT NULL,
+            second_file_id TEXT NOT NULL,
+            decision INTEGER NOT NULL,
+            relationship_type INTEGER,
+            custom_type TEXT,
+            changed_utc_ticks INTEGER NOT NULL,
+            CHECK(first_file_id < second_file_id),
+            PRIMARY KEY(first_file_id, second_file_id),
+            FOREIGN KEY(first_file_id) REFERENCES index_files(id) ON DELETE CASCADE,
+            FOREIGN KEY(second_file_id) REFERENCES index_files(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS smart_collections (
+            id TEXT PRIMARY KEY,
+            context_key TEXT UNIQUE,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            relationship_summary TEXT NOT NULL,
+            context_type INTEGER NOT NULL,
+            confidence INTEGER NOT NULL,
+            creation_source INTEGER NOT NULL,
+            is_pinned INTEGER NOT NULL DEFAULT 0,
+            is_user_renamed INTEGER NOT NULL DEFAULT 0,
+            created_utc_ticks INTEGER NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_smart_collections_display
+            ON smart_collections(is_pinned DESC, updated_utc_ticks DESC, title);
+
+        CREATE TABLE IF NOT EXISTS smart_collection_members (
+            collection_id TEXT NOT NULL,
+            file_id TEXT NOT NULL,
+            membership_source INTEGER NOT NULL,
+            relationship_id TEXT,
+            added_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY(collection_id, file_id),
+            FOREIGN KEY(collection_id) REFERENCES smart_collections(id) ON DELETE CASCADE,
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE,
+            FOREIGN KEY(relationship_id) REFERENCES index_relationships(id) ON DELETE SET NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_smart_collection_members_file
+            ON smart_collection_members(file_id, collection_id);
+
+        CREATE TABLE IF NOT EXISTS smart_collection_member_overrides (
+            collection_id TEXT NOT NULL,
+            file_id TEXT NOT NULL,
+            excluded INTEGER NOT NULL DEFAULT 1,
+            changed_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY(collection_id, file_id),
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS forgotten_smart_collections (
+            context_key TEXT PRIMARY KEY,
+            forgotten_utc_ticks INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS relationship_diagnostics (
+            id INTEGER PRIMARY KEY CHECK(id = 1),
+            last_analysis_utc_ticks INTEGER,
+            last_duration_milliseconds INTEGER,
+            last_candidate_count INTEGER NOT NULL DEFAULT 0,
+            last_relationship_count INTEGER NOT NULL DEFAULT 0,
+            last_collection_count INTEGER NOT NULL DEFAULT 0,
+            algorithm_version TEXT NOT NULL DEFAULT '',
+            repair_operation_count INTEGER NOT NULL DEFAULT 0
+        );
+
+        INSERT OR IGNORE INTO relationship_diagnostics(id) VALUES (1);
+        """;
 }

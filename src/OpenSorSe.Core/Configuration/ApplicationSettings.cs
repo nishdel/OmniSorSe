@@ -323,6 +323,21 @@ public sealed class DeepIndexingSettings
     /// <summary>Gets or initializes whether related-concept data and selected chunks may be retained.</summary>
     public bool SemanticProcessingEnabled { get; init; } = true;
 
+    /// <summary>Gets or initializes whether evidence-backed file relationship analysis may run.</summary>
+    public bool RelationshipAnalysisEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes extensions excluded from relationship analysis while retaining ordinary Search indexing.</summary>
+    public IReadOnlyList<string> RelationshipExcludedExtensions { get; init; } = [];
+
+    /// <summary>Gets or initializes the maximum indexed candidates examined for one incremental relationship analysis.</summary>
+    public int MaximumRelationshipCandidates { get; init; } = 256;
+
+    /// <summary>Gets or initializes the maximum automatic relationships retained for one file.</summary>
+    public int MaximumRelationshipsPerFile { get; init; } = 64;
+
+    /// <summary>Gets or initializes the maximum members retained in one automatic Smart Collection.</summary>
+    public int MaximumSmartCollectionMembers { get; init; } = 1_000;
+
     /// <summary>Gets or initializes whether archive contents may be indexed.</summary>
     public bool ArchiveIndexingEnabled { get; init; }
 
@@ -351,6 +366,16 @@ public sealed class DeepIndexingSettings
             FailedJobHistoryRetentionDays is < 1 or > 3650 ||
             MaximumRetryCount is < 0 or > 20 ||
             MaximumConcurrency is < 1 or > 32 ||
+            MaximumRelationshipCandidates is < 16 or > 512 ||
+            MaximumRelationshipsPerFile is < 1 or > 128 ||
+            MaximumSmartCollectionMembers is < 2 or > 2000 ||
+            RelationshipExcludedExtensions is null ||
+            RelationshipExcludedExtensions.Count > 128 ||
+            RelationshipExcludedExtensions.Any(extension =>
+                string.IsNullOrWhiteSpace(extension) ||
+                extension.Length > 32 ||
+                extension.Trim().TrimStart('.').Length == 0 ||
+                extension.Trim().TrimStart('.').Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '_' and not '-')) ||
             PauseBelowBatteryPercentage is < 1 or > 100 ||
             ProcessingWindowStartHour is < 0 or > 23 ||
             ProcessingWindowEndHour is < 0 or > 23 ||

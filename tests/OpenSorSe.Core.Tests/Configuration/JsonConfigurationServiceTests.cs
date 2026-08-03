@@ -382,6 +382,11 @@ public sealed class JsonConfigurationServiceTests
                 AiProcessingEnabled = true,
                 SummaryProcessingEnabled = false,
                 SemanticProcessingEnabled = false,
+                RelationshipAnalysisEnabled = false,
+                RelationshipExcludedExtensions = [".pem", ".key"],
+                MaximumRelationshipCandidates = 320,
+                MaximumRelationshipsPerFile = 80,
+                MaximumSmartCollectionMembers = 1200,
                 ArchiveIndexingEnabled = true,
                 ExcludeGeneratedFolders = false,
                 BinaryAndExecutableMetadataOnly = false,
@@ -438,6 +443,11 @@ public sealed class JsonConfigurationServiceTests
             Assert.True(reader.Current.DeepIndexing.AiProcessingEnabled);
             Assert.False(reader.Current.DeepIndexing.SummaryProcessingEnabled);
             Assert.False(reader.Current.DeepIndexing.SemanticProcessingEnabled);
+            Assert.False(reader.Current.DeepIndexing.RelationshipAnalysisEnabled);
+            Assert.Equal([".pem", ".key"], reader.Current.DeepIndexing.RelationshipExcludedExtensions);
+            Assert.Equal(320, reader.Current.DeepIndexing.MaximumRelationshipCandidates);
+            Assert.Equal(80, reader.Current.DeepIndexing.MaximumRelationshipsPerFile);
+            Assert.Equal(1200, reader.Current.DeepIndexing.MaximumSmartCollectionMembers);
             Assert.Equal(23, reader.Current.DeepIndexing.ProcessingWindowStartHour);
             Assert.Equal(6, reader.Current.DeepIndexing.ProcessingWindowEndHour);
         }

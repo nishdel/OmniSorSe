@@ -12,8 +12,9 @@ complete. It is not the product roadmap or the concise version history.
   planned, research, and backlog work.
 - Use [Changelog](CHANGELOG.md) for detailed user-visible changes.
 
-Repository history currently places `main` at the v1.6 integration line. v1.7
-and v1.8 are implemented on their own branches and remain unmerged.
+Repository history currently places `main` at the v1.6 integration line. v1.7,
+v1.8, and v1.9 are implemented on their own linear branches and remain
+unmerged.
 
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
@@ -36,16 +37,18 @@ and v1.8 are implemented on their own branches and remain unmerged.
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
 | v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
 | v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
+| v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md), and the [manual checklist](MANUAL_TESTING_v1.9.md) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
 
 ## Current product boundary
 
-OpenSorSe 1.8 is a safe, local-first desktop application for understanding,
+OpenSorSe 1.9 is a safe, local-first desktop application for understanding,
 monitoring, searching, and organizing explicitly selected folders. The v1.6
 production-hardening and cross-platform foundation remains intact; v1.7 adds
 durable progressive background indexing, and v1.8 adds bounded Search
-intelligence and index-only privacy/repair controls. Reusable workflows and
-plugin contributions configure scanning and analysis but do not grant mutation
-authority.
+intelligence and index-only privacy/repair controls. v1.9 adds evidence-backed
+relationships and virtual Smart Collections without granting any new
+source-file mutation authority. Reusable workflows and plugin contributions
+configure scanning and analysis but do not grant mutation authority.
 
 The current Desktop workflow does not:
 
@@ -68,7 +71,7 @@ Watcher APIs are treated as fallible hints. Enabled roots are reconciled on star
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, and index-only privacy rules. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, index-only privacy rules, relationship evidence, user corrections, and virtual collection membership. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
 
 ## v1.8 validation
 
@@ -143,30 +146,30 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe 1.8 source implementation is on
-`v1.8-search-intelligence-privacy`, based on the unmerged v1.7 branch. The
-source branch is present on `origin` and is not an ancestor of `main`. Final
-local automated validation is recorded separately from the uncompleted manual
-checklist. The repository does not contain a v1.8 tag or package.
+OpenSorSe 1.9 source implementation is on `v1.9-relationships-context`, based
+directly on the validated but unmerged v1.8 branch. v1.7 and v1.8 history is
+preserved and neither branch is modified or merged by v1.9. Local automated
+validation is recorded separately from the fully unchecked manual checklist.
+The repository does not contain a v1.9 tag or package.
 
 Integration, packaging, signing, tagging, and publishing remain separate
 release activities.
-See the [user guide](USER_GUIDE_v1.8.md), [implementation
-specification](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md),
-[implementation report](V1.8_IMPLEMENTATION_REPORT.md), and
-[manual checklist](MANUAL_TESTING_v1.8.md).
+See the [user guide](USER_GUIDE_v1.9.md), [relationship guide](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md),
+[implementation specification](Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md),
+[implementation report](V1.9_IMPLEMENTATION_REPORT.md), and
+[manual checklist](MANUAL_TESTING_v1.9.md).
 
 ## Release identity
 
-- Version: `v1.8`
-- Release name: **Search Intelligence, Quality and Privacy**
-- Git branch: `v1.8-search-intelligence-privacy`
+- Version: `v1.9`
+- Release name: **Relationships, Context & Smart Collections**
+- Git branch: `v1.9-relationships-context`
 - Status: source implementation and local automated validation complete;
   unmerged from `main`; no interactive manual result, package, tag, or
   published release is claimed.
 
 Release branches normally use `v<version>-<primary-feature>`, as demonstrated
-by v1.2-v1.8. Historical branch names are retained as created: v1.1 used
+by v1.2-v1.9. Historical branch names are retained as created: v1.1 used
 `v1.1`, v0.1/v0.2 used `coding/v0.1` and `coding/v0.2`, and v0.4-v0.9 were
 delivered together on `v0.9`. Planned roadmap entries have no branch until
 implementation actually begins.

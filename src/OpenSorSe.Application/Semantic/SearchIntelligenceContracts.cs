@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Semantic;
@@ -74,11 +75,13 @@ public sealed record SearchFilter(string Id, SearchFilterKind Kind, string Value
 /// <param name="ActiveFilters">Explicit filters to apply when interpretation is disabled.</param>
 /// <param name="InterpretFilters">Whether deterministic local interpretation should discover filters.</param>
 /// <param name="TopicTextOverride">Topic terms retained after a user edits interpreted filters.</param>
+/// <param name="IncludeRelationshipContext">Whether explainable direct relationships may expand otherwise ranked results.</param>
 public sealed record SearchRequest(
     string QueryText,
     IReadOnlyList<SearchFilter>? ActiveFilters = null,
     bool InterpretFilters = true,
-    string? TopicTextOverride = null);
+    string? TopicTextOverride = null,
+    bool IncludeRelationshipContext = true);
 
 /// <summary>Separates ordinary topic terms from visible deterministic filters.</summary>
 public sealed record SearchInterpretation(
@@ -122,6 +125,8 @@ public enum SearchRankingSignalKind
     Chunk,
     /// <summary>Related-concept similarity contributed.</summary>
     SemanticSimilarity,
+    /// <summary>An evidence-backed file relationship or Smart Collection contributed.</summary>
+    RelationshipContext,
     /// <summary>A visible user-selected filter matched.</summary>
     Filter,
     /// <summary>Recent modification time resolved an otherwise comparable result.</summary>
@@ -273,6 +278,9 @@ public sealed record SearchCandidateDocument
 
     /// <summary>Gets whether a retained stage failure is associated with the file.</summary>
     public bool HasIndexingFailure { get; init; }
+
+    /// <summary>Gets optional evidence-backed context supplied by relationship expansion.</summary>
+    public SearchRelationshipContext? RelationshipContext { get; init; }
 }
 
 /// <summary>Contains one independently testable ranked candidate.</summary>

@@ -2,7 +2,7 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** v1.8
+**Current source:** v1.9
 
 **Last reviewed:** 2026-07-30
 
@@ -34,24 +34,26 @@ file mutation are separate claims.
   release-blocking issue, but did not record detailed per-platform desktop,
   filesystem, assistive-technology, Tesseract, Ollama, or plugin observations.
 - v1.7 and v1.8 local Windows validation built `win-x64`, `linux-x64`,
-  `osx-x64`, and `osx-arm64` targets. v1.8 verified the expected native SQLite
+  `osx-x64`, and `osx-arm64` targets. v1.9 repeats this gate for the relationship
+  schema and verifies the expected native SQLite
   asset in each output. Those cross-target builds ran on Windows and do not
   prove native Linux/macOS execution. See the
   [v1.7](V1.7_VALIDATION_REPORT.md) and
-  [v1.8](V1.8_VALIDATION_REPORT.md) validation reports.
-- v1.8 interactive platform/manual validation remains unchecked.
+  [v1.8](V1.8_VALIDATION_REPORT.md) and
+  [v1.9](V1.9_VALIDATION_REPORT.md) validation reports.
+- v1.9 interactive platform/manual validation remains unchecked.
 
 ## Current support matrix
 
 | Capability | Windows | Linux x64 | macOS | Evidence and limits |
 | --- | --- | --- | --- | --- |
-| Restore/build/automated tests | Supported | Preview | Build/test only | Native three-host CI is proven for v1.6. Current v1.8 local evidence is Windows execution plus cross-target compilation; repository evidence does not self-record a v1.8 exact-tip hosted run. |
+| Restore/build/automated tests | Supported | Preview | Build/test only | Native three-host CI is proven for earlier releases. Current v1.9 local evidence is Windows execution plus cross-target compilation; exact-tip hosted results are external post-commit evidence. |
 | Avalonia Desktop startup/composition | Supported | Preview | Unverified | Windows is the primary runtime. Linux requires a graphical session/native dependencies and remains manually limited. macOS product support is not claimed. |
 | Path normalization and confinement | Supported | Preview | Build/test only | Windows and Linux semantics have focused adapters/tests; POSIX execution passed the v1.6 native suite. macOS retains fail-closed product limits. |
 | Portable filename policy | Supported | Preview | Build/test only | Recipes can request current-platform, portable, or Windows-compatible output. Import does not silently rewrite policy. |
 | Stable file identity | Supported | Preview | Unverified | Windows uses volume/file index; Linux x64 uses device/inode with an explicit fallback. Identity remains bounded evidence, not permanent identity. |
 | Read-only scanning/metadata/duplicates | Supported | Preview | Build/test only | Links are skipped and item failures are isolated. Network, removable, FUSE, permissions, and mount behavior can be weaker. |
-| Embedded SQLite durable index | Supported | Unverified runtime | Unverified runtime | v1.8 Windows tests cover schema/provider behavior. Target outputs select the expected native SQLite library for all four runtime identifiers; native Linux/macOS v1.8 execution is not recorded in the source report. |
+| Embedded SQLite durable index | Supported | Unverified runtime | Unverified runtime | v1.9 Windows tests cover schema/provider and relationship behavior. Target outputs select the expected native SQLite library for all four runtime identifiers; native Linux/macOS interactive execution is not recorded in the source report. |
 | Search over available indexed data | Supported | Unverified runtime | Unverified runtime | Deterministic ranking is portable; full status also depends on current native provider/Desktop execution. Compatible filename/metadata Search can degrade independently. |
 | Change Plan rename/move/create | Supported | Preview / manual verification pending | Unavailable | Linux operations require current-platform link, root, identity, permission, and same-filesystem checks. macOS mutation remains disabled. |
 | Cross-filesystem move | Unavailable | Unavailable | Unavailable | OpenSorSe does not silently implement move as copy/delete. |
@@ -64,7 +66,7 @@ file mutation are separate claims.
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Build/test only | Windows preserves LocalAppData. Linux uses XDG config/data/state/cache categories. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/updater/current package | Unavailable | Unavailable | Unavailable | The repository contains only a historical v1.0 Windows portable snapshot. No v1.8 package or installer is claimed. |
+| Installer/updater/current package | Unavailable | Unavailable | Unavailable | The repository contains only a historical v1.0 Windows portable snapshot. No v1.9 package or installer is claimed. |
 
 ## Filesystem limitations
 

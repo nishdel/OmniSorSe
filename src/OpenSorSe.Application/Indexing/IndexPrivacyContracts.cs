@@ -18,7 +18,7 @@ public enum IndexedDataKind
     SemanticData = 1 << 3,
     /// <summary>Selected bounded text chunks.</summary>
     Chunks = 1 << 4,
-    /// <summary>Duplicate-content relationship data.</summary>
+    /// <summary>Evidence-backed file relationships, collection membership, and relationship features.</summary>
     Relationships = 1 << 5,
     /// <summary>Durable stage and failure history.</summary>
     ProcessingHistory = 1 << 6,
@@ -133,6 +133,15 @@ public sealed record IndexPrivacyItem
 
     /// <summary>Gets whether related-concept processing is disabled for this relative path.</summary>
     public bool SemanticSuppressed { get; init; }
+
+    /// <summary>Gets whether evidence-backed relationship analysis is disabled for this relative path.</summary>
+    public bool RelationshipAnalysisSuppressed { get; init; }
+
+    /// <summary>Gets the number of retained direct file relationships.</summary>
+    public int RelationshipCount { get; init; }
+
+    /// <summary>Gets the number of retained Smart Collection memberships.</summary>
+    public int CollectionCount { get; init; }
 }
 
 /// <summary>Contains a transactional index-only privacy or repair result.</summary>
@@ -148,7 +157,8 @@ public sealed record IndexPrivacyPolicyChange(
     IndexingLevel? LevelOverride = null,
     bool? SuppressOcr = null,
     bool? SuppressSummary = null,
-    bool? SuppressSemantic = null);
+    bool? SuppressSemantic = null,
+    bool? SuppressRelationships = null);
 
 /// <summary>Provides provider-neutral privacy storage operations to application coordination.</summary>
 public interface IIndexPrivacyStore

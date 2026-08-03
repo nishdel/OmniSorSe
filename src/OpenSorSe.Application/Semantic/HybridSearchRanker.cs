@@ -306,6 +306,14 @@ public sealed class HybridSearchRanker : ISearchRanker
                 }
             }
 
+            if (rankClass == 0 && candidate.RelationshipContext is { } relationshipContext)
+            {
+                rankClass = 1;
+                var component = relationshipContext.ToRankingComponent();
+                components.Add(component);
+                literalScore += 35 + component.Contribution * 5;
+            }
+
             var semanticSimilarity = Cosine(queryVector, candidate.SemanticRepresentation);
             if (semanticSimilarity >= MinimumSemanticSimilarity)
             {

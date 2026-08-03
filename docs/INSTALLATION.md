@@ -5,12 +5,12 @@
 ## Availability
 
 The current repository source identifies as OpenSorSe 1.8 on
-`v1.8-search-intelligence-privacy`. That branch is not merged into `main`, and
-the repository does not contain a v1.8 installer, package, tag, or published
+`v1.9-relationships-context`. That branch is not merged into `main`, and
+the repository does not contain a v1.9 installer, package, tag, or published
 release.
 
 The only tagged and packaged repository release is the frozen v1.0 Windows x64
-portable snapshot. It does not represent current v1.8 behavior. Check
+portable snapshot. It does not represent current v1.9 behavior. Check
 [Release Status](RELEASE_STATUS.md) before expecting a download.
 
 Do not download an OpenSorSe package from an unrelated site. A future official
@@ -29,7 +29,7 @@ Prerequisites:
 ```powershell
 git clone https://github.com/nishdel/OpenSorSe.git
 Set-Location .\OpenSorSe
-git switch v1.8-search-intelligence-privacy
+git switch v1.9-relationships-context
 dotnet restore .\OpenSorSe.sln
 dotnet build .\OpenSorSe.sln --configuration Debug --no-restore
 dotnet test .\OpenSorSe.sln --configuration Debug --no-build --no-restore

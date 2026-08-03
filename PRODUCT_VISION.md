@@ -56,8 +56,8 @@ OpenSorSe aims to:
 
 ## Current behavior
 
-The current source line is OpenSorSe 1.8 on
-`v1.8-search-intelligence-privacy`. It is not merged into `main`, and its
+The current source line is OpenSorSe 1.9 on
+`v1.9-relationships-context`. It is not merged into `main`, and its
 interactive manual checklist remains open. Exact readiness belongs in
 [Release Status](docs/RELEASE_STATUS.md), not in this vision.
 
@@ -73,6 +73,9 @@ Today, the source implements:
   text, summaries, keywords, selected text, and optional related-concept data;
 - visible filters, deterministic hybrid ranking, evidence-backed explanations,
   bounded snippets, and progressive coverage reporting;
+- deterministic evidence-backed file relationships, virtual Smart Collections
+  and timelines, persistent user corrections, relationship-aware Search, and
+  index-only relationship privacy/repair controls;
 - provider-neutral durable indexing contracts with an embedded SQLite
   implementation;
 - local Workflow Profiles, constrained Sorting Recipes, and a bounded
@@ -88,13 +91,13 @@ Today, the source implements:
 Current source does **not** implement cloud synchronization, collaboration,
 OpenSorSe Server, a knowledge graph, a conversational assistant, unrestricted
 media understanding, autonomous organization, permanent deletion, or a
-published v1.8 package.
+published v1.9 package.
 
 ## Future vision
 
 The long-term direction is a trustworthy personal and shared knowledge layer
-over user-controlled files. Possible future capabilities include relationships,
-collections, knowledge graphs, adaptive assistance, richer media analysis,
+over user-controlled files. Possible future capabilities beyond the current
+bounded relationships and collections include knowledge graphs, adaptive assistance, richer media analysis,
 conversation, NAS/cloud providers, a server deployment, and collaboration.
 
 Those are concepts, not current capabilities or delivery commitments. They
@@ -185,6 +188,11 @@ after validating their shape and grounding. For generated data, the interface
 must distinguish deterministic facts, extracted evidence, user decisions, and
 unverified inference.
 
+For relationships, explanations come only from stored evidence rows. Semantic
+similarity cannot create an automatic relationship by itself, confidence uses
+deterministic levels rather than fabricated percentages, and user corrections
+remain distinguishable from automatic output.
+
 ## Why Search is designed this way
 
 Search is a retrieval tool, not a certainty engine.
@@ -236,8 +244,9 @@ definition of the product model.
 ## Why persistence is provider neutral
 
 Application contracts define sources, jobs, stages, coverage, Search
-candidates, privacy operations, and repair. The SQLite project implements those
-contracts and owns SQL, migrations, WAL, backups, and compaction. Views,
+candidates, relationship evidence/collections, privacy operations, and repair.
+The SQLite project implements those contracts and owns SQL, migrations, WAL,
+backups, and compaction. Views,
 ViewModels, ranking, and application orchestration do not depend on SQLite
 types.
 

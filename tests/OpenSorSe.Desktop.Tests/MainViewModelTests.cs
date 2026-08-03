@@ -136,7 +136,7 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
         Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
         Assert.Equal(
-            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
+            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Collections", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
         Assert.Contains(
             viewModel.NavigationItems,

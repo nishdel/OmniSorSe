@@ -16,6 +16,7 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
@@ -162,6 +163,14 @@ public partial class App : Avalonia.Application
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IIndexPrivacyStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<IRelationshipStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<IRelationshipEngine, DeterministicRelationshipEngine>();
+        services.AddSingleton<RelationshipService>();
+        services.AddSingleton<IRelationshipService>(serviceProvider =>
+            serviceProvider.GetRequiredService<RelationshipService>());
+        services.AddSingleton<IRelationshipSearchSource>(serviceProvider =>
+            serviceProvider.GetRequiredService<RelationshipService>());
         services.AddSingleton<IIndexFileDiscovery, PhysicalIndexFileDiscovery>();
         services.AddSingleton<IBackgroundResourceMonitor, PortableBackgroundResourceMonitor>();
         services.AddSingleton<IIndexingStageProcessor, DefaultIndexingStageProcessor>();

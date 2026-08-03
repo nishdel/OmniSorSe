@@ -2,7 +2,7 @@
 
 **Document type:** Living technology inventory
 
-**Scope:** Current v1.8 source; a technology in a roadmap or historical
+**Scope:** Current v1.9 source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack
@@ -24,7 +24,7 @@ architecture document is not a current dependency
 | OCR | External Tesseract 5 CLI | Optional local image/scanned-page recognition; executable and language data are not bundled. |
 | Optional AI transport | Ollama-compatible HTTP API | Explicitly configured, capability-gated, bounded review-only suggestions; the endpoint can be local or remote. |
 | Compatible local similarity | Deterministic feature hashing | Rebuildable related-concept representation without a model download. |
-| Durable indexing | Provider-neutral Application contracts plus `OpenSorSe.Indexing.Sqlite` | Sources, jobs, stages, recovery, Search projections, privacy rules, quotas, and repair. |
+| Durable indexing | Provider-neutral Application contracts plus `OpenSorSe.Indexing.Sqlite` | Sources, jobs, stages, recovery, Search projections, relationship evidence/collections/corrections, privacy rules, quotas, and repair. |
 | Plugin model | `OpenSorSe.Extensions.Abstractions` plus in-process collectible load contexts | Eight bounded extension points, local packages, explicit grants, validation, and lifecycle containment. Load contexts are not sandboxing. |
 | Testing | xUnit 2.9.3, Microsoft.NET.Test.Sdk 17.8.0, coverlet collector | Unit, integration, ViewModel, provider, repository-policy, relevance, and bounded performance regression tests. |
 | Documentation | Markdown and Mermaid | Living guides, historical evidence, architecture, and diagrams. |
@@ -71,7 +71,7 @@ Current source does not use or claim:
 - a plugin marketplace, automatic plugin download/update, publisher signature
   authority, or OS sandbox;
 - Python/PySide as an application runtime;
-- a signed installer, automatic updater, or v1.8 distribution package;
+- a signed installer, automatic updater, or v1.9 distribution package;
 - OpenSorSe Server, collaboration, a knowledge graph, or a conversational
   assistant.
 

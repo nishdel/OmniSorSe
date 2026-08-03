@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the implemented
-v1.8 system and take precedence when an older document uses future-oriented
+v1.9 system and take precedence when an older document uses future-oriented
 language.
 
 The [Product Vision](../../PRODUCT_VISION.md) defines why these boundaries
@@ -22,6 +22,9 @@ compatibility, and recovery.
 - `06_Search/09_v1.8_Search_Intelligence_Privacy.md`: current hybrid ranking,
   interpreted-filter, explanation/snippet, privacy, repair, and Search
   diagnostics boundaries.
+- `06_Search/10_v1.9_Relationships_Context.md`: current relationship evidence,
+  virtual collection, contextual Search, schema 3, privacy, repair, and graph
+  bound architecture.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
@@ -29,7 +32,7 @@ compatibility, and recovery.
 - `04_AI/11_Small_Model_Prompt_Contracts.md`: implemented provider contract and
   validation shape.
 - `05_Database/09_v1_Local_Content_Stores_and_Migrations.md`: implemented local
-  JSON-store boundary retained by v1.8; the separate durable Search provider
+  JSON-store boundary retained by v1.9; the separate durable Search provider
   uses embedded SQLite behind Application contracts.
 - `06_Search/07_v1_Semantic_Index.md` and `08_v1_Tag_Provenance.md`: implemented
   local semantic/tag behavior.

@@ -6,10 +6,10 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
-    public const string ProcessorVersion = "1.8.0";
+    public const string ProcessorVersion = "1.9.0";
 }
 
 /// <summary>Identifies a durable stage in the background-indexing pipeline.</summary>

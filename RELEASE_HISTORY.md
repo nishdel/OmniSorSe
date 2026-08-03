@@ -5,7 +5,7 @@
 **Authority:** Concise version/branch/date/integration summary; detailed
 release behavior and validation remain in the linked historical records
 
-**Repository history reviewed:** 2026-07-30
+**Repository history reviewed:** 2026-08-03
 
 This document indexes implemented version milestones without replacing their
 implementation specifications, version notes, validation reports, or manual
@@ -39,6 +39,7 @@ evidence, not a current-suite comparison.
 | v1.6 | `v1.6-reliability-performance` | 2026-07-28 | Reliability, Performance and Production Hardening. | Shared atomic persistence, bounded resources, lifecycle/cancellation hardening, accessibility, native CI. | 895 | Merged to `main`. |
 | v1.7 | `v1.7-deep-indexing-foundation` | 2026-07-29 | Deep Indexing Foundation. | Provider-neutral durable indexing, embedded SQLite, progressive Search, quotas, recovery and controls. | 987 | Not merged to `main`. |
 | v1.8 | `v1.8-search-intelligence-privacy` | 2026-07-29 | Search Intelligence, Quality and Privacy. | Hybrid ranker, visible filters, explanations/snippets, coverage, index privacy/repair, relevance gates. | 1,086 | Not merged to `main`. |
+| v1.9 | `v1.9-relationships-context` | 2026-08-03 | Relationships, Context & Smart Collections. | Evidence-backed relationships, virtual collections/timeline, user corrections, contextual Search, privacy/repair, schema 3. | 1,128 | Not merged to `main`. |
 
 ## Evidence and detail
 
@@ -48,7 +49,7 @@ reports:
 - [Changelog](docs/CHANGELOG.md) — detailed user-visible changes by version.
 - [Implementation Specification Index](docs/Implementation_Spec/README.md) —
   version proposals, decisions, acceptance boundaries, and numbered
-  specifications from v0.1 through v1.8.
+  specifications from v0.1 through v1.9.
 - [Release Status](docs/RELEASE_STATUS.md) — current integration, validation,
   manual, packaging, tag, and publication state.
 - [v1.0 Version Notes](docs/VERSION_NOTES_v1.0.md) and the frozen
@@ -59,6 +60,8 @@ reports:
   [Validation Report](docs/V1.7_VALIDATION_REPORT.md).
 - [v1.8 Implementation Report](docs/V1.8_IMPLEMENTATION_REPORT.md) and
   [Validation Report](docs/V1.8_VALIDATION_REPORT.md).
+- [v1.9 Implementation Report](docs/V1.9_IMPLEMENTATION_REPORT.md) and
+  [Validation Report](docs/V1.9_VALIDATION_REPORT.md).
 
 Versioned User Guides, Troubleshooting guides, Manual Testing checklists, and
 Version Notes under `docs/` remain release snapshots. The complete
@@ -72,7 +75,7 @@ Version Notes under `docs/` remain release snapshots. The complete
   implementation commits are ancestors of `main`. The table reports both facts
   rather than flattening the branch to a misleading yes/no.
 - `main` currently resolves to the v1.6 integration line.
-- v1.7 and v1.8 contain implemented source and automated evidence but remain
-  unmerged. Their manual checklists are not completed.
-- The only repository release tag is `v1.0.0`. No v1.7 or v1.8 tag, package, or
+- v1.7, v1.8, and v1.9 contain implemented source and automated evidence but
+  remain unmerged. Their manual checklists are not completed.
+- The only repository release tag is `v1.0.0`. No v1.7, v1.8, or v1.9 tag, package, or
   published release is present in the reviewed repository.

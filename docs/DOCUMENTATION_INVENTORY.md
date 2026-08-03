@@ -2,10 +2,10 @@
 
 **Document type:** Living documentation architecture and audit record
 
-**Audit date:** 2026-07-30
+**Audit date:** 2026-08-03
 
-**Repository basis:** `v1.8-search-intelligence-privacy` at `d89a49a` before
-this documentation branch
+**Repository basis:** `v1.9-relationships-context`, created from exact validated
+v1.8 tip `01899f9701f58d3bf2e5c0eaadc5c87efe68ea2d`
 
 ## Audit method and initial inventory
 
@@ -123,6 +123,7 @@ rather than supersede, their stable subsystem boundary:
 - `docs/Architecture/00_System/09_v1.6_Reliability_Architecture.md`
 - `docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md`
 - `docs/Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md`
+- `docs/Architecture/06_Search/10_v1.9_Relationships_Context.md`
 
 The v1.4 Extension SDK, Plugin Author Guide, Manifest Reference, Local Package
 Guide, and v1.5 platform/portability addenda also remain current stable
@@ -130,23 +131,25 @@ contracts.
 
 ### Current version-specific documentation
 
-These files accurately describe the v1.8 branch within their scope:
+These files accurately describe the v1.9 branch within their scope:
 
-- `docs/USER_GUIDE_v1.8.md`
+- `docs/USER_GUIDE_v1.9.md`
+- `docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md`
 - `docs/TROUBLESHOOTING_v1.8.md`
-- `docs/MANUAL_TESTING_v1.8.md`
-- `docs/VERSION_NOTES_v1.8.md`
-- `docs/V1.8_IMPLEMENTATION_REPORT.md`
-- `docs/V1.8_VALIDATION_REPORT.md`
-- `docs/Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md`
+- `docs/MANUAL_TESTING_v1.9.md`
+- `docs/VERSION_NOTES_v1.9.md`
+- `docs/V1.9_IMPLEMENTATION_REPORT.md`
+- `docs/V1.9_VALIDATION_REPORT.md`
+- `docs/Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md`
 
-The User Guide and Troubleshooting file are current guidance for the v1.8
-branch. Version Notes, the implementation/validation reports, manual checklist,
-and specification are immutable release evidence once that work is complete.
+The v1.9 User/Relationship guides and inherited v1.8 Troubleshooting file are
+current guidance. Version Notes, implementation/validation reports, manual
+checklist, and specification are immutable release evidence once that work is
+complete.
 
-The v1.7 deep-indexing architecture/specification remain current foundations.
-Its reports, Version Notes, User Guide, Troubleshooting, and Manual Testing
-documents remain v1.7 snapshots.
+The v1.7 deep-indexing and v1.8 Search architecture/specifications remain
+current foundations. Their reports, Version Notes, User Guides,
+Troubleshooting, and Manual Testing documents remain version snapshots.
 
 ### Historical records to preserve
 
@@ -160,7 +163,7 @@ newer release:
 - `DATA_MODEL_v1.0.md`, `MIGRATION_v1.0.md`, and
   `RELEASE_CHECKLIST_v1.0.md`;
 - all `V1.*_IMPLEMENTATION_REPORT.md` and `V1.*_VALIDATION_REPORT.md` files;
-- numbered specifications `001` through `060`;
+- numbered specifications `001` through `061`;
 - every release proposal, implementation-decision file, audit correction, and
   archived v0.1 coding prompt under `docs/Implementation_Spec/`;
 - `AUTONOMOUS_DECISIONS.md` and `IMPLEMENTATION_PROGRESS_REMOTE.md`;
@@ -258,8 +261,9 @@ retain their original wording.
   were removed rather than presenting stale or generated captures.
 - The latest packaging checklist remains v1.0. Create a new checklist only when
   a packaging effort is authorized.
-- v1.8 interactive manual validation remains open.
-- v1.7/v1.8 are not integrated into `main`; documentation must keep source
+- v1.7, v1.8, and v1.9 interactive manual validation remains open where each
+  release checklist records it.
+- v1.7/v1.8/v1.9 are not integrated into `main`; documentation must keep source
   implementation separate from integrated/published release language.
 - Mermaid validation is structural. Visual rendering still requires GitHub or
   a compatible renderer.

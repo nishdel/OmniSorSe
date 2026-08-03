@@ -85,11 +85,12 @@ dependency in the standalone SDK are not acceptable.
 - ViewModels own observable presentation state, commands, command gating,
   cancellation sources, and user-safe status.
 - Application/domain services own workflows, Search interpretation/ranking,
-  persistence, provider calls, validation, and side effects.
+  relationship evidence/confidence, persistence, provider calls, validation,
+  and side effects.
 - Code-behind must not become an alternate service locator or contain
   filesystem, database, AI, plugin, or business logic.
-- ViewModels must not create SQL, calculate Search weights, call Ollama
-  directly, or perform raw file operations.
+- ViewModels must not create SQL, calculate Search weights or relationship
+  confidence, call Ollama directly, or perform raw file operations.
 - New ViewModel behavior should be covered without requiring a live desktop
   where practical. Keyboard, focus, assistive-technology, pointer/touch, and
   visual behavior still require manual validation.
@@ -138,6 +139,9 @@ ownership and confinement.
 - **Persistence field:** update the owning schema, migration or explicit
   rejection, bounds, corruption behavior, tests, Safety and Privacy, and
   release notes together.
+- **Relationship signal:** retain the actual bounded evidence and algorithm
+  version, preserve user corrections, keep candidate/graph queries bounded,
+  and test conservative false-positive and false-negative behavior.
 
 ## Tests
 

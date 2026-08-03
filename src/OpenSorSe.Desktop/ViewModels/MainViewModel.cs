@@ -10,6 +10,7 @@ using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Features;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
@@ -45,6 +46,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
         new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
+        new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Primary, "C"),
         new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Primary, "▣"),
         new(NavigationDestination.Settings, "Settings", FeatureRequirement.Regular, NavigationGroup.Primary, "⚙"),
         new(NavigationDestination.StructureHistory, "Folder plans", FeatureRequirement.Advanced, NavigationGroup.Advanced, "⌘"),
@@ -281,7 +283,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IPluginManager? pluginManager = null,
         OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
         OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
-        IBackgroundIndexingService? backgroundIndexingService = null)
+        IBackgroundIndexingService? backgroundIndexingService = null,
+        IRelationshipService? relationshipService = null)
         : this(
             configurationService,
             loggingService,
@@ -324,7 +327,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             pluginManager,
             platformCapabilityProvider,
             applicationPathProvider,
-            backgroundIndexingService)
+            backgroundIndexingService,
+            relationshipService)
     {
     }
 
@@ -370,7 +374,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IPluginManager? pluginManager = null,
         OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
         OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
-        IBackgroundIndexingService? backgroundIndexingService = null)
+        IBackgroundIndexingService? backgroundIndexingService = null,
+        IRelationshipService? relationshipService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -417,6 +422,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             externalFileLauncher,
             backgroundIndexingService,
             advancedDiagnosticsWindowService);
+        Collections = new CollectionsViewModel(relationshipService);
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
         StructureHistory = new StructureHistoryViewModel(
             structureHistoryStore,
@@ -536,6 +542,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets local deterministic Search state.</summary>
     public SemanticSearchViewModel SemanticSearch { get; }
+
+    /// <summary>Gets evidence-backed virtual collection and Related Files state.</summary>
+    public CollectionsViewModel Collections { get; }
 
     /// <summary>
     /// Gets deterministic comparison state for two application-owned historical snapshots.
@@ -791,6 +800,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsCatalogSearchSelected));
                 OnPropertyChanged(nameof(IsSavedScansAreaSelected));
                 OnPropertyChanged(nameof(IsSemanticSearchSelected));
+                OnPropertyChanged(nameof(IsCollectionsSelected));
                 OnPropertyChanged(nameof(IsCatalogComparisonSelected));
                 OnPropertyChanged(nameof(IsStructureHistorySelected));
                 OnPropertyChanged(nameof(IsRulesSelected));
@@ -820,6 +830,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Catalog => "Saved scans",
         NavigationDestination.CatalogSearch => "Search saved scans",
         NavigationDestination.SemanticSearch => "Search",
+        NavigationDestination.Collections => "Collections",
         NavigationDestination.CatalogComparison => "Compare scans",
         NavigationDestination.StructureHistory => "Folder plans",
         NavigationDestination.Rules => "Sorting rules",
@@ -916,6 +927,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether local Search is selected.</summary>
     public bool IsSemanticSearchSelected => SelectedDestination == NavigationDestination.SemanticSearch;
 
+    /// <summary>Gets whether evidence-backed virtual Collections are selected.</summary>
+    public bool IsCollectionsSelected => SelectedDestination == NavigationDestination.Collections;
+
     /// <summary>
     /// Gets whether historical saved-snapshot comparison is currently selected.
     /// </summary>
@@ -955,7 +969,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets whether a later feature-page destination is currently selected.
     /// </summary>
-    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
+    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCollectionsSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
 
     /// <summary>
     /// Selects a documented application-shell destination.
@@ -990,6 +1004,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (destination == NavigationDestination.SemanticSearch)
         {
             _ = SemanticSearch.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.Collections)
+        {
+            _ = Collections.RefreshAsync();
         }
         else if (destination == NavigationDestination.Workflows)
         {
@@ -1097,6 +1115,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Catalog.Dispose();
         CatalogSearch.Dispose();
         SemanticSearch.Dispose();
+        Collections.Dispose();
         CatalogComparison.Dispose();
         StructureHistory.Dispose();
         Settings.Dispose();

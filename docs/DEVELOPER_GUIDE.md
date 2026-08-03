@@ -22,9 +22,9 @@ target. The solution targets .NET 8 and the exact SDK selection is in
 [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
 
 Confirm the intended base before creating a branch. Repository history
-currently places `main` through v1.6; v1.7 and v1.8 are implemented on
-unmerged release branches. Do not assume the newest version string is already
-integrated into `main`.
+currently places `main` through v1.6; v1.7, v1.8, and v1.9 are implemented on
+linear unmerged release branches. Do not assume the newest version string is
+already integrated into `main`.
 
 ## 2. Restore and build
 
@@ -66,7 +66,8 @@ formatting, and documentation/dependency checks on `windows-latest`,
 `ubuntu-latest`, and `macos-latest`. It does not publish artifacts.
 
 Run the deterministic Search-quality and bounded performance groups separately
-when changing interpretation, ranking, snippets, coverage, or provider queries:
+when changing interpretation, ranking, snippets, coverage, relationships, or
+provider queries:
 
 ```powershell
 dotnet test .\tests\OpenSorSe.Application.Tests\OpenSorSe.Application.Tests.csproj `
@@ -92,6 +93,7 @@ Start at these entry points:
 | How are content and OCR coordinated? | `Application/Content/ContentIndexingService.cs` and `OcrService.cs` |
 | How does durable indexing work? | `Application/Indexing/BackgroundIndexingService.cs`, `IDeepIndexStore`, and `OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | How does progressive Search work? | `Application/Semantic/SemanticSearchService.cs` and `IProgressiveSearchSource` |
+| How are relationships and Smart Collections built? | `Application/Relationships`, `IRelationshipStore`, and `Indexing.Sqlite/SqliteRelationship*.cs` |
 | How are workflows resolved? | `Application/Workflows/WorkflowConfigurationResolver.cs` |
 | How are watcher hints processed? | `Application/Watching/WatchedFolderCoordinator.cs` and `WatchedFolderProcessor.cs` |
 | How are plugins discovered and loaded? | `Application/Plugins/PluginInfrastructure.cs` and `PluginRuntime.cs` |
@@ -143,7 +145,29 @@ Views and ViewModels must not create SQL, parse SQLite/FTS syntax, call Ollama,
 or calculate ranking scores. New provider implementations must satisfy the same
 Application contracts without exposing database details.
 
-## 8. Trace a Change Plan
+## 8. Trace relationships and Smart Collections
+
+1. The durable `RelationshipAnalysisCompleted` indexing stage calls
+   `IRelationshipService` after applicable Search data is retained.
+2. `DeterministicRelationshipEngine` creates bounded versioned features and
+   compares only provider-selected candidates. It returns proposals containing
+   the actual evidence used.
+3. `SqliteDeepIndexStore` atomically replaces stale automatic edges for the
+   analyzed file, preserving manual edges, pair corrections, member overrides,
+   and forgotten-collection tombstones.
+4. `CollectionsViewModel` reads `IRelationshipService` projections for Smart
+   Collections, Related Files, inspectors, timeline, privacy, and repair.
+5. `SemanticSearchService` may request bounded direct expansions through
+   `IRelationshipSearchSource`; `HybridSearchRanker` keeps literal tiers above
+   relationship-only results.
+
+Relationship code must never derive an explanation that was not retained as
+evidence. Keep candidate, edge, evidence, member, and expansion bounds intact.
+Manual corrections and source ownership are compatibility data. A future
+Knowledge Graph must be a separate design, not an unbounded recursive query
+added to this provider.
+
+## 9. Trace a Change Plan
 
 1. A rule, Sorting Recipe, reviewed AI suggestion, or watched suggestion
    produces a proposal.
@@ -165,7 +189,7 @@ Application contracts without exposing database details.
 Never add a shortcut from a suggestion service or ViewModel to raw
 `File.Move`, `Directory.Move`, or the compatibility executor.
 
-## 9. Add a small feature
+## 10. Add a small feature
 
 1. Identify the owning project using `REPOSITORY_STRUCTURE.md`.
 2. Start with the narrow contract and domain behavior.
@@ -181,7 +205,7 @@ Avoid moving logic between projects merely for aesthetics. A small extraction
 is useful when it makes ownership or a safety phase explicit and preserves
 behavior.
 
-## 10. Add a test
+## 11. Add a test
 
 - Put deterministic domain tests beside the owning production project.
 - Use fakes for filesystem/provider/plugin failures unless the test explicitly
@@ -192,7 +216,7 @@ behavior.
   details.
 - Do not rely on test order or machine-installed Ollama/Tesseract.
 
-## 11. Add a plugin contribution
+## 12. Add a plugin contribution
 
 1. Reference `OpenSorSe.Extensions.Abstractions` only.
 2. Implement `IOpenSorSePlugin` and a supported contribution interface.

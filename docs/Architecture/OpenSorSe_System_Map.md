@@ -1,6 +1,6 @@
 # OpenSorSe system map
 
-These Mermaid diagrams model the v1.8 implementation. They emphasize
+These Mermaid diagrams model the v1.9 implementation. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
 
@@ -52,6 +52,7 @@ flowchart TB
         ScanUI["Scan UI"]
         FilesUI["Files and Results UI"]
         SearchUI["Search filters, explanations, privacy, and coverage UI"]
+        CollectionsUI["Collections, Related Files, evidence, privacy, and repair UI"]
         ReviewUI["Change Plan Review"]
         WatchUI["Watched Folders UI"]
         WorkflowUI["Workflows UI"]
@@ -74,6 +75,8 @@ flowchart TB
         QueryInterpreter["Bounded query interpreter"]
         HybridRanker["Deterministic hybrid ranker"]
         IndexPrivacy["Index privacy and repair service"]
+        RelationshipService["Relationship service"]
+        RelationshipEngine["Deterministic evidence engine"]
     end
 
     subgraph Processing["Read-only processing and suggestion layer"]
@@ -112,13 +115,14 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Embedded schema 2 durable Search index"]
+        DeepIndex["Embedded schema 3 durable Search and relationship index"]
     end
 
     User -->|commands and review| Shell
     Shell --> ScanUI
     Shell --> FilesUI
     Shell --> SearchUI
+    Shell --> CollectionsUI
     Shell --> ReviewUI
     Shell --> WatchUI
     Shell --> WorkflowUI
@@ -188,6 +192,11 @@ flowchart TB
     QueryInterpreter --> HybridRanker
     HybridRanker --> SearchUI
     SearchUI --> IndexPrivacy
+    SearchUI --> RelationshipService
+    CollectionsUI --> RelationshipService
+    RelationshipService --> RelationshipEngine
+    RelationshipService --> IndexCoordinator
+    RelationshipService --> DeepIndex
     IndexPrivacy --> IndexCoordinator
     IndexPrivacy --> DeepIndex
     IndexCoordinator --> Enumerate

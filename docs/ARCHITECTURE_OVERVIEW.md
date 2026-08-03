@@ -1,6 +1,6 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the OpenSorSe 1.8 source
+This is the authoritative top-level architecture for the OpenSorSe 1.9 source
 tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -37,6 +37,7 @@ internal services.
 | Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
 | Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
 | Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
+| Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
 | Rules and planning | `RuleEngine`, `ActionPlanner`, and `ConflictResolver` produce deterministic proposals; they do not execute them. |
 | Optional AI | `AiSuggestionService` owns gates, prompts, parsing, validation, and review outcomes. `OllamaSuggestionProvider` owns HTTP transport. |
 | Workflows and recipes | `WorkflowLibraryService`, `WorkflowConfigurationResolver`, `WorkflowTemplateEngine`, and `WorkflowRecipePlanService`. |
@@ -74,7 +75,7 @@ The current plugin foundation exposes all eight bounded invocation surfaces.
 Workflow dependency checks and plugin recipe fields are integrated with
 Workflow/Profile resolution and recipe planning. Other extension-point adapters
 are host-callable through `IPluginExtensionHost`; broad insertion into every
-legacy scanner/content pipeline stage is deliberately not implied by v1.8.
+legacy scanner/content pipeline stage is deliberately not implied by v1.9.
 
 ## v1.6 reliability boundary
 
@@ -115,6 +116,23 @@ the background coordinator owns cancellation, durable queued repair, and
 coverage refresh. Every such action changes application-owned index state only.
 See [Search Intelligence and Privacy
 Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md).
+
+## v1.9 relationships and context boundary
+
+`IRelationshipEngine` compares only bounded retained index projections and
+publishes automatic edges only with actual evidence. `IRelationshipStore`
+isolates schema 3 persistence, while `IRelationshipService` coordinates durable
+analysis, manual decisions, virtual collection control, privacy, Search
+expansion, diagnostics, and repair. Views and ViewModels do not use SQL or
+calculate confidence.
+
+The existing durable relationship stage performs incremental work and reuses
+unchanged completed processing. Pair corrections, collection splits, and
+forgotten collection tombstones prevent unwanted regeneration. Queries are
+direct and bounded; no recursive graph traversal or O(n²) all-file comparison
+is performed. Relationship-only Search results remain below exact/literal
+matches and can be disabled per query. See [Relationships, Context and Smart
+Collections](Architecture/06_Search/10_v1.9_Relationships_Context.md).
 
 ## Platform boundary
 
@@ -234,7 +252,7 @@ them.
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
 | Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
 | Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
-| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v2; v1 migrates transactionally with a recovery copy; transactional stages, privacy rules, targeted repair, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
+| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v3; v1/v2 migrate transactionally with a recovery copy; transactional stages, privacy rules, relationship evidence/corrections/virtual collections, targeted repair, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
 | AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
 | Structure history | `JsonStructureHistoryStore` | `structure-history.json` | Schema v1; bounded snapshots and relative paths. |
 | Workflow Profiles and Sorting Recipes | `JsonWorkflowLibraryStore` | `workflow-library.json` | Library schema v2; migration occurs on load/save; a corrupt source is preserved where possible before built-in recovery. |
@@ -259,6 +277,8 @@ never be committed.
 - Plugins contribute bounded data or proposals but have no supported direct
   mutation or approval API.
 - Watched Folders detect, reconcile, and analyse but never execute.
+- Relationships and Smart Collections are derived or user-authored index data;
+  their controls never modify original files.
 - Workflow Profiles configure processing; they do not approve actions.
 - Sorting Recipes generate sanitized names and destinations; they do not apply
   them.

@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Data.Common;
 using System.Globalization;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
@@ -18,6 +20,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly IDiagnosticsEventSink? _diagnostics;
     private readonly ISemanticIndexStore _indexStore;
     private readonly IProgressiveSearchSource? _progressiveSearchSource;
+    private readonly IRelationshipSearchSource? _relationshipSearchSource;
     private readonly SemaphoreSlim _queryGate = new(MaximumConcurrentQueries, MaximumConcurrentQueries);
     private readonly ISearchQueryInterpreter _queryInterpreter;
     private readonly ISearchRanker _ranker;
@@ -31,7 +34,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
         ISearchQueryInterpreter? queryInterpreter = null,
         ISearchRanker? ranker = null,
         ISearchSnippetFactory? snippetFactory = null,
-        IDiagnosticsEventSink? diagnostics = null)
+        IDiagnosticsEventSink? diagnostics = null,
+        IRelationshipSearchSource? relationshipSearchSource = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         ArgumentNullException.ThrowIfNull(embeddingProvider);
@@ -41,6 +45,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
         var snippets = snippetFactory ?? new SearchSnippetFactory();
         _ranker = ranker ?? new HybridSearchRanker(embeddingProvider, snippets);
         _diagnostics = DiagnosticsIsolation.Protect(diagnostics);
+        _relationshipSearchSource = relationshipSearchSource;
     }
 
     /// <inheritdoc />
@@ -143,6 +148,47 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     candidates,
                     settings.MaximumResultCount,
                     cancellationToken);
+                if (request.IncludeRelationshipContext && _relationshipSearchSource is not null)
+                {
+                    var seedIds = ranked
+                        .Select(item => item.Document.FileId)
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Cast<string>()
+                        .Distinct(StringComparer.Ordinal)
+                        .Take(16)
+                        .ToArray();
+                    var expansions = await LoadRelationshipExpansionsSafelyAsync(seedIds, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (expansions.Count > 0)
+                    {
+                        var contextByFile = expansions
+                            .GroupBy(item => item.RelatedFileId, StringComparer.Ordinal)
+                            .ToDictionary(
+                                group => group.Key,
+                                group => group
+                                    .OrderByDescending(item => item.Confidence)
+                                    .ThenBy(item => item.Type)
+                                    .ThenBy(item => item.SeedFileId, StringComparer.Ordinal)
+                                    .Select(item => new SearchRelationshipContext(
+                                        item.SeedFileId,
+                                        item.Type,
+                                        item.Confidence,
+                                        item.Explanation,
+                                        item.CollectionTitle))
+                                    .First(),
+                                StringComparer.Ordinal);
+                        var contextualCandidates = candidates
+                            .Select(candidate => candidate.FileId is not null && contextByFile.TryGetValue(candidate.FileId, out var context)
+                                ? candidate with { RelationshipContext = context }
+                                : candidate)
+                            .ToArray();
+                        ranked = _ranker.Rank(
+                            interpretation,
+                            contextualCandidates,
+                            settings.MaximumResultCount,
+                            cancellationToken);
+                    }
+                }
                 var hits = ranked.Select(ToHit).ToArray();
                 var message = CoverageMessage(coverage, hits.Length > 0);
                 CompleteDiagnostics(
@@ -271,6 +317,39 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 [],
                 EmptyCoverage with { IsAvailable = false },
                 []);
+        }
+    }
+
+    private async Task<IReadOnlyList<RelationshipSearchExpansion>> LoadRelationshipExpansionsSafelyAsync(
+        IReadOnlyList<string> seedFileIds,
+        CancellationToken cancellationToken)
+    {
+        if (_relationshipSearchSource is null || seedFileIds.Count == 0)
+        {
+            return [];
+        }
+
+        try
+        {
+            return await _relationshipSearchSource
+                .ExpandAsync(seedFileIds, RelationshipLimits.MaximumSearchExpansions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (IsRecoverableIndexFailure(exception))
+        {
+            _diagnostics?.Publish(
+                null,
+                "Relationship Search fallback",
+                DiagnosticStatus.PartiallySucceeded,
+                DiagnosticSeverity.Warning,
+                DiagnosticSection.Performance,
+                "Relationship context was unavailable; exact and ordinary local Search continued.",
+                [new DiagnosticField("Failure category", exception.GetType().Name)]);
+            return [];
         }
     }
 
@@ -489,7 +568,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             status == DiagnosticStatus.Failed ? DiagnosticSeverity.Error : DiagnosticSeverity.Information,
             [
                 new DiagnosticField("Result count", resultCount.ToString(CultureInfo.InvariantCulture)),
-                new DiagnosticField("Ranking stages", "filters, literal tiers, bounded typo matching, related concepts, stable tie-breakers"),
+                new DiagnosticField("Ranking stages", "filters, literal tiers, bounded typo matching, optional relationship context, related concepts, stable tie-breakers"),
                 new DiagnosticField("Filter count", interpretation.Filters.Count.ToString(CultureInfo.InvariantCulture)),
                 new DiagnosticField("Known file coverage", coverage.KnownFileCount.ToString(CultureInfo.InvariantCulture)),
                 new DiagnosticField("Fully indexed coverage", coverage.FullyIndexedCount.ToString(CultureInfo.InvariantCulture)),
@@ -514,9 +593,11 @@ public sealed class SemanticSearchService : ISemanticSearchService
 
     private static bool IsRecoverableIndexFailure(Exception exception) =>
         exception is IOException or
+            DbException or
             InvalidDataException or
             InvalidOperationException or
-            NotSupportedException;
+            NotSupportedException or
+            TimeoutException;
 
     private static StringComparer PathComparer =>
         OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer;

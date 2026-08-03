@@ -1,10 +1,10 @@
-# OpenSorSe 1.8 System Overview
+# OpenSorSe 1.9 System Overview
 
 OpenSorSe is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, and an embedded provider-isolated SQLite Search index.
 
 ## Product boundary
 
-Scanning, exact-duplicate review, metadata extraction, OCR Beta, tag generation, Search/background indexing, catalog/history comparison, diagrams, and optional AI suggestions are non-mutating. AI is disabled by default, capability-specific, untrusted, and suggestion-only. Rename/folder requests are metadata-only; bounded extracted text requires a separate opt-in and explicit one-document action.
+Scanning, exact-duplicate review, metadata extraction, OCR Beta, tag generation, Search/background indexing, relationship analysis, virtual Smart Collections, catalog/history comparison, diagrams, and optional AI suggestions are non-mutating. AI is disabled by default, capability-specific, untrusted, and suggestion-only. Rename/folder requests are metadata-only; bounded extracted text requires a separate opt-in and explicit one-document action.
 
 OpenSorSe 1.2 added watched roots, v1.3 typed workflows/recipes, v1.4 the
 local plugin host/SDK, and v1.5 explicit platform services. v1.6 hardens atomic
@@ -15,7 +15,9 @@ coverage, bounded storage policy, and interruption recovery without requiring
 a database server or adding a mutation path. v1.8 adds bounded deterministic
 query interpretation, coherent hybrid ranking, evidence-backed explanations and
 snippets, relevance measurement, and provider-neutral index privacy/repair
-operations.
+operations. v1.9 adds deterministic evidence-backed relationships, virtual
+collections/context/timelines, persistent user corrections, contextual Search,
+and index-only relationship privacy/repair.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 
@@ -30,9 +32,9 @@ reports remain analysis inputs, not authorization or filesystem truth.
 | `OpenSorSe.Scanner` | Read-only traversal, filesystem metadata, hashing, deterministic classification, and exact duplicate detection. |
 | `OpenSorSe.Rules` | Deterministic rule evaluation/planning and conflict resolution; no Desktop execution workflow. |
 | `OpenSorSe.Executor` | v1.1 Change Plan factory/validator/stores, durable journal, filesystem gateway, deterministic execution, rollback, Undo, restart recovery, and report export; historical generic components remain unregistered. |
-| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, deterministic query interpretation and hybrid ranking, privacy/repair orchestration, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
+| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, deterministic query interpretation and hybrid ranking, relationship evidence/engine/contracts/collections/context, privacy/repair orchestration, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
 | `OpenSorSe.AI` | Optional Ollama-compatible HTTP transport and bounded AI review-decision persistence. |
-| `OpenSorSe.Indexing.Sqlite` | Embedded schema-versioned implementation of provider-neutral durable indexing, Search projection, recovery, coverage, quota, privacy, and targeted-repair contracts. |
+| `OpenSorSe.Indexing.Sqlite` | Embedded schema-versioned implementation of provider-neutral durable indexing, Search projection, relationship evidence/collections/corrections, recovery, coverage, quota, privacy, and targeted-repair contracts. |
 | `OpenSorSe.Desktop` | Avalonia shell, Windows/Linux desktop adapters, platform diagnostics, global feature controls, Workflows/profile/recipe management and preview, manual profile selection, Watched Folders management/status/actions/activity, MVVM pages, Review Changes, Operation History/details/report/Undo, Help, diagnostics, and explicit confirmation. |
 
 ```mermaid
@@ -93,3 +95,5 @@ An online plugin marketplace/download/update service, out-of-process plugin sand
 - [v1.7 specification](../../Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md)
 - [v1.8 Search architecture](../06_Search/09_v1.8_Search_Intelligence_Privacy.md)
 - [v1.8 specification](../../Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md)
+- [v1.9 relationship architecture](../06_Search/10_v1.9_Relationships_Context.md)
+- [v1.9 specification](../../Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md)

@@ -43,6 +43,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private bool _isForgetFilePending;
     private bool _isForgetSourcePending;
     private bool _filtersWereEdited;
+    private bool _includeRelationshipContext = true;
     private long _queryVersion;
 
     /// <summary>Initializes a preview instance with Search unavailable.</summary>
@@ -183,6 +184,13 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     {
         get => _areFiltersVisible;
         set => SetProperty(ref _areFiltersVisible, value);
+    }
+
+    /// <summary>Gets or sets whether explainable direct relationships may expand Search results.</summary>
+    public bool IncludeRelationshipContext
+    {
+        get => _includeRelationshipContext;
+        set => SetProperty(ref _includeRelationshipContext, value);
     }
 
     /// <summary>Gets the selected Search result for privacy inspection.</summary>
@@ -583,8 +591,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                     QueryText ?? string.Empty,
                     _activeFilters.ToArray(),
                     InterpretFilters: false,
-                    TopicTextOverride: _topicText)
-                : new SearchRequest(QueryText ?? string.Empty);
+                    TopicTextOverride: _topicText,
+                    IncludeRelationshipContext: IncludeRelationshipContext)
+                : new SearchRequest(QueryText ?? string.Empty, IncludeRelationshipContext: IncludeRelationshipContext);
             var result = await _searchService.SearchAsync(request, operation.Token);
             if (queryVersion != Volatile.Read(ref _queryVersion))
             {
@@ -653,7 +662,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                     QueryText,
                     [],
                     InterpretFilters: false,
-                    TopicTextOverride: _topicText),
+                    TopicTextOverride: _topicText,
+                    IncludeRelationshipContext: IncludeRelationshipContext),
                 operation.Token);
             _hits.Clear();
             foreach (var hit in result.Hits)
@@ -1011,9 +1021,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         $"OCR text {item.OcrTextCharacters:N0} characters; summary {(item.HasSummary ? "stored" : "not stored")}; " +
         $"keywords {item.KeywordCount:N0}; related-concept data {(item.HasSemanticData ? "stored" : "not stored")}; " +
         $"selected chunks {item.ChunkCount:N0}; identical-content references {item.SharedContentReferenceCount:N0}; " +
+        $"relationships {item.RelationshipCount:N0}; collection memberships {item.CollectionCount:N0}; " +
         $"failures {item.FailureCount:N0}; stage-history records {item.StageHistoryCount:N0}; " +
         $"policy: {(item.IsExcluded ? "excluded" : "included")}, OCR {(item.OcrSuppressed ? "off" : "allowed")}, " +
-        $"summaries {(item.SummarySuppressed ? "off" : "allowed")}, related concepts {(item.SemanticSuppressed ? "off" : "allowed")}; " +
+        $"summaries {(item.SummarySuppressed ? "off" : "allowed")}, related concepts {(item.SemanticSuppressed ? "off" : "allowed")}, " +
+        $"relationships {(item.RelationshipAnalysisSuppressed ? "off" : "allowed")}; " +
         $"last indexed {item.LastIndexedUtc.LocalDateTime:g}. Related-concept data is described by presence only; raw numeric vectors are never shown.";
 
     private CancellationTokenSource BeginOperation()

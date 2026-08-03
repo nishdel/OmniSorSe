@@ -7,6 +7,54 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v1.9.0
+
+Release branch: `v1.9-relationships-context`.
+
+### Added
+
+- Provider-neutral relationship engine, storage, service, Search-expansion,
+  evidence, collection, context, timeline, privacy, repair, and diagnostic
+  contracts.
+- Deterministic bounded relationship discovery from concrete retained signals,
+  with versioned algorithms and Low/Medium/High confidence instead of invented
+  percentages.
+- Embedded SQLite schema 3 for candidate features, relationships/evidence,
+  pair corrections, Smart Collections/membership, forgotten projections, and
+  aggregate diagnostics, including transactional migration from schema 2.
+- Accessible Collections and Related Files surfaces with inspectors, sorting,
+  filtering, timeline, manual link/unlink, confirm/reject, always/never,
+  rename/pin/merge/split, privacy, rebuild, and repair controls.
+- Synthetic deterministic relationship, migration, corruption, Search
+  integration, accessibility, and bounded performance regression coverage.
+
+### Changed
+
+- The existing durable `RelationshipAnalysisCompleted` stage now produces
+  incremental evidence-backed output and tracks relevant configuration in its
+  processor fingerprint.
+- Search may add bounded direct related-file context after ordinary v1.8
+  ranking. Exact and literal matches remain above context-only results, and a
+  per-query control can disable expansion.
+- Index privacy inspection, storage breakdown, forgetting, cleanup, and repair
+  include relationship-derived data without modifying source files.
+- Product, assembly, file, manifest, and About versions are `1.9.0` /
+  `1.9.0.0`.
+
+### Preserved boundaries
+
+- Every automatic relationship retains actual evidence and algorithm
+  provenance. Semantic similarity alone cannot create a relationship.
+- Smart Collections and timelines are virtual index projections; they never
+  move or edit source files or invent unrecorded events.
+- Ordinary Search remains useful when relationship analysis is disabled or
+  unavailable. Ollama remains optional.
+- v1.7/v1.8 indexing, Search, catalogs, watched folders, duplicate detection,
+  workflows, plugins, Change Plans, Operation Journal, recovery, and Undo keep
+  their existing contracts.
+- No Knowledge Graph, conversational assistant, database server, tag, package,
+  merge, or published release is added.
+
 ## v1.8.0
 
 Release branch: `v1.8-search-intelligence-privacy`.

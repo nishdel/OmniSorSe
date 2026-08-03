@@ -25,10 +25,11 @@ file changes.
   `v1.7-deep-indexing-foundation` and is not merged to `main`.
 - v1.8 **Search Intelligence, Quality and Privacy** is implemented on
   `v1.8-search-intelligence-privacy` and is not merged to `main`.
-- v1.8 automated validation reports 1,086 passing tests in both Debug and
-  Release. Its interactive manual checklist remains unchecked.
+- v1.9 **Relationships, Context & Smart Collections** is implemented on
+  `v1.9-relationships-context`, directly above v1.8, and is not merged to
+  `main`. Its interactive manual checklist remains unchecked.
 - The only tagged and packaged repository release is the historical v1.0
-  Windows x64 snapshot. There is no v1.8 package, installer, tag, or published
+  Windows x64 snapshot. There is no v1.9 package, installer, tag, or published
   release in this repository.
 
 Read [Release Status](docs/RELEASE_STATUS.md) for the exact current boundary,
@@ -41,8 +42,9 @@ Read [Release Status](docs/RELEASE_STATUS.md) for the exact current boundary,
 | --- | --- |
 | Scanning and analysis | Recursively discovers selected files with progress, cancellation, metadata, classification, SHA-256 hashing, exact duplicate detection, and isolated errors. |
 | Watched Folders | Treats operating-system events as hints, verifies actual state, performs bounded incremental analysis, and reconciles missed/offline changes. Watching never applies file changes. |
-| Search | Uses local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, and optional related-concept evidence with visible filters and progressive coverage. |
+| Search | Uses local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context with visible filters and progressive coverage. |
 | Search explanations | Preserves exact/literal evidence above related-concept-only similarity and exposes actual ranking reasons plus bounded source-labelled snippets. |
+| Relationships and Collections | Discovers bounded deterministic relationships from retained evidence, provides virtual Smart Collections and timelines, preserves user corrections, and never moves original files. |
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
 | Local AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated, review-only suggestions. Ordinary Search and OCR do not require AI. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
@@ -60,7 +62,8 @@ script execution, or a plugin security sandbox.
 OpenSorSe is non-destructive by default:
 
 - scanning, watchers, duplicate review, extraction, OCR, Search/indexing,
-  comparison, diagrams, workflows, plugins, and AI do not modify source files;
+  relationships, virtual collections, comparison, diagrams, workflows,
+  plugins, and AI do not modify source files;
 - suggestions become non-mutating Change Plans;
 - only reviewed and approved actions can reach the dedicated execution service;
 - destinations are not silently overwritten;
@@ -77,6 +80,8 @@ OpenSorSe is local-first:
 - AI is optional and disabled by default;
 - ordinary logs exclude source content, complete queries, vectors,
   credentials, and raw model payloads;
+- relationship diagnostics retain bounded aggregate counts and timings rather
+  than document content or unnecessary paths;
 - detailed diagnostics are separately gated, bounded, redacted by default, and
   memory-only unless explicitly exported.
 
@@ -133,8 +138,10 @@ documents are:
 | [Product Roadmap](PRODUCT_ROADMAP.md) | Completed, in-progress, planned, research, and backlog work with branch/integration truth. |
 | [Engineering Principles](ENGINEERING_PRINCIPLES.md) | Reasoning behind architecture, MVVM, persistence, testing, releases, security, privacy, recovery, and review. |
 | [Release History](RELEASE_HISTORY.md) | Concise version, branch, date, test-total, and merged-status index. |
-| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative v1.8 component, data, safety, persistence, and dependency boundaries. |
+| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative v1.9 component, data, safety, persistence, and dependency boundaries. |
 | [System Map](docs/Architecture/OpenSorSe_System_Map.md) | Visual architecture and mutation-path diagrams. |
+| [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
+| [v1.9 User Guide](docs/USER_GUIDE_v1.9.md) | Current relationship, collection, privacy, and Search-context workflows. |
 | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Guided build, validation, code tracing, and first-change workflow. |
 | [Contributing](CONTRIBUTING.md) | Repository layout, MVVM, testing, documentation, branch, validation, and review expectations. |
 | [Release Status](docs/RELEASE_STATUS.md) | Current integration, automated/manual validation, packaging, tag, and publication state. |
