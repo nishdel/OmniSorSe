@@ -52,7 +52,8 @@ This review adds four root living documents:
 - `ENGINEERING_PRINCIPLES.md`
 - `RELEASE_HISTORY.md`
 
-No documentation file is removed. The final candidate count is 526: 294 source
+No documentation file is removed. The v2.0 design package later adds twelve
+source text documents, bringing the candidate count to 538: 306 source
 documentation candidates and 232 frozen-package candidates. Historical release,
 implementation, validation, version, troubleshooting, user, migration, and
 manual-testing records remain present.
@@ -150,6 +151,28 @@ complete.
 The v1.7 deep-indexing and v1.8 Search architecture/specifications remain
 current foundations. Their reports, Version Notes, User Guides,
 Troubleshooting, and Manual Testing documents remain version snapshots.
+
+### Active proposed design
+
+The v2.0 Knowledge Graph package is active design work and is not current
+implemented behavior:
+
+- `docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`
+- `docs/Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md`
+- `docs/Implementation_Spec/v2.0/062_Knowledge_Graph_Stability_Design.md`
+- `docs/Implementation_Spec/v2.0/FAILURE_MODE_ANALYSIS.md`
+- `docs/Implementation_Spec/v2.0/MIGRATION_SAFETY_PLAN.md`
+- `docs/Implementation_Spec/v2.0/RECOVERY_AND_REPAIR_PLAN.md`
+- `docs/Implementation_Spec/v2.0/CONCURRENCY_CANCELLATION_AND_RESOURCE_MODEL.md`
+- `docs/Implementation_Spec/v2.0/GRAPH_INTEGRITY_MODEL.md`
+- `docs/Implementation_Spec/v2.0/AUTOMATED_TEST_MATRIX.md`
+- `docs/V2.0_COMPATIBILITY_MATRIX.md`
+- `docs/RELEASE_READINESS_v2.0.md`
+- `docs/MANUAL_TESTING_v2.0.md`
+
+The architecture/specification describe intended future boundaries. The
+compatibility and test/checklist documents are unvalidated targets, and every
+manual/release-readiness checkbox begins unchecked.
 
 ### Historical records to preserve
 

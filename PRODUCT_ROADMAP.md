@@ -22,6 +22,7 @@ For concise dates, test totals, and links to historical evidence, see
 | --- | --- |
 | Completed | The implementation lineage is integrated into `main`. Manual or package caveats remain recorded in the release evidence. |
 | In progress | Source implementation exists, but integration or required release gates remain open. |
+| Design in progress | An isolated design branch and review package exist, but no runtime implementation is claimed. |
 | Planned concept | A named direction with no implementation branch or commitment. Scope and order may change. |
 | Research | A question that needs evidence before it can become versioned work. |
 | Ideas backlog | A promising unassigned concept with no version or schedule. |
@@ -308,28 +309,44 @@ contracts. No database server, new AI provider, or online service is required.
 manual checklist; separate package, tag, and publication decisions. The
 repository contains no v1.9 package or tag.
 
+## Design in progress
+
+### v2.0 — Knowledge Graph
+
+**Branch:** `v2.0-knowledge-graph-design`, created directly from exact validated
+v1.9 tip `7fbc9b47ebf2cd1209c177388aceffe1cb4cec16`.
+
+**Merged status:** Unmerged design branch. No v2.0 runtime, schema, UI, package,
+tag, or published release is implemented or claimed.
+
+The [stability-first design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md)
+defines a bounded graph projection over existing v1.9 files, relationships,
+collections, and explicit decisions. It prioritizes failure isolation,
+determinism, conservative identity, correction preservation, selective repair,
+Search fallback, privacy, and bounded resources over feature breadth.
+
+**Stable design scope:** separate derived graph and authoritative decision
+stores; File/Source/Folder/Collection/Document Set/manual-entity
+nodes; typed evidence-backed edges; one-hop list/detail navigation; manual
+merge/split/control; incremental reconciliation; graph inspection/forget/repair;
+bounded opt-out Search context.
+
+**Experimental/deferred:** real-world entity suggestions and two-hop browsing
+remain opt-in; automatic Person/Place/Event/Topic identity, graph canvas,
+unrestricted traversal, conversation, autonomous actions, and remote/cross-device
+graphs are deferred.
+
+**Open work:** all source implementation and automated/manual validation in the
+[v2.0 specification package](docs/Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md).
+A dedicated release-candidate stabilization phase is mandatory before any
+integration or publication decision.
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.
 The repository contains no corresponding branches, implementation
 specifications, source, commits, tags, or release promises. Titles, order, and
 scope may change after research and review.
-
-### v2.0 — Knowledge Graph
-
-**Branch:** None; no branch exists.
-
-**Merged status:** Not applicable; planned concept only.
-
-The concept is a queryable graph projection over files, collections,
-relationships, and derived context without treating inference as fact.
-
-**Potential major capabilities:** graph navigation; typed nodes/edges;
-provenance and confidence; rebuildable derived graph data; graph-aware Search
-and explanation.
-
-**Conceptual dependencies:** a validated v1.9 relationship model, storage/query
-research, privacy controls, and migration strategy.
 
 ### v2.1 — Adaptive Intelligence
 

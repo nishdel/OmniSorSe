@@ -46,6 +46,16 @@ compatibility, and recovery.
 - `10_Plugins/06_v1.4_Plugin_Foundation.md`: current plugin host and SDK.
 - `99_Appendix/ADR-001` through `ADR-003`: accepted architectural decisions.
 
+## Active proposed design
+
+- `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: proposed isolated,
+  deterministic, bounded Knowledge Graph design. It is not a current subsystem
+  contract and describes no implemented v2.0 behavior.
+
+Its supporting failure, migration, recovery, concurrency, integrity, test, and
+release plans are indexed in the
+[v2.0 specification package](../Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md).
+
 ## Long-term and historical design library
 
 The remaining detailed documents in `01_Core` through `10_Plugins`, plus the

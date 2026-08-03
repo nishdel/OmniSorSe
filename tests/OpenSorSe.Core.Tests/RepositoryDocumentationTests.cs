@@ -116,6 +116,9 @@ public sealed partial class RepositoryDocumentationTests
             "RELATIONSHIPS_AND_COLLECTIONS_v1.9.md",
             "V1.9_IMPLEMENTATION_REPORT.md",
             "V1.9_VALIDATION_REPORT.md",
+            "MANUAL_TESTING_v2.0.md",
+            "RELEASE_READINESS_v2.0.md",
+            "V2.0_COMPATIBILITY_MATRIX.md",
             "PLATFORM_COMPATIBILITY_MATRIX.md",
             "LINUX_BUILD_AND_LAUNCH.md",
             "SAFETY_AND_PRIVACY.md",
@@ -135,6 +138,8 @@ public sealed partial class RepositoryDocumentationTests
             "Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md",
             "Architecture/06_Search/10_v1.9_Relationships_Context.md",
             "Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md",
+            "Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md",
+            "Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md",
             "Implementation_Spec/README.md",
         };
 

@@ -96,6 +96,21 @@ plus [implementation specification 061](Implementation_Spec/v1.9/061_Relationshi
 are release-specific implementation records. Use the architecture documents
 above for the living subsystem model.
 
+## Active proposed design
+
+The following package is current design work, not implemented product behavior:
+
+| Document | What it contains | Status |
+| --- | --- | --- |
+| [v2.0 Knowledge Graph stability architecture](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Isolated graph/decision stores, conservative scope, identity, projection, states, bounds, privacy, and RC policy. | Proposed design only |
+| [v2.0 specification package](Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md) | Failure, migration, recovery, concurrency, integrity, and automated-test plans. | Proposed design only |
+| [v2.0 compatibility matrix](V2.0_COMPATIBILITY_MATRIX.md) | v1.7/v1.8/v1.9 upgrade and rollback targets. | Unvalidated design target |
+| [v2.0 release-readiness checklist](RELEASE_READINESS_v2.0.md) | Mandatory implementation, validation, RC, and release blockers. | Fully unchecked |
+| [v2.0 manual checklist](MANUAL_TESTING_v2.0.md) | Interactive migration, recovery, graph, Search, privacy, resource, accessibility, and regression scenarios. | Fully unchecked |
+
+These documents do not supersede the authoritative v1.9 implementation guides
+or prove that v2.0 exists in source.
+
 ## Contributors and maintainers
 
 | Document | What it contains | When to read it | Status |

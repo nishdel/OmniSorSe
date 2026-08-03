@@ -28,6 +28,9 @@ file changes.
 - v1.9 **Relationships, Context & Smart Collections** is implemented on
   `v1.9-relationships-context`, directly above v1.8, and is not merged to
   `main`. Its interactive manual checklist remains unchecked.
+- v2.0 **Knowledge Graph** has a stability-first design package on
+  `v2.0-knowledge-graph-design`, based directly on the validated v1.9 tip. It
+  contains no v2.0 runtime implementation or release claim.
 - The only tagged and packaged repository release is the historical v1.0
   Windows x64 snapshot. There is no v1.9 package, installer, tag, or published
   release in this repository.
@@ -141,6 +144,7 @@ documents are:
 | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative v1.9 component, data, safety, persistence, and dependency boundaries. |
 | [System Map](docs/Architecture/OpenSorSe_System_Map.md) | Visual architecture and mutation-path diagrams. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
+| [v2.0 Knowledge Graph stability design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Proposed isolated projection, conservative scope, failure states, recovery, bounds, and release blockers; not implemented behavior. |
 | [v1.9 User Guide](docs/USER_GUIDE_v1.9.md) | Current relationship, collection, privacy, and Search-context workflows. |
 | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Guided build, validation, code tracing, and first-change workflow. |
 | [Contributing](CONTRIBUTING.md) | Repository layout, MVVM, testing, documentation, branch, validation, and review expectations. |

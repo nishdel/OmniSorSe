@@ -7,6 +7,7 @@ on:
       - v1.7-deep-indexing-foundation
       - v1.8-search-intelligence-privacy
       - v1.9-relationships-context
+      - v2.0-knowledge-graph-design
   pull_request:
 
 permissions:
