@@ -716,10 +716,12 @@ public sealed class SqliteGraphProjectionSourceTests
         internal void ReplaceDatabase(string replacementDisplayName)
         {
             var replacement = Path.Combine(Root, "deep-index-replacement.db");
-            File.Copy(DatabasePath, replacement, overwrite: true);
-            using (var connection = new SqliteConnection($"Data Source={replacement}"))
+            using (var source = new SqliteConnection($"Data Source={DatabasePath};Mode=ReadOnly;Pooling=False"))
+            using (var connection = new SqliteConnection($"Data Source={replacement};Pooling=False"))
             {
+                source.Open();
                 connection.Open();
+                source.BackupDatabase(connection);
                 using var command = connection.CreateCommand();
                 command.CommandText = "UPDATE index_sources SET display_name = $name, updated_utc_ticks = $now WHERE id = 'source-1';";
                 command.Parameters.AddWithValue("$name", replacementDisplayName);
@@ -728,6 +730,9 @@ public sealed class SqliteGraphProjectionSourceTests
             }
 
             File.Move(replacement, DatabasePath, overwrite: true);
+            File.Delete(string.Concat(DatabasePath, "-wal"));
+            File.Delete(string.Concat(DatabasePath, "-shm"));
+            File.SetLastWriteTimeUtc(DatabasePath, DateTime.UtcNow.AddSeconds(2));
         }
 
         public void Dispose()
