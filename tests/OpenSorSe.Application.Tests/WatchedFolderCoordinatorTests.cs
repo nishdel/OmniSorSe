@@ -135,7 +135,7 @@ public sealed class WatchedFolderCoordinatorTests
             upperPath,
             null,
             detected.AddMilliseconds(10)));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForBatchCountAsync(context, 1);
 
         var expectedCount = WatchedFolderPathPolicy.PathComparer.Equals(lowerPath, upperPath)
             ? 1
@@ -159,7 +159,7 @@ public sealed class WatchedFolderCoordinatorTests
                 Path.Combine(context.Root, "Old"),
                 detected,
                 true));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForBatchCountAsync(context, 1);
         Assert.True(Assert.Single(context.Processor.Batches).RequiresFullReconciliation);
         await WaitForWatchingAsync(context);
         context.Processor.Batches.Clear();
@@ -236,7 +236,7 @@ public sealed class WatchedFolderCoordinatorTests
                 Path.Combine(context.Root, "new.txt"),
                 Path.Combine(context.Root, "old.txt"),
                 detected));
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForBatchCountAsync(context, 1);
 
         var batch = Assert.Single(context.Processor.Batches);
         Assert.Equal(WatchedScanReason.OpenSorSeExecution, batch.Reason);
@@ -261,7 +261,7 @@ public sealed class WatchedFolderCoordinatorTests
 
         await context.Manager.ResumeAsync(context.Configuration.Id, CancellationToken.None);
         await context.Coordinator.RefreshAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForBatchCountAsync(context, 1);
 
         Assert.Equal(2, context.SourceFactory.Sources.Count);
         Assert.Equal(WatchedScanReason.ResumeReconciliation, context.Processor.Batches[0].Reason);
@@ -279,7 +279,7 @@ public sealed class WatchedFolderCoordinatorTests
 
         context.FileSystem.Available = true;
         await context.Coordinator.RefreshAsync(CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 1);
+        await WaitForBatchCountAsync(context, 1);
 
         Assert.Single(context.SourceFactory.Sources);
         Assert.Equal(
@@ -299,7 +299,7 @@ public sealed class WatchedFolderCoordinatorTests
         await context.Coordinator.ScanChangesNowAsync(context.Configuration.Id, CancellationToken.None);
         await context.Coordinator.ReconcileNowAsync(context.Configuration.Id, CancellationToken.None);
         await context.Coordinator.RetryAiAsync(context.Configuration.Id, CancellationToken.None);
-        await WaitUntilAsync(() => context.Processor.Batches.Count >= 3);
+        await WaitForBatchCountAsync(context, 3);
 
         Assert.Equal(
             [
@@ -325,6 +325,12 @@ public sealed class WatchedFolderCoordinatorTests
 
             await Task.Delay(20);
         }
+    }
+
+    private static async Task WaitForBatchCountAsync(CoordinatorContext context, int expectedCount)
+    {
+        using var testTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await context.Processor.Batches.WaitForCountAsync(expectedCount, testTimeout.Token);
     }
 
     private static async Task WaitForInitialReconciliationAsync(CoordinatorContext context)
@@ -496,16 +502,13 @@ public sealed class WatchedFolderCoordinatorTests
 
     private sealed class RecordingProcessor : IWatchedFolderProcessor
     {
-        public List<WatchedChangeBatch> Batches { get; } = [];
+        public RecordingBatchCollection Batches { get; } = new();
         public Task<WatchedFolderProcessResult> ProcessAsync(
             WatchedFolderConfiguration configuration,
             WatchedChangeBatch batch,
             CancellationToken cancellationToken)
         {
-            lock (Batches)
-            {
-                Batches.Add(batch);
-            }
+            Batches.Add(batch);
 
             var now = DateTimeOffset.UtcNow;
             var catalogue = new WatchedFolderCatalogue(
@@ -529,6 +532,88 @@ public sealed class WatchedFolderCoordinatorTests
                 false,
                 []));
         }
+    }
+
+    private sealed class RecordingBatchCollection : IReadOnlyList<WatchedChangeBatch>
+    {
+        private readonly object _sync = new();
+        private readonly List<WatchedChangeBatch> _items = [];
+        private TaskCompletionSource _changed = NewSignal();
+
+        public int Count
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _items.Count;
+                }
+            }
+        }
+
+        public WatchedChangeBatch this[int index]
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _items[index];
+                }
+            }
+        }
+
+        public void Add(WatchedChangeBatch batch)
+        {
+            TaskCompletionSource changed;
+            lock (_sync)
+            {
+                _items.Add(batch);
+                changed = _changed;
+                _changed = NewSignal();
+            }
+
+            changed.TrySetResult();
+        }
+
+        public void Clear()
+        {
+            lock (_sync)
+            {
+                _items.Clear();
+            }
+        }
+
+        public async Task WaitForCountAsync(int expectedCount, CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                Task changed;
+                lock (_sync)
+                {
+                    if (_items.Count >= expectedCount)
+                    {
+                        return;
+                    }
+
+                    changed = _changed.Task;
+                }
+
+                await changed.WaitAsync(cancellationToken);
+            }
+        }
+
+        public IEnumerator<WatchedChangeBatch> GetEnumerator()
+        {
+            lock (_sync)
+            {
+                return _items.ToArray().AsEnumerable().GetEnumerator();
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+        private static TaskCompletionSource NewSignal() =>
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     private sealed class AvailabilityFileSystem : IWatchedFileSystem

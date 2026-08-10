@@ -114,7 +114,8 @@ public sealed class OcrHardeningTests
                 PdfPages = [new PdfPageText(1, null, false)],
             },
             cancellation.Token);
-        await runner.RecognitionStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        using var testTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await runner.RecognitionStarted.Task.WaitAsync(testTimeout.Token);
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
