@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
@@ -22,6 +21,7 @@ public sealed partial class SqliteGraphProjectionSource : IGraphProjectionSource
     private readonly string _deepIndexDatabasePath;
     private readonly string _snapshotPath;
     private readonly IPathSemantics _pathSemantics;
+    private readonly IFileIdentityProvider _fileIdentityProvider;
     private readonly TimeProvider _timeProvider;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly object _disposeSync = new();
@@ -41,6 +41,7 @@ public sealed partial class SqliteGraphProjectionSource : IGraphProjectionSource
         _deepIndexDatabasePath = Path.GetFullPath(deepIndexDatabasePath);
         _snapshotPath = string.Concat(_deepIndexDatabasePath, ".knowledge-graph-snapshot");
         _pathSemantics = pathSemantics ?? PlatformServices.CurrentPathSemantics;
+        _fileIdentityProvider = FileIdentityProviderFactory.CreateCurrent();
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -349,18 +350,7 @@ public sealed partial class SqliteGraphProjectionSource : IGraphProjectionSource
         {
             var database = new FileInfo(_deepIndexDatabasePath);
             var wal = new FileInfo(string.Concat(_deepIndexDatabasePath, "-wal"));
-            Span<byte> header = stackalloc byte[100];
-            int bytesRead;
-            using (var stream = new FileStream(
-                       _deepIndexDatabasePath,
-                       FileMode.Open,
-                       FileAccess.Read,
-                       FileShare.ReadWrite | FileShare.Delete,
-                       bufferSize: header.Length,
-                       FileOptions.SequentialScan))
-            {
-                bytesRead = stream.Read(header);
-            }
+            var identity = _fileIdentityProvider.Capture(_deepIndexDatabasePath);
 
             return new SourceFileStamp(
                 database.Length,
@@ -369,7 +359,7 @@ public sealed partial class SqliteGraphProjectionSource : IGraphProjectionSource
                 wal.Exists,
                 wal.Exists ? wal.Length : 0,
                 wal.Exists ? wal.LastWriteTimeUtc.Ticks : 0,
-                Convert.ToHexString(SHA256.HashData(header[..bytesRead])));
+                identity.Identity ?? string.Empty);
         }
         catch (FileNotFoundException)
         {
@@ -569,7 +559,7 @@ public sealed partial class SqliteGraphProjectionSource : IGraphProjectionSource
         bool WalExists,
         long WalLength,
         long WalLastWriteTicks,
-        string HeaderHash)
+        string FileIdentity)
     {
         internal static SourceFileStamp Missing { get; } = new(0, 0, 0, false, 0, 0, string.Empty);
     }
