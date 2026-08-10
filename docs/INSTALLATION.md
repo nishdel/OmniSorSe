@@ -4,13 +4,14 @@
 
 ## Availability
 
-The current repository source identifies as OpenSorSe 1.8 on
-`v1.9-relationships-context`. That branch is not merged into `main`, and
-the repository does not contain a v1.9 installer, package, tag, or published
-release.
+The current repository source identifies as an OpenSorSe v2.0 implementation
+candidate on `v2.0-knowledge-graph`. That branch is not merged into `main`, and
+the repository does not contain a v2.0 installer, package, tag, or published
+release. Clean local automated validation is complete; exact-tip hosted, RC,
+and interactive validation are separate pending gates.
 
 The only tagged and packaged repository release is the frozen v1.0 Windows x64
-portable snapshot. It does not represent current v1.9 behavior. Check
+portable snapshot. It does not represent current candidate behavior. Check
 [Release Status](RELEASE_STATUS.md) before expecting a download.
 
 Do not download an OpenSorSe package from an unrelated site. A future official
@@ -29,7 +30,7 @@ Prerequisites:
 ```powershell
 git clone https://github.com/nishdel/OpenSorSe.git
 Set-Location .\OpenSorSe
-git switch v1.9-relationships-context
+git switch v2.0-knowledge-graph
 dotnet restore .\OpenSorSe.sln
 dotnet build .\OpenSorSe.sln --configuration Debug --no-restore
 dotnet test .\OpenSorSe.sln --configuration Debug --no-build --no-restore
@@ -114,12 +115,14 @@ Application-owned runtime state uses the platform path provider:
 Depending on enabled features, state can include settings, logs, saved scans,
 saved searches, extracted content, the compatible semantic index, the embedded
 SQLite durable Search index and managed backups, AI decisions, structure
-history, Workflow Profiles, Sorting Recipes, Watched Folder
+history, optional `knowledge-graph.db` derived projection,
+`knowledge-decisions.db` graph-native decisions/recovery points, Workflow
+Profiles, Sorting Recipes, Watched Folder
 configuration/catalogues/activity, plugin state/packages, Change Plans, and the
 Operation Journal.
 
-Source files remain in their selected locations. Extracted text, Search indexes,
-paths, journals, and diagnostic exports can still be sensitive; protect
+Source files remain in their selected locations. Extracted text, Search/graph
+indexes, graph associations/aliases, paths, journals, and diagnostic exports can still be sensitive; protect
 application data like the source material and do not copy it into the
 repository.
 
@@ -130,8 +133,8 @@ repository.
 3. Keep the previous program directory and a reviewed backup of important
    application-owned state.
 4. Build or extract the new version into a separate program directory.
-5. Start it and verify Settings, Search/indexing, Workflows, Plugins, Watched
-   Folders, Operation History, and saved scans.
+5. Start it and verify Settings, Search/indexing, optional Knowledge Graph,
+   Workflows, Plugins, Watched Folders, Operation History, and saved scans.
 6. Retain the prior program/data backup until the update is verified.
 
 Do not overwrite a running installation. Each store/provider owns its schema,
@@ -145,7 +148,8 @@ migration, newer-version rejection, corruption, and recovery behavior.
 
 Removing application data does not delete scanned source files. It does remove
 local indexes, settings, plugins, plans, journal/recovery facts, Undo evidence,
-and history. Do not remove it while an interrupted operation needs review.
+graph-native decisions, and history. Do not remove it while an interrupted
+operation needs review.
 
 ## Installer status
 

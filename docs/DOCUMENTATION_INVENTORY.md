@@ -52,11 +52,11 @@ This review adds four root living documents:
 - `ENGINEERING_PRINCIPLES.md`
 - `RELEASE_HISTORY.md`
 
-No documentation file is removed. The v2.0 design package later adds twelve
-source text documents, bringing the candidate count to 538: 306 source
-documentation candidates and 232 frozen-package candidates. Historical release,
-implementation, validation, version, troubleshooting, user, migration, and
-manual-testing records remain present.
+No documentation file is removed. The v2.0 design package adds twelve source
+documents; the implementation candidate adds a user/architecture guide,
+security notes, Version Notes, implementation/validation records, and an RC
+plan. Historical release, implementation, validation, version,
+troubleshooting, user, migration, and manual-testing records remain present.
 
 ## Authority model
 
@@ -80,6 +80,7 @@ These files describe current product/project policy or the current source tree:
 - `docs/MAINTAINER_GUIDE.md`
 - `docs/INSTALLATION.md`
 - `docs/SAFETY_AND_PRIVACY.md`
+- `docs/SECURITY_v2.0.md`
 - `docs/PLATFORM_COMPATIBILITY_MATRIX.md`
 - `docs/LINUX_BUILD_AND_LAUNCH.md`
 - `docs/FOSS_DEPENDENCY_POLICY.md`
@@ -125,6 +126,7 @@ rather than supersede, their stable subsystem boundary:
 - `docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md`
 - `docs/Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md`
 - `docs/Architecture/06_Search/10_v1.9_Relationships_Context.md`
+- `docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`
 
 The v1.4 Extension SDK, Plugin Author Guide, Manifest Reference, Local Package
 Guide, and v1.5 platform/portability addenda also remain current stable
@@ -152,10 +154,10 @@ The v1.7 deep-indexing and v1.8 Search architecture/specifications remain
 current foundations. Their reports, Version Notes, User Guides,
 Troubleshooting, and Manual Testing documents remain version snapshots.
 
-### Active proposed design
+### v2.0 implementation candidate and design authority
 
-The v2.0 Knowledge Graph package is active design work and is not current
-implemented behavior:
+The v2.0 Knowledge Graph package is the accepted design/acceptance authority
+for the unmerged implementation candidate:
 
 - `docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`
 - `docs/Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md`
@@ -169,10 +171,17 @@ implemented behavior:
 - `docs/V2.0_COMPATIBILITY_MATRIX.md`
 - `docs/RELEASE_READINESS_v2.0.md`
 - `docs/MANUAL_TESTING_v2.0.md`
+- `docs/KNOWLEDGE_GRAPH_v2.0.md`
+- `docs/SECURITY_v2.0.md`
+- `docs/VERSION_NOTES_v2.0.md`
+- `docs/V2.0_IMPLEMENTATION_REPORT.md`
+- `docs/V2.0_VALIDATION_REPORT.md`
+- `docs/V2.0_RC_STABILIZATION_PLAN.md`
 
-The architecture/specification describe intended future boundaries. The
-compatibility and test/checklist documents are unvalidated targets, and every
-manual/release-readiness checkbox begins unchecked.
+The architecture/specification describe implemented-candidate boundaries;
+source and tests remain authoritative for exact behavior. Compatibility,
+validation, RC, and checklist evidence is incomplete, and every
+manual/release-readiness/RC checkbox remains unchecked.
 
 ### Historical records to preserve
 

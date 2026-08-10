@@ -139,7 +139,8 @@ reference cycles.
   catalog/search/comparison, semantic indexing, tags, structure planning and
   history, provider-neutral AI policy, watched-folder coordination, workflows,
   plugin host/lifecycle/packages, relationship/context contracts and engine,
-  and suggestion-to-Change-Plan adapters.
+  provider-neutral Knowledge Graph projection/query/decision/privacy/repair
+  contracts, and suggestion-to-Change-Plan adapters.
 - **Must not own:** Avalonia views, shell navigation, Ollama HTTP details, or
   direct approved user-file mutation.
 - **Principal entry points:** `IApplicationController`,
@@ -158,6 +159,9 @@ reference cycles.
   - `Relationships`: evidence, confidence, deterministic discovery, Smart
     Collection/context projections, service/store contracts, Search expansion,
     privacy, repair, and diagnostics.
+  - `KnowledgeGraph`: conservative identity/projection, completed-manifest
+    lifecycle, four-axis state, bounded query/Search, graph-native decisions,
+    privacy, repair, suggestions, and diagnostics contracts/services.
   - `Semantic`: deterministic local index and explained search.
   - `Structure`: snapshots, preview plans, history, and comparisons.
   - `Tags`: provenance-aware generated tag candidates.
@@ -188,14 +192,16 @@ reference cycles.
 - **Owns:** SQLite schema/versioning, migrations/backups, transactions,
   integrity checks, durable sources/runs/jobs/stages, shared bounded content,
   coverage/search projections, relationship evidence/edges/corrections,
-  virtual collections/membership, retention, quota maintenance, and compaction.
+  virtual collections/membership, isolated Knowledge Graph/decision sidecars,
+  retention, quota maintenance, and compaction.
 - **Must not own:** Views, ViewModels, Search ranking, discovery/processing
   policy, source-file mutation, PostgreSQL clients, or server configuration.
-- **Principal entry point:** `SqliteDeepIndexStore`.
+- **Principal entry points:** `SqliteDeepIndexStore`, `SqliteGraphStore`,
+  `SqliteGraphDecisionStore`, and the schema-3 graph projection adapter.
 - **Dependencies:** Application and Core.
 - **Reference rule:** Desktop composes this provider behind `IDeepIndexStore`,
-  `IIndexPrivacyStore`, and `IRelationshipStore`. No Application, ViewModel, or
-  View may use SQLite-specific APIs.
+  `IIndexPrivacyStore`, `IRelationshipStore`, and provider-neutral graph
+  contracts. No Application, ViewModel, or View may use SQLite-specific APIs.
 
 ### `OpenSorSe.Desktop`
 
@@ -222,9 +228,9 @@ reference cycles.
 | `OpenSorSe.Scanner.Tests` | Traversal, metadata, hashes, classification, duplicates, bounds, and cancellation |
 | `OpenSorSe.Rules.Tests` | Rule evaluation, planning, conflicts, and pure models |
 | `OpenSorSe.Executor.Tests` | Change Plans, validation, journalling, execution, rollback, recovery, Undo, and compatibility regressions |
-| `OpenSorSe.Application.Tests` | Orchestration, stores, OCR/content, AI policy, catalog/search, watchers, workflows, plugins, and provenance |
-| `OpenSorSe.Indexing.Sqlite.Tests` | Schema, migration, corruption, incremental identity, durable stages, concurrency, cancellation, recovery, quota, Search coverage, and bounded performance regressions |
-| `OpenSorSe.Desktop.Tests` | Composition, navigation, ViewModels, command state, persistence presentation, and plugin UI |
+| `OpenSorSe.Application.Tests` | Orchestration, stores, OCR/content, AI policy, catalog/search, watchers, workflows, plugins, provenance, and provider-neutral Knowledge Graph behavior |
+| `OpenSorSe.Indexing.Sqlite.Tests` | Schema, migration, corruption, incremental identity, durable stages, graph/decision sidecars, concurrency, cancellation, recovery, quota, Search coverage, and bounded performance regressions |
+| `OpenSorSe.Desktop.Tests` | Composition, navigation, ViewModels, command state, persistence presentation, Knowledge Graph accessibility, and plugin UI |
 
 Tests may reference the production project under test and explicit
 collaborators needed for integration. Production projects never reference test
@@ -257,6 +263,8 @@ projects.
 | Change Plan, validation, journal, execution, recovery, or Undo | `OpenSorSe.Executor` plus Executor tests |
 | Product orchestration, persistence, watcher, workflow, content, or plugin host | `OpenSorSe.Application` plus Application tests |
 | Embedded durable-index schema/provider mechanics | `OpenSorSe.Indexing.Sqlite` plus SQLite provider tests |
+| Knowledge Graph identity/projection/query/privacy policy | `OpenSorSe.Application/KnowledgeGraph` plus Application tests |
+| Knowledge Graph SQLite lifecycle/persistence | `OpenSorSe.Indexing.Sqlite/KnowledgeGraph` plus SQLite provider tests |
 | Ollama HTTP behavior | `OpenSorSe.AI` plus Application integration tests |
 | Navigation, ViewModel, or XAML | `OpenSorSe.Desktop` plus Desktop tests |
 | Plugin-author contract | `OpenSorSe.Extensions.Abstractions`, compatibility docs, and adversarial host tests |

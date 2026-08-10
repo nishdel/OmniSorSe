@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
@@ -44,6 +45,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private bool _isForgetSourcePending;
     private bool _filtersWereEdited;
     private bool _includeRelationshipContext = true;
+    private bool _includeGraphContext = true;
+    private string _graphCoverageText = "Knowledge Graph coverage has not been inspected for this query.";
     private long _queryVersion;
 
     /// <summary>Initializes a preview instance with Search unavailable.</summary>
@@ -191,6 +194,20 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     {
         get => _includeRelationshipContext;
         set => SetProperty(ref _includeRelationshipContext, value);
+    }
+
+    /// <summary>Gets or sets whether bounded Knowledge Graph context may supplement Search.</summary>
+    public bool IncludeGraphContext
+    {
+        get => _includeGraphContext;
+        set => SetProperty(ref _includeGraphContext, value);
+    }
+
+    /// <summary>Gets graph-projection coverage independently from deep-index Search coverage.</summary>
+    public string GraphCoverageText
+    {
+        get => _graphCoverageText;
+        private set => SetProperty(ref _graphCoverageText, value);
     }
 
     /// <summary>Gets the selected Search result for privacy inspection.</summary>
@@ -586,14 +603,17 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         using var operation = BeginOperation();
         try
         {
-            var request = _filtersWereEdited
+            var request = (_filtersWereEdited
                 ? new SearchRequest(
                     QueryText ?? string.Empty,
                     _activeFilters.ToArray(),
                     InterpretFilters: false,
                     TopicTextOverride: _topicText,
                     IncludeRelationshipContext: IncludeRelationshipContext)
-                : new SearchRequest(QueryText ?? string.Empty, IncludeRelationshipContext: IncludeRelationshipContext);
+                : new SearchRequest(QueryText ?? string.Empty, IncludeRelationshipContext: IncludeRelationshipContext)) with
+            {
+                IncludeGraphContext = IncludeGraphContext,
+            };
             var result = await _searchService.SearchAsync(request, operation.Token);
             if (queryVersion != Volatile.Read(ref _queryVersion))
             {
@@ -617,6 +637,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(HasActiveFilters));
             ClearFiltersCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(HasHits));
+            GraphCoverageText = FormatGraphCoverage(result.GraphCoverage, IncludeGraphContext);
             Status = Present(result.State, result.Message);
         }
         finally
@@ -663,7 +684,10 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                     [],
                     InterpretFilters: false,
                     TopicTextOverride: _topicText,
-                    IncludeRelationshipContext: IncludeRelationshipContext),
+                    IncludeRelationshipContext: IncludeRelationshipContext)
+                {
+                    IncludeGraphContext = IncludeGraphContext,
+                },
                 operation.Token);
             _hits.Clear();
             foreach (var hit in result.Hits)
@@ -672,6 +696,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             }
 
             OnPropertyChanged(nameof(HasHits));
+            GraphCoverageText = FormatGraphCoverage(result.GraphCoverage, IncludeGraphContext);
             Status = Present(result.State, result.Message);
         }
         finally
@@ -1390,6 +1415,24 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         IndexingStage.FileFullyIndexed => "finalization",
         _ => stage.ToString(),
     };
+
+    private static string FormatGraphCoverage(GraphProjectionCoverage? coverage, bool enabled)
+    {
+        if (!enabled)
+        {
+            return "Knowledge Graph context is disabled for this Search.";
+        }
+
+        if (coverage is null || !coverage.IsAvailable)
+        {
+            return "Knowledge Graph context is temporarily unavailable. Ordinary Search remains available.";
+        }
+
+        var state = coverage.IsComplete && !coverage.IsStale
+            ? "current"
+            : "partial";
+        return $"Knowledge Graph coverage is {state}: {coverage.ProjectedObservationCount:N0} of {coverage.TotalObservationCount:N0} eligible observations projected. Graph context may be incomplete while projection continues.";
+    }
 
     private static string FormatBytes(long value)
     {

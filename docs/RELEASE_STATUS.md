@@ -14,10 +14,13 @@ complete. It is not the product roadmap or the concise version history.
 
 Repository history currently places `main` at the v1.6 integration line. v1.7,
 v1.8, and v1.9 are implemented on their own linear branches and remain
-unmerged. `v2.0-knowledge-graph-design` is a documentation/test-policy design
-branch above the validated v1.9 tip; it contains no v2.0 runtime implementation
-or release claim. Its [release-readiness](RELEASE_READINESS_v2.0.md) and
-[manual](MANUAL_TESTING_v2.0.md) checklists are fully unchecked.
+unmerged. `v2.0-knowledge-graph` is an implementation candidate created from
+the exact validated `v2.0-knowledge-graph-design` tip. It remains unmerged. Its
+clean local automated validation is complete; exact-tip hosted validation,
+mandatory RC stabilization, and interactive maintainer validation remain
+separate gates. Its
+[release-readiness](RELEASE_READINESS_v2.0.md) and
+[manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked.
 
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
@@ -41,7 +44,7 @@ or release claim. Its [release-readiness](RELEASE_READINESS_v2.0.md) and
 | v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
 | v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
 | v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md), and the [manual checklist](MANUAL_TESTING_v1.9.md) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
-| v2.0 Knowledge Graph | Proposed stability design only on `v2.0-knowledge-graph-design`; no runtime implementation, migration, UI, merge, tag, package, or publication is claimed | Design-branch repository validation is separate from future implementation evidence; the [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked. | Isolated derived graph, graph-native decision ledger, conservative mechanical identity, evidence, deterministic bounded projection, failure/recovery/concurrency/privacy models, compatibility gates, and mandatory RC stabilization. |
+| v2.0 Knowledge Graph | Unmerged implementation candidate on `v2.0-knowledge-graph`; clean local automated validation complete; exact-tip hosted validation, mandatory RC stabilization, and interactive maintainer validation remain pending | Non-incremental zero-warning Debug/Release builds and 1,467 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, performance, policy, vulnerability, patch, and four-runtime cross-target gates passed. See the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md). The [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
 
 ## Current product boundary
 
@@ -54,6 +57,12 @@ relationships and virtual Smart Collections without granting any new
 source-file mutation authority. Reusable workflows and plugin contributions
 configure scanning and analysis but do not grant mutation authority.
 
+The unmerged v2.0 implementation candidate adds an optional Knowledge Graph
+projection over those retained facts. It is disabled by default, does not open
+source files, and keeps v1.9 schema-3 data authoritative. Its isolated schema-1
+graph and decision sidecars, UI, and Search context are candidate behavior—not
+a published release claim.
+
 The current Desktop workflow does not:
 
 - Let AI directly rename, move, delete, overwrite, create, or otherwise modify source files. Optional Ollama generates only validated rename, logical folder-structure, or bounded document-text interpretation suggestions. Accepted organization suggestions create a non-mutating Change Plan.
@@ -61,7 +70,7 @@ The current Desktop workflow does not:
 - Contact Ollama when AI is disabled or merely because the global AI switch is enabled. Provider requests additionally require an enabled capability, valid context, endpoint, and model.
 - Treat catalog or structure comparison as certainty. Stored snapshots and semantic similarities are bounded review aids, not live filesystem truth.
 
-Scanning, duplicate review, extraction, OCR, tagging, indexing/search, comparison, diagrams, and AI generation are non-mutating. Supported v1.1 mutations are rename file, move file, and create directory, exclusively through a user-reviewed Change Plan and dedicated execution service. Immediate revalidation rejects stale/invalid/linked/conflicting/occupied paths, overwrite is disabled, every attempt is journalled, success is verified, and safe inverse operations are recorded. AI output cannot execute.
+Scanning, duplicate review, extraction, OCR, tagging, indexing/search, Knowledge Graph projection, comparison, diagrams, and AI generation are non-mutating. Supported v1.1 mutations are rename file, move file, and create directory, exclusively through a user-reviewed Change Plan and dedicated execution service. Immediate revalidation rejects stale/invalid/linked/conflicting/occupied paths, overwrite is disabled, every attempt is journalled, success is verified, and safe inverse operations are recorded. AI output cannot execute.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
@@ -75,7 +84,7 @@ Watcher APIs are treated as fallible hints. Enabled roots are reconciled on star
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, index-only privacy rules, relationship evidence, user corrections, and virtual collection membership. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite schema-3 index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, index-only privacy rules, relationship evidence, user corrections, and virtual collection membership. The v2.0 candidate adds schema-1 graph and graph-native decision sidecars without changing schema 3. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
 
 ## v1.8 validation
 
@@ -150,30 +159,34 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe 1.9 source implementation is on `v1.9-relationships-context`, based
-directly on the validated but unmerged v1.8 branch. v1.7 and v1.8 history is
-preserved and neither branch is modified or merged by v1.9. Local automated
-validation is recorded separately from the fully unchecked manual checklist.
-The repository does not contain a v1.9 tag or package.
+OpenSorSe v2.0 is an implementation candidate on `v2.0-knowledge-graph`, based
+directly on exact validated design tip
+`a2a9a071600de74759937f05a7be61f85e9d5d93`. Earlier v1.7-v1.9 and design
+history is preserved and unmerged. Clean local automated evidence is recorded
+in the validation report; exact-tip hosted, RC, and manual validation remain
+separate open gates.
+The repository does not contain a v2.0 tag or package.
 
 Integration, packaging, signing, tagging, and publishing remain separate
 release activities.
-See the [user guide](USER_GUIDE_v1.9.md), [relationship guide](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md),
-[implementation specification](Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md),
-[implementation report](V1.9_IMPLEMENTATION_REPORT.md), and
-[manual checklist](MANUAL_TESTING_v1.9.md).
+See the [Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md),
+[implementation report](V2.0_IMPLEMENTATION_REPORT.md),
+[validation report](V2.0_VALIDATION_REPORT.md),
+[RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md), and
+[manual checklist](MANUAL_TESTING_v2.0.md).
 
 ## Release identity
 
-- Version: `v1.9`
-- Release name: **Relationships, Context & Smart Collections**
-- Git branch: `v1.9-relationships-context`
-- Status: source implementation and local automated validation complete;
-  unmerged from `main`; no interactive manual result, package, tag, or
-  published release is claimed.
+- Version: `v2.0` implementation candidate
+- Release name: **Knowledge Graph**
+- Git branch: `v2.0-knowledge-graph`
+- Status: source implementation candidate; unmerged from `main`; clean local
+  automated validation complete; exact-tip hosted, RC stabilization, and
+  interactive validation incomplete; no package, tag, or published release is
+  claimed.
 
 Release branches normally use `v<version>-<primary-feature>`, as demonstrated
-by v1.2-v1.9. Historical branch names are retained as created: v1.1 used
+by v1.2-v2.0. Historical branch names are retained as created: v1.1 used
 `v1.1`, v0.1/v0.2 used `coding/v0.1` and `coding/v0.2`, and v0.4-v0.9 were
 delivered together on `v0.9`. Planned roadmap entries have no branch until
 implementation actually begins.

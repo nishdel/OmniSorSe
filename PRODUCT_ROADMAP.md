@@ -244,15 +244,16 @@ metadata; Windows/Ubuntu/macOS CI.
 
 ## In Progress
 
-These versions are implemented and validated in their source branches but are
-not ancestors of `main`. Their release evidence also keeps interactive manual
-work explicit.
+These versions are implemented in source branches but are not ancestors of
+`main`. Their exact validation state is stated per row; interactive and RC work
+is never implied by source implementation.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
 | v1.7 | `v1.7-deep-indexing-foundation` | Deep Indexing Foundation | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
 | v1.8 | `v1.8-search-intelligence-privacy` | Search Intelligence, Quality and Privacy | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
 | v1.9 | `v1.9-relationships-context` | Relationships, Context & Smart Collections | Unmerged from `main`; source implementation complete, automated validation tracked on the branch, interactive manual validation not claimed. |
+| v2.0 | `v2.0-knowledge-graph` | Knowledge Graph | Unmerged implementation candidate above the validated design tip; clean local automated validation complete; exact-tip hosted, RC, and interactive manual validation remain separate. |
 
 ### v1.7 — Deep Indexing Foundation
 
@@ -309,37 +310,44 @@ contracts. No database server, new AI provider, or online service is required.
 manual checklist; separate package, tag, and publication decisions. The
 repository contains no v1.9 package or tag.
 
-## Design in progress
-
 ### v2.0 — Knowledge Graph
 
-**Branch:** `v2.0-knowledge-graph-design`, created directly from exact validated
-v1.9 tip `7fbc9b47ebf2cd1209c177388aceffe1cb4cec16`.
+v2.0 implements an optional provider-neutral projection over v1.9 indexed
+data. It preserves `deep-index.db` schema 3 and adds isolated schema-1
+`knowledge-graph.db` and `knowledge-decisions.db` sidecars. It is disabled by
+default and never reads or mutates source files.
 
-**Merged status:** Unmerged design branch. No v2.0 runtime, schema, UI, package,
-tag, or published release is implemented or claimed.
+**Branch:** `v2.0-knowledge-graph`, created directly from exact validated design
+tip `a2a9a071600de74759937f05a7be61f85e9d5d93`.
+
+**Merged status:** Unmerged implementation candidate. No package, tag, published
+release, completed interactive validation, or completed RC is claimed.
 
 The [stability-first design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md)
-defines a bounded graph projection over existing v1.9 files, relationships,
+defines the bounded graph projection implemented over existing v1.9 files, relationships,
 collections, and explicit decisions. It prioritizes failure isolation,
 determinism, conservative identity, correction preservation, selective repair,
 Search fallback, privacy, and bounded resources over feature breadth.
 
-**Stable design scope:** separate derived graph and authoritative decision
-stores; File/Source/Folder/Collection/Document Set/manual-entity
+**Stable implementation-candidate scope:** separate derived graph and
+authoritative graph-native decision stores;
+File/Source/Folder/Collection/Document Set/manual-entity
 nodes; typed evidence-backed edges; one-hop list/detail navigation; manual
 merge/split/control; incremental reconciliation; graph inspection/forget/repair;
 bounded opt-out Search context.
 
-**Experimental/deferred:** real-world entity suggestions and two-hop browsing
-remain opt-in; automatic Person/Place/Event/Topic identity, graph canvas,
+**Experimental/deferred:** entity-suggestion contracts are prepared but no
+live producer is wired; two-hop browsing remains opt-in; automatic
+Person/Place/Event/Topic identity, graph canvas,
 unrestricted traversal, conversation, autonomous actions, and remote/cross-device
 graphs are deferred.
 
-**Open work:** all source implementation and automated/manual validation in the
-[v2.0 specification package](docs/Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md).
-A dedicated release-candidate stabilization phase is mandatory before any
-integration or publication decision.
+**Open work:** final clean automated evidence, exact-tip hosted CI, the fully
+unchecked manual checklist, and the mandatory release-candidate stabilization
+phase. See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
+[validation report](docs/V2.0_VALIDATION_REPORT.md), and
+[RC plan](docs/V2.0_RC_STABILIZATION_PLAN.md). Integration and publication are
+separate later decisions.
 
 ## Planned
 

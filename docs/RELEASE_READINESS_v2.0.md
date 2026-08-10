@@ -1,6 +1,7 @@
 # OpenSorSe v2.0 release-readiness checklist
 
-**Status:** Design checklist. Every gate is intentionally unchecked.
+**Status:** Implementation-candidate/RC checklist. Every gate is intentionally
+unchecked.
 
 This checklist is completed only against an exact release-candidate commit.
 Feature implementation, automated validation, manual validation, integration,
@@ -8,7 +9,7 @@ tagging, packaging, and publication are separate facts.
 
 ## Scope and architecture
 
-- [ ] Stable, experimental, and deferred scope matches the proposed design.
+- [ ] Stable, experimental, and deferred scope matches the accepted stability design and candidate source.
 - [ ] No deferred person/biometric, graph canvas, conversation, autonomous,
       remote, or unrestricted-traversal capability entered the release.
 - [ ] Accepted Tag nodes remain deferred unless a separately reviewed

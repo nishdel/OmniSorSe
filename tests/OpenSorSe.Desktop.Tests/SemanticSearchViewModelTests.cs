@@ -1,5 +1,6 @@
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
@@ -229,6 +230,52 @@ public sealed class SemanticSearchViewModelTests
         Assert.NotNull(search.LastRequest);
         Assert.False(search.LastRequest.InterpretFilters);
         Assert.Empty(search.LastRequest.ActiveFilters!);
+    }
+
+    /// <summary>Verifies graph context is independently controllable and its partial coverage remains visible.</summary>
+    [Fact]
+    public async Task KnowledgeGraphContextToggleAndCoverageAreIndependent()
+    {
+        var search = new InterpretingSearch([])
+        {
+            GraphCoverage = new GraphProjectionCoverage(
+                true,
+                true,
+                false,
+                false,
+                7,
+                10,
+                0,
+                0,
+                "manifest-1",
+                3,
+                "Projection continues."),
+        };
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher())
+        {
+            QueryText = "invoice",
+            IncludeRelationshipContext = true,
+            IncludeGraphContext = false,
+        };
+
+        await viewModel.SearchCommand.ExecuteAsync(null);
+
+        Assert.NotNull(search.LastRequest);
+        Assert.True(search.LastRequest.IncludeRelationshipContext);
+        Assert.False(search.LastRequest.IncludeGraphContext);
+        Assert.Contains("disabled", viewModel.GraphCoverageText, StringComparison.OrdinalIgnoreCase);
+
+        viewModel.IncludeGraphContext = true;
+        await viewModel.SearchCommand.ExecuteAsync(null);
+
+        Assert.True(search.LastRequest.IncludeGraphContext);
+        Assert.Contains("7 of 10", viewModel.GraphCoverageText, StringComparison.Ordinal);
+        Assert.Contains("partial", viewModel.GraphCoverageText, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Verifies privacy inspection reports categories without exposing raw vectors or text.</summary>
@@ -519,6 +566,8 @@ public sealed class SemanticSearchViewModelTests
     {
         public SearchRequest? LastRequest { get; private set; }
 
+        public GraphProjectionCoverage? GraphCoverage { get; init; }
+
         public Task<SemanticResult<IReadOnlyList<SemanticSearchHit>>> SearchAsync(
             string query,
             CancellationToken cancellationToken) =>
@@ -542,7 +591,10 @@ public sealed class SemanticSearchViewModelTests
                     request.TopicTextOverride ?? "tax records",
                     ["tax", "records"],
                     filters),
-                new SearchCoverage(0, 0, 0, 0, 0, 0)));
+                new SearchCoverage(0, 0, 0, 0, 0, 0))
+            {
+                GraphCoverage = GraphCoverage,
+            });
         }
     }
 

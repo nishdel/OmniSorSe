@@ -1,5 +1,10 @@
 # Relationships and Smart Collections in OpenSorSe v1.9
 
+> v2.0 note: the unmerged Knowledge Graph candidate projects these existing
+> relationships and Collections without replacing their schema-3 authority.
+> See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md). This v1.9 guide remains
+> authoritative for direct relationships and Smart Collections.
+
 OpenSorSe can use information already retained by background indexing to find
 evidence that files belong together. It records why a relationship was made;
 it does not ask you to trust an unexplained AI answer.

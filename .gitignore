@@ -9,4 +9,12 @@ TestResults/
 deep-index.db
 deep-index.db-*
 deep-index-*.db
+knowledge-graph.db
+knowledge-graph.db-*
+knowledge-graph-*.db
+knowledge-decisions.db
+knowledge-decisions.db-*
+knowledge-decisions-*.db
+*.knowledge-graph-snapshot
+*.knowledge-graph-snapshot-*
 semantic-index.json

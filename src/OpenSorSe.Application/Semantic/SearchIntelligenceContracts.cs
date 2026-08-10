@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Configuration;
 
@@ -81,7 +82,14 @@ public sealed record SearchRequest(
     IReadOnlyList<SearchFilter>? ActiveFilters = null,
     bool InterpretFilters = true,
     string? TopicTextOverride = null,
-    bool IncludeRelationshipContext = true);
+    bool IncludeRelationshipContext = true)
+{
+    /// <summary>
+    /// Gets whether the optional v2.0 Knowledge Graph may add bounded one-hop
+    /// context. This is independent from the existing v1.9 relationship context.
+    /// </summary>
+    public bool IncludeGraphContext { get; init; } = true;
+}
 
 /// <summary>Separates ordinary topic terms from visible deterministic filters.</summary>
 public sealed record SearchInterpretation(
@@ -135,6 +143,8 @@ public enum SearchRankingSignalKind
     SourcePriority,
     /// <summary>Indexing completeness resolved an otherwise comparable result.</summary>
     IndexingCompleteness,
+    /// <summary>An evidence-backed bounded Knowledge Graph edge contributed.</summary>
+    GraphContext,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -281,6 +291,33 @@ public sealed record SearchCandidateDocument
 
     /// <summary>Gets optional evidence-backed context supplied by relationship expansion.</summary>
     public SearchRelationshipContext? RelationshipContext { get; init; }
+
+    /// <summary>Gets optional evidence-backed context supplied by bounded graph expansion.</summary>
+    public SearchGraphContext? GraphContext { get; init; }
+}
+
+/// <summary>Provides one actual graph edge contribution to Search ranking.</summary>
+public sealed record SearchGraphContext(
+    string SeedFileId,
+    string EdgeId,
+    GraphEdgeKind EdgeKind,
+    GraphConfidenceLevel Confidence,
+    string Explanation,
+    long ProjectionRevision,
+    GraphFreshnessState Freshness)
+{
+    /// <summary>Maps the retained edge evidence to one explicit ranking component.</summary>
+    public SearchRankingComponent ToRankingComponent() => new(
+        SearchRankingSignalKind.GraphContext,
+        "Knowledge Graph context",
+        Confidence switch
+        {
+            GraphConfidenceLevel.Confirmed => 4,
+            GraphConfidenceLevel.High => 3,
+            GraphConfidenceLevel.Medium => 2,
+            _ => 1,
+        },
+        Explanation);
 }
 
 /// <summary>Contains one independently testable ranked candidate.</summary>
@@ -296,7 +333,14 @@ public sealed record SearchExecutionResult(
     string Message,
     IReadOnlyList<SemanticSearchHit> Hits,
     SearchInterpretation Interpretation,
-    SearchCoverage Coverage);
+    SearchCoverage Coverage)
+{
+    /// <summary>
+    /// Gets graph-projection coverage independently from deep-index Search coverage.
+    /// A null value means no graph provider was configured.
+    /// </summary>
+    public GraphProjectionCoverage? GraphCoverage { get; init; }
+}
 
 /// <summary>Interprets conservative local filters without calling AI or a storage provider.</summary>
 public interface ISearchQueryInterpreter

@@ -2,7 +2,8 @@
 
 **Document type:** Living technology inventory
 
-**Scope:** Current v1.9 source; a technology in a roadmap or historical
+**Scope:** Current unmerged v2.0 implementation candidate and inherited v1.9
+source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack
@@ -18,13 +19,13 @@ architecture document is not a current dependency
 | Composition | Microsoft.Extensions.DependencyInjection 8.x | Desktop composition root and service registration. |
 | Logging | Microsoft.Extensions.Logging 8.x plus OpenSorSe-owned bounded logging | Structured application logging without source content. |
 | JSON persistence | `System.Text.Json` plus shared bounded atomic replacement | Settings, catalogs, workflows, watched state, plans, journals, compatible content/Search stores, and other application-owned data. |
-| Durable Search persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Embedded schema-versioned provider behind Application contracts; no database server is required. |
+| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Embedded schema-versioned providers behind Application contracts: schema-3 deep index plus isolated schema-1 graph/decision sidecars; no database server is required. |
 | Native PDF text | PdfPig 0.1.15 | Bounded read-only PDF page text and metadata. |
 | PDF page rendering | PDFtoImage 5.2.1 with PDFium native packages | Bounded rendering of PDF pages that need enabled OCR. |
 | OCR | External Tesseract 5 CLI | Optional local image/scanned-page recognition; executable and language data are not bundled. |
 | Optional AI transport | Ollama-compatible HTTP API | Explicitly configured, capability-gated, bounded review-only suggestions; the endpoint can be local or remote. |
 | Compatible local similarity | Deterministic feature hashing | Rebuildable related-concept representation without a model download. |
-| Durable indexing | Provider-neutral Application contracts plus `OpenSorSe.Indexing.Sqlite` | Sources, jobs, stages, recovery, Search projections, relationship evidence/collections/corrections, privacy rules, quotas, and repair. |
+| Durable indexing and Knowledge Graph | Provider-neutral Application contracts plus `OpenSorSe.Indexing.Sqlite` | Sources, jobs, stages, recovery, Search projections, relationship evidence/collections/corrections, optional stable graph projection/decisions, privacy rules, quotas, and repair. |
 | Plugin model | `OpenSorSe.Extensions.Abstractions` plus in-process collectible load contexts | Eight bounded extension points, local packages, explicit grants, validation, and lifecycle containment. Load contexts are not sandboxing. |
 | Testing | xUnit 2.9.3, Microsoft.NET.Test.Sdk 17.8.0, coverlet collector | Unit, integration, ViewModel, provider, repository-policy, relevance, and bounded performance regression tests. |
 | Documentation | Markdown and Mermaid | Living guides, historical evidence, architecture, and diagrams. |
@@ -71,9 +72,9 @@ Current source does not use or claim:
 - a plugin marketplace, automatic plugin download/update, publisher signature
   authority, or OS sandbox;
 - Python/PySide as an application runtime;
-- a signed installer, automatic updater, or v1.9 distribution package;
-- OpenSorSe Server, collaboration, a knowledge graph, or a conversational
-  assistant.
+- a signed installer, automatic updater, or v2.0 distribution package;
+- OpenSorSe Server, collaboration, remote/unrestricted graph service, or a
+  conversational assistant.
 
 Those topics belong to the
 [Product Roadmap](../../../PRODUCT_ROADMAP.md) as planned concepts, research,

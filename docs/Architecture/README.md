@@ -1,8 +1,9 @@
 # Architecture documentation
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
-[OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the implemented
-v1.9 system and take precedence when an older document uses future-oriented
+[OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the current
+unmerged v2.0 implementation candidate plus inherited v1.9 system and take
+precedence when an older document uses future-oriented
 language.
 
 The [Product Vision](../../PRODUCT_VISION.md) defines why these boundaries
@@ -25,6 +26,9 @@ compatibility, and recovery.
 - `06_Search/10_v1.9_Relationships_Context.md`: current relationship evidence,
   virtual collection, contextual Search, schema 3, privacy, repair, and graph
   bound architecture.
+- `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: implemented-candidate
+  graph/decision isolation, conservative identity, deterministic projection,
+  concurrency, bounds, privacy, and mandatory RC contract.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
@@ -46,11 +50,15 @@ compatibility, and recovery.
 - `10_Plugins/06_v1.4_Plugin_Foundation.md`: current plugin host and SDK.
 - `99_Appendix/ADR-001` through `ADR-003`: accepted architectural decisions.
 
-## Active proposed design
+## v2.0 candidate architecture
 
-- `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: proposed isolated,
-  deterministic, bounded Knowledge Graph design. It is not a current subsystem
-  contract and describes no implemented v2.0 behavior.
+- `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: accepted isolated,
+  deterministic, bounded Knowledge Graph design implemented by the unmerged
+  candidate. Source and tests define exact behavior; validation and RC gates
+  remain open.
+
+The practical current guide is
+[Knowledge Graph v2.0](../KNOWLEDGE_GRAPH_v2.0.md).
 
 Its supporting failure, migration, recovery, concurrency, integrity, test, and
 release plans are indexed in the

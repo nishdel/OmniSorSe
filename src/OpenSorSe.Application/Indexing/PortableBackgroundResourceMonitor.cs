@@ -22,6 +22,32 @@ public sealed class PortableBackgroundResourceMonitor : IBackgroundResourceMonit
     {
         ArgumentNullException.ThrowIfNull(settings);
         cancellationToken.ThrowIfCancellationRequested();
+        var unsupportedPolicies = new List<string>(3);
+        if (settings.ProcessOnlyWhileIdle)
+        {
+            unsupportedPolicies.Add("idle detection");
+        }
+
+        if (settings.ProcessOnlyWhileConnectedToPower)
+        {
+            unsupportedPolicies.Add("power-source detection");
+        }
+
+        if (settings.PauseBelowBatteryPercentage.HasValue)
+        {
+            unsupportedPolicies.Add("battery-level detection");
+        }
+
+        if (unsupportedPolicies.Count > 0)
+        {
+            return Task.FromResult(new BackgroundResourceEligibility(
+                false,
+                string.Concat(
+                    "Waiting for resource policy because this host cannot provide ",
+                    string.Join(", ", unsupportedPolicies),
+                    ". Disable that restriction or use a host integration that supports it.")));
+        }
+
         if (settings.ProcessingWindowStartHour is not { } start ||
             settings.ProcessingWindowEndHour is not { } end)
         {

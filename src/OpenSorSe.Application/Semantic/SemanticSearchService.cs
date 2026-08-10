@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Data.Common;
 using System.Globalization;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Core.Configuration;
@@ -20,7 +21,9 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly IDiagnosticsEventSink? _diagnostics;
     private readonly ISemanticIndexStore _indexStore;
     private readonly IProgressiveSearchSource? _progressiveSearchSource;
+    private readonly IProgressiveSearchDocumentLookup? _searchDocumentLookup;
     private readonly IRelationshipSearchSource? _relationshipSearchSource;
+    private readonly IGraphSearchSource? _graphSearchSource;
     private readonly SemaphoreSlim _queryGate = new(MaximumConcurrentQueries, MaximumConcurrentQueries);
     private readonly ISearchQueryInterpreter _queryInterpreter;
     private readonly ISearchRanker _ranker;
@@ -35,7 +38,9 @@ public sealed class SemanticSearchService : ISemanticSearchService
         ISearchRanker? ranker = null,
         ISearchSnippetFactory? snippetFactory = null,
         IDiagnosticsEventSink? diagnostics = null,
-        IRelationshipSearchSource? relationshipSearchSource = null)
+        IRelationshipSearchSource? relationshipSearchSource = null,
+        IGraphSearchSource? graphSearchSource = null,
+        IProgressiveSearchDocumentLookup? searchDocumentLookup = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         ArgumentNullException.ThrowIfNull(embeddingProvider);
@@ -46,6 +51,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
         _ranker = ranker ?? new HybridSearchRanker(embeddingProvider, snippets);
         _diagnostics = DiagnosticsIsolation.Protect(diagnostics);
         _relationshipSearchSource = relationshipSearchSource;
+        _graphSearchSource = graphSearchSource;
+        _searchDocumentLookup = searchDocumentLookup ?? progressiveSearchSource as IProgressiveSearchDocumentLookup;
     }
 
     /// <inheritdoc />
@@ -126,6 +133,9 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     settings.MaximumDocumentCount);
                 if (candidates.Count == 0)
                 {
+                    var emptyGraph = request.IncludeGraphContext && _graphSearchSource is not null
+                        ? await LoadGraphExpansionsSafelyAsync([], cancellationToken).ConfigureAwait(false)
+                        : null;
                     var emptyMessage = CoverageMessage(coverage, hasResults: false);
                     CompleteDiagnostics(
                         session,
@@ -134,13 +144,15 @@ public sealed class SemanticSearchService : ISemanticSearchService
                         0,
                         interpretation,
                         coverage,
-                        "No bounded local candidate was available.");
+                        "No bounded local candidate was available.",
+                        emptyGraph?.Coverage);
                     return Result(
                         SemanticState.Empty,
                         emptyMessage,
                         [],
                         interpretation,
-                        coverage);
+                        coverage,
+                        emptyGraph?.Coverage);
                 }
 
                 var ranked = _ranker.Rank(
@@ -148,39 +160,93 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     candidates,
                     settings.MaximumResultCount,
                     cancellationToken);
-                if (request.IncludeRelationshipContext && _relationshipSearchSource is not null)
+                GraphProjectionCoverage? graphCoverage = null;
+                if ((request.IncludeRelationshipContext && _relationshipSearchSource is not null) ||
+                    (request.IncludeGraphContext && _graphSearchSource is not null))
                 {
                     var seedIds = ranked
                         .Select(item => item.Document.FileId)
                         .Where(id => !string.IsNullOrWhiteSpace(id))
                         .Cast<string>()
                         .Distinct(StringComparer.Ordinal)
-                        .Take(16)
+                        .Take(GraphLimits.MaximumSearchSeeds)
                         .ToArray();
-                    var expansions = await LoadRelationshipExpansionsSafelyAsync(seedIds, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (expansions.Count > 0)
+
+                    var relationshipExpansions = request.IncludeRelationshipContext
+                        ? await LoadRelationshipExpansionsSafelyAsync(seedIds, cancellationToken).ConfigureAwait(false)
+                        : [];
+                    var graphResult = request.IncludeGraphContext
+                        ? await LoadGraphExpansionsSafelyAsync(seedIds, cancellationToken).ConfigureAwait(false)
+                        : null;
+                    graphCoverage = graphResult?.Coverage;
+
+                    var seedSet = seedIds.ToHashSet(StringComparer.Ordinal);
+                    var relationshipContexts = relationshipExpansions
+                        .Where(item => !seedSet.Contains(item.RelatedFileId))
+                        .GroupBy(item => item.RelatedFileId, StringComparer.Ordinal)
+                        .OrderBy(group => group.Key, StringComparer.Ordinal)
+                        .Take(GraphLimits.MaximumContextualSearchExpansions)
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group
+                                .OrderByDescending(item => item.Confidence)
+                                .ThenBy(item => item.Type)
+                                .ThenBy(item => item.SeedFileId, StringComparer.Ordinal)
+                                .Select(item => new SearchRelationshipContext(
+                                    item.SeedFileId,
+                                    item.Type,
+                                    item.Confidence,
+                                    item.Explanation,
+                                    item.CollectionTitle))
+                                .First(),
+                            StringComparer.Ordinal);
+                    var graphLimit = Math.Min(
+                        GraphLimits.MaximumGraphSearchExpansions,
+                        GraphLimits.MaximumContextualSearchExpansions - relationshipContexts.Count);
+                    var graphContexts = (graphResult?.IsAvailable == true
+                            ? graphResult.Expansions
+                            : [])
+                        .Where(item =>
+                            item.Freshness == GraphFreshnessState.Current &&
+                            !seedSet.Contains(item.RelatedFileId) &&
+                            !relationshipContexts.ContainsKey(item.RelatedFileId) &&
+                            !string.IsNullOrWhiteSpace(item.EdgeId) &&
+                            !string.IsNullOrWhiteSpace(item.Explanation))
+                        .GroupBy(item => item.RelatedFileId, StringComparer.Ordinal)
+                        .OrderBy(group => group.Key, StringComparer.Ordinal)
+                        .Take(graphLimit)
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group
+                                .OrderByDescending(item => item.Confidence)
+                                .ThenBy(item => item.EdgeKind.Value, StringComparer.Ordinal)
+                                .ThenBy(item => item.SeedFileId, StringComparer.Ordinal)
+                                .Select(item => new SearchGraphContext(
+                                    item.SeedFileId,
+                                    item.EdgeId,
+                                    item.EdgeKind,
+                                    item.Confidence,
+                                    item.Explanation,
+                                    item.ProjectionRevision,
+                                    item.Freshness))
+                                .First(),
+                            StringComparer.Ordinal);
+
+                    if (relationshipContexts.Count > 0 || graphContexts.Count > 0)
                     {
-                        var contextByFile = expansions
-                            .GroupBy(item => item.RelatedFileId, StringComparer.Ordinal)
-                            .ToDictionary(
-                                group => group.Key,
-                                group => group
-                                    .OrderByDescending(item => item.Confidence)
-                                    .ThenBy(item => item.Type)
-                                    .ThenBy(item => item.SeedFileId, StringComparer.Ordinal)
-                                    .Select(item => new SearchRelationshipContext(
-                                        item.SeedFileId,
-                                        item.Type,
-                                        item.Confidence,
-                                        item.Explanation,
-                                        item.CollectionTitle))
-                                    .First(),
-                                StringComparer.Ordinal);
+                        candidates = await AddContextTargetsAsync(
+                                candidates,
+                                relationshipContexts.Keys.Concat(graphContexts.Keys),
+                                cancellationToken)
+                            .ConfigureAwait(false);
                         var contextualCandidates = candidates
-                            .Select(candidate => candidate.FileId is not null && contextByFile.TryGetValue(candidate.FileId, out var context)
-                                ? candidate with { RelationshipContext = context }
-                                : candidate)
+                            .Select(candidate => candidate.FileId is not null &&
+                                relationshipContexts.TryGetValue(candidate.FileId, out var relationshipContext)
+                                    ? candidate with { RelationshipContext = relationshipContext, GraphContext = null }
+                                    : candidate.FileId is not null &&
+                                      graphContexts.TryGetValue(candidate.FileId, out var graphContext)
+                                        ? candidate with { GraphContext = graphContext }
+                                        : candidate)
                             .ToArray();
                         ranked = _ranker.Rank(
                             interpretation,
@@ -198,13 +264,15 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     hits.Length,
                     interpretation,
                     coverage,
-                    "Bounded local ranking completed.");
+                    "Bounded local ranking completed.",
+                    graphCoverage);
                 return Result(
                     hits.Length == 0 ? SemanticState.Empty : SemanticState.Ready,
                     message,
                     Array.AsReadOnly(hits),
                     interpretation,
-                    coverage);
+                    coverage,
+                    graphCoverage);
             }
             finally
             {
@@ -350,6 +418,132 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 "Relationship context was unavailable; exact and ordinary local Search continued.",
                 [new DiagnosticField("Failure category", exception.GetType().Name)]);
             return [];
+        }
+    }
+
+    private async Task<GraphSearchResult?> LoadGraphExpansionsSafelyAsync(
+        IReadOnlyList<string> seedFileIds,
+        CancellationToken cancellationToken)
+    {
+        if (_graphSearchSource is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var result = await _graphSearchSource
+                .ExpandAsync(
+                    new GraphSearchRequest(
+                        seedFileIds.Take(GraphLimits.MaximumSearchSeeds).ToArray(),
+                        GraphLimits.MaximumGraphSearchExpansions),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (result is null || result.Coverage is null || result.Expansions is null)
+            {
+                throw new InvalidDataException("The graph Search provider returned an incomplete result contract.");
+            }
+
+            var bounded = result.Expansions
+                .Take(GraphLimits.MaximumGraphSearchExpansions)
+                .ToArray();
+            return result with { Expansions = Array.AsReadOnly(bounded) };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _diagnostics?.Publish(
+                null,
+                "Knowledge Graph Search fallback",
+                DiagnosticStatus.PartiallySucceeded,
+                DiagnosticSeverity.Warning,
+                DiagnosticSection.Performance,
+                "Knowledge Graph context was unavailable; exact, ordinary, and direct relationship Search continued.",
+                [new DiagnosticField("Failure category", exception.GetType().Name)]);
+            const string message = "Knowledge Graph context is temporarily unavailable. Ordinary Search remains available.";
+            return new GraphSearchResult(
+                [],
+                new GraphProjectionCoverage(
+                    true,
+                    false,
+                    false,
+                    false,
+                    0,
+                    0,
+                    0,
+                    0,
+                    null,
+                    0,
+                    message),
+                false,
+                message);
+        }
+    }
+
+    private async Task<IReadOnlyList<SearchCandidateDocument>> AddContextTargetsAsync(
+        IReadOnlyList<SearchCandidateDocument> candidates,
+        IEnumerable<string> targetFileIds,
+        CancellationToken cancellationToken)
+    {
+        if (_searchDocumentLookup is null)
+        {
+            return candidates;
+        }
+
+        var existingIds = candidates
+            .Select(candidate => candidate.FileId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToHashSet(StringComparer.Ordinal);
+        var requested = targetFileIds
+            .Where(id => !string.IsNullOrWhiteSpace(id) && !existingIds.Contains(id))
+            .Distinct(StringComparer.Ordinal)
+            .Take(GraphLimits.MaximumContextualSearchExpansions)
+            .ToArray();
+        if (requested.Length == 0)
+        {
+            return candidates;
+        }
+
+        try
+        {
+            var requestedSet = requested.ToHashSet(StringComparer.Ordinal);
+            var resolved = await _searchDocumentLookup
+                .GetDocumentsByIdsAsync(requested, cancellationToken)
+                .ConfigureAwait(false);
+            var additions = resolved
+                .Where(document =>
+                    !document.IsExcluded &&
+                    requestedSet.Contains(document.FileId) &&
+                    !existingIds.Contains(document.FileId))
+                .GroupBy(document => document.FileId, StringComparer.Ordinal)
+                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .Select(group => FromProgressive(group.First()))
+                .ToArray();
+            return Array.AsReadOnly(
+                candidates
+                    .Concat(additions)
+                    .OrderBy(candidate => candidate.FullPath, PathComparer)
+                    .ToArray());
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _diagnostics?.Publish(
+                null,
+                "Context target lookup fallback",
+                DiagnosticStatus.PartiallySucceeded,
+                DiagnosticSeverity.Warning,
+                DiagnosticSection.Performance,
+                "Context target details were unavailable; already-loaded Search results continued.",
+                [new DiagnosticField("Failure category", exception.GetType().Name)]);
+            return candidates;
         }
     }
 
@@ -558,22 +752,38 @@ public sealed class SemanticSearchService : ISemanticSearchService
         int resultCount,
         SearchInterpretation interpretation,
         SearchCoverage coverage,
-        string summary)
+        string summary,
+        GraphProjectionCoverage? graphCoverage = null)
     {
+        var fields = new List<DiagnosticField>
+        {
+            new("Result count", resultCount.ToString(CultureInfo.InvariantCulture)),
+            new("Ranking stages", "filters, literal tiers, bounded typo matching, optional relationship context, optional Knowledge Graph context, related concepts, stable tie-breakers"),
+            new("Filter count", interpretation.Filters.Count.ToString(CultureInfo.InvariantCulture)),
+            new("Known file coverage", coverage.KnownFileCount.ToString(CultureInfo.InvariantCulture)),
+            new("Fully indexed coverage", coverage.FullyIndexedCount.ToString(CultureInfo.InvariantCulture)),
+            new("Index available", coverage.IsAvailable.ToString(CultureInfo.InvariantCulture)),
+        };
+        if (graphCoverage is not null)
+        {
+            fields.Add(new DiagnosticField(
+                "Graph available",
+                graphCoverage.IsAvailable.ToString(CultureInfo.InvariantCulture)));
+            fields.Add(new DiagnosticField(
+                "Graph projection revision",
+                graphCoverage.ProjectionRevision.ToString(CultureInfo.InvariantCulture)));
+            fields.Add(new DiagnosticField(
+                "Graph projected observations",
+                graphCoverage.ProjectedObservationCount.ToString(CultureInfo.InvariantCulture)));
+        }
+
         _diagnostics?.Complete(
             session,
             status,
             Stopwatch.GetElapsedTime(started),
             summary,
             status == DiagnosticStatus.Failed ? DiagnosticSeverity.Error : DiagnosticSeverity.Information,
-            [
-                new DiagnosticField("Result count", resultCount.ToString(CultureInfo.InvariantCulture)),
-                new DiagnosticField("Ranking stages", "filters, literal tiers, bounded typo matching, optional relationship context, related concepts, stable tie-breakers"),
-                new DiagnosticField("Filter count", interpretation.Filters.Count.ToString(CultureInfo.InvariantCulture)),
-                new DiagnosticField("Known file coverage", coverage.KnownFileCount.ToString(CultureInfo.InvariantCulture)),
-                new DiagnosticField("Fully indexed coverage", coverage.FullyIndexedCount.ToString(CultureInfo.InvariantCulture)),
-                new DiagnosticField("Index available", coverage.IsAvailable.ToString(CultureInfo.InvariantCulture)),
-            ]);
+            fields);
     }
 
     private static SearchExecutionResult Result(
@@ -581,7 +791,12 @@ public sealed class SemanticSearchService : ISemanticSearchService
         string message,
         IReadOnlyList<SemanticSearchHit> hits,
         SearchInterpretation interpretation,
-        SearchCoverage coverage) => new(state, message, hits, interpretation, coverage);
+        SearchCoverage coverage,
+        GraphProjectionCoverage? graphCoverage = null) =>
+        new SearchExecutionResult(state, message, hits, interpretation, coverage)
+        {
+            GraphCoverage = graphCoverage,
+        };
 
     private static SearchInterpretation EmptyInterpretation(string? query) => new(
         query ?? string.Empty,

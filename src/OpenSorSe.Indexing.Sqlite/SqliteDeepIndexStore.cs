@@ -1428,6 +1428,143 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<ProgressiveSearchDocument>> GetSearchDocumentsByIdsAsync(
+        IReadOnlyList<string> fileIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fileIds);
+        var boundedIds = fileIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Take(RelationshipLimits.MaximumSearchExpansions + 1)
+            .ToArray();
+        if (boundedIds.Length > RelationshipLimits.MaximumSearchExpansions)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(fileIds),
+                $"At most {RelationshipLimits.MaximumSearchExpansions} exact Search document identifiers may be requested.");
+        }
+
+        if (boundedIds.Any(id => id.Length > 256 || id.IndexOf('\0') >= 0))
+        {
+            throw new ArgumentException("Search document identifiers must be bounded valid text.", nameof(fileIds));
+        }
+
+        if (boundedIds.Length == 0)
+        {
+            return Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
+        }
+
+        return RunExclusiveAsync<IReadOnlyList<ProgressiveSearchDocument>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                var parameters = new string[boundedIds.Length];
+                for (var index = 0; index < boundedIds.Length; index++)
+                {
+                    parameters[index] = $"$file{index}";
+                    command.Parameters.AddWithValue(parameters[index], boundedIds[index]);
+                }
+
+                command.CommandText =
+                    $$"""
+                    SELECT f.id, f.full_path, f.relative_path, f.length, f.modified_utc_ticks,
+                           f.fully_indexed, c.extracted_text, c.ocr_text, c.summary,
+                           c.keywords_json, c.semantic_json,
+                           s.id, s.display_name, s.priority, f.creation_utc_ticks,
+                           f.indexing_level,
+                           EXISTS(SELECT 1 FROM index_failures x WHERE x.file_id = f.id),
+                           f.content_hash,
+                           COALESCE(p.suppress_ocr, 0),
+                           COALESCE(p.suppress_summary, 0),
+                           COALESCE(p.suppress_semantic, 0)
+                    FROM index_files f
+                    JOIN index_sources s ON s.id = f.source_id
+                    LEFT JOIN index_content c ON c.content_hash = f.content_hash
+                    LEFT JOIN index_privacy_rules p
+                      ON p.source_id = f.source_id
+                     AND p.relative_path_key = f.relative_path_key
+                    WHERE f.deleted_utc_ticks IS NULL
+                      AND COALESCE(p.is_excluded, 0) = 0
+                      AND f.id IN ({{string.Join(", ", parameters)}})
+                    ORDER BY f.id;
+                    """;
+                using var reader = command.ExecuteReader();
+                var documents = new List<ProgressiveSearchDocument>(boundedIds.Length);
+                var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
+                while (reader.Read())
+                {
+                    var fullPath = reader.GetString(1);
+                    var extension = Path.GetExtension(fullPath).ToLowerInvariant();
+                    var suppressOcr = reader.GetBoolean(18);
+                    var suppressSummary = reader.GetBoolean(19);
+                    var suppressSemantic = reader.GetBoolean(20);
+                    var indexingLevel = (IndexingLevel)reader.GetInt32(15);
+                    var keywordsValid = true;
+                    var keywords = reader.IsDBNull(9)
+                        ? []
+                        : TryDeserializeStrings(reader.GetString(9), out keywordsValid);
+                    var semanticValid = true;
+                    var semantic = suppressSemantic || reader.IsDBNull(10)
+                        ? null
+                        : TryDeserializeFloats(reader.GetString(10), out semanticValid);
+                    documents.Add(new ProgressiveSearchDocument
+                    {
+                        FileId = reader.GetString(0),
+                        FullPath = fullPath,
+                        FileName = Path.GetFileName(fullPath),
+                        RelativePath = reader.GetString(2),
+                        FolderName = Path.GetFileName(Path.GetDirectoryName(fullPath)) ?? string.Empty,
+                        Extension = extension,
+                        FileType = SearchFileTypeClassifier.Classify(extension),
+                        SourceId = reader.GetString(11),
+                        SourceName = reader.GetString(12),
+                        SourcePriority = reader.GetInt32(13),
+                        Length = reader.GetInt64(3),
+                        CreationTimeUtc = new DateTimeOffset(reader.GetInt64(14), TimeSpan.Zero),
+                        ModifiedTimeUtc = new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero),
+                        IndexingLevel = indexingLevel,
+                        MetadataText = string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"{Path.GetExtension(fullPath)} {reader.GetInt64(3)} {new DateTimeOffset(reader.GetInt64(4), TimeSpan.Zero):O} {reader.GetString(2)}"),
+                        IsFullyIndexed = reader.GetBoolean(5),
+                        ExtractedText = indexingLevel == IndexingLevel.Basic || reader.IsDBNull(6)
+                            ? null
+                            : reader.GetString(6),
+                        OcrText = indexingLevel == IndexingLevel.Basic || suppressOcr || reader.IsDBNull(7)
+                            ? null
+                            : reader.GetString(7),
+                        Summary = indexingLevel == IndexingLevel.Basic || suppressSummary || reader.IsDBNull(8)
+                            ? null
+                            : reader.GetString(8),
+                        Keywords = indexingLevel == IndexingLevel.Basic || suppressSummary ? [] : keywords,
+                        SemanticRepresentation = indexingLevel == IndexingLevel.Basic ? null : semantic,
+                        HasIndexingFailure = reader.GetBoolean(16) || !keywordsValid || !semanticValid,
+                    });
+                    if (indexingLevel != IndexingLevel.Basic &&
+                        !suppressSemantic &&
+                        !reader.IsDBNull(17))
+                    {
+                        hashes[reader.GetString(0)] = reader.GetString(17);
+                    }
+                }
+
+                reader.Close();
+                var chunks = ReadChunks(connection, hashes.Values.Distinct(StringComparer.Ordinal));
+                return documents
+                    .Select(document =>
+                        hashes.TryGetValue(document.FileId, out var hash) &&
+                        chunks.TryGetValue(hash, out var selected)
+                            ? document with { SelectedChunks = selected }
+                            : document)
+                    .ToArray();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<string>> GetExcludedSearchPathsAsync(
         int maximumCount,
         CancellationToken cancellationToken = default)

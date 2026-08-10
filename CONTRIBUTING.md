@@ -90,7 +90,8 @@ dependency in the standalone SDK are not acceptable.
 - Code-behind must not become an alternate service locator or contain
   filesystem, database, AI, plugin, or business logic.
 - ViewModels must not create SQL, calculate Search weights or relationship
-  confidence, call Ollama directly, or perform raw file operations.
+  confidence, project/query Knowledge Graph storage directly, call Ollama
+  directly, or perform raw file operations.
 - New ViewModel behavior should be covered without requiring a live desktop
   where practical. Keyboard, focus, assistive-technology, pointer/touch, and
   visual behavior still require manual validation.
@@ -142,6 +143,11 @@ ownership and confinement.
 - **Relationship signal:** retain the actual bounded evidence and algorithm
   version, preserve user corrections, keep candidate/graph queries bounded,
   and test conservative false-positive and false-negative behavior.
+- **Knowledge Graph behavior:** keep provider-neutral contracts in Application,
+  SQLite mechanics in the provider, schema-3 v1.9 authority unchanged, source/
+  decision/privacy ingestion and applied watermarks distinct, and source files
+  unopened. Preserve hard page/traversal/Search/component bounds and test
+  recovery/fencing before widening a contract.
 
 ## Tests
 
@@ -155,6 +161,9 @@ inputs cross a trust boundary. Relevant cases include:
 - stale identity, occupied destinations, and overwrite prevention;
 - concurrent command/lifecycle races;
 - migration and backward compatibility;
+- completed-manifest count/hash, idempotent projection, stale claim fencing,
+  applied-watermark lag, decision recovery privacy floor, graph bounds, and
+  ordinary Search fallback;
 - exact diagnostics/provenance where it is a safety fact.
 
 Use unique temporary directories and delete only the exact path created by the

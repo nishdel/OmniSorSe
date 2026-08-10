@@ -489,6 +489,21 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsByIdsAsync(
+        IReadOnlyList<string> fileIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fileIds);
+        EnsureInitialized();
+        if (_initializationFailure is not null || fileIds.Count == 0)
+        {
+            return Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
+        }
+
+        return _deepIndexStore.GetSearchDocumentsByIdsAsync(fileIds, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<string>> GetExcludedPathsAsync(
         int maximumCount,
         CancellationToken cancellationToken = default)

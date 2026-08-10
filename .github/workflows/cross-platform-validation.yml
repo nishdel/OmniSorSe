@@ -8,6 +8,7 @@ on:
       - v1.8-search-intelligence-privacy
       - v1.9-relationships-context
       - v2.0-knowledge-graph-design
+      - v2.0-knowledge-graph
   pull_request:
 
 permissions:

@@ -57,6 +57,7 @@ public sealed class DesktopBrandingAndLayoutTests
             ["NotificationCenterView.axaml"] = 2,
             ["SemanticSearchView.axaml"] = 10,
             ["CollectionsView.axaml"] = 12,
+            ["KnowledgeGraphView.axaml"] = 30,
         };
         var viewsDirectory = Path.Combine(
             FindRepositoryRoot(),
@@ -91,6 +92,7 @@ public sealed class DesktopBrandingAndLayoutTests
                      "NotificationCenterView.axaml",
                      "SemanticSearchView.axaml",
                      "CollectionsView.axaml",
+                     "KnowledgeGraphView.axaml",
                  })
         {
             var source = File.ReadAllText(Path.Combine(viewsDirectory, fileName));
@@ -151,6 +153,10 @@ public sealed class DesktopBrandingAndLayoutTests
             StringComparison.Ordinal);
         Assert.NotNull(help.Attribute("Command"));
         Assert.Contains("Text=\"Search\"", source, StringComparison.Ordinal);
+        Assert.Contains("Include Knowledge Graph context in Search", source, StringComparison.Ordinal);
+        Assert.Contains("IsChecked=\"{Binding IncludeGraphContext, Mode=TwoWay}\"", source, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding GraphCoverageText}\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Meaning Search", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("embedding", source, StringComparison.OrdinalIgnoreCase);
     }

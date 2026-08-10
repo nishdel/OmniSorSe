@@ -56,9 +56,9 @@ OpenSorSe aims to:
 
 ## Current behavior
 
-The current source line is OpenSorSe 1.9 on
-`v1.9-relationships-context`. It is not merged into `main`, and its
-interactive manual checklist remains open. Exact readiness belongs in
+The current source line is the OpenSorSe v2.0 implementation candidate on
+`v2.0-knowledge-graph`. It is not merged into `main`; final automated evidence,
+RC stabilization, and interactive validation remain open. Exact readiness belongs in
 [Release Status](docs/RELEASE_STATUS.md), not in this vision.
 
 Today, the source implements:
@@ -76,6 +76,9 @@ Today, the source implements:
 - deterministic evidence-backed file relationships, virtual Smart Collections
   and timelines, persistent user corrections, relationship-aware Search, and
   index-only relationship privacy/repair controls;
+- an optional, disabled-by-default, conservative Knowledge Graph projection of
+  stable files, sources, folders, Collections, exact-content document sets, and
+  manual entities, with bounded browsing and Search context;
 - provider-neutral durable indexing contracts with an embedded SQLite
   implementation;
 - local Workflow Profiles, constrained Sorting Recipes, and a bounded
@@ -89,16 +92,18 @@ Today, the source implements:
   conflict-aware Undo.
 
 Current source does **not** implement cloud synchronization, collaboration,
-OpenSorSe Server, a knowledge graph, a conversational assistant, unrestricted
-media understanding, autonomous organization, permanent deletion, or a
-published v1.9 package.
+OpenSorSe Server, an unrestricted or remote knowledge graph, a conversational
+assistant, unrestricted media understanding, autonomous organization,
+permanent deletion, or a published v2.0 package.
 
 ## Future vision
 
 The long-term direction is a trustworthy personal and shared knowledge layer
 over user-controlled files. Possible future capabilities beyond the current
-bounded relationships and collections include knowledge graphs, adaptive assistance, richer media analysis,
-conversation, NAS/cloud providers, a server deployment, and collaboration.
+bounded relationships, collections, and the local conservative graph candidate
+include adaptive assistance, richer media analysis, richer confirmed entities,
+remote/cross-device graphs, conversation, NAS/cloud providers, a server
+deployment, and collaboration.
 
 Those are concepts, not current capabilities or delivery commitments. They
 must earn their place through explicit scope, privacy, migration, security,

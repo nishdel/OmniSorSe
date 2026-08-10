@@ -313,6 +313,13 @@ public sealed class HybridSearchRanker : ISearchRanker
                 components.Add(component);
                 literalScore += 35 + component.Contribution * 5;
             }
+            else if (rankClass == 0 && candidate.GraphContext is { } graphContext)
+            {
+                rankClass = 1;
+                var component = graphContext.ToRankingComponent();
+                components.Add(component);
+                literalScore += 25 + component.Contribution * 5;
+            }
 
             var semanticSimilarity = Cosine(queryVector, candidate.SemanticRepresentation);
             if (semanticSimilarity >= MinimumSemanticSimilarity)

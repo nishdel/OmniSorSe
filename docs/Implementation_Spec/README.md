@@ -30,7 +30,7 @@ are not the roadmap or current release-readiness authority. Use
 | v1.7 Deep Indexing Foundation | Source implementation complete; exact final validation tracked in the v1.7 report | [Specification 059](v1.7/059_Deep_Indexing_Foundation.md), [deep-indexing architecture](../Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md), [implementation report](../V1.7_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.7.md) |
 | v1.8 Search Intelligence, Quality and Privacy | Source implementation complete; final automated validation and interactive manual verification tracked separately | [Specification 060](v1.8/060_Search_Intelligence_Quality_and_Privacy.md), [Search architecture](../Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md), [implementation report](../V1.8_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.8.md) |
 | v1.9 Relationships, Context & Smart Collections | Source implementation complete; final automated validation and interactive manual verification tracked separately | [Specification 061](v1.9/061_Relationships_Context_and_Smart_Collections.md), [relationship architecture](../Architecture/06_Search/10_v1.9_Relationships_Context.md), [implementation report](../V1.9_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.9.md) |
-| v2.0 Knowledge Graph | Stability-first design package only; no runtime implementation or release claim | [Design proposal](v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md), [specification 062](v2.0/062_Knowledge_Graph_Stability_Design.md), [architecture](../Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md), [release-readiness checklist](../RELEASE_READINESS_v2.0.md), and [unchecked manual checklist](../MANUAL_TESTING_v2.0.md) |
+| v2.0 Knowledge Graph | Source implementation candidate; clean local automated validation complete; exact-tip hosted, RC, and interactive validation pending | [Design proposal](v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md), [specification 062](v2.0/062_Knowledge_Graph_Stability_Design.md), [architecture](../Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md), [implementation report](../V2.0_IMPLEMENTATION_REPORT.md), [release-readiness checklist](../RELEASE_READINESS_v2.0.md), and [unchecked manual checklist](../MANUAL_TESTING_v2.0.md) |
 
 ## Current boundary
 
@@ -43,12 +43,11 @@ policy and recipes create proposals; neither grants approval. No specification
 authorizes autonomous AI filesystem control, permanent deletion, plugin direct
 mutation, cloud indexing, or unreviewed execution.
 
-The newest implemented source milestone is `v1.9`, **Relationships, Context &
-Smart Collections**, on `v1.9-relationships-context`. It remains
-unmerged from `main`, and interactive manual validation is not complete.
-
-The `v2.0-knowledge-graph-design` branch adds specification 062 and a stability
-design package only. It deliberately does not change application version,
-runtime source, or persistence schemas.
+The newest source milestone is the unmerged v2.0 Knowledge Graph
+implementation candidate on `v2.0-knowledge-graph`, created directly from the
+exact validated design tip. It adds isolated schema-1 graph and graph-native
+decision sidecars while leaving `deep-index.db` at schema 3. Clean local
+automated validation is complete; exact-tip hosted, RC stabilization, and
+interactive validation remain incomplete.
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.

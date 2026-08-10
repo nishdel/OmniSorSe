@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.DependencyInjection;
 using OpenSorSe.Core.Lifecycle;
 using OpenSorSe.Desktop.ViewModels;
@@ -16,6 +17,7 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
@@ -28,6 +30,7 @@ using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor;
 using OpenSorSe.Indexing.Sqlite;
+using OpenSorSe.Indexing.Sqlite.KnowledgeGraph;
 
 namespace OpenSorSe.Desktop;
 
@@ -45,6 +48,8 @@ public partial class App : Avalonia.Application
 {
     private ServiceProvider? _serviceProvider;
     private IApplicationHost? _applicationHost;
+    private CancellationTokenSource? _graphStartupCancellation;
+    private Task? _graphStartupTask;
 
     /// <summary>
     /// Loads the application's XAML resources.
@@ -91,6 +96,7 @@ public partial class App : Avalonia.Application
             var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
             desktop.MainWindow = new MainWindow(mainViewModel);
             desktop.Exit += OnDesktopExit;
+            StartKnowledgeGraphInBackground(_serviceProvider);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -181,6 +187,52 @@ public partial class App : Avalonia.Application
             serviceProvider.GetRequiredService<BackgroundIndexingService>());
         services.AddSingleton<IProgressiveSearchSource>(serviceProvider =>
             serviceProvider.GetRequiredService<IBackgroundIndexingService>());
+        services.AddSingleton<IProgressiveSearchDocumentLookup>(serviceProvider =>
+            serviceProvider.GetRequiredService<IBackgroundIndexingService>());
+        services.AddSingleton<SqliteGraphProjectionSource>(serviceProvider =>
+            new SqliteGraphProjectionSource(
+                Path.Combine(paths.DataDirectory, "index", "deep-index.db"),
+                serviceProvider.GetRequiredService<IPathSemantics>()));
+        services.AddSingleton<IGraphProjectionSource>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteGraphProjectionSource>());
+        services.AddSingleton<SqliteGraphStorageLifecycle>(_ =>
+            new SqliteGraphStorageLifecycle(Path.Combine(paths.DataDirectory, "index")));
+        services.AddSingleton<IGraphStorageLifecycle>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteGraphStorageLifecycle>());
+        services.AddSingleton<IGraphDerivedStoreRecoveryProvider>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteGraphStorageLifecycle>());
+        services.AddSingleton<SqliteGraphStore>(serviceProvider =>
+            new SqliteGraphStore(
+                serviceProvider.GetRequiredService<SqliteGraphStorageLifecycle>().GraphDatabasePath));
+        services.AddSingleton<IGraphStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteGraphStore>());
+        services.AddSingleton<SqliteGraphDecisionStore>(serviceProvider =>
+            new SqliteGraphDecisionStore(
+                serviceProvider.GetRequiredService<SqliteGraphStorageLifecycle>().DecisionDatabasePath));
+        services.AddSingleton<IGraphDecisionStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteGraphDecisionStore>());
+        services.AddSingleton<IGraphIdentityResolver, ConservativeGraphIdentityResolver>();
+        services.AddSingleton<IGraphStateValidator, GraphStateValidator>();
+        services.AddSingleton<IGraphProjectionBuilder, DeterministicGraphProjectionBuilder>();
+        services.AddSingleton<IGraphDecisionProjectionBuilder, DeterministicGraphDecisionProjectionBuilder>();
+        services.AddSingleton<IGraphResourceAdmissionPolicy, GraphResourceAdmissionPolicy>();
+        services.AddSingleton<GraphProjectionCoordinator>();
+        services.AddSingleton<IGraphProjectionCoordinator>(serviceProvider =>
+            serviceProvider.GetRequiredService<GraphProjectionCoordinator>());
+        services.AddSingleton<GraphBackgroundRuntime>();
+        services.AddSingleton<IGraphBackgroundRuntime>(serviceProvider =>
+            serviceProvider.GetRequiredService<GraphBackgroundRuntime>());
+        services.AddSingleton<IGraphReconciliationSignal>(serviceProvider =>
+            serviceProvider.GetRequiredService<GraphBackgroundRuntime>());
+        services.AddSingleton<IGraphQueryService, GraphQueryService>();
+        services.AddSingleton<IGraphSearchSource, GraphSearchSource>();
+        services.AddSingleton<IGraphPrivacyService, GraphPrivacyService>();
+        services.AddSingleton<IGraphDecisionRecoveryService, GraphDecisionRecoveryService>();
+        services.AddSingleton<IGraphDerivedStoreRecoveryService, GraphDerivedStoreRecoveryService>();
+        services.AddSingleton<IGraphRepairService, GraphRepairService>();
+        services.AddSingleton<IGraphDiagnosticsService, GraphDiagnosticsService>();
+        services.AddSingleton<IGraphLegacyAuthorityBridge, RelationshipGraphAuthorityBridge>();
+        services.AddSingleton<IGraphDecisionService, GraphDecisionService>();
         services.AddSingleton<ISemanticIndexStore>(serviceProvider =>
         {
             return new JsonSemanticIndexStore(
@@ -324,6 +376,7 @@ public partial class App : Avalonia.Application
                 serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
         });
         services.AddSingleton<IAiSuggestionService, AiSuggestionService>();
+        services.AddSingleton<KnowledgeGraphViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
         return services.BuildServiceProvider(new ServiceProviderOptions
@@ -335,11 +388,96 @@ public partial class App : Avalonia.Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
-        _serviceProvider?.GetService<IWatchedFolderCoordinator>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _serviceProvider?.GetService<IBackgroundIndexingService>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _serviceProvider?.GetService<IPluginManager>()?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        var graphStopped = StopKnowledgeGraphSafely();
         _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll();
         _applicationHost?.ShutdownAsync().GetAwaiter().GetResult();
-        _serviceProvider?.Dispose();
+        if (graphStopped)
+        {
+            _serviceProvider?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        else
+        {
+            _serviceProvider?.GetService<OpenSorSe.Core.Logging.ILoggingService>()?
+                .CreateLogger(nameof(App))
+                .LogWarning(
+                    "Knowledge Graph initialization did not acknowledge bounded shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
+        }
+
+        _serviceProvider = null;
+    }
+
+    private void StartKnowledgeGraphInBackground(ServiceProvider serviceProvider)
+    {
+        _graphStartupCancellation = new CancellationTokenSource();
+        _graphStartupTask = Task.Run(
+            () => StartKnowledgeGraphSafelyAsync(serviceProvider, _graphStartupCancellation.Token),
+            CancellationToken.None);
+    }
+
+    private bool StopKnowledgeGraphSafely()
+    {
+        _graphStartupCancellation?.Cancel();
+        try
+        {
+            _graphStartupTask?
+                .WaitAsync(GraphLimits.ShutdownGracePeriod)
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+
+        _graphStartupCancellation?.Dispose();
+        _graphStartupCancellation = null;
+        _graphStartupTask = null;
+
+        if (_serviceProvider?.GetService<IGraphBackgroundRuntime>() is not { } graphRuntime)
+        {
+            return true;
+        }
+
+        using var shutdown = new CancellationTokenSource(GraphLimits.ShutdownGracePeriod);
+        try
+        {
+            graphRuntime.StopAsync(GraphLimits.ShutdownGracePeriod, shutdown.Token)
+                .GetAwaiter()
+                .GetResult();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _serviceProvider.GetService<OpenSorSe.Core.Logging.ILoggingService>()?
+                .CreateLogger(nameof(App))
+                .LogError(
+                    "Knowledge Graph shutdown was fenced in category {FailureCategory}; durable claims recover on the next startup.",
+                    exception.GetType().Name);
+            return exception is not OperationCanceledException;
+        }
+    }
+
+    private static async Task StartKnowledgeGraphSafelyAsync(
+        ServiceProvider serviceProvider,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await serviceProvider.GetRequiredService<IGraphBackgroundRuntime>()
+                .StartAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Application shutdown cancelled optional graph initialization before it became active.
+        }
+        catch (Exception exception)
+        {
+            serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>()
+                .CreateLogger(nameof(App))
+                .LogError(
+                    "Optional Knowledge Graph startup failed safely in category {FailureCategory}; existing Search and indexing remain available.",
+                    exception.GetType().Name);
+        }
     }
 }

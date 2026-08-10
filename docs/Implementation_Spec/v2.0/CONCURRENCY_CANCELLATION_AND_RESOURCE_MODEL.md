@@ -1,9 +1,12 @@
 # v2.0 concurrency, cancellation, shutdown, and resource model
 
+**Status:** accepted model implemented by the source candidate where identified
+as stable; final resource, shutdown, platform, and RC measurements pending.
+
 ## Concurrency ownership
 
 Knowledge Graph work is independent of the v1.9 background-indexing critical
-path. The future composition root creates one graph coordinator, but durable
+path. The candidate composition root creates one graph coordinator, but durable
 leases—not that process-local assumption—enforce ownership.
 
 ```mermaid
@@ -245,7 +248,7 @@ Shutdown persists a reason and performs:
 1. stop new observation and claim loops;
 2. request cancellation of active workers;
 3. allow short publication transactions to finish/rollback;
-4. wait up to a proposed five-second drain target and ten-second hard ceiling;
+4. wait for the implemented five-second cooperative shutdown grace;
 5. before returning, stop renewal and atomically revoke the local epoch/claims
    when possible; otherwise self-fence locally so every late publication fails
    its epoch/token compare-and-set and leave expiry facts for startup recovery;
@@ -260,9 +263,10 @@ commit starts it is non-interruptible and must fit the hard ceiling; their bulk
 copy/check work is chunked and cancellable. If a provider cannot meet that
 contract, the lifecycle operation is deferred rather than entered.
 
-The final implementation must measure and validate these proposed values on all
-supported hosts. If a provider cannot honor the hard ceiling, that provider or
-stage is deferred; the UI is not allowed to hang indefinitely.
+Final validation and RC must measure the implemented grace on claimed hosts.
+If a provider cannot honor the bounded shutdown contract, that provider or
+stage is deferred; the UI is not allowed to hang indefinitely. Durable
+epoch/token fencing remains the safety boundary after the grace expires.
 
 ## Resource-bounding strategy
 

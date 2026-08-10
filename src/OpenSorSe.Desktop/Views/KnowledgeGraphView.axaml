@@ -1,0 +1,652 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.KnowledgeGraphView"
+             x:DataType="vm:KnowledgeGraphViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock x:Name="GraphPageHeading"
+                               Classes="page-title"
+                               Text="Knowledge Graph"
+                               Focusable="True"
+                               AutomationProperties.Name="Knowledge Graph page" />
+                    <Button Classes="secondary"
+                            Content="?"
+                            Focusable="True"
+                            AutomationProperties.Name="About Knowledge Graph"
+                            AutomationProperties.HelpText="Knowledge Graph connects indexed items using retained evidence. It is local, optional, bounded, and never changes original files."
+                            ToolTip.Tip="Knowledge Graph connects indexed items using retained evidence. It is local, optional, bounded, and never changes original files."
+                            Command="{Binding HelpCommand}" />
+                </StackPanel>
+                <TextBlock Classes="page-subtitle"
+                           Text="Inspect bounded, evidence-backed connections without changing original files."
+                           TextWrapping="Wrap" />
+            </StackPanel>
+            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                <Button x:Name="GraphRefreshButton"
+                        Margin="0,0,8,0"
+                        Classes="secondary"
+                        Content="Refresh view"
+                        AutomationProperties.Name="Refresh Knowledge Graph view"
+                        AutomationProperties.HelpText="Reload current status and the visible bounded page without starting projection work."
+                        Command="{Binding RefreshCommand}" />
+                <Button Classes="secondary"
+                        Content="Cancel current action"
+                        IsVisible="{Binding IsBusy}"
+                        AutomationProperties.Name="Cancel current Knowledge Graph action"
+                        Command="{Binding CancelCurrentCommand}" />
+            </WrapPanel>
+        </Grid>
+
+        <Border Grid.Row="1" Classes="card">
+            <StackPanel Spacing="8">
+                <TextBlock Text="{Binding Status.AccessibleText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.Name="Knowledge Graph status" />
+                <TextBlock Text="{Binding AnnouncementText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.Name="Knowledge Graph announcements"
+                           AutomationProperties.LiveSetting="Polite" />
+
+                <StackPanel IsVisible="{Binding ShowEnablement}" Spacing="8">
+                    <TextBlock Text="{Binding EnablementText}" TextWrapping="Wrap" />
+                    <TextBlock Text="The graph stores rebuildable connections and a separate record of graph-native choices in OpenSorSe application data. Enabling it never moves, renames, edits, or deletes original files."
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="Knowledge Graph privacy and storage explanation" />
+                    <Button x:Name="GraphEnableButton"
+                            HorizontalAlignment="Left"
+                            Content="Enable Knowledge Graph"
+                            AutomationProperties.Name="Request Knowledge Graph enablement"
+                            Command="{Binding RequestEnableCommand}" />
+                    <Border IsVisible="{Binding IsEnableConfirmationPending}"
+                            Classes="card"
+                            AutomationProperties.Name="Confirm Knowledge Graph enablement">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Enable local Knowledge Graph storage and begin bounded background projection? Existing Search, indexing, Relationships, and Collections remain independent."
+                                       TextWrapping="Wrap" />
+                            <WrapPanel>
+                                <Button Margin="0,0,8,0"
+                                        Content="Enable"
+                                        AutomationProperties.Name="Confirm Knowledge Graph enablement"
+                                        Command="{Binding ConfirmEnableCommand}" />
+                                <Button Classes="secondary"
+                                        Content="Not now"
+                                        AutomationProperties.Name="Cancel Knowledge Graph enablement"
+                                        Command="{Binding CancelEnableCommand}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding ShowGraphWorkspace}" Spacing="8">
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                        <Border Classes="card">
+                            <StackPanel>
+                                <TextBlock Text="Run" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding RunStateText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph run state" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Classes="card">
+                            <StackPanel>
+                                <TextBlock Text="Work" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding JobStateText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph work state" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Classes="card">
+                            <StackPanel>
+                                <TextBlock Text="Freshness" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding FreshnessText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph freshness" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="3" Classes="card">
+                            <StackPanel>
+                                <TextBlock Text="Integrity" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding IntegrityText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph integrity" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <ProgressBar Minimum="0"
+                                 Maximum="1"
+                                 Value="{Binding ProgressValue}"
+                                 IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                 AutomationProperties.Name="Knowledge Graph projection progress"
+                                 AutomationProperties.HelpText="{Binding ProgressText}" />
+                    <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding CurrentStageText}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding CoverageText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="Knowledge Graph projection coverage" />
+                    <TextBlock Text="{Binding StorageText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="Knowledge Graph storage usage" />
+                    <TextBlock Text="{Binding WaitReasonText}"
+                               IsVisible="{Binding HasWaitReason}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="Knowledge Graph wait or limit reason" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="2"
+                    IsVisible="{Binding ShowGraphWorkspace}"
+                    SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}"
+                    AutomationProperties.Name="Knowledge Graph sections">
+            <TabItem Header="Overview">
+                <ScrollViewer Margin="0,10,0,0">
+                    <StackPanel Spacing="12">
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Background projection" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Projection runs independently from Search indexing. Pausing or cancelling it does not disable ordinary Search or existing Relationships and Collections."
+                                           TextWrapping="Wrap" />
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,6"
+                                            Content="Update graph now"
+                                            AutomationProperties.Name="Update Knowledge Graph from current indexed data"
+                                            AutomationProperties.HelpText="Reconcile current indexed data into the durable graph. This action is cancellable and does not change original files."
+                                            Command="{Binding ReconcileCommand}" />
+                                    <Button Margin="0,0,8,6" Content="Pause" Command="{Binding PauseCommand}" />
+                                    <Button Margin="0,0,8,6" Content="Resume" Command="{Binding ResumeCommand}" />
+                                    <Button Margin="0,0,8,6" Classes="secondary" Content="Cancel safely" Command="{Binding RequestCancelProjectionCommand}" />
+                                    <Button Margin="0,0,8,6" Classes="secondary" Content="Retry" Command="{Binding RetryCommand}" />
+                                </WrapPanel>
+                                <Border IsVisible="{Binding IsCancelProjectionConfirmationPending}"
+                                        Classes="card"
+                                        AutomationProperties.Name="Confirm Knowledge Graph cancellation">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Cancel pending graph work? The current valid graph stays available and original files remain unchanged."
+                                                   TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0" Content="Confirm cancel" Command="{Binding ConfirmCancelProjectionCommand}" />
+                                            <Button Classes="secondary" Content="Keep running" Command="{Binding CancelCancelProjectionCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Background resource controls" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding ResourceSettingsText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph background resource policy" />
+                                <Grid ColumnDefinitions="180,*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+                                    <ComboBox ItemsSource="{Binding AvailableResourceModes}"
+                                              SelectedItem="{Binding SelectedResourceMode, Mode=TwoWay}"
+                                              AutomationProperties.Name="Knowledge Graph resource mode" />
+                                    <CheckBox Grid.Column="1"
+                                              Content="Only while idle"
+                                              IsChecked="{Binding ProcessOnlyWhileIdle, Mode=TwoWay}"
+                                              AutomationProperties.Name="Process Knowledge Graph only while idle" />
+                                    <CheckBox Grid.Column="2"
+                                              Content="Only on external power"
+                                              IsChecked="{Binding ProcessOnlyWhileConnectedToPower, Mode=TwoWay}"
+                                              AutomationProperties.Name="Process Knowledge Graph only on external power" />
+                                    <NumericUpDown Grid.Row="1"
+                                                   Minimum="1"
+                                                   Maximum="100"
+                                                   Value="{Binding PauseBelowBatteryPercentage, Mode=TwoWay}"
+                                                   PlaceholderText="Optional battery %"
+                                                   AutomationProperties.Name="Pause Knowledge Graph below battery percentage" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                                   Minimum="0"
+                                                   Maximum="23"
+                                                   Value="{Binding ProcessingWindowStartHour, Mode=TwoWay}"
+                                                   PlaceholderText="Optional start hour"
+                                                   AutomationProperties.Name="Knowledge Graph processing window start hour" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="2"
+                                                   Minimum="0"
+                                                   Maximum="23"
+                                                   Value="{Binding ProcessingWindowEndHour, Mode=TwoWay}"
+                                                   PlaceholderText="Optional end hour"
+                                                   AutomationProperties.Name="Knowledge Graph processing window end hour" />
+                                    <Button Grid.Row="2"
+                                            Grid.ColumnSpan="3"
+                                            HorizontalAlignment="Left"
+                                            Content="Save background controls"
+                                            Command="{Binding SaveResourceSettingsCommand}"
+                                            AutomationProperties.Name="Save Knowledge Graph background resource controls" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Feature state" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Disabling stops graph work and graph-backed queries but retains local graph data and graph-native choices."
+                                           TextWrapping="Wrap" />
+                                <Button HorizontalAlignment="Left"
+                                        Classes="secondary"
+                                        Content="Disable and retain graph data"
+                                        AutomationProperties.Name="Request Knowledge Graph disablement"
+                                        Command="{Binding RequestDisableCommand}" />
+                                <Border IsVisible="{Binding IsDisableConfirmationPending}"
+                                        Classes="card"
+                                        AutomationProperties.Name="Confirm Knowledge Graph disablement">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Disable Knowledge Graph while retaining its application-owned data? Original files remain unchanged."
+                                                   TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0" Content="Disable" Command="{Binding ConfirmDisableCommand}" />
+                                            <Button Classes="secondary" Content="Keep enabled" Command="{Binding CancelDisableCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Items">
+                <Grid Margin="0,10,0,0" RowDefinitions="Auto,*" RowSpacing="10">
+                    <Border Classes="card">
+                        <Grid ColumnDefinitions="*,180,Auto,Auto" ColumnSpacing="8">
+                            <TextBox Text="{Binding FilterText, Mode=TwoWay}"
+                                     PlaceholderText="Filter this bounded graph page"
+                                     AutomationProperties.Name="Knowledge Graph item filter" />
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding AvailableNodeKinds}"
+                                      SelectedItem="{Binding SelectedNodeKind, Mode=TwoWay}"
+                                      AutomationProperties.Name="Knowledge Graph item type filter" />
+                            <CheckBox Grid.Column="2"
+                                      Content="Needs attention"
+                                      IsChecked="{Binding NeedsAttentionOnly, Mode=TwoWay}"
+                                      AutomationProperties.Name="Show graph items needing attention" />
+                            <Button Grid.Column="3"
+                                    Content="Apply"
+                                    AutomationProperties.Name="Apply Knowledge Graph filters"
+                                    Command="{Binding ApplyFiltersCommand}" />
+                        </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" ColumnDefinitions="330,*" ColumnSpacing="12">
+                        <Border Classes="card">
+                            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="8">
+                                <TextBlock Text="Graph items" FontSize="18" FontWeight="SemiBold" />
+                                <ListBox x:Name="GraphNodeList"
+                                         Grid.Row="1"
+                                         ItemsSource="{Binding Nodes}"
+                                         SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                                         AutomationProperties.Name="Paged Knowledge Graph items">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:KnowledgeGraphNodeRow">
+                                            <StackPanel Margin="3" Spacing="2" AutomationProperties.Name="{Binding AccessibleText}">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding KindText}" />
+                                                <TextBlock Text="{Binding SecondaryText}" TextWrapping="Wrap" MaxLines="2" />
+                                                <TextBlock Text="{Binding FreshnessText, StringFormat='Freshness: {0}'}" />
+                                                <TextBlock Text="{Binding IntegrityText, StringFormat='Integrity: {0}'}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Button Classes="secondary" Content="Previous" Command="{Binding PreviousPageCommand}" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding PageText}"
+                                               TextAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.Name="Knowledge Graph page position" />
+                                    <Button Grid.Column="2" Classes="secondary" Content="Next" Command="{Binding NextPageCommand}" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer Grid.Column="1">
+                            <StackPanel Spacing="12">
+                                <Border Classes="card" IsVisible="{Binding HasSelectedNode}">
+                                    <StackPanel Spacing="7">
+                                        <TextBlock Text="{Binding SelectedNode.Title}" FontSize="20" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding SelectedNode.KindText}" />
+                                        <TextBlock Text="{Binding SelectedNode.SecondaryText}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedNode.FreshnessText, StringFormat='Freshness: {0}'}" />
+                                        <TextBlock Text="{Binding SelectedNode.IntegrityText, StringFormat='Integrity: {0}'}" />
+                                        <TextBlock Text="{Binding NodeDetailText}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="card" IsVisible="{Binding HasSelectedNode}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Direct related items" FontSize="18" FontWeight="SemiBold" />
+                                        <TextBlock Text="Only one-hop results from the selected item are shown. Limits are reported rather than hidden."
+                                                   TextWrapping="Wrap" />
+                                        <ListBox x:Name="GraphNeighborList"
+                                                 ItemsSource="{Binding Neighbors}"
+                                                 SelectedItem="{Binding SelectedNeighbor, Mode=TwoWay}"
+                                                 AutomationProperties.Name="Paged direct Knowledge Graph related items">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <VirtualizingStackPanel />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:KnowledgeGraphNeighborRow">
+                                                    <StackPanel Margin="3" Spacing="2" AutomationProperties.Name="{Binding AccessibleText}">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding RelationshipText}" />
+                                                        <TextBlock Text="{Binding EvidenceSummary}" TextWrapping="Wrap" MaxLines="3" />
+                                                        <TextBlock Text="{Binding ConfidenceText, StringFormat='Confidence: {0}'}" />
+                                                        <TextBlock Text="{Binding OriginText, StringFormat='Origin: {0}'}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                            <Button Classes="secondary" Content="Previous related items" Command="{Binding PreviousNeighborPageCommand}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding NeighborPageText}" TextAlignment="Center" />
+                                            <Button Grid.Column="2" Classes="secondary" Content="Next related items" Command="{Binding NextNeighborPageCommand}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="card" IsVisible="{Binding HasSelectedNeighbor}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Evidence" FontSize="18" FontWeight="SemiBold" />
+                                        <ListBox ItemsSource="{Binding Evidence}"
+                                                 AutomationProperties.Name="Bounded Knowledge Graph relationship evidence">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:KnowledgeGraphEvidenceRow">
+                                                    <StackPanel Margin="3" Spacing="2" AutomationProperties.Name="{Binding AccessibleText}">
+                                                        <TextBlock Text="{Binding KindText}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding OriginText, StringFormat='Origin: {0}'}" />
+                                                        <TextBlock Text="{Binding ObservedText}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="card" IsVisible="{Binding HasFacts}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Evidence-backed facts" FontSize="18" FontWeight="SemiBold" />
+                                        <TextBlock Text="These bounded values come from the current indexed record and include retained evidence references; OpenSorSe does not infer missing values."
+                                                   TextWrapping="Wrap" />
+                                        <ListBox ItemsSource="{Binding Facts}"
+                                                 AutomationProperties.Name="Bounded evidence-backed Knowledge Graph facts">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:KnowledgeGraphFactRow">
+                                                    <StackPanel Margin="3" Spacing="2" AutomationProperties.Name="{Binding AccessibleText}">
+                                                        <TextBlock Text="{Binding KindText}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding ValueText}" />
+                                                        <TextBlock Text="{Binding EvidenceText}" />
+                                                        <TextBlock Text="{Binding AlgorithmText, StringFormat='Algorithm: {0}'}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="card" IsVisible="{Binding HasTimeline}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Timeline" FontSize="18" FontWeight="SemiBold" />
+                                        <TextBlock Text="Timeline entries are retained timestamped facts; OpenSorSe does not infer missing events."
+                                                   TextWrapping="Wrap" />
+                                        <ListBox ItemsSource="{Binding Timeline}"
+                                                 AutomationProperties.Name="Bounded Knowledge Graph timeline">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:KnowledgeGraphTimelineRow">
+                                                    <StackPanel Margin="3" Spacing="2" AutomationProperties.Name="{Binding AccessibleText}">
+                                                        <TextBlock Text="{Binding WhenText}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding Title}" />
+                                                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="card">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Manual graph controls" FontSize="18" FontWeight="SemiBold" />
+                                        <TextBlock Text="Manual links and compatible entity corrections change only OpenSorSe-owned graph decisions. Original files remain unchanged."
+                                                   TextWrapping="Wrap" />
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <TextBox Text="{Binding ManualEntityLabel, Mode=TwoWay}"
+                                                     PlaceholderText="Manual entity label"
+                                                     AutomationProperties.Name="Manual Knowledge Graph entity label" />
+                                            <Button Grid.Column="1" Content="Create manual entity" Command="{Binding CreateManualEntityCommand}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasSelectedNode}">
+                                            <TextBox Text="{Binding RenameLabel, Mode=TwoWay}"
+                                                     PlaceholderText="New label"
+                                                     AutomationProperties.Name="New Knowledge Graph entity label" />
+                                            <Button Grid.Column="1" Content="Rename selected" Command="{Binding RenameSelectedCommand}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasSelectedNode}">
+                                            <TextBox Text="{Binding AliasLabel, Mode=TwoWay}"
+                                                     PlaceholderText="New bounded alias"
+                                                     AutomationProperties.Name="New Knowledge Graph entity alias" />
+                                            <Button Grid.Column="1"
+                                                    Content="Add alias"
+                                                    Command="{Binding AddAliasCommand}"
+                                                    AutomationProperties.Name="Add alias to selected Knowledge Graph entity" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasSelectedNode}">
+                                            <ComboBox ItemsSource="{Binding Aliases}"
+                                                      SelectedItem="{Binding SelectedAlias, Mode=TwoWay}"
+                                                      AutomationProperties.Name="Stored aliases for selected Knowledge Graph entity" />
+                                            <Button Grid.Column="1"
+                                                    Classes="secondary"
+                                                    Content="Remove alias"
+                                                    Command="{Binding RemoveAliasCommand}"
+                                                    AutomationProperties.Name="Review removal of selected Knowledge Graph alias" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" IsVisible="{Binding HasSelectedNode}">
+                                            <ComboBox ItemsSource="{Binding Nodes}"
+                                                      SelectedItem="{Binding MergeTarget, Mode=TwoWay}"
+                                                      DisplayMemberBinding="{Binding Title}"
+                                                      AutomationProperties.Name="Knowledge Graph merge target" />
+                                            <Button Grid.Column="1" Content="Merge" Command="{Binding MergeSelectedCommand}" />
+                                            <Button Grid.Column="2" Content="Split" Command="{Binding SplitSelectedCommand}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,180,*,Auto" ColumnSpacing="8" IsVisible="{Binding HasSelectedNode}">
+                                            <ComboBox ItemsSource="{Binding Nodes}"
+                                                      SelectedItem="{Binding LinkTarget, Mode=TwoWay}"
+                                                      DisplayMemberBinding="{Binding Title}"
+                                                      AutomationProperties.Name="Knowledge Graph manual link target" />
+                                            <ComboBox Grid.Column="1"
+                                                      ItemsSource="{Binding AvailableRelationshipTypes}"
+                                                      SelectedItem="{Binding SelectedRelationshipType, Mode=TwoWay}"
+                                                      AutomationProperties.Name="Knowledge Graph manual relationship type" />
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding ManualRelationshipLabel, Mode=TwoWay}"
+                                                     PlaceholderText="Optional bounded relationship label"
+                                                     AutomationProperties.Name="Knowledge Graph manual relationship label" />
+                                            <Button Grid.Column="3" Content="Link" Command="{Binding LinkSelectedCommand}" />
+                                        </Grid>
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0"
+                                                    Classes="secondary"
+                                                    Content="Unlink selected relationship"
+                                                    Command="{Binding UnlinkSelectedCommand}"
+                                                    ToolTip.Tip="Only manual links and existing relationship or collection-membership links can be unlinked."
+                                                    AutomationProperties.Name="Unlink selected supported Knowledge Graph relationship" />
+                                            <Button Classes="secondary" Content="Ignore selected suggestion" Command="{Binding RejectSelectedSuggestionCommand}" />
+                                        </WrapPanel>
+                                        <Border IsVisible="{Binding IsDecisionConfirmationPending}"
+                                                Classes="card"
+                                                AutomationProperties.Name="Confirm reviewed Knowledge Graph correction">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding DecisionConfirmationText}"
+                                                           TextWrapping="Wrap"
+                                                           AutomationProperties.Name="Knowledge Graph correction impact" />
+                                                <TextBlock Text="This action changes only OpenSorSe-owned index decisions and can be reviewed before it is applied. Original files remain unchanged."
+                                                           TextWrapping="Wrap" />
+                                                <WrapPanel>
+                                                    <Button x:Name="GraphDecisionConfirmButton"
+                                                            Margin="0,0,8,0"
+                                                            Content="Confirm graph correction"
+                                                            Command="{Binding ConfirmDecisionActionCommand}"
+                                                            AutomationProperties.Name="Confirm reviewed Knowledge Graph correction" />
+                                                    <Button Classes="secondary"
+                                                            Content="Cancel"
+                                                            Command="{Binding CancelDecisionActionCommand}"
+                                                            AutomationProperties.Name="Cancel reviewed Knowledge Graph correction" />
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Privacy">
+                <ScrollViewer Margin="0,10,0,0">
+                    <StackPanel Spacing="12">
+                        <TextBlock x:Name="GraphPrivacyHeading"
+                                   Text="Knowledge Graph privacy"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Focusable="True"
+                                   AutomationProperties.Name="Knowledge Graph privacy section" />
+                        <TextBlock Text="Graph stores may contain labels, aliases, evidence references, connection decisions, and application-owned operational history. Original source files are never changed by these controls."
+                                   TextWrapping="Wrap" />
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Inspect selected item" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding PrivacyInspectionText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Stored Knowledge Graph data inspection" />
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,0" Content="Inspect stored graph data" Command="{Binding InspectSelectedCommand}" />
+                                    <Button Margin="0,0,8,0" Classes="secondary" Content="Exclude selected item" Command="{Binding RequestExcludeSelectedCommand}" />
+                                    <Button Margin="0,0,8,0" Classes="secondary" Content="Forget selected item" Command="{Binding RequestForgetSelectedCommand}" />
+                                    <Button Classes="secondary" Content="Forget selected source" Command="{Binding RequestForgetSourceCommand}" />
+                                </WrapPanel>
+                                <Border IsVisible="{Binding IsPrivacyConfirmationPending}"
+                                        Classes="card"
+                                        AutomationProperties.Name="Confirm Knowledge Graph privacy action">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{Binding PrivacyConfirmationText}" TextWrapping="Wrap" />
+                                        <TextBlock Text="This removes or suppresses OpenSorSe-owned graph data only. Original files and folders remain unchanged."
+                                                   TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0" Content="Confirm privacy action" Command="{Binding ConfirmPrivacyActionCommand}" />
+                                            <Button Classes="secondary" Content="Cancel" Command="{Binding CancelPrivacyActionCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Clear graph data" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Clearing the derived graph retains graph-native choices for a deterministic rebuild and leaves the feature disabled until you explicitly enable it again. Clearing graph and decisions is separate and irreversible, removes decision backups, and also leaves the feature disabled. Neither action changes original files."
+                                           TextWrapping="Wrap" />
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,0" Classes="secondary" Content="Clear derived graph" Command="{Binding RequestClearDerivedCommand}" />
+                                    <Button Classes="danger" Content="Clear graph and decisions" Command="{Binding RequestClearDecisionsCommand}" />
+                                </WrapPanel>
+                                <Border IsVisible="{Binding IsClearConfirmationPending}"
+                                        Classes="card"
+                                        AutomationProperties.Name="Confirm Knowledge Graph clear action">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{Binding ClearConfirmationText}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Original source files are never deleted or modified." TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0" Classes="danger" Content="Confirm clear" Command="{Binding ConfirmClearCommand}" />
+                                            <Button Classes="secondary" Content="Cancel" Command="{Binding CancelClearCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Repair">
+                <ScrollViewer Margin="0,10,0,0">
+                    <StackPanel Spacing="12">
+                        <TextBlock x:Name="GraphRepairHeading"
+                                   Text="Knowledge Graph verification and repair"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Focusable="True"
+                                   AutomationProperties.Name="Knowledge Graph repair section" />
+                        <TextBlock Text="Use selective verification and repair first. Rebuilding the complete derived graph is a last resort and preserves graph-native decisions. Original files remain unchanged."
+                                   TextWrapping="Wrap" />
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{Binding RepairText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph repair status" />
+                                <TextBlock Text="{Binding MaintenanceText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.Name="Knowledge Graph storage maintenance status" />
+                                <TextBox Text="{Binding DiagnosticsText}"
+                                         IsReadOnly="True"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         MinHeight="96"
+                                         AutomationProperties.Name="Reviewable privacy-minimized Knowledge Graph diagnostics" />
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,6" Content="Verify selected" Command="{Binding VerifySelectedCommand}" />
+                                    <Button Margin="0,0,8,6" Content="Repair selected" Command="{Binding RequestRepairSelectedCommand}" />
+                                    <Button Margin="0,0,8,6" Classes="secondary" Content="Rebuild selected" Command="{Binding RequestRebuildSelectedCommand}" />
+                                    <Button Margin="0,0,8,6" Classes="secondary" Content="Full derived rebuild" Command="{Binding RequestFullRebuildCommand}" />
+                                    <Button Margin="0,0,8,6"
+                                            Classes="secondary"
+                                            Content="Maintain graph storage"
+                                            Command="{Binding RequestMaintenanceCommand}"
+                                            AutomationProperties.Name="Review bounded Knowledge Graph storage maintenance" />
+                                    <Button Margin="0,0,8,6" Classes="secondary" Content="Open diagnostics" Command="{Binding OpenDiagnosticsCommand}" />
+                                </WrapPanel>
+                                <Border IsVisible="{Binding IsMaintenanceConfirmationPending}"
+                                        Classes="card"
+                                        AutomationProperties.Name="Confirm Knowledge Graph storage maintenance">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{Binding MaintenanceConfirmationText}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Original files, the deep Search index, current graph evidence, and user decisions remain unchanged."
+                                                   TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0"
+                                                    Content="Run bounded maintenance"
+                                                    Command="{Binding ConfirmMaintenanceCommand}"
+                                                    AutomationProperties.Name="Confirm bounded Knowledge Graph storage maintenance" />
+                                            <Button Classes="secondary" Content="Cancel" Command="{Binding CancelMaintenanceCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                                <Border IsVisible="{Binding IsRepairConfirmationPending}"
+                                        Classes="card"
+                                        AutomationProperties.Name="Confirm Knowledge Graph repair action">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="{Binding RepairConfirmationText}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Only OpenSorSe-owned graph data will be replaced. Original files remain unchanged."
+                                                   TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,8,0" Content="Confirm repair action" Command="{Binding ConfirmRepairActionCommand}" />
+                                            <Button Classes="secondary" Content="Cancel" Command="{Binding CancelRepairActionCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

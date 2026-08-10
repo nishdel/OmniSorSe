@@ -1,7 +1,7 @@
 # OpenSorSe v2.0 manual validation checklist
 
-**Status:** Design template. Every scenario is intentionally unchecked and no
-manual outcome is claimed.
+**Status:** Implementation-candidate maintainer checklist. Every scenario is
+intentionally unchecked and no manual outcome is claimed.
 
 Record the exact commit, OS/runtime, filesystem, application-data location,
 graph/index settings, dependencies, test source, observed result, diagnostics,
@@ -100,6 +100,12 @@ automation.
 - [ ] Rebuild a selected component while prior valid graph remains usable.
 - [ ] Perform the reviewed full derived-graph rebuild last-resort scenario and
       confirm all manual decisions survive.
+- [ ] Unlink a projected v1.9 Related File edge and confirm the existing
+      relationship/never-relate state changes first, no duplicate graph-native
+      decision is created, and the graph refreshes from the completed manifest.
+- [ ] Split a projected v1.9 Smart Collection membership from the graph and
+      confirm the existing collection-member override persists; verify source,
+      folder, and exact-document-set structural edges expose no unlink action.
 
 ## Privacy and original-file safety
 
@@ -116,12 +122,35 @@ automation.
       metadata and are not claimed to be encrypted.
 - [ ] Clear derived graph data while retaining graph-native decisions, then
       rebuild and confirm those decisions are reapplied.
+- [ ] On a disposable corrupt derived graph sidecar, use the maintainer recovery
+      integration with exact confirmation `REBUILD DERIVED GRAPH STORE`; confirm
+      the corrupt database family is quarantined, a fresh graph store validates,
+      and decision, `deep-index.db`, and source-file hashes remain unchanged.
+- [ ] Interrupt disposable derived-store recovery during quarantine/promotion,
+      restart, re-enter the reviewed recovery path, and confirm the journal
+      resumes while the quarantine remains available for inspection.
+- [ ] Confirm derived-store recovery rejects a healthy store, a corrupt decision
+      authority store, and an unsupported newer graph schema without replacing
+      any of them.
 - [ ] Clear graph-native decisions and their backups through the separate
       irreversible confirmation; confirm original files and v1.9 decisions are
       unchanged and graph processing does not restart until explicitly enabled.
 - [ ] Complete a forget action, exercise the reviewed backup-restore path, and
       confirm an older backup cannot resurrect forgotten active graph data;
       inspect the disclosed minimum tombstone retention.
+- [ ] Through the maintainer recovery service/integration path (not an end-user
+      restore button), list recovery points and confirm that only bounded IDs,
+      sequences, generations, times, and status codes appear, not paths or
+      indexed content.
+- [ ] Confirm that a wrong confirmation, missing point, corrupt or foreign
+      point, unsupported newer schema, and point below the retained privacy
+      floor are each rejected without replacing the decision store.
+- [ ] Interrupt a disposable restore after the promotion journal reaches its
+      promoting state, restart/reinitialize, and confirm the operation either
+      finishes or rolls back before normal graph access.
+- [ ] Restore a verified disposable recovery point with the exact confirmation
+      `RESTORE GRAPH DECISIONS`; compare source-file and `deep-index.db` hashes
+      before and after to confirm they remain unchanged.
 - [ ] On a disposable profile, make the decision store unavailable/corrupt and
       confirm graph reads and Search expansion fail closed while ordinary v1.9
       Search remains usable.

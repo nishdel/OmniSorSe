@@ -1,7 +1,14 @@
 # v2.0 Knowledge Graph migration safety plan
 
-**Status:** Proposed design; no v2.0 migration or recovery claim has been
-implemented or validated yet.
+**Status:** Sidecar bootstrap/migration design implemented by the source
+candidate; final migration, recovery, rollback, and RC evidence pending.
+
+The implemented migration is an additive schema-1 bootstrap for each sidecar,
+not a `deep-index.db` migration. Each provider validates its own application
+ID, `user_version`, metadata marker, migration-history checksum, required
+tables, and integrity settings transactionally. Unsupported newer or corrupt
+stores fail with an actionable category. Final fault-matrix evidence remains a
+release gate and is not claimed by this status note.
 
 ## Chosen migration boundary
 

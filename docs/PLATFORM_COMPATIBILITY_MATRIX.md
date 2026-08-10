@@ -2,9 +2,9 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** v1.9
+**Current source:** unmerged v2.0 implementation candidate over v1.9
 
-**Last reviewed:** 2026-07-30
+**Last reviewed:** 2026-08-04
 
 OpenSorSe is a Windows-first desktop application with a conservative Linux x64
 source-build preview. The solution also builds/tests in macOS CI, but that does
@@ -42,6 +42,10 @@ file mutation are separate claims.
   [v1.8](V1.8_VALIDATION_REPORT.md) and
   [v1.9](V1.9_VALIDATION_REPORT.md) validation reports.
 - v1.9 interactive platform/manual validation remains unchecked.
+- The v2.0 Knowledge Graph uses the existing cross-platform SQLite provider and
+  application-data abstraction, but final four-target/native-asset and hosted
+  candidate evidence is pending. No new platform-support claim follows from
+  source implementation alone.
 
 ## Current support matrix
 
@@ -54,6 +58,7 @@ file mutation are separate claims.
 | Stable file identity | Supported | Preview | Unverified | Windows uses volume/file index; Linux x64 uses device/inode with an explicit fallback. Identity remains bounded evidence, not permanent identity. |
 | Read-only scanning/metadata/duplicates | Supported | Preview | Build/test only | Links are skipped and item failures are isolated. Network, removable, FUSE, permissions, and mount behavior can be weaker. |
 | Embedded SQLite durable index | Supported | Unverified runtime | Unverified runtime | v1.9 Windows tests cover schema/provider and relationship behavior. Target outputs select the expected native SQLite library for all four runtime identifiers; native Linux/macOS interactive execution is not recorded in the source report. |
+| Knowledge Graph/decision sidecars | Unverified candidate | Unverified candidate | Unverified candidate | Provider-neutral source and schema-1 SQLite sidecars are implemented; final target/native-host, recovery, and manual evidence is not yet recorded. The feature is disabled by default. |
 | Search over available indexed data | Supported | Unverified runtime | Unverified runtime | Deterministic ranking is portable; full status also depends on current native provider/Desktop execution. Compatible filename/metadata Search can degrade independently. |
 | Change Plan rename/move/create | Supported | Preview / manual verification pending | Unavailable | Linux operations require current-platform link, root, identity, permission, and same-filesystem checks. macOS mutation remains disabled. |
 | Cross-filesystem move | Unavailable | Unavailable | Unavailable | OpenSorSe does not silently implement move as copy/delete. |
@@ -66,7 +71,7 @@ file mutation are separate claims.
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Build/test only | Windows preserves LocalAppData. Linux uses XDG config/data/state/cache categories. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/updater/current package | Unavailable | Unavailable | Unavailable | The repository contains only a historical v1.0 Windows portable snapshot. No v1.9 package or installer is claimed. |
+| Installer/updater/current package | Unavailable | Unavailable | Unavailable | The repository contains only a historical v1.0 Windows portable snapshot. No v2.0 package or installer is claimed. |
 
 ## Filesystem limitations
 

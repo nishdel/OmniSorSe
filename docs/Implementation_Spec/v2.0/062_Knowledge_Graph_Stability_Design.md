@@ -2,14 +2,15 @@
 
 ## Status
 
-Proposed design target only. No runtime behavior in this specification is
-implemented until source and tests prove it. v1.9 remains the current product
-boundary.
+Accepted design target implemented as an unmerged v2.0 source candidate.
+Source and tests define exact behavior. Clean local automated validation is
+complete; exact-tip hosted, RC stabilization, and interactive validation remain
+separate incomplete gates.
 
 ## Required contracts
 
-The future Application layer should define product operations rather than
-storage mechanics:
+The candidate Application layer defines product operations rather than storage
+mechanics:
 
 - `IGraphProjectionSource`: bounded, ordered snapshots/change pages from v1.9
   files, relationships, collections, privacy, decisions, and deletion state;

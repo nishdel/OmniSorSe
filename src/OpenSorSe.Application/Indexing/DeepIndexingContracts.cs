@@ -114,6 +114,12 @@ public interface IDeepIndexStore : IAsyncDisposable
         int maximumCount,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Returns bounded Search documents for exact durable file identifiers.</summary>
+    Task<IReadOnlyList<ProgressiveSearchDocument>> GetSearchDocumentsByIdsAsync(
+        IReadOnlyList<string> fileIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
+
     /// <summary>Returns bounded absolute paths excluded from Search by durable privacy rules.</summary>
     Task<IReadOnlyList<string>> GetExcludedSearchPathsAsync(
         int maximumCount,
@@ -191,8 +197,26 @@ public interface IProgressiveSearchSource
         Task.FromResult<IReadOnlyList<string>>([]);
 }
 
+/// <summary>
+/// Resolves a bounded set of exact durable file identifiers without requiring a
+/// full progressive-index scan. Contextual Search providers use this additive
+/// contract to materialize only already-authorized expansion targets.
+/// </summary>
+public interface IProgressiveSearchDocumentLookup
+{
+    /// <summary>Returns visible Search documents for the supplied distinct file identifiers.</summary>
+    Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsByIdsAsync(
+        IReadOnlyList<string> fileIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
+}
+
 /// <summary>Controls durable background indexing from application services and ViewModels.</summary>
-public interface IBackgroundIndexingService : IProgressiveSearchSource, IDisposable, IAsyncDisposable
+public interface IBackgroundIndexingService :
+    IProgressiveSearchSource,
+    IProgressiveSearchDocumentLookup,
+    IDisposable,
+    IAsyncDisposable
 {
     /// <summary>Raised after durable progress changes.</summary>
     event EventHandler<IndexingProgressSnapshot>? ProgressChanged;

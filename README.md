@@ -28,12 +28,14 @@ file changes.
 - v1.9 **Relationships, Context & Smart Collections** is implemented on
   `v1.9-relationships-context`, directly above v1.8, and is not merged to
   `main`. Its interactive manual checklist remains unchecked.
-- v2.0 **Knowledge Graph** has a stability-first design package on
-  `v2.0-knowledge-graph-design`, based directly on the validated v1.9 tip. It
-  contains no v2.0 runtime implementation or release claim.
+- v2.0 **Knowledge Graph** is an implementation candidate on
+  `v2.0-knowledge-graph`, based directly on the validated stability-design tip.
+  It remains unmerged. Clean local automated validation is complete;
+  exact-tip hosted validation, release-candidate stabilization, and interactive
+  maintainer validation remain separate gates.
 - The only tagged and packaged repository release is the historical v1.0
-  Windows x64 snapshot. There is no v1.9 package, installer, tag, or published
-  release in this repository.
+  Windows x64 snapshot. There is no v1.7-v2.0 package, installer, tag, or
+  published release in this repository.
 
 Read [Release Status](docs/RELEASE_STATUS.md) for the exact current boundary,
 [Release History](RELEASE_HISTORY.md) for completed milestones, and the
@@ -48,15 +50,16 @@ Read [Release Status](docs/RELEASE_STATUS.md) for the exact current boundary,
 | Search | Uses local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context with visible filters and progressive coverage. |
 | Search explanations | Preserves exact/literal evidence above related-concept-only similarity and exposes actual ranking reasons plus bounded source-labelled snippets. |
 | Relationships and Collections | Discovers bounded deterministic relationships from retained evidence, provides virtual Smart Collections and timelines, preserves user corrections, and never moves original files. |
+| Knowledge Graph | Optionally projects stable files, sources, folders, Collections, exact-content sets, and manual entities into an evidence-backed local graph with bounded browsing, privacy/repair controls, and opt-out Search context. It is disabled by default. |
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
 | Local AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated, review-only suggestions. Ordinary Search and OCR do not require AI. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, and create-directory actions require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
-| Persistence | Uses bounded versioned local JSON stores plus an embedded SQLite durable Search index behind provider-neutral Application contracts. No database server is required. |
+| Persistence | Uses bounded versioned local JSON stores, the schema-3 embedded Search index, and isolated schema-1 Knowledge Graph/decision sidecars behind provider-neutral Application contracts. No database server is required. |
 
 The current source does not implement cloud synchronization, collaboration,
-OpenSorSe Server, a knowledge graph, a conversational assistant, unrestricted
+OpenSorSe Server, a conversational assistant, unrestricted
 media intelligence, autonomous organization, permanent deletion, generic
 script execution, or a plugin security sandbox.
 
@@ -65,7 +68,8 @@ script execution, or a plugin security sandbox.
 OpenSorSe is non-destructive by default:
 
 - scanning, watchers, duplicate review, extraction, OCR, Search/indexing,
-  relationships, virtual collections, comparison, diagrams, workflows,
+  relationships, virtual collections, Knowledge Graph projection, comparison,
+  diagrams, workflows,
   plugins, and AI do not modify source files;
 - suggestions become non-mutating Change Plans;
 - only reviewed and approved actions can reach the dedicated execution service;
@@ -83,8 +87,8 @@ OpenSorSe is local-first:
 - AI is optional and disabled by default;
 - ordinary logs exclude source content, complete queries, vectors,
   credentials, and raw model payloads;
-- relationship diagnostics retain bounded aggregate counts and timings rather
-  than document content or unnecessary paths;
+- relationship and graph diagnostics retain bounded aggregate counts, states,
+  watermarks, and timings rather than document content or unnecessary paths;
 - detailed diagnostics are separately gated, bounded, redacted by default, and
   memory-only unless explicitly exported.
 
@@ -141,10 +145,12 @@ documents are:
 | [Product Roadmap](PRODUCT_ROADMAP.md) | Completed, in-progress, planned, research, and backlog work with branch/integration truth. |
 | [Engineering Principles](ENGINEERING_PRINCIPLES.md) | Reasoning behind architecture, MVVM, persistence, testing, releases, security, privacy, recovery, and review. |
 | [Release History](RELEASE_HISTORY.md) | Concise version, branch, date, test-total, and merged-status index. |
-| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative v1.9 component, data, safety, persistence, and dependency boundaries. |
+| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative implementation-candidate component, data, safety, persistence, and dependency boundaries. |
 | [System Map](docs/Architecture/OpenSorSe_System_Map.md) | Visual architecture and mutation-path diagrams. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
-| [v2.0 Knowledge Graph stability design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Proposed isolated projection, conservative scope, failure states, recovery, bounds, and release blockers; not implemented behavior. |
+| [v2.0 Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md) | Implemented candidate scope, sidecar storage, projection/recovery, Search, privacy, bounds, and deferred behavior. |
+| [v2.0 Security Notes](docs/SECURITY_v2.0.md) | Candidate trust boundaries, hostile-input/resource defenses, recovery, and explicit non-claims. |
+| [v2.0 Knowledge Graph stability design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Design rationale for the implemented candidate and its still-open RC blockers. |
 | [v1.9 User Guide](docs/USER_GUIDE_v1.9.md) | Current relationship, collection, privacy, and Search-context workflows. |
 | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Guided build, validation, code tracing, and first-change workflow. |
 | [Contributing](CONTRIBUTING.md) | Repository layout, MVVM, testing, documentation, branch, validation, and review expectations. |

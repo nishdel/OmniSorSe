@@ -115,6 +115,32 @@ Coverage distinguishes names/metadata, text, OCR, related-concept data,
 completeness, exclusions, waits, failures, and provider unavailability so an
 empty result is not overstated.
 
+### Knowledge Graph
+
+An optional, disabled-by-default local projection of stable indexed files,
+sources, folders, existing Collections, exact-content document sets, manual
+entities, typed edges, and actual retained evidence. It is bounded and
+provider-neutral, does not open source files, and is not an authority for v1.9
+relationships or file operations.
+
+### Graph manifest
+
+An immutable completed projection input identified by stable ID, canonical row
+count, canonical hash, and revision. Partial or mismatched manifests never
+replace the active graph input.
+
+### Applied watermark
+
+The latest source, decision, or privacy authority reflected in published graph
+data. It is separate from the corresponding ingestion watermark. Graph reads
+fail closed while applied authority lags ingested or current authority.
+
+### Graph-native decision
+
+An explicit user command owned by `knowledge-decisions.db`, such as a manual
+entity, alias, link, never-merge rule, or graph-only exclusion. Existing v1.9
+relationship and Collection decisions remain authoritative in schema 3.
+
 ### Related-concept data
 
 A bounded local representation used as optional lower-priority retrieval

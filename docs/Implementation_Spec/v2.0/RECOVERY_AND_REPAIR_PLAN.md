@@ -1,7 +1,14 @@
 # v2.0 Knowledge Graph recovery and repair plan
 
-**Status:** Proposed design; no v2.0 recovery behavior has been implemented or
-validated yet.
+**Status:** Recovery/repair design implemented by the source candidate; final
+fault-injection, platform, RC, and interactive evidence pending.
+
+The candidate implements expired-claim recovery, epoch/token fencing,
+generation publication, selective verify/reproject/evidence/orphan/legacy
+reconciliation, full derived rebuild with decision preservation, and verified
+decision recovery points constrained by the privacy floor. Source, decision,
+and privacy authority are checked again at use/publication boundaries. This
+summary records implementation shape, not a passed recovery campaign.
 
 ## Recovery priorities
 
@@ -112,6 +119,18 @@ results are withheld rather than served from stale state.
 
 Deleting/resetting `deep-index.db` is never a graph recovery step.
 
+The implementation candidate exposes whole derived-store replacement through
+`IGraphDerivedStoreRecoveryService` for reviewed maintainer/integration use; no
+end-user button is claimed. The exact confirmation
+`REBUILD DERIVED GRAPH STORE` is required. The SQLite provider validates the
+decision store, builds and validates a fresh empty graph database on the same
+volume, durably journals `Prepared`, `Quarantining`, and `Promoting` states,
+moves the corrupt database/WAL/SHM family to a managed quarantine name, and
+promotes the replacement. Reinvocation from a new lifecycle instance resumes a
+journaled promotion. Decision authority is validated again before completion;
+the decision store, `deep-index.db`, and source files are never mutation
+targets. Healthy stores and unsupported newer graph schemas are rejected.
+
 ### Decision store
 
 1. Stop decision mutation and graph publication. A last validated in-memory
@@ -129,6 +148,19 @@ Deleting/resetting `deep-index.db` is never a graph recovery step.
    current file as evidence.
 5. If no verified, committed recovery exists, block graph mutation and request
    maintainer recovery. Do not infer decisions from derived graph rows.
+
+The implementation candidate exposes this operation through
+`IGraphDecisionRecoveryService`, intended for reviewed maintainer/integration
+use; no end-user restore button is claimed. Its privacy-safe listing contains
+bounded recovery IDs, sequence/generation values, commit time, pin/restorable
+state, and status codes without paths or indexed content. Restore requires the
+exact confirmation `RESTORE GRAPH DECISIONS` and rejects missing, corrupt,
+foreign, unsupported-newer-schema, or privacy-floor-stale points. Promotion
+uses a write-through same-volume candidate and a durable
+`.knowledge-decisions.restore.json` journal. On the next lifecycle
+initialization, a prepared operation is discarded safely and an interrupted
+promotion is completed or rolled back before normal access. The operation does
+not modify source files or `deep-index.db`.
 
 Loss of a committed manual decision without a reviewed recovery path blocks the
 release.

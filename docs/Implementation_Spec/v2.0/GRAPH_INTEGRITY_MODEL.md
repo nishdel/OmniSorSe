@@ -1,7 +1,7 @@
 # v2.0 graph-integrity and deterministic-generation model
 
-**Status:** Proposed design; no v2.0 integrity behavior has been implemented or
-validated yet.
+**Status:** Integrity model implemented by the source candidate; final clean
+validation and RC corruption/failure campaign pending.
 
 ## Integrity layers
 
@@ -120,6 +120,20 @@ decision back or promotes the mirror to authority. A missing legacy row retires
 its mirror only after a complete manifest proves absence, producing a
 `RetiredByLegacySource` mirror tombstone so stale imports cannot resurrect it.
 An interrupted or partial scan cannot retire anything.
+
+Stable v2.0 exposes only two graph-initiated legacy mutations for which the
+v1.9 application contract has an exact equivalent: unlink/reject an existing
+Related File relationship, and split an existing Smart Collection membership.
+`RelationshipGraphAuthorityBridge` resolves the exact canonical file pair or
+collection/member IDs, calls `IRelationshipService`, and requests reconciliation
+only after that authoritative commit succeeds. It never appends the same intent
+to `GraphNativeDecision`. A missing or ambiguous relationship, unavailable
+bridge, stale authority fence, or unsupported legacy edge fails closed.
+
+Legacy collection rename/pin/merge/forget remains on the v1.9 Collections
+surface. Stable structural graph edges are inspectable but not unlinkable.
+Graph-native merge/split remains limited to manual or confirmed experimental
+entities, preventing a generic graph command from bypassing legacy ownership.
 
 Conflicting graph-native and current legacy decisions do not use wall-clock
 last-write-wins. Privacy and explicit never/reject/split decisions apply most

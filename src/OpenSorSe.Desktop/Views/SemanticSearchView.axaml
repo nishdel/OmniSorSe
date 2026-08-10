@@ -53,6 +53,14 @@
                           IsChecked="{Binding IncludeRelationshipContext, Mode=TwoWay}"
                           AutomationProperties.Name="Include relationship context in Search"
                           AutomationProperties.HelpText="When enabled, Search may add directly related files below exact and literal matches. Every contextual result includes retained evidence." />
+                <CheckBox Content="Include bounded Knowledge Graph context"
+                          IsChecked="{Binding IncludeGraphContext, Mode=TwoWay}"
+                          AutomationProperties.Name="Include Knowledge Graph context in Search"
+                          AutomationProperties.HelpText="When enabled, Search may add privacy-filtered files connected by current, validated graph evidence. Exact filename and literal matches remain higher priority." />
+                <TextBlock Text="{Binding GraphCoverageText}"
+                           Classes="page-subtitle"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite" />
                 <Border IsVisible="{Binding AreFiltersVisible}"
                         Classes="subtle-card"
                         Padding="8">

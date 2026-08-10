@@ -2,8 +2,9 @@
 
 ## Evidence rules
 
-This matrix specifies mandatory future tests. It does not mark any test as
-implemented or passing.
+This matrix specifies candidate acceptance tests. Source test files determine
+which cases are implemented; this matrix does not mark any result as passing.
+Exact totals and outcomes belong in the final validation report.
 
 All fixtures are synthetic and disposable. Tests use fake clocks, injected
 fault boundaries, controlled stores/providers, deterministic schedulers,
@@ -175,6 +176,158 @@ regression fixtures must additionally prove:
 - no graph operation reaches a source-file write boundary.
 
 No test may be weakened, deleted, ignored, or skipped to meet these gates.
+
+## Candidate source traceability audit
+
+This audit maps the candidate source tree to the requirements above. It is a
+source-coverage review, not a test-result report. `Direct` means a targeted
+test contains the row's primary deterministic oracle. `Partial` means a
+related test exists but does not cover every required boundary, process,
+ordering, provider, or recovery condition. `No targeted source` means the
+review found no test dedicated to that requirement; it does not imply that the
+corresponding production code is absent. Extended and Performance rows remain
+release-candidate work even when a smaller PR test exercises a related path.
+
+The principal source evidence used below is:
+
+- `SqliteGraphConsentBoundaryIntegrationTests`,
+  `SqliteGraphStorageLifecycleTests`,
+  `SqliteGraphDecisionStoreDurabilityTests`,
+  `SqliteGraphStoreEndToEndTests`, and
+  `SqliteGraphProjectionSourceTests` for provider durability;
+- `GraphProjectionCoordinatorTests`, `GraphReleaseGateMatrixTests`,
+  `GraphIdentityAndStateTests`, `GraphProjectionBuilderTests`,
+  `GraphDeterminismSecurityRegressionTests`,
+  `GraphDerivedStoreRecoveryServiceTests`, and
+  `GraphApplicationServiceTests` for Application behavior;
+- `GraphSearchResilienceMatrixTests` and
+  `KnowledgeGraphSearchIntegrationTests` for Search/privacy behavior; and
+- `KnowledgeGraphViewModelTests`, `KnowledgeGraphAccessibilityTests`, and the
+  two Knowledge Graph performance-regression fixtures for UI and bounded-cost
+  behavior.
+
+### Migration and lifecycle traceability
+
+| ID | Coverage | Concrete source evidence and residual scope |
+| --- | --- | --- |
+| M01 | Direct | Consent-boundary `DirectApplicationCallBeforeConsentDoesNotCreateGraphArtifacts` and `ExplicitEnableProvisionsBothSidecarsBeforeApplicationReadsBecomeAvailable` verify the no-sidecar boundary and explicit first enable. |
+| M02-M05 | No targeted source | No frozen schema-1/schema-2 fault fixture or every-transaction-boundary decision/graph migration matrix was located. These remain Extended gates. |
+| M06 | Partial | `LegacyMirrorPagingResumesAfterRestartAndPublishesAtomically`, `Reconcile_InterruptedLegacyDecisionMirror_ResumesWithoutDuplicatePublication`, and Application replay tests cover restart/idempotency, not interruption after every page boundary. |
+| M06a | No targeted source | No deterministic concurrent legacy capture versus decision mutation/retention schedule was located. |
+| M07 | Partial | Newer deep-index and decision schemas are rejected by `UnsupportedNewerDeepIndexSchemaFailsClosed` and `InitializationRejectsCheckpointCorruptionAndNewerSchema`; the every-store independent-health matrix is not complete. |
+| M08-M09 | Partial | Checkpoint corruption, malformed projection, integrity gates, and invalid-record tests exist, but no table/column/index/history plus `foreign_key_check` fault matrix covers each sidecar. |
+| M10-M12 | Partial | Interrupted restore promotion, verified recovery, privacy-floor rejection, bounded backups, and quota failure are tested. Every staging/verification/promotion boundary, WAL/SHM combination, reason pin, and byte boundary is not. |
+| M13 | No targeted source | No automated rollback-launch fixture executes v1.9 against the unchanged schema-3 authority. |
+| M14 | Partial | `ConcurrentProvisionIsSerializedAndIdempotent` and `LifecycleLockHasBoundedContentionAndDecisionIdsRejectPaths` are in-process evidence only; the required two-process owner/loser proof remains Extended. |
+| M15 | Partial | Interrupted decision restore and journaled derived-store promotion recovery are covered, but abandoned outer-lock recovery before open and during each staged promotion is not. |
+| M16 | Partial | Privacy backup/floor publication and stale-floor rejection are targeted; the every-crash-boundary privacy/backup recovery matrix is not. |
+
+### Durable work traceability
+
+| ID | Coverage | Concrete source evidence and residual scope |
+| --- | --- | --- |
+| J01 | Partial | Projection-source manifests, source commit fencing, and periodic missed-notification reconciliation are tested; inbox insertion/ingestion-watermark crash atomicity is not exhaustively injected. |
+| J02-J04 | Partial | Intermediate-stage fencing, expired-stage recovery, durable stage history, and malformed-publication atomicity are tested. The complete crash matrix for extraction, identity, evidence, publication, and applied watermark is not. |
+| J05 | No targeted source | No interrupted maintenance/compaction fault matrix was located. |
+| J06 | Partial | `Projection_CancellationAtEachPureDurableStage_DoesNotPublish` covers every pure builder stage with no publication or watermark advance; capture, inbox, publication-transaction, and maintenance boundaries still need provider fault coverage. |
+| J07-J08 | Partial | Pause/Resume and Cancel/Retry behavior is covered, but repeated idempotency plus append-only retry-attempt history is not proved for every ordering. |
+| J09 | Direct | `RestartFencesNonExpiredClaimAndAcknowledgesRepairCancellation` persists `CancelRequested`, restarts before the claim's wall-clock expiry, fences the obsolete attempt, and acknowledges the run and staged repair as cancelled. |
+| J10 | Direct | `HealthyCoordinatorHeartbeatDoesNotKeepExpiredJobClaimAlive` proves a non-expired claim is not stolen, then independently expires and fences only that claim before one new attempt is admitted. Existing restart tests prove expired claims recover and publish once. |
+| J11 | Partial | Bounded superseded-run recovery and classified failures exist, but repeated infrastructure interruption to `RepairRequired` is not directly exercised. |
+| J12 | Direct | Duplicate/no-op manifest, notification coalescing, legacy replay, and decision replay tests verify one effective component/cursor result. |
+| J13-J14 | No targeted source | Multi-owner writer fencing and non-cooperative hard-deadline shutdown remain Extended gates. |
+| J15-J16 | Partial | Authority/config/decision revalidation, paused runtime admission, and resume behavior exist; captured-fingerprint invalidation and restart in both pause states at every stage/page are incomplete. |
+| J17 | Direct | `Reconcile_HeartbeatRejected_FencesWithoutStaleRunningClaim` verifies immediate self-fencing after coordinator renewal rejection. |
+| J18 | Partial | Stale claim-token and authority-change publication rejection exist; late publishers after reclaim, Cancel, and shutdown deadline are not all injected. |
+| J19 | Partial | `CoordinatorEpochRemainsMonotonicAcrossForwardAndBackwardClockJumps` proves conservative backward-clock refusal, monotonic epochs after forward takeover, and stale epoch/token publication rejection. The complete delayed-heartbeat/token-reuse schedule remains RC fault-matrix work. |
+| J20 | Partial | Provider component replacement and stage claims are transactional and fenced in targeted tests; every before/after inbox, ingestion, publication, and applied-watermark crash point is not. |
+| J21-J22 | Direct | `Projection_UnexpectedPoisonJob_DoesNotBlockLaterValidObservation` proves an unexpected permanent failure is observed, leaves no running claim, and does not block later valid work. |
+| J23 | No targeted source | The required shutdown-at-every-boundary matrix remains Extended. Chunk-cancellation tests are related but not a substitute. |
+| J24 | Partial | `Projection_CancellationDuringResourceWait_ExitsWithoutClaimOrWatermarkAdvance` covers resource wait, while `LockedGraphWrite_CancellationInterruptsBusyWaitAndStoreRecovers` and `LockedDecisionWrite_CancellationIsPromptAtomicAndRecoverable` cover transactional database-busy cancellation. Dependency and backoff waits remain. |
+| J25 | Partial | `GraphReleaseGateMatrixTests` exhausts all defined state vectors, all pairwise run/job transitions, and unknown values against the committed concurrency-model rules. Provider enforcement and append-only retry/cancellation preconditions remain unproved. The audit also corrected the validator so `Pending` cannot jump directly to `Paused` or `Cancelled`. |
+| J26 | Partial | Source/authority and decision changes during a claim reject publication; configuration/algorithm revisions and the exactly-one replacement-key oracle are not complete. |
+| J27 | Partial | `CancellationWinsLatePauseAndResumeRequests` proves durable cancellation precedence and safe repeated cancellation, in addition to the individual control paths. Every Pause/Resume/Cancel/lease-expiry permutation under a deterministic scheduler remains RC work. |
+| J28 | Direct | `HealthyCoordinatorHeartbeatDoesNotKeepExpiredJobClaimAlive` renews the coordinator independently, proves the live job is initially retained, then fences only the expired job claim and admits a new token/attempt without changing the coordinator epoch. |
+| J29 | Partial | Decision-ledger sequence history is durable, but immutable logical-job attempt rows and exactly-one appended explicit retry are not directly proved. |
+
+### Identity and deterministic-graph traceability
+
+| ID | Coverage | Concrete source evidence and residual scope |
+| --- | --- | --- |
+| G01 | Direct | `GraphIdentityAndStateTests` covers stable File/Folder/Source/Document Set mechanics and path semantics; projection-builder tests cover Collection identity. |
+| G02 | Partial | Identical projection and identity inputs are deterministic; shuffled and genuinely concurrent canonical-export execution is not separately exercised. |
+| G03 | No targeted source | Cross-host canonical fixture comparison remains an Extended validation gate. |
+| G04-G07 | Direct | Missing evidence, malformed/cyclic aliases, ambiguous candidates, and the adversarial false-merge corpus all fail closed without hidden merges. |
+| G08-G10 | Partial | Manual/rejected relationship projection, never-merge decisions, legacy mirror replay, and decision replay after rebuild exist; every merge/split/alias/rejection persistence path across update, restart, repair, and rebuild is not complete. |
+| G11 | Partial | Duplicate aliases/logical expansions and conflicting duplicate node identity fail closed; an explicit cryptographic-hash collision fixture was not located. |
+| G12-G15 | Direct | Cyclic traversal, hostile Unicode/null/timestamps/sizes, malformed suggestion output, and confidence/explanation determinism have targeted security/unit tests. |
+| G16 | Direct | Default suggestions remain inactive and provider-neutral contracts do not claim production Tag-node identity. |
+
+### Invalidation, privacy, and repair traceability
+
+| ID | Coverage | Concrete source evidence and residual scope |
+| --- | --- | --- |
+| I01 | Direct | `RenameAndMoveRetainStableFileIdentityAndInvalidatePathObservation` verifies stable file identity with path-only observation change. |
+| I02-I04 | Partial | Move, metadata-only, and content-change identity tests exist; cross-source ambiguity and exact dependent-component invalidation are not exhaustively asserted. |
+| I05 | Direct | Delete/tombstone and completed-manifest absence tests hide dependent observations conservatively. |
+| I06 | Partial | Forget decisions, authoritative query barriers, and privacy backup floors are tested; every crash point of restrictive persistence is not. |
+| I07-I08 | Direct | Exclusions suppress graph output, and snapshot/rebuild operations preserve original fixture bytes and timestamps. |
+| I09 | Partial | Malformed publication rejection and selective repair exist; node/edge/evidence/alias/job corruption is not injected one record kind at a time. |
+| I10-I11 | Partial | `ReviewedDerivedRecoveryQuarantinesCorruptionAndPreservesAuthority`, `JournaledDerivedRecoveryResumesAfterRestart`, and verified decision recovery preserve authority inputs. A complete v1.9-fallback/rebuild validation and the full Extended corruption/quarantine/restart matrices remain. |
+| I12 | Partial | Generation retirement and graph clearing are bounded, but a targeted orphan-versus-active/manual cleanup corpus is not complete. |
+| I13 | Partial | Completed manifests prove physical absence and interrupted rebuild avoids delete-first exposure; interrupted source-removal plus current point revalidation remains. |
+| I14-I15 | Partial | Selective repair and restartable full rebuild preserve the old validated generation until atomic replacement; every scope, cancellation point, and quarantine failure remains. |
+| I16-I18 | Partial | Updated-time collision, missed notification, persistent authority replacement, deletion, and stable-ID recreation have targeted tests; clock rollback/forward, update-behind-page, mutation-during-manifest, and all recreate orderings remain. |
+| I19 | Direct | Provider tests retain the validated generation through interrupted selective/full rebuild, atomically promote the replacement, and bound superseded run/manifest history. |
+| I20 | Partial | Ordered mirror/replay paging is resumable and idempotent; commit-before-inbox, out-of-order/duplicate delivery, and explicit sequence-gap withholding are not fault-injected as one matrix. |
+| I21 | No targeted source | Post-import/rollback legacy schema-3 mutation reconciliation remains Extended compatibility work. |
+| I22-I23 | Direct | Application query/Search tests recheck privacy/control/source revisions before and during reads, fail restrictive on unavailable authority, and discard stale expansions. |
+
+### Resource, concurrency, Search, and UI traceability
+
+| ID | Coverage | Concrete source evidence and residual scope |
+| --- | --- | --- |
+| R01-R02 | Partial | Existing synthetic indexing tests cover Ollama/OCR unavailable waits and ordinary Search fallback; graph-specific dependency restoration and exactly-once resume are not a complete matrix. |
+| R03 | Partial | Quota pressure enters actionable resource wait and reviewed maintenance is invoked; low disk at backup/build/maintenance boundaries is not fully injected. |
+| R04 | No targeted source | Injected `SQLITE_FULL` transaction rollback and replay remain Extended provider work. |
+| R05 | Direct | `LockedGraphWrite_IsClassifiedBusyWithinFiniteDeadlineAndStoreRecovers` holds an independent SQLite writer, proves bounded `Busy` classification rather than corruption, releases it, and verifies the same store writes successfully. The two cancellation variants prove prompt bounded cancellation and atomic recovery for graph and decision writes. |
+| R06-R07 | Direct | `SqliteGraphReaderConcurrencyTests` proves independent bounded reader admission while the writer gate is held, one old-or-new WAL snapshot across a concurrent publication, queued-operation disposal fencing, and deterministic database-file release. Application fallback and Search-order tests cover the consumer side. Sustained maintenance stress remains RC work. |
+| R08-R10 | Direct | Bootstrap/stale/repair/disabled fallback, bounded evidence-backed expansion/opt-out, overlapping requests, and cancellation have targeted tests. |
+| R11 | Partial | High-degree expansion and multi-scale provider/Application regressions are bounded; a reviewed larger graph envelope remains Performance work. |
+| R12 | Direct | Depth, visited, edge, time/input, and high-degree ceilings terminate hostile expansion deterministically. |
+| R13-R14 | Partial | Projection cancellation latency, database-busy cancellation, and multi-scale cost ceilings exist; every stage/query/shutdown threshold and allocation envelope is not measured. |
+| R15-R18 | Direct | Paging/virtualization, asynchronous startup and cancellable service work, XAML/ViewModel accessibility, and diagnostic redaction have targeted tests. Manual accessibility observations remain unchecked. |
+| R19 | Partial | Redacted diagnostic aggregates, progress, and failure actionability are tested; the full lease/cursor/lag/busy/low-disk fact set is not. |
+| R20 | Partial | Quota-blocked ingestion preserves the watermark, but row and byte limits below/at/above both in-memory and durable queue ceilings are not parameterized. |
+| R21 | Partial | Oversized/malformed projection is rejected atomically; merge/split/cascade row, byte, time, and allocation boundaries are not covered. |
+| R22 | Partial | Eco/Balanced/Fast concurrency, an unavailable adapter, and time-window eligibility are tested; idle/power/battery combinations and exactly-once restoration are incomplete. |
+| R23 | Partial | Quota/free-space preflight and active-generation preservation exist for rebuild; injected disk-full at decision commit, WAL checkpoint, backup/restore, and activation remains Extended. |
+| R24 | No targeted source | No deterministic decision/graph/Search/maintenance lock-order stress fixture was located. |
+| R25 | Partial | Independent-lock tests prove the finite ordinary deadline, prompt cancellable slices, correct `Busy`/cancellation classification, atomicity, and recovery. A fully parameterized below/at/above cumulative-threshold matrix remains RC work. |
+| R26 | Partial | Recovery reserve and bounded run/manifest history are covered; inbox retention age/row boundaries and all quota-retention invariants are not. |
+| R27 | Partial | Alias, evidence, query, degree, and traversal bounds are targeted; candidate-text and CPU-yield ceilings plus every first-exceeded-bound ordering are not. |
+| R28 | Partial | Combined decision-ledger quota failure leaves the ledger unchanged; reserve boundaries and actionable ViewModel status are not fully parameterized. |
+| R29 | Direct | Concurrent authority-unavailable expansion fails restrictive while bounded ordinary exact Search remains responsive. |
+
+### Remaining release-candidate gaps identified by the audit
+
+The current source mapping does **not** justify a release-ready claim. Highest
+risk remaining work is:
+
+- true two-process lifecycle ownership and abandoned-lock recovery (M14-M15);
+- the residual delayed-heartbeat/token-ABA schedule in J19, plus the remaining
+  every-boundary crash/shutdown/race matrices in J16, J18, J20, and
+  J23-J27;
+- stable-ID generation behavior under clock change, concurrent mutation, and
+  recreate orderings (I13, I16-I18), ordered decision-gap withholding (I20),
+  and rollback-era legacy reconciliation (I21);
+- sustained concurrent maintenance/read stress beyond the direct R06-R07 WAL
+  snapshot and admission tests; and
+- parameterized queue/transaction/reserve/decision-quota boundaries and
+  lock-order stress (R20-R28).
+
+Those rows remain Extended or release-candidate gates exactly as specified;
+manual observation cannot replace them.
 
 ## Lifecycle release-gate traceability
 

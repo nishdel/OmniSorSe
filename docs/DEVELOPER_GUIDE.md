@@ -94,6 +94,7 @@ Start at these entry points:
 | How does durable indexing work? | `Application/Indexing/BackgroundIndexingService.cs`, `IDeepIndexStore`, and `OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | How does progressive Search work? | `Application/Semantic/SemanticSearchService.cs` and `IProgressiveSearchSource` |
 | How are relationships and Smart Collections built? | `Application/Relationships`, `IRelationshipStore`, and `Indexing.Sqlite/SqliteRelationship*.cs` |
+| How is the Knowledge Graph projected and queried? | `Application/KnowledgeGraph`, `IGraphProjectionCoordinator`, and `Indexing.Sqlite/KnowledgeGraph` |
 | How are workflows resolved? | `Application/Workflows/WorkflowConfigurationResolver.cs` |
 | How are watcher hints processed? | `Application/Watching/WatchedFolderCoordinator.cs` and `WatchedFolderProcessor.cs` |
 | How are plugins discovered and loaded? | `Application/Plugins/PluginInfrastructure.cs` and `PluginRuntime.cs` |
@@ -163,9 +164,47 @@ Application contracts without exposing database details.
 
 Relationship code must never derive an explanation that was not retained as
 evidence. Keep candidate, edge, evidence, member, and expansion bounds intact.
-Manual corrections and source ownership are compatibility data. A future
-Knowledge Graph must be a separate design, not an unbounded recursive query
-added to this provider.
+Manual corrections and source ownership are compatibility data. The v2.0
+Knowledge Graph is a separate provider-neutral projection and sidecar, not an
+unbounded recursive query added to the schema-3 provider.
+
+## Trace the Knowledge Graph candidate
+
+1. The schema-3 projection-source adapter captures only a completed canonical
+   manifest with a stable ID, row count, hash, revision, legacy-decision
+   manifest, and privacy sequence.
+2. `GraphProjectionCoordinator` pages that manifest into durable inbox/jobs,
+   validates its completion, and claims bounded work using fencing epoch plus
+   opaque claim token.
+3. `ConservativeGraphIdentityResolver` and
+   `DeterministicGraphProjectionBuilder` create only stable identities, edges,
+   and actual evidence. They never open a source file.
+4. `SqliteGraphStore` publishes validated generations in
+   `knowledge-graph.db`; `SqliteGraphDecisionStore` independently owns
+   append-only graph-native decisions and privacy recovery points in
+   `knowledge-decisions.db`.
+5. `GraphQueryService`, graph Search context, privacy, repair, decision, and
+   diagnostics services revalidate provider bounds and source/decision/privacy
+   authority before use.
+6. `KnowledgeGraphViewModel` projects bounded pages, direct neighbors, evidence,
+   progress, coverage, manual controls, privacy, and repair. It does not know
+   SQLite.
+7. `SemanticSearchService` may expand at most 16 ordinary seeds by one hop; it
+   caps graph-only targets at 50 and all contextual targets at 100, preserving
+   exact/literal and v1.9 direct-relationship priority.
+
+Keep `deep-index.db` at schema 3. Its v1.9 decisions remain authoritative; the
+graph mirror is derived. Do not collapse ingested and applied source, decision,
+or privacy watermarks. Do not turn stale or repair-required graph data into a
+successful read. The four independent axes are run control, job execution,
+freshness, and integrity.
+
+Graph tests should use synthetic manifests, fake clocks, deterministic workers,
+and temporary application-data roots. Cover manifest hash/count rejection,
+idempotent rebuild, fencing, expired claims, cancellation at publication,
+watermark lag, privacy races, backup privacy floors, corruption/newer schemas,
+query/traversal bounds, Search fallback, and unchanged source files. Never scan
+a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md).
 
 ## 9. Trace a Change Plan
 

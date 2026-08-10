@@ -58,6 +58,8 @@ write, corruption behavior, and tests.
 | Settings and logs | Core |
 | Catalog, saved searches, content, semantic index, structure history | Application subsystem containing the store |
 | Durable Search index | Application contracts and `OpenSorSe.Indexing.Sqlite` provider |
+| Knowledge Graph derived sidecar | Application graph contracts and `OpenSorSe.Indexing.Sqlite.KnowledgeGraph` provider; rebuildable |
+| Knowledge Graph decision sidecar | Application graph decision/privacy contracts and `OpenSorSe.Indexing.Sqlite.KnowledgeGraph` provider; non-rebuildable |
 | Watched configuration/catalogue/activity | Application/Watching |
 | Workflow library/import/export | Application/Workflows |
 | Plugin state and controlled installed versions | Application/Plugins |
@@ -98,6 +100,53 @@ retention, collection/member bounds, privacy filtering, source ownership,
 orphan/corrupt derived-row repair, exact-first Search expansion, and unchanged
 source files.
 
+v2.0 does not increment the durable Search index schema: `deep-index.db`
+remains schema 3. It bootstraps independent schema-1
+`knowledge-graph.db` and `knowledge-decisions.db` sidecars with distinct
+application IDs, migration histories, integrity checks, and recovery behavior.
+The graph store is derived and selectively rebuildable. The decision store is
+authoritative for graph-native user decisions and privacy state and must never
+be silently deleted, reset, or replaced by graph rebuild.
+
+For Knowledge Graph changes, validate completed manifest ID/count/hash and
+bounded paging; separate ingested/applied source, decision, and privacy
+watermarks; four-axis state; atomic generation publication; fencing epoch plus
+claim token; 5-second heartbeat, 30-second TTL, and 5-second shutdown grace;
+legacy v1.9 decision authority; point-of-use privacy; verified backup privacy
+floor; unsupported/corrupt/busy/low-resource behavior; deterministic rebuild;
+and unchanged source files. Cross-store lifecycle work must take the outer
+application-data lock and must not pretend to use a nested atomic transaction.
+
+The v2.0 candidate exposes decision recovery through the provider-neutral
+`IGraphDecisionRecoveryService` maintainer/integration path; there is no claimed
+end-user restore button. List recovery points through that service so only
+bounded identifiers, sequences, generations, times, and status codes are
+shown; managed database paths and private document content are never shown.
+Restore only after entering the exact confirmation `RESTORE GRAPH DECISIONS`. The provider
+re-verifies integrity, checksum, application/schema identity, sequence, and the
+privacy floor before journaled same-volume promotion. Corrupt or foreign
+points, points below the privacy floor, and unsupported newer schemas remain
+blocked. If promotion is interrupted, restart and initialize the graph storage
+lifecycle so it deterministically finishes or rolls back before graph use.
+Never substitute a manual database copy. Source files and `deep-index.db` are
+outside this operation.
+
+Corrupt derived-store replacement is a different candidate operation exposed
+through `IGraphDerivedStoreRecoveryService`; it is also a reviewed
+maintainer/integration path without an end-user button. Enter exactly
+`REBUILD DERIVED GRAPH STORE`. The provider first validates the authoritative
+decision sidecar, then journals a same-volume quarantine and promotion of a
+validated empty graph sidecar, and validates decisions again before completing.
+Reinitialize and invoke the reviewed path again after interruption so the
+journal resumes deterministically. Preserve the quarantine for inspection.
+The path rejects healthy and unsupported-newer graph stores and never changes
+`knowledge-decisions.db`, `deep-index.db`, or source files.
+
+The release requires a separate immutable-candidate RC campaign after the
+implementation validation. Keep every box in `RELEASE_READINESS_v2.0.md` and
+`MANUAL_TESTING_v2.0.md` unchecked until directly observed and reviewed. Use
+`V2.0_RC_STABILIZATION_PLAN.md`; automated success alone is not RC approval.
+
 For Search changes, run `Category=SearchRelevance` and
 `Category=PerformanceRegression` in addition to the full suite. Inspect the
 SQLite query plans exercised by provider tests, keep query/candidate/snippet
@@ -136,6 +185,12 @@ Review these on every release:
 - Application stores cannot escape their controlled files/directories.
 - Relationship and collection actions affect derived index data only; they do
   not acquire a source-file mutation path.
+- Knowledge Graph projection, privacy, decisions, and repair affect only
+  application-owned sidecars; they never open, modify, or delete source files.
+- Graph reads and Search expansion fail closed when privacy/decision/source
+  authority is unavailable or an applied watermark lags its authority.
+- Disabling or damaging the graph cannot block ordinary Search, indexing,
+  Collections, Change Plans, recovery, or Undo.
 
 ## Journal compatibility
 

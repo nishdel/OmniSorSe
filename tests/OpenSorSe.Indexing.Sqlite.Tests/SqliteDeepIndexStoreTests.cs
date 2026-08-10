@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Indexing.Sqlite;
@@ -220,6 +221,27 @@ public sealed class SqliteDeepIndexStoreTests
         var document = Assert.Single(await store.GetSearchDocumentsAsync(10));
         Assert.Equal(Path.GetFileName(relativePath), document.FileName);
         Assert.EndsWith(relativePath.Replace('/', Path.DirectorySeparatorChar), document.FullPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies contextual Search resolves only requested visible durable identifiers.</summary>
+    [Fact]
+    public async Task ExactSearchDocumentLookupIsBoundedDeduplicatedAndPrivacyFiltered()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(), [fixture.Observation("context.txt", stableIdentity: "context")]);
+        await CompleteBasicRunAsync(store, "context-hash");
+        var indexed = Assert.Single(await store.GetSearchDocumentsAsync(10));
+
+        var resolved = await store.GetSearchDocumentsByIdsAsync(
+            ["missing", indexed.FileId, indexed.FileId]);
+
+        Assert.Equal(indexed.FileId, Assert.Single(resolved).FileId);
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            store.GetSearchDocumentsByIdsAsync(
+                Enumerable.Range(0, RelationshipLimits.MaximumSearchExpansions + 1)
+                    .Select(index => $"file-{index}")
+                    .ToArray()));
     }
 
     /// <summary>Verifies metadata-only changes restart only the affected stages.</summary>

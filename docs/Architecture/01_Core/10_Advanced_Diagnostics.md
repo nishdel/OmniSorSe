@@ -54,3 +54,13 @@ Dropped, sampled, truncated, or deliberately unretained data is reported in the 
 ## Feature coverage
 
 AI retains separate system prompt, user prompt, serialized request, transport response, extracted assistant content, parsed structured response, validation detail, connection tests, model discovery, timing, and retries. OCR/text extraction retains raw native text, raw OCR text, normalized text, downstream text, native-quality and fallback decisions, engine/version/language, per-page status, rendering dimensions/DPI, preprocessing, truncation, warnings, partial results, and cancellation. Scanning retains roots/options, traversal decisions, accepted and skipped entries, downstream format support, access/missing/reparse/metadata issues, progress, counts, cancellation, elapsed time, and bounded aggregation.
+
+The v2.0 Knowledge Graph adds a separate privacy-safe operational snapshot:
+run ID, projection revision, four state axes, current stage, queue and terminal
+counts, completed-manifest and ingestion/applied watermarks, recovered claims,
+repair-required count, node/edge/evidence/decision totals, bounded failure
+category, storage size, and coverage. It does not retain source contents,
+extracted/OCR text, summaries, vectors, aliases, complete Search queries, raw
+suggestion payloads, secrets, or unnecessary absolute paths. Graph diagnostics
+remain useful when detailed content retention is off and do not make a failed
+graph operation succeed.

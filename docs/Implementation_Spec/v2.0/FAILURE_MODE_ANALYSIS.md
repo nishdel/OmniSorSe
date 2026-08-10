@@ -2,10 +2,10 @@
 
 ## Status and method
 
-This is a design-time failure analysis, not passing evidence. It is grounded in
-the v1.9 implementation at
-`7fbc9b47ebf2cd1209c177388aceffe1cb4cec16` and must be updated when the
-implementation changes a boundary.
+This is the accepted failure analysis used by the implementation candidate,
+not passing evidence. The candidate was created from exact validated design
+tip `a2a9a071600de74759937f05a7be61f85e9d5d93`; source and tests define its
+exact implemented boundary. Final fault-injection and RC evidence remains open.
 
 Severity meanings:
 
