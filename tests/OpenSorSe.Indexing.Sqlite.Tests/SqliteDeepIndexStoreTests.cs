@@ -23,6 +23,7 @@ public sealed class SqliteDeepIndexStoreTests
 
         Assert.True(File.Exists(fixture.DatabasePath));
         Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
+        Assert.Equal("wal", ReadScalar(fixture.DatabasePath, "PRAGMA journal_mode;"));
         Assert.Equal("ok", ReadScalar(fixture.DatabasePath, "PRAGMA quick_check;"));
     }
 

@@ -200,6 +200,7 @@ internal static class SqliteKnowledgeInfrastructure
         string databasePath,
         bool readOnly = false,
         bool pooling = false,
+        bool configureJournalMode = false,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -229,9 +230,15 @@ internal static class SqliteKnowledgeInfrastructure
             ExecuteNonQuery(connection, $"PRAGMA busy_timeout = {busyTimeout};");
             if (!readOnly)
             {
-                ExecuteNonQuery(connection, "PRAGMA journal_mode = WAL;");
                 ExecuteNonQuery(connection, "PRAGMA synchronous = FULL;");
-                ExecuteNonQuery(connection, "PRAGMA wal_autocheckpoint = 1000;");
+                if (configureJournalMode)
+                {
+                    // WAL is persistent database state. Reissuing this pragma on
+                    // every short-lived writer can consume a complete busy
+                    // deadline before the actual transaction even starts.
+                    ExecuteNonQuery(connection, "PRAGMA journal_mode = WAL;");
+                    ExecuteNonQuery(connection, "PRAGMA wal_autocheckpoint = 1000;");
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -329,7 +336,7 @@ internal static class SqliteKnowledgeInfrastructure
 
         try
         {
-            using var connection = OpenConnection(databasePath);
+            using var connection = OpenConnection(databasePath, configureJournalMode: true);
             var actualApplicationId = ReadPragmaInt(connection, "application_id");
             var actualVersion = ReadPragmaInt(connection, "user_version");
             var hasTables = HasUserTables(connection);

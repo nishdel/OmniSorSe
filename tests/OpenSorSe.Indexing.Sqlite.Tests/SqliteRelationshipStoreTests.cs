@@ -546,8 +546,7 @@ public sealed class SqliteRelationshipStoreTests
 
         public void Execute(string sql)
         {
-            SqliteConnection.ClearAllPools();
-            using var connection = new SqliteConnection($"Data Source={DatabasePath}");
+            using var connection = new SqliteConnection($"Data Source={DatabasePath};Pooling=False");
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = sql;
@@ -556,8 +555,7 @@ public sealed class SqliteRelationshipStoreTests
 
         public string Scalar(string sql)
         {
-            SqliteConnection.ClearAllPools();
-            using var connection = new SqliteConnection($"Data Source={DatabasePath};Mode=ReadOnly");
+            using var connection = new SqliteConnection($"Data Source={DatabasePath};Mode=ReadOnly;Pooling=False");
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = sql;
@@ -568,7 +566,6 @@ public sealed class SqliteRelationshipStoreTests
 
         public void Dispose()
         {
-            SqliteConnection.ClearAllPools();
             if (Directory.Exists(Root))
             {
                 Directory.Delete(Root, recursive: true);

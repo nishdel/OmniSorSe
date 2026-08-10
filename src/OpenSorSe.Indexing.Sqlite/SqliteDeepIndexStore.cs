@@ -41,7 +41,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     ?? throw new InvalidOperationException("The index database must have a parent directory."));
                 try
                 {
-                    using var connection = OpenConnection();
+                    using var connection = OpenConnection(configureJournalMode: true);
                     EnsureIntegrity(connection);
                     var version = Convert.ToInt32(ExecuteScalar(connection, "PRAGMA user_version;"), CultureInfo.InvariantCulture);
                     if (version > DeepIndexingVersion.SchemaVersion)
@@ -2202,7 +2202,6 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         RunExclusiveAsync(
             () =>
             {
-                SqliteConnection.ClearAllPools();
                 var backupDirectory = Path.Combine(
                     Path.GetDirectoryName(_databasePath)
                         ?? throw new InvalidOperationException("The index database has no parent directory."),
@@ -2219,7 +2218,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 MoveSidecarToRecovery(_databasePath + "-wal", recoveryPath, ".wal");
                 MoveSidecarToRecovery(_databasePath + "-shm", recoveryPath, ".shm");
-                using var connection = OpenConnection();
+                using var connection = OpenConnection(configureJournalMode: true);
                 using var transaction = connection.BeginTransaction();
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionOne);
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionTwo);
@@ -2296,7 +2295,6 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         try
         {
             _disposed = true;
-            SqliteConnection.ClearPool(new SqliteConnection(BuildConnectionString()));
         }
         finally
         {
@@ -2305,7 +2303,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         }
     }
 
-    private SqliteConnection OpenConnection()
+    private SqliteConnection OpenConnection(bool configureJournalMode = false)
     {
         var connection = new SqliteConnection(BuildConnectionString());
         try
@@ -2313,15 +2311,21 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
             connection.Open();
             ExecuteNonQuery(connection, null, "PRAGMA foreign_keys = ON;");
             ExecuteNonQuery(connection, null, "PRAGMA busy_timeout = 5000;");
-            ExecuteNonQuery(connection, null, "PRAGMA journal_mode = WAL;");
             ExecuteNonQuery(connection, null, "PRAGMA synchronous = FULL;");
-            ExecuteNonQuery(connection, null, "PRAGMA wal_autocheckpoint = 1000;");
+            if (configureJournalMode)
+            {
+                // WAL is persistent database state. Repeating its mode pragma
+                // for every operation can consume a busy deadline and makes
+                // file-handle cleanup depend on shared connection-pool state.
+                ExecuteNonQuery(connection, null, "PRAGMA journal_mode = WAL;");
+                ExecuteNonQuery(connection, null, "PRAGMA wal_autocheckpoint = 1000;");
+            }
+
             return connection;
         }
         catch
         {
             connection.Dispose();
-            SqliteConnection.ClearPool(connection);
             throw;
         }
     }
@@ -2331,7 +2335,10 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         DataSource = _databasePath,
         Mode = SqliteOpenMode.ReadWriteCreate,
         Cache = SqliteCacheMode.Shared,
-        Pooling = true,
+        // Store operations are already serialized by _gate. Unpooled,
+        // short-lived connections make disposal and index-only reset release
+        // the database deterministically without process-wide pool clearing.
+        Pooling = false,
     }.ToString();
 
     private async Task<T> RunExclusiveAsync<T>(Func<T> operation, CancellationToken cancellationToken)

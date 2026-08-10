@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Reflection;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.KnowledgeGraph;
@@ -112,6 +113,15 @@ public sealed class SqliteGraphReaderConcurrencyTests
         await lifecycle.ProvisionAsync();
         await using var store = new SqliteGraphStore(lifecycle.GraphDatabasePath);
         await store.InitializeAsync();
+        using (var journalInspection = new SqliteConnection(
+                   $"Data Source={lifecycle.GraphDatabasePath};Mode=ReadOnly;Cache=Private;Pooling=False"))
+        {
+            journalInspection.Open();
+            using var journalCommand = journalInspection.CreateCommand();
+            journalCommand.CommandText = "PRAGMA journal_mode;";
+            Assert.Equal("wal", Convert.ToString(journalCommand.ExecuteScalar(), CultureInfo.InvariantCulture));
+        }
+
         using var blocker = new SqliteConnection(
             $"Data Source={lifecycle.GraphDatabasePath};Mode=ReadWrite;Cache=Private;Pooling=False");
         blocker.Open();
@@ -160,7 +170,8 @@ public sealed class SqliteGraphReaderConcurrencyTests
         stopwatch.Stop();
         Assert.Equal(SqliteKnowledgeFailureKind.Busy, failure.Kind);
         Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+            stopwatch.Elapsed < TimeSpan.FromMilliseconds(
+                SqliteKnowledgeInfrastructure.BusyTimeoutMilliseconds + 3_000),
             $"Busy classification took {stopwatch.Elapsed}, which exceeded the finite provider deadline.");
 
         lockCommand.CommandText = "ROLLBACK;";
