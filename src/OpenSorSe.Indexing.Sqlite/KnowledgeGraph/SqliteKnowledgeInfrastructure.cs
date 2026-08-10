@@ -204,12 +204,13 @@ internal static class SqliteKnowledgeInfrastructure
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var usesManagedBusyBudget = !readOnly && !configureJournalMode;
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder
         {
             DataSource = databasePath,
             Mode = readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate,
             Cache = SqliteCacheMode.Private,
-            DefaultTimeout = cancellationToken.CanBeCanceled
+            DefaultTimeout = usesManagedBusyBudget || cancellationToken.CanBeCanceled
                 ? 1
                 : BusyTimeoutMilliseconds / 1_000,
             // Knowledge Graph operations deliberately own short-lived connections.
@@ -224,7 +225,7 @@ internal static class SqliteKnowledgeInfrastructure
         {
             connection.Open();
             ExecuteNonQuery(connection, "PRAGMA foreign_keys = ON;");
-            var busyTimeout = cancellationToken.CanBeCanceled
+            var busyTimeout = usesManagedBusyBudget || cancellationToken.CanBeCanceled
                 ? CancellableBusySliceMilliseconds
                 : BusyTimeoutMilliseconds;
             ExecuteNonQuery(connection, $"PRAGMA busy_timeout = {busyTimeout};");
@@ -292,13 +293,15 @@ internal static class SqliteKnowledgeInfrastructure
                     cancellationToken);
             }
             catch (SqliteException exception) when (
-                cancellationToken.CanBeCanceled &&
                 exception.SqliteErrorCode is 5 or 6 &&
                 Stopwatch.GetElapsedTime(started) < TimeSpan.FromMilliseconds(BusyTimeoutMilliseconds))
             {
-                // The connection uses a short native busy slice. Retrying the complete
-                // transaction keeps the cumulative deadline bounded while allowing a
-                // cancellation request to be observed between slices.
+                // Ordinary writers use a short native busy slice. Retrying the
+                // complete transaction applies one cumulative deadline across
+                // connection setup, BEGIN, statements, and COMMIT instead of
+                // allowing each native command to consume a fresh full timeout.
+                // Cancellation is observed between slices and also interrupts the
+                // active connection while a slice is in progress.
             }
             catch (SqliteException exception)
             {
