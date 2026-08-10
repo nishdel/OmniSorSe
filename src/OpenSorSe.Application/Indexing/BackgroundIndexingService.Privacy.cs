@@ -204,7 +204,7 @@ public sealed partial class BackgroundIndexingService
             .ToArray();
         foreach (var item in active)
         {
-            item.Cancellation.Cancel();
+            RequestCancellation(item.Cancellation);
         }
 
         await AwaitActiveStagesAsync(active, cancellationToken).ConfigureAwait(false);

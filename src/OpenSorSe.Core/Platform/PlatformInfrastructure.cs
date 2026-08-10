@@ -494,8 +494,20 @@ public sealed class PlatformCapabilityProvider : IPlatformCapabilityProvider
                 "Uses an exact path through the operating-system association API; failure is non-fatal."),
             Capability(
                 PlatformCapabilityKind.PackagingAndUpdates,
-                PlatformSupportState.Unavailable,
-                $"v{ApplicationVersionInfo.Display} does not provide an installer, updater, or published package."),
+                Platform is HostPlatformKind.Windows or HostPlatformKind.MacOS
+                    ? PlatformSupportState.SupportedWithLimitations
+                    : PlatformSupportState.Unavailable,
+                Platform switch
+                {
+                    HostPlatformKind.Windows =>
+                        $"v{ApplicationVersionInfo.Display} provides a self-contained Windows x64 portable package and per-user installer. They are unsigned and no automatic updater is provided.",
+                    HostPlatformKind.MacOS =>
+                        $"v{ApplicationVersionInfo.Display} provides separate Intel and Apple Silicon disk images. They are unsigned and unnotarized, and no automatic updater is provided.",
+                    HostPlatformKind.Linux =>
+                        $"v{ApplicationVersionInfo.Display} supports source builds on Linux but does not publish a Linux installer or automatic updater.",
+                    _ =>
+                        $"v{ApplicationVersionInfo.Display} does not publish a package or automatic updater for this platform.",
+                }),
         };
         return Array.AsReadOnly(values.OrderBy(value => value.Kind).ToArray());
     }

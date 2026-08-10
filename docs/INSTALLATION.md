@@ -4,19 +4,71 @@
 
 ## Availability
 
-The current repository source identifies as an OpenSorSe v2.0 implementation
-candidate on `v2.0-knowledge-graph`. That branch is not merged into `main`, and
-the repository does not contain a v2.0 installer, package, tag, or published
-release. Clean local automated validation is complete; exact-tip hosted, RC,
-and interactive validation are separate pending gates.
+OpenSorSe v2.0.0 is distributed from the official
+[GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.0.0) as:
 
-The only tagged and packaged repository release is the frozen v1.0 Windows x64
-portable snapshot. It does not represent current candidate behavior. Check
-[Release Status](RELEASE_STATUS.md) before expecting a download.
+- a self-contained Windows x64 portable ZIP;
+- a per-user Windows x64 installer;
+- an Intel macOS DMG;
+- an Apple Silicon macOS DMG;
+- one SHA-256 checksum file covering all four packages.
 
-Do not download an OpenSorSe package from an unrelated site. A future official
-archive should identify its source commit/version and include release notes plus
-a checksum from the same official release location.
+No Linux installer is published. Linux x64 remains a source-build preview.
+Do not download packages from unrelated sites. Check [Release Status](RELEASE_STATUS.md)
+and [v2.0.0 Release Notes](RELEASE_NOTES_v2.0.0.md) before relying on a package.
+
+## Windows x64 installer
+
+1. Download `OpenSorSe-v2.0.0-win-x64-setup.exe` and the checksum file from the
+   same official release.
+2. Verify the checksum as described below.
+3. Run the installer. The default is a per-user installation below Local
+   AppData, with a Start Menu shortcut and uninstall entry.
+4. Start OpenSorSe and select only folders you intend to analyse.
+
+The installer and executable are unsigned for v2.0.0 unless the release page
+explicitly records otherwise. Windows SmartScreen may warn that the publisher
+is unrecognized. Review the source location and checksum before continuing.
+
+## Windows x64 portable
+
+1. Download `OpenSorSe-v2.0.0-win-x64.zip` and the checksum file from the same
+   official release.
+2. Verify the checksum.
+3. Extract the entire ZIP into a writable directory.
+4. Keep all extracted files together and start `OpenSorSe.exe`.
+
+The portable package is self-contained and does not require a separate .NET
+runtime installation.
+
+## macOS Intel and Apple Silicon
+
+1. Choose `OpenSorSe-v2.0.0-macos-x64.dmg` for Intel or
+   `OpenSorSe-v2.0.0-macos-arm64.dmg` for Apple Silicon.
+2. Verify the checksum, open the DMG, and copy `OpenSorSe.app` to Applications.
+3. The v2.0.0 app is unsigned and unnotarized unless the release page explicitly
+   records otherwise. Gatekeeper may require an explicit reviewed override.
+
+The app bundle and native dependencies are built and smoke-tested on matching
+native GitHub-hosted macOS runners. This is not a claim that broad interactive
+macOS testing is complete. Source-file mutation remains disabled when the
+platform capability service cannot prove the required identity/link/filesystem
+guarantees.
+
+## Verify SHA-256 checksums
+
+Download `OpenSorSe-v2.0.0-SHA256SUMS.txt` from the same release.
+
+```powershell
+(Get-FileHash .\OpenSorSe-v2.0.0-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+```
+
+```bash
+shasum -a 256 OpenSorSe-v2.0.0-macos-arm64.dmg
+```
+
+Compare the complete value with the named line. A checksum detects changed
+bytes; it does not authenticate an unsigned publisher.
 
 ## Build and run current source
 
@@ -30,7 +82,7 @@ Prerequisites:
 ```powershell
 git clone https://github.com/nishdel/OpenSorSe.git
 Set-Location .\OpenSorSe
-git switch v2.0-knowledge-graph
+git switch main
 dotnet restore .\OpenSorSe.sln
 dotnet build .\OpenSorSe.sln --configuration Debug --no-restore
 dotnet test .\OpenSorSe.sln --configuration Debug --no-build --no-restore
@@ -109,6 +161,8 @@ or publisher authentication. See
 Application-owned runtime state uses the platform path provider:
 
 - Windows: below `%LOCALAPPDATA%\OpenSorSe`;
+- macOS: below `~/Library/Application Support/OpenSorSe`, with caches and logs
+  in the corresponding `~/Library/Caches` and `~/Library/Logs` locations;
 - Linux: XDG configuration/data/state/cache locations described in
   [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) and Platform Diagnostics.
 
@@ -122,11 +176,11 @@ configuration/catalogues/activity, plugin state/packages, Change Plans, and the
 Operation Journal.
 
 Source files remain in their selected locations. Extracted text, Search/graph
-indexes, graph associations/aliases, paths, journals, and diagnostic exports can still be sensitive; protect
-application data like the source material and do not copy it into the
-repository.
+indexes, graph associations/aliases, paths, journals, and diagnostic exports
+can still be sensitive; protect application data like the source material and
+do not copy it into the repository.
 
-## Update a source build or future portable release
+## Update a source build or portable release
 
 1. Close OpenSorSe so stores, indexing, watchers, and plugins shut down.
 2. Read Version Notes, Release Status, and migration information.
@@ -143,7 +197,8 @@ migration, newer-version rejection, corruption, and recovery behavior.
 ## Uninstall
 
 1. Close OpenSorSe.
-2. Delete the extracted/build program directory.
+2. For the Windows installer, use the OpenSorSe uninstall entry. For a portable
+   or source build, delete only its extracted/build program directory.
 3. Optionally remove the exact OpenSorSe-owned application-data directories.
 
 Removing application data does not delete scanned source files. It does remove
@@ -151,16 +206,14 @@ local indexes, settings, plugins, plans, journal/recovery facts, Undo evidence,
 graph-native decisions, and history. Do not remove it while an interrupted
 operation needs review.
 
-## Installer status
-
-No current installer is provided. A future installer/updater requires explicit
-identity, signing, reproducibility, migration, rollback, and uninstall policy.
+The Windows uninstaller preserves application data by policy. Removing that
+data is a separate explicit user decision.
 
 ## Troubleshooting
 
 - **Source does not build:** verify the SDK selected by `global.json`, restore,
   then build from a clean generated-output state.
-- **The historical portable app does not start:** extract the complete archive
+- **The portable app does not start:** extract the complete archive
   and keep every runtime file beside the executable.
 - **Ollama is unavailable:** verify endpoint, service, exact model, global AI,
   and the individual capability.

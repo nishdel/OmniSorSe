@@ -1306,7 +1306,7 @@ public sealed partial class SqliteGraphStore
         Convert.ToInt64(
             SqliteKnowledgeInfrastructure.ExecuteScalar(
                 connection,
-                $"SELECT COUNT(*) FROM {table} r JOIN graph_components c ON c.component_key = r.component_key AND c.active_generation = r.generation;"),
+                $"SELECT COUNT(*) FROM {SqliteKnowledgeInfrastructure.RequireSqlIdentifier(table)} r JOIN graph_components c ON c.component_key = r.component_key AND c.active_generation = r.generation;"),
             CultureInfo.InvariantCulture);
 
     private static int CountForComponents(
@@ -1314,6 +1314,7 @@ public sealed partial class SqliteGraphStore
         string table,
         IReadOnlyList<string> components)
     {
+        table = SqliteKnowledgeInfrastructure.RequireSqlIdentifier(table);
         var total = 0;
         foreach (var chunk in components.Chunk(500))
         {

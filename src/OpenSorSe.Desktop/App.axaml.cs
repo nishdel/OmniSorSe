@@ -1,6 +1,10 @@
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.DependencyInjection;
@@ -66,45 +70,65 @@ public partial class App : Avalonia.Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            _serviceProvider = CreateServiceProvider();
-            _applicationHost = _serviceProvider.GetRequiredService<IApplicationHost>();
-            _applicationHost.InitializeAsync().GetAwaiter().GetResult();
-            _serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
-                _serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
-                    .Current.Diagnostics);
-            _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
-                .RecoverInterruptedAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-            _serviceProvider.GetRequiredService<IPluginManager>()
-                .InitializeAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-            _serviceProvider.GetRequiredService<IWorkflowLibraryService>()
-                .InitializeAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-            _serviceProvider.GetRequiredService<IWatchedFolderCoordinator>()
-                .InitializeAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-            _serviceProvider.GetRequiredService<IBackgroundIndexingService>()
-                .InitializeAsync(CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
-            _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
-            var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
-            desktop.MainWindow = new MainWindow(mainViewModel);
             desktop.Exit += OnDesktopExit;
-            StartKnowledgeGraphInBackground(_serviceProvider);
+            Exception? startupFailure = null;
+            if (!LifecycleOperationGuard.TryExecute(
+                    "desktop-startup",
+                    () => ConfigureDesktopLifetime(desktop),
+                    (_, exception) =>
+                    {
+                        startupFailure = exception;
+                        RecordLifecycleFailure("Desktop startup", exception);
+                    }))
+            {
+                ReleaseFailedStartupServices();
+                desktop.MainWindow = CreateStartupFailureWindow(startupFailure!);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static ServiceProvider CreateServiceProvider()
+    private void ConfigureDesktopLifetime(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var applicationPaths = new ApplicationPathProvider();
+        _serviceProvider = CreateServiceProvider();
+        _applicationHost = _serviceProvider.GetRequiredService<IApplicationHost>();
+        _applicationHost.InitializeAsync().GetAwaiter().GetResult();
+        _serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
+            _serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
+                .Current.Diagnostics);
+        _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
+            .RecoverInterruptedAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<IPluginManager>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<IWorkflowLibraryService>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<IWatchedFolderCoordinator>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<IBackgroundIndexingService>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
+        var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+        desktop.MainWindow = new MainWindow(mainViewModel);
+        StartKnowledgeGraphInBackground(_serviceProvider);
+    }
+
+    internal static ServiceProvider CreateServiceProvider() =>
+        CreateServiceProviderForPaths(new ApplicationPathProvider());
+
+    internal static ServiceProvider CreateServiceProviderForPaths(IApplicationPathProvider applicationPaths)
+    {
+        ArgumentNullException.ThrowIfNull(applicationPaths);
         applicationPaths.EnsureOwnedDirectories();
         var settingsPath = applicationPaths.SettingsFilePath;
         var paths = applicationPaths.Paths;
@@ -388,22 +412,34 @@ public partial class App : Avalonia.Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
-        var graphStopped = StopKnowledgeGraphSafely();
-        _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll();
-        _applicationHost?.ShutdownAsync().GetAwaiter().GetResult();
+        var graphStopped = false;
+        _ = LifecycleOperationGuard.TryExecute(
+            "knowledge-graph-shutdown",
+            () => graphStopped = StopKnowledgeGraphSafely(),
+            RecordLifecycleFailure);
+        _ = LifecycleOperationGuard.TryExecute(
+            "diagnostics-clear",
+            () => _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll(),
+            RecordLifecycleFailure);
+        _ = LifecycleOperationGuard.TryExecute(
+            "application-host-shutdown",
+            () => _applicationHost?.ShutdownAsync().GetAwaiter().GetResult(),
+            RecordLifecycleFailure);
         if (graphStopped)
         {
-            _serviceProvider?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            _ = LifecycleOperationGuard.TryExecute(
+                "service-provider-disposal",
+                () => _serviceProvider?.DisposeAsync().AsTask().GetAwaiter().GetResult(),
+                RecordLifecycleFailure);
         }
         else
         {
-            _serviceProvider?.GetService<OpenSorSe.Core.Logging.ILoggingService>()?
-                .CreateLogger(nameof(App))
-                .LogWarning(
-                    "Knowledge Graph initialization did not acknowledge bounded shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
+            TryGetLifecycleLogger()?.LogWarning(
+                "Knowledge Graph initialization did not acknowledge bounded shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
         }
 
         _serviceProvider = null;
+        _applicationHost = null;
     }
 
     private void StartKnowledgeGraphInBackground(ServiceProvider serviceProvider)
@@ -428,6 +464,11 @@ public partial class App : Avalonia.Application
         {
             return false;
         }
+        catch (Exception exception)
+        {
+            RecordLifecycleFailure("Knowledge Graph initialization shutdown", exception);
+            return false;
+        }
 
         _graphStartupCancellation?.Dispose();
         _graphStartupCancellation = null;
@@ -448,12 +489,107 @@ public partial class App : Avalonia.Application
         }
         catch (Exception exception)
         {
-            _serviceProvider.GetService<OpenSorSe.Core.Logging.ILoggingService>()?
-                .CreateLogger(nameof(App))
-                .LogError(
-                    "Knowledge Graph shutdown was fenced in category {FailureCategory}; durable claims recover on the next startup.",
-                    exception.GetType().Name);
-            return exception is not OperationCanceledException;
+            RecordLifecycleFailure("Knowledge Graph runtime shutdown", exception);
+            return false;
+        }
+    }
+
+    private void ReleaseFailedStartupServices()
+    {
+        _ = LifecycleOperationGuard.TryExecute(
+            "failed-startup-host-shutdown",
+            () => _applicationHost?.ShutdownAsync().GetAwaiter().GetResult(),
+            RecordLifecycleFailure);
+        _ = LifecycleOperationGuard.TryExecute(
+            "failed-startup-service-disposal",
+            () => _serviceProvider?.DisposeAsync().AsTask().GetAwaiter().GetResult(),
+            RecordLifecycleFailure);
+        _applicationHost = null;
+        _serviceProvider = null;
+    }
+
+    private static Window CreateStartupFailureWindow(Exception exception)
+    {
+        var category = exception.GetType().Name;
+        var window = new Window
+        {
+            Title = "OpenSorSe could not start",
+            Width = 560,
+            Height = 300,
+            MinWidth = 440,
+            MinHeight = 240,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+        };
+        var closeButton = new Button
+        {
+            Content = "Close",
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(closeButton, "Close OpenSorSe startup error");
+        closeButton.Click += (_, _) => window.Close();
+        window.Content = new StackPanel
+        {
+            Margin = new Thickness(28),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "OpenSorSe could not complete startup.",
+                    FontSize = 24,
+                    FontWeight = FontWeight.SemiBold,
+                },
+                new TextBlock
+                {
+                    Text = "Your original files were not changed. Restart the application. If the problem continues, include the local OpenSorSe logs when reporting the issue after reviewing them for private information.",
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                new TextBlock
+                {
+                    Text = $"Failure category: {category}",
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                closeButton,
+            },
+        };
+        AutomationProperties.SetName(window, "OpenSorSe startup error");
+        return window;
+    }
+
+    private void RecordLifecycleFailure(string operation, Exception exception)
+    {
+        try
+        {
+            TryGetLifecycleLogger()?.LogError(
+                exception,
+                "{LifecycleOperation} failed safely in category {FailureCategory}.",
+                operation,
+                exception.GetType().Name);
+        }
+        catch (Exception loggingException)
+        {
+            System.Diagnostics.Trace.TraceError(
+                "OpenSorSe lifecycle failure in {0} ({1}); local logging also failed ({2}).",
+                operation,
+                exception.GetType().Name,
+                loggingException.GetType().Name);
+        }
+    }
+
+    private ILogger? TryGetLifecycleLogger()
+    {
+        try
+        {
+            return _serviceProvider?
+                .GetService<OpenSorSe.Core.Logging.ILoggingService>()?
+                .CreateLogger(nameof(App));
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError(
+                "OpenSorSe lifecycle logger was unavailable ({0}).",
+                exception.GetType().Name);
+            return null;
         }
     }
 
@@ -473,11 +609,21 @@ public partial class App : Avalonia.Application
         }
         catch (Exception exception)
         {
-            serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>()
-                .CreateLogger(nameof(App))
-                .LogError(
-                    "Optional Knowledge Graph startup failed safely in category {FailureCategory}; existing Search and indexing remain available.",
-                    exception.GetType().Name);
+            try
+            {
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>()
+                    .CreateLogger(nameof(App))
+                    .LogError(
+                        "Optional Knowledge Graph startup failed safely in category {FailureCategory}; existing Search and indexing remain available.",
+                        exception.GetType().Name);
+            }
+            catch (Exception loggingException)
+            {
+                System.Diagnostics.Trace.TraceError(
+                    "Optional Knowledge Graph startup failed ({0}); logging also failed ({1}).",
+                    exception.GetType().Name,
+                    loggingException.GetType().Name);
+            }
         }
     }
 }

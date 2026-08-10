@@ -1,8 +1,7 @@
 # OpenSorSe v2.0 — Knowledge Graph
 
-**Status:** unmerged implementation candidate; local automated validation
-complete; exact-tip hosted, interactive, and release-candidate validation are
-separate incomplete gates
+**Status:** v2.0.0 release source; automated/native-package evidence and
+interactive/community evidence remain separately reported
 
 v2.0 adds an optional, local, evidence-backed Knowledge Graph over the durable
 index and relationship foundation from v1.7–v1.9. It is designed for bounded
@@ -45,7 +44,7 @@ recovery, and Undo keep their prior contracts.
 
 ## Deliberate limits
 
-The candidate does not implement tag nodes, automatic real-world entity
+The release does not implement tag nodes, automatic real-world entity
 identity, unrestricted traversal, a graph canvas, a conversational assistant,
 autonomous organization, cloud synchronization, or a remote graph provider.
 Provider-neutral entity-suggestion contracts and strict bounded validation are
@@ -55,5 +54,6 @@ default and cannot establish identity.
 See [Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) for operational details,
 [Compatibility Matrix](V2.0_COMPATIBILITY_MATRIX.md) for upgrade/rollback
 expectations, and the fully unchecked [Manual Testing](MANUAL_TESTING_v2.0.md)
-and [Release Readiness](RELEASE_READINESS_v2.0.md) records for work still
-required.
+and historical [Release Readiness](RELEASE_READINESS_v2.0.md) records. Broad
+interactive/community testing begins with publication and is not claimed as
+completed here.

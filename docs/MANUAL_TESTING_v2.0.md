@@ -205,6 +205,32 @@ automation.
 - [ ] Execute the approved synthetic Change Plan through the journal and Undo;
       confirm graph only observes the committed result.
 
+## Distribution and community-testing handoff
+
+- [ ] Install the official Windows x64 setup package on a representative
+      non-development machine; record SmartScreen/signing behavior without
+      treating a checksum as publisher authentication.
+- [ ] Launch, close, uninstall, and confirm application data is preserved until
+      the user explicitly removes it.
+- [ ] Extract and launch the official Windows x64 portable ZIP from a clean
+      directory.
+- [ ] Mount, copy, launch, close, and remove the official Intel macOS app on a
+      native Intel host; record Gatekeeper behavior.
+- [ ] Mount, copy, launch, close, and remove the official Apple Silicon macOS app
+      on a native Apple Silicon host; record Gatekeeper behavior.
+- [ ] Build and launch the documented Linux x64 source preview on a native
+      graphical host; do not infer an installer that is not published.
+- [ ] Verify every downloaded artifact against
+      `OpenSorSe-v2.0.0-SHA256SUMS.txt` from the same official release.
+- [ ] Capture privacy-reviewed real application screenshots with synthetic data
+      by completing [the screenshot checklist](SCREENSHOT_CHECKLIST_v2.0.md).
+- [ ] Begin friend/community testing only after publication; record tester host,
+      version, exact scenario, expected/observed behavior, reviewed diagnostics,
+      and whether a v2.0.x fix is required.
+- [ ] Confirm no distribution, screenshot, bug report, or shared diagnostics
+      contains personal filenames, paths, contents, prompts, secrets, tokens,
+      databases, indexes, or unreviewed logs.
+
 ## Completion record
 
 - [ ] Every completed item includes exact host/dependency evidence.

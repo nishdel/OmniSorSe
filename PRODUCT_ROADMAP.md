@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-08-03
+**Last repository review:** 2026-08-10
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -253,7 +253,7 @@ is never implied by source implementation.
 | v1.7 | `v1.7-deep-indexing-foundation` | Deep Indexing Foundation | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
 | v1.8 | `v1.8-search-intelligence-privacy` | Search Intelligence, Quality and Privacy | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
 | v1.9 | `v1.9-relationships-context` | Relationships, Context & Smart Collections | Unmerged from `main`; source implementation complete, automated validation tracked on the branch, interactive manual validation not claimed. |
-| v2.0 | `v2.0-knowledge-graph` | Knowledge Graph | Unmerged implementation candidate above the validated design tip; clean local automated validation complete; exact-tip hosted, RC, and interactive manual validation remain separate. |
+| v2.0 | `v2.0-knowledge-graph` | Knowledge Graph | Unmerged implementation candidate above the validated design tip; final local automated and native Windows package validation complete; exact-tip hosted validation and integration remain separate. Interactive/community testing begins after publication. |
 
 ### v1.7 — Deep Indexing Foundation
 
@@ -342,9 +342,10 @@ Person/Place/Event/Topic identity, graph canvas,
 unrestricted traversal, conversation, autonomous actions, and remote/cross-device
 graphs are deferred.
 
-**Open work:** final clean automated evidence, exact-tip hosted CI, the fully
-unchecked manual checklist, and the mandatory release-candidate stabilization
-phase. See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
+**Open work:** exact-tip hosted CI, history-preserving integration, native
+macOS packaging, tagging, and publication. The fully unchecked manual and RC
+checklists remain follow-up/community evidence trackers rather than claims of
+completed testing. See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
 [validation report](docs/V2.0_VALIDATION_REPORT.md), and
 [RC plan](docs/V2.0_RC_STABILIZATION_PLAN.md). Integration and publication are
 separate later decisions.

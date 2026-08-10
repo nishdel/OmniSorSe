@@ -16,15 +16,18 @@ behind these operational requirements and
 3. Verify version metadata and release documentation.
 4. Run restore, Debug build/tests, Release build/tests, formatting, whitespace,
    documentation-link, Mermaid, machine-path, and artifact checks.
-5. Complete the current manual checklist on disposable data, including
-   interruption/recovery and hostile plugin-package cases where applicable.
+5. Complete the current manual checklist on disposable data, or record the
+   explicitly approved post-publication/community-testing boundary without
+   marking any unobserved scenario complete.
 6. Inspect privacy-sensitive diagnostics and package contents.
 7. Only after all gates pass, follow an explicitly approved commit/tag/package/
    publish workflow. Source validation alone does not claim a release exists.
 
-The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains the
-packaging baseline. Apply the current [v1.9 manual checklist](MANUAL_TESTING_v1.9.md)
-and [Release Status](RELEASE_STATUS.md) in addition.
+The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains a
+frozen release snapshot. Apply the current
+[v2.0 manual checklist](MANUAL_TESTING_v2.0.md),
+[native packaging procedure](RELEASE_PACKAGING_v2.0.md), and
+[Release Status](RELEASE_STATUS.md) instead.
 
 Record Windows, Linux, and macOS results independently. A green local Windows
 run does not prove the Ubuntu workflow ran, and a successful Linux source build
@@ -142,10 +145,13 @@ journal resumes deterministically. Preserve the quarantine for inspection.
 The path rejects healthy and unsupported-newer graph stores and never changes
 `knowledge-decisions.db`, `deep-index.db`, or source files.
 
-The release requires a separate immutable-candidate RC campaign after the
-implementation validation. Keep every box in `RELEASE_READINESS_v2.0.md` and
-`MANUAL_TESTING_v2.0.md` unchecked until directly observed and reviewed. Use
-`V2.0_RC_STABILIZATION_PLAN.md`; automated success alone is not RC approval.
+The v2.0 implementation records separate automated, native-package, and
+interactive evidence. Keep every box in `MANUAL_TESTING_v2.0.md` unchecked
+until directly observed and reviewed. For v2.0.0, the maintainer explicitly
+authorized broad interactive/community testing to begin after publication;
+that decision does not convert unperformed RC or manual scenarios into passed
+evidence. Use `V2.0_RC_STABILIZATION_PLAN.md` for later structured soak and
+fault campaigns and triage findings through v2.0.x when appropriate.
 
 For Search changes, run `Category=SearchRelevance` and
 `Category=PerformanceRegression` in addition to the full suite. Inspect the

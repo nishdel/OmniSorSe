@@ -26,15 +26,25 @@ public partial class FolderSelectionView : UserControl
             return;
         }
 
-        var folders = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        try
         {
-            Title = "Select a folder to scan",
-            AllowMultiple = false,
-        });
-        var path = folders.FirstOrDefault()?.TryGetLocalPath();
-        if (!string.IsNullOrWhiteSpace(path))
+            var folders = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select a folder to scan",
+                AllowMultiple = false,
+            });
+            var path = folders.FirstOrDefault()?.TryGetLocalPath();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                viewModel.AddFolder(path);
+            }
+        }
+        catch (Exception exception)
         {
-            viewModel.AddFolder(path);
+            System.Diagnostics.Trace.TraceWarning(
+                "The folder picker failed safely ({0}).",
+                exception.GetType().Name);
+            viewModel.ReportFolderPickerFailure();
         }
     }
 }

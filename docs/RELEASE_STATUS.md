@@ -16,9 +16,9 @@ Repository history currently places `main` at the v1.6 integration line. v1.7,
 v1.8, and v1.9 are implemented on their own linear branches and remain
 unmerged. `v2.0-knowledge-graph` is an implementation candidate created from
 the exact validated `v2.0-knowledge-graph-design` tip. It remains unmerged. Its
-clean local automated validation is complete; exact-tip hosted validation,
-mandatory RC stabilization, and interactive maintainer validation remain
-separate gates. Its
+final local automated and native Windows package validation is complete;
+exact-tip hosted validation, integration, native macOS packaging, tagging, and
+publication remain separate gates. Its
 [release-readiness](RELEASE_READINESS_v2.0.md) and
 [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked.
 
@@ -44,7 +44,7 @@ separate gates. Its
 | v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
 | v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
 | v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md), and the [manual checklist](MANUAL_TESTING_v1.9.md) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
-| v2.0 Knowledge Graph | Unmerged implementation candidate on `v2.0-knowledge-graph`; clean local automated validation complete; exact-tip hosted validation, mandatory RC stabilization, and interactive maintainer validation remain pending | Non-incremental zero-warning Debug/Release builds and 1,468 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, performance, policy, vulnerability, patch, and four-runtime cross-target gates passed. See the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md). The [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
+| v2.0 Knowledge Graph | Unmerged implementation candidate on `v2.0-knowledge-graph`; final local automated and native Windows package validation complete; exact-tip hosted validation and integration remain pending | Non-incremental zero-warning Debug/Release builds and 1,486 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, indexing, relationship, migration/recovery, concurrency/cancellation, performance, policy, vulnerability, and four-runtime cross-target gates passed. The Windows portable ZIP and unsigned installer passed controlled package validation. See the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md). The [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked; broad manual/community testing begins after publication. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
 
 ## Current product boundary
 
@@ -162,10 +162,12 @@ The architecture directory contains both current implementation documentation an
 OpenSorSe v2.0 is an implementation candidate on `v2.0-knowledge-graph`, based
 directly on exact validated design tip
 `a2a9a071600de74759937f05a7be61f85e9d5d93`. Earlier v1.7-v1.9 and design
-history is preserved and unmerged. Clean local automated evidence is recorded
-in the validation report; exact-tip hosted, RC, and manual validation remain
-separate open gates.
-The repository does not contain a v2.0 tag or package.
+history is preserved and unmerged. Final local automated and native Windows
+package evidence is recorded in the validation report; exact-tip hosted
+validation, integration, native macOS packaging, tagging, and publication
+remain open gates. The repository does not yet contain a v2.0 tag or published
+package. Manual and RC checklists remain unchecked evidence trackers; broad
+manual/community testing begins after publication.
 
 Integration, packaging, signing, tagging, and publishing remain separate
 release activities.
@@ -180,10 +182,11 @@ See the [Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md),
 - Version: `v2.0` implementation candidate
 - Release name: **Knowledge Graph**
 - Git branch: `v2.0-knowledge-graph`
-- Status: source implementation candidate; unmerged from `main`; clean local
-  automated validation complete; exact-tip hosted, RC stabilization, and
-  interactive validation incomplete; no package, tag, or published release is
-  claimed.
+- Status: source implementation candidate; unmerged from `main`; final local
+  automated and native Windows package validation complete; exact-tip hosted
+  validation and integration incomplete; no tag or published release is
+  claimed. Interactive/community validation is intentionally deferred until
+  publication.
 
 Release branches normally use `v<version>-<primary-feature>`, as demonstrated
 by v1.2-v2.0. Historical branch names are retained as created: v1.1 used

@@ -43,6 +43,9 @@ When documents overlap, use this order:
 | [Engineering Principles](../ENGINEERING_PRINCIPLES.md) | Reasoning for architecture, MVVM, stores/providers, testing, releases, CI, performance, safety, compatibility, and recovery. | Before a cross-cutting change or review. | Living and authoritative for cross-cutting engineering policy |
 | [Release History](../RELEASE_HISTORY.md) | Concise branch/date/test/merge history with links to detailed records. | When tracing how the product evolved. | Living historical index |
 | [Release Status](RELEASE_STATUS.md) | Exact current branch, integration, automated/manual validation, package, tag, and publication facts. | Before making a readiness or release claim. | Living and authoritative for current readiness |
+| [v2.0.0 Release Notes](RELEASE_NOTES_v2.0.0.md) | Downloads, changes, trust status, checksums, limitations, and community-testing boundary. | Before installing or publishing v2.0.0. | Current release snapshot |
+| [v2.0 Native Packaging](RELEASE_PACKAGING_v2.0.md) | Native artifact construction, validation, checksums, signing status, and publication order. | Before building or publishing release artifacts. | Living release procedure |
+| [v2.0 Screenshot Checklist](SCREENSHOT_CHECKLIST_v2.0.md) | Privacy-safe real-application capture requirements; intentionally unchecked. | Before adding screenshots to README or documentation. | Pending manual documentation task |
 | [Safety and Privacy](SAFETY_AND_PRIVACY.md) | Complete current source-file mutation, AI, watcher, workflow, plugin, storage, diagnostics, Search, recovery, and Undo boundaries. | Before any privacy, persistence, provider, plugin, or file-operation change. | Living and authoritative |
 | [v2.0 Security Notes](SECURITY_v2.0.md) | Knowledge Graph trust boundaries, hostile-input/resource defenses, store recovery, and explicit non-claims. | Before graph provider, query, suggestion, diagnostics, or recovery changes. | Current implementation-candidate security boundary |
 | [Changelog](CHANGELOG.md) | Detailed user-visible changes by historical version. | When release-by-release detail is required. | Cumulative historical record |
@@ -60,15 +63,15 @@ Roadmap.
 | [Installation](INSTALLATION.md) | Current source-build instructions, historical package boundary, optional dependencies, update/uninstall, and application data. | Before installing, building, updating, or removing OpenSorSe. | Living |
 | [OpenSorSe 1.9 User Guide](USER_GUIDE_v1.9.md) | Inherited v1.9 relationships, Smart Collections, Search context, privacy, and repair. | When using inherited v1.9 workflows. | Current inherited guidance |
 | [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence/confidence, virtual collections, user control, Search context, privacy, and limits. | Before relying on or changing relationship behavior. | Current feature guide |
-| [OpenSorSe 2.0 Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) | Candidate graph scope, consent, storage, lifecycle, browsing/Search, privacy, repair, limits, and deferred work. | When testing or reviewing the v2.0 implementation candidate. | Current implementation-candidate guide |
-| [OpenSorSe 2.0 Version Notes](VERSION_NOTES_v2.0.md) | Concise candidate changes, compatibility, defaults, and limits. | For the v2.0 candidate overview. | Current version snapshot |
+| [OpenSorSe 2.0 Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) | Graph scope, consent, storage, lifecycle, browsing/Search, privacy, repair, limits, and deferred work. | When using, testing, or changing Knowledge Graph. | Current feature guide |
+| [OpenSorSe 2.0 Version Notes](VERSION_NOTES_v2.0.md) | Concise changes, compatibility, defaults, and limits. | For the v2.0 overview. | Current version snapshot |
 | [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) | Inherited Search/index failure, coverage, privacy, repair, and diagnostic guidance. | When Search or indexing is unclear or fails. | Current inherited guidance |
 | [OpenSorSe 1.9 Manual Testing](MANUAL_TESTING_v1.9.md) | Interactive relationship/collection scenarios, intentionally unchecked until observed. | During maintainer manual validation. | Current version-specific evidence template |
 | [OpenSorSe 1.9 Version Notes](VERSION_NOTES_v1.9.md) | Concise v1.9 user-visible changes and limits. | For the v1.9 milestone overview. | Current version snapshot |
 | [v1.9 Implementation Report](V1.9_IMPLEMENTATION_REPORT.md) | What v1.9 changed and reused. | For implementation evidence, not general onboarding. | Current version snapshot |
 | [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.9 validation totals. | Current version snapshot |
 | [v2.0 Implementation Report](V2.0_IMPLEMENTATION_REPORT.md) | Architecture and compatibility implemented by the candidate. | For v2.0 implementation evidence. | Current candidate snapshot |
-| [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md) | Location for final exact automated evidence; no result is pre-claimed. | Before citing v2.0 validation. | Pending evidence record |
+| [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md) | Exact automated, native-target, packaging, and explicit manual-exclusion evidence. | Before citing v2.0 validation. | Current release evidence |
 | [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md) | Current support vocabulary and Windows/Linux/macOS capability evidence. | Before making a platform claim. | Living |
 | [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) | Linux source validation, run, and framework-dependent publish steps. | For Linux source work. | Living, conservative preview guidance |
 
@@ -101,21 +104,21 @@ plus [implementation specification 061](Implementation_Spec/v1.9/061_Relationshi
 are release-specific implementation records. Use the architecture documents
 above for the living subsystem model.
 
-## v2.0 implementation candidate and design authority
+## v2.0 release and design authority
 
 The design package remains the rationale and acceptance authority for the
-current unmerged implementation candidate. Source and tests define what is
-actually implemented; unchecked gates remain incomplete.
+v2.0 implementation. Source and tests define what is actually implemented;
+unchecked manual or historical RC gates remain incomplete.
 
 | Document | What it contains | Status |
 | --- | --- | --- |
-| [v2.0 Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md) | Implemented stable scope, storage, projection/recovery, Search, privacy, repair, bounds, and deferred work. | Implementation candidate |
-| [v2.0 Knowledge Graph stability architecture](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Isolated graph/decision stores, conservative scope, identity, projection, states, bounds, privacy, and RC policy. | Design authority implemented by the candidate |
-| [v2.0 specification package](Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md) | Failure, migration, recovery, concurrency, integrity, and automated-test acceptance plans. | Candidate acceptance authority |
-| [v2.0 compatibility matrix](V2.0_COMPATIBILITY_MATRIX.md) | v1.7/v1.8/v1.9 upgrade and rollback requirements. | Candidate target; final evidence pending |
-| [v2.0 release-readiness checklist](RELEASE_READINESS_v2.0.md) | Mandatory implementation, validation, RC, and release blockers. | Fully unchecked |
+| [v2.0 Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md) | Implemented stable scope, storage, projection/recovery, Search, privacy, repair, bounds, and deferred work. | Current feature guide |
+| [v2.0 Knowledge Graph stability architecture](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Isolated graph/decision stores, conservative scope, identity, projection, states, bounds, privacy, and RC policy. | Design authority implemented by v2.0 |
+| [v2.0 specification package](Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md) | Failure, migration, recovery, concurrency, integrity, and automated-test acceptance plans. | Accepted implementation authority |
+| [v2.0 compatibility matrix](V2.0_COMPATIBILITY_MATRIX.md) | v1.7/v1.8/v1.9 upgrade and rollback requirements. | Current compatibility boundary |
+| [v2.0 release-readiness checklist](RELEASE_READINESS_v2.0.md) | Historical implementation, validation, RC, and release gates. | Unchecked evidence template; no unobserved completion claimed |
 | [v2.0 manual checklist](MANUAL_TESTING_v2.0.md) | Interactive migration, recovery, graph, Search, privacy, resource, accessibility, and regression scenarios. | Fully unchecked |
-| [v2.0 RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md) | Required soak, fault, upgrade/rollback, privacy, platform, accessibility, and exit gates. | Not started |
+| [v2.0 RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md) | Structured soak, fault, upgrade/rollback, privacy, platform, accessibility, and exit gates. | Follow-up/community validation guide; no completion claimed |
 
 These records do not prove validation that has not been run and do not
 supersede v1.9 authority for existing relationships, Collections, privacy, or

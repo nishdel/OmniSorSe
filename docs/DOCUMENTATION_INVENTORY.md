@@ -290,9 +290,10 @@ retain their original wording.
   specifications/architecture but not formal standalone ADRs. Accepted ADRs
   must not be rewritten; new ADRs can record future decisions.
 - Real current screenshots are not checked in. README screenshot placeholders
-  were removed rather than presenting stale or generated captures.
-- The latest packaging checklist remains v1.0. Create a new checklist only when
-  a packaging effort is authorized.
+  were removed rather than presenting stale or generated captures. The
+  privacy-safe v2.0 capture checklist remains intentionally unchecked.
+- Native v2.0 packaging is documented in `RELEASE_PACKAGING_v2.0.md`; the v1.0
+  package tree remains frozen historical evidence.
 - v1.7, v1.8, and v1.9 interactive manual validation remains open where each
   release checklist records it.
 - v1.7/v1.8/v1.9 are not integrated into `main`; documentation must keep source

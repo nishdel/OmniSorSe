@@ -40,7 +40,7 @@ evidence, not a current-suite comparison.
 | v1.7 | `v1.7-deep-indexing-foundation` | 2026-07-29 | Deep Indexing Foundation. | Provider-neutral durable indexing, embedded SQLite, progressive Search, quotas, recovery and controls. | 987 | Not merged to `main`. |
 | v1.8 | `v1.8-search-intelligence-privacy` | 2026-07-29 | Search Intelligence, Quality and Privacy. | Hybrid ranker, visible filters, explanations/snippets, coverage, index privacy/repair, relevance gates. | 1,086 | Not merged to `main`. |
 | v1.9 | `v1.9-relationships-context` | 2026-08-03 | Relationships, Context & Smart Collections. | Evidence-backed relationships, virtual collections/timeline, user corrections, contextual Search, privacy/repair, schema 3. | 1,128 | Not merged to `main`. |
-| v2.0 candidate | `v2.0-knowledge-graph` | 2026-08-10 | Knowledge Graph implementation candidate. | Optional conservative graph projection, isolated schema-1 graph/decision sidecars, bounded browsing/Search context, privacy and recovery. | 1,467 | Not merged to `main`; local automated validation complete; exact-tip hosted, RC, and manual validation remain separate. |
+| v2.0 candidate | `v2.0-knowledge-graph` | 2026-08-10 | Knowledge Graph implementation candidate. | Optional conservative graph projection, isolated schema-1 graph/decision sidecars, bounded browsing/Search context, privacy and recovery. | 1,486 | Not merged to `main`; local automated and native Windows package validation complete; exact-tip hosted validation and integration remain separate. Manual/community testing begins after publication. |
 
 ## Evidence and detail
 
@@ -81,8 +81,8 @@ Version Notes under `docs/` remain release snapshots. The complete
 - `main` currently resolves to the v1.6 integration line.
 - v1.7, v1.8, and v1.9 contain implemented source and automated evidence but
   remain unmerged. v2.0 is an implementation candidate above the validated
-  design tip. Its clean local automated validation is complete; exact-tip
-  hosted and RC validation remain separate, and all four branches' applicable
-  manual checklists remain incomplete.
+  design tip. Its final local automated and native Windows package validation
+  is complete; exact-tip hosted validation and integration remain separate,
+  and all four branches' applicable manual checklists remain incomplete.
 - The only repository release tag is `v1.0.0`. No v1.7, v1.8, v1.9, or v2.0
   tag, package, or published release is present in the reviewed repository.

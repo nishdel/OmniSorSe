@@ -1,7 +1,7 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the unmerged OpenSorSe
-v2.0 implementation candidate and its inherited v1.9 source. The
+This is the authoritative top-level architecture for OpenSorSe v2.0 and its
+inherited v1.7-v1.9 source lineage. The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -13,7 +13,8 @@ cross-cutting implementation and validation policy.
 
 ## Architectural shape
 
-OpenSorSe is a local-first Windows desktop application with a Linux preview, built with .NET 8,
+OpenSorSe is a local-first cross-platform desktop application with a primary
+Windows target, native macOS distribution, and Linux source-build preview. It is built with .NET 8,
 Avalonia, MVVM, dependency injection, asynchronous bounded services,
 user-local JSON persistence, an embedded provider-isolated SQLite Search index,
 and optional isolated Knowledge Graph sidecars. Most of the application analyses data or creates
@@ -138,7 +139,7 @@ Collections](Architecture/06_Search/10_v1.9_Relationships_Context.md).
 
 ## v2.0 Knowledge Graph boundary
 
-The candidate projects only retained, authoritative v1.9 observations; it does
+The v2.0 graph projects only retained, authoritative v1.9 observations; it does
 not open source files or join the v1.7 `FileFullyIndexed` critical path. Stable
 nodes are File, Source, Folder, Collection, Document Set, and Manual Entity.
 Stable edges are Related File, Owned by Source, Located in Folder, Member Of,

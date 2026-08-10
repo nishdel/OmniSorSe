@@ -18,28 +18,47 @@ Ollama-compatible assistance.
 It is not an autonomous file manager. Analysis and suggestions do not authorize
 file changes.
 
-## Repository status
+## OpenSorSe v2.0.0
 
-- `main` contains the integrated implementation through v1.6.
-- v1.7 **Deep Indexing Foundation** is implemented on
-  `v1.7-deep-indexing-foundation` and is not merged to `main`.
-- v1.8 **Search Intelligence, Quality and Privacy** is implemented on
-  `v1.8-search-intelligence-privacy` and is not merged to `main`.
-- v1.9 **Relationships, Context & Smart Collections** is implemented on
-  `v1.9-relationships-context`, directly above v1.8, and is not merged to
-  `main`. Its interactive manual checklist remains unchecked.
-- v2.0 **Knowledge Graph** is an implementation candidate on
-  `v2.0-knowledge-graph`, based directly on the validated stability-design tip.
-  It remains unmerged. Clean local automated validation is complete;
-  exact-tip hosted validation, release-candidate stabilization, and interactive
-  maintainer validation remain separate gates.
-- The only tagged and packaged repository release is the historical v1.0
-  Windows x64 snapshot. There is no v1.7-v2.0 package, installer, tag, or
-  published release in this repository.
+v2.0.0 integrates the v1.7 Deep Indexing, v1.8 Search, v1.9 Relationships and
+Smart Collections, and v2.0 Knowledge Graph history into `main`. The release is
+automatically validated on Windows, Ubuntu, and macOS before publication.
 
-Read [Release Status](docs/RELEASE_STATUS.md) for the exact current boundary,
-[Release History](RELEASE_HISTORY.md) for completed milestones, and the
-[Product Roadmap](PRODUCT_ROADMAP.md) for future concepts.
+Broad interactive and community testing begins with v2.0.0; it is not claimed
+to have happened already. Real-world defects will be triaged normally and may
+be corrected in v2.0.x patches or later releases. Read
+[Release Status](docs/RELEASE_STATUS.md) for exact commits and validation,
+[v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) for user-facing changes,
+and [Release History](RELEASE_HISTORY.md) for earlier milestones.
+
+## Screenshots
+
+Privacy-reviewed screenshots must show the real released application with
+synthetic data. Native capture was not reliable in the release-engineering
+environment, so no mock or AI-generated screenshot is substituted here. The
+remaining capture work is explicit in the unchecked
+[v2.0 screenshot checklist](docs/SCREENSHOT_CHECKLIST_v2.0.md).
+
+## Downloads and installation
+
+Use only the official
+[v2.0.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.0.0):
+
+- Windows x64 installer: `OpenSorSe-v2.0.0-win-x64-setup.exe`;
+- Windows x64 portable: `OpenSorSe-v2.0.0-win-x64.zip`;
+- macOS Intel: `OpenSorSe-v2.0.0-macos-x64.dmg`;
+- macOS Apple Silicon: `OpenSorSe-v2.0.0-macos-arm64.dmg`;
+- SHA-256 checksums: `OpenSorSe-v2.0.0-SHA256SUMS.txt`.
+
+The v2.0.0 Windows and macOS artifacts are unsigned, and the macOS packages are
+not notarized, unless the release page explicitly records otherwise. Windows
+SmartScreen or macOS Gatekeeper may therefore warn. Checksums detect changed
+bytes but do not authenticate an unsigned publisher.
+
+No Linux installer is published. Linux x64 users should follow
+[Linux Build and Launch](docs/LINUX_BUILD_AND_LAUNCH.md). Detailed install,
+update, uninstall, application-data, and checksum guidance is in
+[Installation](docs/INSTALLATION.md).
 
 ## What the current source implements
 
@@ -102,11 +121,14 @@ contract.
 
 ## Platform and dependencies
 
-- **Windows:** primary verified desktop target.
+- **Windows x64:** primary desktop target with a self-contained portable ZIP
+  and per-user installer.
+- **macOS Intel and Apple Silicon:** native `.app`/DMG packages. Read-only and
+  non-mutating capabilities are packaged and smoke-tested; source-file mutation
+  remains disabled where platform capability policy cannot prove equivalent
+  safety. Packages are unsigned/unnotarized for v2.0.0.
 - **Linux x64:** source-build preview with documented filesystem, watcher,
-  desktop, and packaging limitations.
-- **macOS:** native CI/build evidence exists for the inherited v1.6 baseline,
-  but the product does not claim a supported macOS desktop or mutation path.
+  desktop, and packaging limitations; no binary installer is advertised.
 - **Ollama-compatible service:** optional and externally managed.
 - **Tesseract 5:** optional and externally installed for OCR recognition.
 - **Plugins:** optional local ZIP packages; external code runs in-process as the
@@ -148,9 +170,11 @@ documents are:
 | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative implementation-candidate component, data, safety, persistence, and dependency boundaries. |
 | [System Map](docs/Architecture/OpenSorSe_System_Map.md) | Visual architecture and mutation-path diagrams. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
-| [v2.0 Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md) | Implemented candidate scope, sidecar storage, projection/recovery, Search, privacy, bounds, and deferred behavior. |
-| [v2.0 Security Notes](docs/SECURITY_v2.0.md) | Candidate trust boundaries, hostile-input/resource defenses, recovery, and explicit non-claims. |
-| [v2.0 Knowledge Graph stability design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Design rationale for the implemented candidate and its still-open RC blockers. |
+| [v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) | Downloads, major changes, checksums, trust status, limitations, and community-testing boundary. |
+| [v2.0 Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md) | Implemented scope, sidecar storage, projection/recovery, Search, privacy, bounds, and deferred behavior. |
+| [v2.0 Security Notes](docs/SECURITY_v2.0.md) | Trust boundaries, hostile-input/resource defenses, recovery, and explicit non-claims. |
+| [Native Release Packaging](docs/RELEASE_PACKAGING_v2.0.md) | Windows/macOS artifact construction, validation, checksums, signing status, and publication order. |
+| [v2.0 Knowledge Graph stability design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Stability-first design rationale and invariant decisions retained for contributors. |
 | [v1.9 User Guide](docs/USER_GUIDE_v1.9.md) | Current relationship, collection, privacy, and Search-context workflows. |
 | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Guided build, validation, code tracing, and first-change workflow. |
 | [Contributing](CONTRIBUTING.md) | Repository layout, MVVM, testing, documentation, branch, validation, and review expectations. |

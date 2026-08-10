@@ -1,7 +1,7 @@
 # OpenSorSe v2.0 Knowledge Graph
 
-**Status:** implementation candidate on `v2.0-knowledge-graph`; unmerged and
-awaiting release-candidate and interactive maintainer validation
+**Status:** v2.0.0 feature boundary; automated and package evidence is recorded
+separately, and broad interactive/community validation is not claimed
 
 The Knowledge Graph is an optional, local projection over information already
 retained by OpenSorSe indexing. It connects stable files, sources, folders,
@@ -40,7 +40,7 @@ Tag nodes, automatic Person/Place/Event/Topic identity, unrestricted traversal,
 a graph canvas, conversational behavior, autonomous file actions, and remote
 or cross-device graphs are not implemented. Provider-neutral contracts and a
 strict bounded validator prepare for optional entity suggestions, but no live
-suggestion producer is wired in the candidate. Validation is disabled by
+suggestion producer is wired in v2.0. Validation is disabled by
 default and never makes a suggestion an identity. Existing experimental rows,
 if supplied by a future reviewed provider, remain inactive and can be ignored;
 stable identity still requires an explicit compatible user decision.
@@ -167,7 +167,7 @@ Verified decision backups use staged and committed metadata and remain distinct
 from the rebuildable graph store. If decision or privacy authority cannot be
 verified, graph browsing and Search expansion stop rather than guessing.
 
-The current candidate recovery surface is the provider-neutral
+The v2.0 recovery surface is the provider-neutral
 `IGraphDecisionRecoveryService` maintainer/integration path; v2.0 does not claim
 an end-user restore button. Recovery-point listings expose only bounded IDs,
 sequence/generation values, commit time, pin/restorable state, and a status
@@ -192,7 +192,7 @@ or rebuild derived graph data while preserving decisions. Cancellation is
 cooperative and durable. Corrupt derived data is quarantined or marked for
 repair; non-rebuildable decision corruption requires an explicit recovery path.
 
-For whole-store derived corruption, the current candidate exposes the
+For whole-store derived corruption, v2.0 exposes the
 provider-neutral `IGraphDerivedStoreRecoveryService` maintainer/integration
 path; no end-user recovery button is claimed. The exact confirmation
 `REBUILD DERIVED GRAPH STORE` starts a same-volume journaled operation that
@@ -210,12 +210,14 @@ and denial-of-service protections, not performance claims. The graph does not
 read archives, extracted files, or source documents, and it does not trigger
 OCR or Ollama processing.
 
-## Release-candidate boundary
+## Validation boundary
 
-This branch is an implementation candidate, not a published v2.0 release.
-Automated evidence belongs in [the v2.0 validation report](V2.0_VALIDATION_REPORT.md)
-after the final clean validation is complete. Every item in the
-[manual checklist](MANUAL_TESTING_v2.0.md) and
+Automated evidence belongs in
+[the v2.0 validation report](V2.0_VALIDATION_REPORT.md). Every unobserved item
+in the [manual checklist](MANUAL_TESTING_v2.0.md) and historical
 [release-readiness checklist](RELEASE_READINESS_v2.0.md) remains unchecked.
-The mandatory [RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md) must be
-completed before any merge, tag, package, or publication decision.
+The maintainer chose to begin broad interactive/community testing with the
+v2.0.0 publication; this document does not convert that future testing into
+completed evidence. The [RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md)
+remains the structured soak/fault guide for follow-up validation and v2.0.x
+triage.

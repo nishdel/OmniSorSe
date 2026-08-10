@@ -11,8 +11,9 @@ Before a cross-cutting change, read the
 
 ## Prerequisites
 
-- Windows 10 or later for the primary verified Desktop runtime, or a Linux x64
-  graphical environment for the conservative source-build preview.
+- Windows 10 or later for the primary Desktop runtime, macOS 12 or later for
+  native package work, or a Linux x64 graphical environment for the
+  conservative source-build preview.
 - The .NET SDK selected by [`global.json`](global.json).
 - Git.
 - Optional: Ollama for manual AI-provider testing.
@@ -215,6 +216,13 @@ separately.
 4. Review every changed and generated artifact.
 5. Merge only after the intended review and integration gates.
 6. Tag, package, sign, or publish only with explicit maintainer authorization.
+
+Native release artifacts are built by the reviewed scripts under
+`eng/release/` and the manual `release-packaging.yml` workflow. They are
+generated outside normal source tracking, must correspond to one exact green
+commit, and must pass payload, startup/shutdown, uninstall or bundle, native
+SQLite, and checksum checks before publication. See
+[Native Release Packaging](docs/RELEASE_PACKAGING_v2.0.md).
 
 Do not infer a release from a version string, successful build, source branch,
 or unchecked release checklist.

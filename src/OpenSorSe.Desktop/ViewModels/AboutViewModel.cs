@@ -30,10 +30,10 @@ public sealed class AboutViewModel : ViewModelBase
     /// <summary>
     /// Gets the copyable project repository address.
     /// </summary>
-    public string RepositoryAddress => "https://github.com/OpenSorSe/OpenSorSe";
+    public string RepositoryAddress => "https://github.com/nishdel/OpenSorSe";
 
     /// <summary>
     /// Gets the copyable public project documentation address.
     /// </summary>
-    public string DocumentationAddress => "https://github.com/OpenSorSe/OpenSorSe/tree/main/docs";
+    public string DocumentationAddress => "https://github.com/nishdel/OpenSorSe/tree/main/docs";
 }

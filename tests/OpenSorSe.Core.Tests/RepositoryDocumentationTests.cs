@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -10,6 +11,39 @@ namespace OpenSorSe.Core.Tests;
 public sealed partial class RepositoryDocumentationTests
 {
     private static readonly string RepositoryRoot = FindRepositoryRoot();
+
+    /// <summary>Verifies active Markdown is valid UTF-8 text without embedded binary control data.</summary>
+    [Fact]
+    public void MarkdownFiles_AreStrictUtf8Text()
+    {
+        var issues = new List<string>();
+        var strictUtf8 = new UTF8Encoding(
+            encoderShouldEmitUTF8Identifier: false,
+            throwOnInvalidBytes: true);
+
+        foreach (var file in MarkdownFiles())
+        {
+            var bytes = File.ReadAllBytes(file);
+            try
+            {
+                var content = strictUtf8.GetString(bytes);
+                if (content.Any(character =>
+                        character is '\0' or '\uFFFE' or '\uFFFF' ||
+                        (char.IsControl(character) && character is not ('\r' or '\n' or '\t'))))
+                {
+                    issues.Add($"{Relative(file)} contains binary or unsupported control characters.");
+                }
+            }
+            catch (DecoderFallbackException)
+            {
+                issues.Add($"{Relative(file)} is not valid UTF-8 text.");
+            }
+        }
+
+        Assert.True(
+            issues.Count == 0,
+            $"Invalid documentation text:{Environment.NewLine}{string.Join(Environment.NewLine, issues)}");
+    }
 
     /// <summary>Verifies every active relative Markdown/HTML link resolves to an existing repository path.</summary>
     [Fact]
@@ -118,6 +152,9 @@ public sealed partial class RepositoryDocumentationTests
             "V1.9_VALIDATION_REPORT.md",
             "MANUAL_TESTING_v2.0.md",
             "RELEASE_READINESS_v2.0.md",
+            "RELEASE_NOTES_v2.0.0.md",
+            "RELEASE_PACKAGING_v2.0.md",
+            "SCREENSHOT_CHECKLIST_v2.0.md",
             "V2.0_COMPATIBILITY_MATRIX.md",
             "PLATFORM_COMPATIBILITY_MATRIX.md",
             "LINUX_BUILD_AND_LAUNCH.md",
@@ -146,6 +183,52 @@ public sealed partial class RepositoryDocumentationTests
         foreach (var target in required)
         {
             Assert.Contains($"({target})", index, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Verifies native release automation names every supported artifact and no Linux installer.</summary>
+    [Fact]
+    public void ReleasePackaging_UsesNativeRunnersAndExactPublicArtifactNames()
+    {
+        var validationWorkflow = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            ".github",
+            "workflows",
+            "cross-platform-validation.yml"));
+        var releaseWorkflow = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            ".github",
+            "workflows",
+            "release-packaging.yml"));
+
+        Assert.Contains("actions/checkout@v7", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("actions/setup-dotnet@v6", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("windows-latest", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("macos-15-intel", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("osx-x64", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("osx-arm64", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OpenSorSe-v${{ inputs.version }}-win-x64.zip", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OpenSorSe-v${{ inputs.version }}-win-x64-setup.exe", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OpenSorSe-v${{ inputs.version }}-macos-x64.dmg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OpenSorSe-v${{ inputs.version }}-macos-arm64.dmg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OpenSorSe-v${{ inputs.version }}-SHA256SUMS.txt", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain(".deb", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(".rpm", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("AppImage", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
+
+        foreach (var script in new[]
+                 {
+                     "Build-WindowsArtifacts.ps1",
+                     "Validate-WindowsArtifacts.ps1",
+                     "Build-MacArtifacts.sh",
+                     "Validate-MacArtifact.sh",
+                     "New-ReleaseChecksums.ps1",
+                     "OpenSorSe.iss",
+                 })
+        {
+            Assert.True(
+                File.Exists(Path.Combine(RepositoryRoot, "eng", "release", script)),
+                $"Missing native release script: {script}");
         }
     }
 

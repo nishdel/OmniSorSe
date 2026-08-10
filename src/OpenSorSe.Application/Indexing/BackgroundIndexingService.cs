@@ -276,12 +276,12 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         var discoveryTasks = _discoveryTasks.Values.ToArray();
         foreach (var active in activeStages)
         {
-            active.Cancellation.Cancel();
+            RequestCancellation(active.Cancellation);
         }
 
         foreach (var discovery in _discoveryCancellations.Values)
         {
-            discovery.Cancel();
+            RequestCancellation(discovery);
         }
 
         await AwaitActiveStagesAsync(activeStages, cancellationToken).ConfigureAwait(false);
@@ -377,12 +377,12 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         var discoveryTasks = _discoveryTasks.Values.ToArray();
         foreach (var item in active)
         {
-            item.Cancellation.Cancel();
+            RequestCancellation(item.Cancellation);
         }
 
         foreach (var discovery in _discoveryCancellations.Values)
         {
-            discovery.Cancel();
+            RequestCancellation(discovery);
         }
 
         await AwaitActiveStagesAsync(active, cancellationToken).ConfigureAwait(false);
@@ -574,7 +574,7 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         _lifetimeCancellation.Cancel();
         foreach (var active in _activeStages.Values)
         {
-            active.Cancellation.Cancel();
+            RequestCancellation(active.Cancellation);
         }
 
         var tasks = _workers.Concat(_discoveryTasks.Values).ToArray();
@@ -586,6 +586,13 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         {
             // Process shutdown deliberately leaves claimed work for startup recovery.
         }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Background indexing shutdown observed an owned task failure in category {FailureCategory}; durable recovery will reconcile unfinished work on the next startup.",
+                exception.GetBaseException().GetType().Name);
+        }
         finally
         {
             foreach (var active in _activeStages.Values)
@@ -595,7 +602,17 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
 
             _signal.Dispose();
             _lifetimeCancellation.Dispose();
-            await _deepIndexStore.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await _deepIndexStore.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Background index storage disposal failed safely in category {FailureCategory}; process teardown will release remaining handles.",
+                    exception.GetType().Name);
+            }
         }
     }
 
@@ -635,7 +652,26 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         _ = task.ContinueWith(
             completedTask =>
             {
-                _ = completedTask.Exception;
+                if (completedTask.IsFaulted && completedTask.Exception is { } failure)
+                {
+                    try
+                    {
+                        _logger.LogError(
+                            failure,
+                            "An owned index discovery task failed outside its operational boundary. Run ID: {RunId}; category: {FailureCategory}.",
+                            runId,
+                            failure.GetBaseException().GetType().Name);
+                    }
+                    catch (Exception loggingFailure)
+                    {
+                        System.Diagnostics.Trace.TraceError(
+                            "Background index discovery {0} failed ({1}); logging also failed ({2}).",
+                            runId,
+                            failure.GetBaseException().GetType().Name,
+                            loggingFailure.GetType().Name);
+                    }
+                }
+
                 _discoveryTasks.TryRemove(runId, out _);
                 _discoverySourceIds.TryRemove(runId, out _);
                 if (_discoveryCancellations.TryRemove(runId, out var cancellation))
@@ -1151,14 +1187,14 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
             .ToArray();
         foreach (var item in active)
         {
-            item.Cancellation.Cancel();
+            RequestCancellation(item.Cancellation);
         }
 
         foreach (var runId in discoveryRunIds)
         {
             if (_discoveryCancellations.TryGetValue(runId, out var discovery))
             {
-                discovery.Cancel();
+                RequestCancellation(discovery);
             }
         }
 
@@ -1263,6 +1299,23 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
 
     private static long MaximumIndexBytes(DeepIndexingSettings settings) =>
         settings.MaximumIndexSizeMiB * 1024L * 1024L;
+
+    /// <summary>
+    /// Requests cancellation without racing a worker that has already removed
+    /// and disposed its linked source. Completion remains the synchronization
+    /// boundary; disposal winning this race means the stage already stopped.
+    /// </summary>
+    private static void RequestCancellation(CancellationTokenSource cancellation)
+    {
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // A stage/discovery completion concurrently disposed its source.
+        }
+    }
 
     private static DiagnosticStatus ToDiagnosticStatus(IndexingStageStatus status) => status switch
     {

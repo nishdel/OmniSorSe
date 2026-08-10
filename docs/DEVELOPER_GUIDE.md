@@ -16,15 +16,16 @@ git branch --all
 dotnet --info
 ```
 
-Windows is the primary Desktop target and Linux remains a preview
-target. The solution targets .NET 8 and the exact SDK selection is in
-`global.json`. Linux contributors should also read
-[Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md).
+Windows is the primary Desktop target. macOS Intel and Apple Silicon have
+native package paths for read-only and non-mutating functionality; Linux x64
+remains a source-build preview. The solution targets .NET 8 and the exact SDK
+selection is in `global.json`. Linux contributors should also read
+[Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md), while release maintainers
+should read [Native Release Packaging](RELEASE_PACKAGING_v2.0.md).
 
-Confirm the intended base before creating a branch. Repository history
-currently places `main` through v1.6; v1.7, v1.8, and v1.9 are implemented on
-linear unmerged release branches. Do not assume the newest version string is
-already integrated into `main`.
+Confirm the intended base before creating a branch. A product version, branch,
+or package name is not proof that a commit is integrated; inspect `main`, its
+remote-tracking branch, tags, and [Release Status](RELEASE_STATUS.md).
 
 ## 2. Restore and build
 
@@ -63,7 +64,9 @@ reference policy.
 
 GitHub Actions repeats restore, Debug/Release builds and complete tests,
 formatting, and documentation/dependency checks on `windows-latest`,
-`ubuntu-latest`, and `macos-latest`. It does not publish artifacts.
+`ubuntu-latest`, and `macos-latest`. The separate manually dispatched native
+packaging workflow creates temporary release artifacts only for an explicitly
+selected ref; it does not publish a GitHub Release by itself.
 
 Run the deterministic Search-quality and bounded performance groups separately
 when changing interpretation, ranking, snippets, coverage, relationships, or

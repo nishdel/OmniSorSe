@@ -1,7 +1,7 @@
 # OpenSorSe v2.0 Knowledge Graph security notes
 
-**Status:** implementation-candidate security boundary; final validation and RC
-fault campaign pending
+**Status:** v2.0.0 security boundary; automated hardening is recorded
+separately and broad interactive/community validation is not claimed
 
 The Knowledge Graph consumes untrusted local indexed data and optional
 untrusted suggestions. It never interprets indexed content as code, never opens
@@ -57,7 +57,7 @@ watermarks are checked at the point of use.
 
 ## Deferred security work
 
-The candidate does not claim encrypted SQLite storage. It does not implement a
+v2.0 does not claim encrypted SQLite storage. It does not implement a
 custom encryption scheme, remote provider, multi-user authorization, graph
 sync, or plugin sandbox. Application data must be protected using appropriate
 operating-system account, disk, backup, and device controls. These boundaries

@@ -2,13 +2,15 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** unmerged v2.0 implementation candidate over v1.9
+**Current source:** OpenSorSe v2.0.0 release source
 
-**Last reviewed:** 2026-08-04
+**Last reviewed:** 2026-08-10
 
 OpenSorSe is a Windows-first desktop application with a conservative Linux x64
-source-build preview. The solution also builds/tests in macOS CI, but that does
-not make macOS a supported product or enable its fail-closed mutation path.
+source-build preview. v2.0.0 adds native Intel/Apple Silicon macOS packages and
+package startup/shutdown probes while retaining conservative, fail-closed
+mutation limits. Native packaging is not evidence of broad interactive or
+filesystem validation.
 
 ## Status vocabulary
 
@@ -41,25 +43,26 @@ file mutation are separate claims.
   [v1.7](V1.7_VALIDATION_REPORT.md) and
   [v1.8](V1.8_VALIDATION_REPORT.md) and
   [v1.9](V1.9_VALIDATION_REPORT.md) validation reports.
-- v1.9 interactive platform/manual validation remains unchecked.
-- The v2.0 Knowledge Graph uses the existing cross-platform SQLite provider and
-  application-data abstraction, but final four-target/native-asset and hosted
-  candidate evidence is pending. No new platform-support claim follows from
-  source implementation alone.
+- v1.9 and v2.0 interactive platform/manual validation remain unchecked.
+- The v2.0 release gate runs the complete suite on native Windows, Ubuntu, and
+  macOS, compiles all four runtime identifiers, verifies SQLite assets, and
+  builds/inspects Windows and both native macOS packages. Exact evidence belongs
+  in the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md); no stronger
+  interactive claim follows from automation alone.
 
 ## Current support matrix
 
 | Capability | Windows | Linux x64 | macOS | Evidence and limits |
 | --- | --- | --- | --- | --- |
-| Restore/build/automated tests | Supported | Preview | Build/test only | Native three-host CI is proven for earlier releases. Current v1.9 local evidence is Windows execution plus cross-target compilation; exact-tip hosted results are external post-commit evidence. |
-| Avalonia Desktop startup/composition | Supported | Preview | Unverified | Windows is the primary runtime. Linux requires a graphical session/native dependencies and remains manually limited. macOS product support is not claimed. |
+| Restore/build/automated tests | Supported | Preview | Preview | v2.0 release CI runs the complete Debug/Release suite and policies on native Windows, Ubuntu, and macOS. |
+| Avalonia Desktop startup/composition | Supported | Preview | Preview | Windows is primary. Native packages run a non-interactive production-composition startup/shutdown probe; this is not broad UI validation. Linux requires a graphical session/native dependencies. |
 | Path normalization and confinement | Supported | Preview | Build/test only | Windows and Linux semantics have focused adapters/tests; POSIX execution passed the v1.6 native suite. macOS retains fail-closed product limits. |
 | Portable filename policy | Supported | Preview | Build/test only | Recipes can request current-platform, portable, or Windows-compatible output. Import does not silently rewrite policy. |
 | Stable file identity | Supported | Preview | Unverified | Windows uses volume/file index; Linux x64 uses device/inode with an explicit fallback. Identity remains bounded evidence, not permanent identity. |
 | Read-only scanning/metadata/duplicates | Supported | Preview | Build/test only | Links are skipped and item failures are isolated. Network, removable, FUSE, permissions, and mount behavior can be weaker. |
-| Embedded SQLite durable index | Supported | Unverified runtime | Unverified runtime | v1.9 Windows tests cover schema/provider and relationship behavior. Target outputs select the expected native SQLite library for all four runtime identifiers; native Linux/macOS interactive execution is not recorded in the source report. |
-| Knowledge Graph/decision sidecars | Unverified candidate | Unverified candidate | Unverified candidate | Provider-neutral source and schema-1 SQLite sidecars are implemented; final target/native-host, recovery, and manual evidence is not yet recorded. The feature is disabled by default. |
-| Search over available indexed data | Supported | Unverified runtime | Unverified runtime | Deterministic ranking is portable; full status also depends on current native provider/Desktop execution. Compatible filename/metadata Search can degrade independently. |
+| Embedded SQLite durable index | Supported | Preview | Preview | Native suites and package smoke probes initialize provider-isolated SQLite; target packages verify the expected native library. Real-filesystem breadth remains manually limited. |
+| Knowledge Graph/decision sidecars | Supported, default off | Preview, default off | Preview, default off | Provider-neutral schema-1 SQLite sidecars, recovery, and regressions run natively; interactive quality/accessibility evidence remains pending. |
+| Search over available indexed data | Supported | Preview | Preview | Deterministic ranking and provider regressions run natively. Compatible filename/metadata Search degrades independently from optional deeper data. |
 | Change Plan rename/move/create | Supported | Preview / manual verification pending | Unavailable | Linux operations require current-platform link, root, identity, permission, and same-filesystem checks. macOS mutation remains disabled. |
 | Cross-filesystem move | Unavailable | Unavailable | Unavailable | OpenSorSe does not silently implement move as copy/delete. |
 | Operation Journal, rollback, recovery, Undo | Supported | Preview / manual verification pending | Unavailable | Transaction-like compensating operations are not universal filesystem transactions. Unsafe inverse work blocks. |
@@ -70,8 +73,8 @@ file mutation are separate claims.
 | OCR through external Tesseract | Supported with limitations | Unverified runtime | Unverified runtime | Configured path/PATH discovery checks the external tool before bounded invocation. Engine/language packages are user managed. |
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
-| Application data locations | Supported | Preview | Build/test only | Windows preserves LocalAppData. Linux uses XDG config/data/state/cache categories. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/updater/current package | Unavailable | Unavailable | Unavailable | The repository contains only a historical v1.0 Windows portable snapshot. No v2.0 package or installer is claimed. |
+| Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
+| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.0.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs. Linux remains source build only. |
 
 ## Filesystem limitations
 

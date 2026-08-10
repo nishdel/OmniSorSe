@@ -2231,10 +2231,11 @@ public sealed class SqliteGraphDecisionStore : IGraphDecisionStore
         };
         foreach (var table in requiredColumns)
         {
+            var tableName = SqliteKnowledgeInfrastructure.RequireSqlIdentifier(table.Key);
             var actual = new HashSet<string>(StringComparer.Ordinal);
             using var columns = connection.CreateCommand();
             columns.Transaction = transaction;
-            columns.CommandText = $"PRAGMA table_info([{table.Key}]);";
+            columns.CommandText = $"PRAGMA table_info([{tableName}]);";
             using var reader = columns.ExecuteReader();
             while (reader.Read())
             {

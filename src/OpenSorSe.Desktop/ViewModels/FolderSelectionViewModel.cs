@@ -178,6 +178,10 @@ public sealed class FolderSelectionViewModel : ViewModelBase
         private set => SetProperty(ref _statusText, value);
     }
 
+    /// <summary>Reports a native folder-picker failure without exposing platform details.</summary>
+    public void ReportFolderPickerFailure() =>
+        StatusText = "The folder picker could not be opened. Enter an absolute folder path instead.";
+
     /// <summary>
     /// Gets the command that validates and adds the currently entered folder path.
     /// </summary>

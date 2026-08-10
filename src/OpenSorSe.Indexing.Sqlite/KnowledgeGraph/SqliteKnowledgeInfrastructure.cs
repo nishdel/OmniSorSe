@@ -314,6 +314,13 @@ internal static class SqliteKnowledgeInfrastructure
         IReadOnlyDictionary<string, IReadOnlySet<string>>? requiredColumns = null,
         IReadOnlySet<string>? requiredIndexes = null)
     {
+        metaTable = RequireSqlIdentifier(metaTable);
+        migrationTable = RequireSqlIdentifier(migrationTable);
+        foreach (var table in requiredTables)
+        {
+            _ = RequireSqlIdentifier(table);
+        }
+
         var lifecycleLock = new SqliteKnowledgeLifecycleLock(lifecycleLockPath, timeProvider);
         await using var lease = await lifecycleLock.AcquireAsync(LifecycleTimeout, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
@@ -413,6 +420,8 @@ internal static class SqliteKnowledgeInfrastructure
         IReadOnlyDictionary<string, IReadOnlySet<string>>? requiredColumns = null,
         IReadOnlySet<string>? requiredIndexes = null)
     {
+        metaTable = RequireSqlIdentifier(metaTable);
+        migrationTable = RequireSqlIdentifier(migrationTable);
         if (ReadPragmaInt(connection, "application_id") != applicationId)
         {
             throw Corrupt("The knowledge database application identifier is invalid.");
@@ -467,9 +476,10 @@ internal static class SqliteKnowledgeInfrastructure
         {
             foreach (var requiredTable in requiredColumns)
             {
+                var tableName = RequireSqlIdentifier(requiredTable.Key);
                 var actualColumns = new HashSet<string>(StringComparer.Ordinal);
                 using var command = connection.CreateCommand();
-                command.CommandText = $"PRAGMA table_info([{requiredTable.Key}]);";
+                command.CommandText = $"PRAGMA table_info([{tableName}]);";
                 using var reader = command.ExecuteReader();
                 while (reader.Read())
                 {
@@ -560,8 +570,35 @@ internal static class SqliteKnowledgeInfrastructure
     internal static SqliteKnowledgeStoreException Corrupt(string message) =>
         new(SqliteKnowledgeFailureKind.Corrupt, message);
 
-    internal static int ReadPragmaInt(SqliteConnection connection, string pragma) =>
-        Convert.ToInt32(ExecuteScalar(connection, $"PRAGMA {pragma};"), CultureInfo.InvariantCulture);
+    internal static int ReadPragmaInt(SqliteConnection connection, string pragma)
+    {
+        if (pragma is not ("application_id" or "user_version"))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(pragma),
+                "Only fixed integer schema pragmas may be read.");
+        }
+
+        return Convert.ToInt32(ExecuteScalar(connection, $"PRAGMA {pragma};"), CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Validates an internal SQLite identifier before the few schema operations
+    /// that cannot use command parameters. User input must never reach this path.
+    /// </summary>
+    internal static string RequireSqlIdentifier(string identifier)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(identifier);
+        if (identifier.Length > 64 ||
+            identifier[0] is not ('_' or >= 'A' and <= 'Z' or >= 'a' and <= 'z') ||
+            identifier.Any(character =>
+                character is not ('_' or >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9')))
+        {
+            throw new ArgumentException("The internal SQLite identifier is invalid.", nameof(identifier));
+        }
+
+        return identifier;
+    }
 
     internal static bool HasUserTables(SqliteConnection connection) =>
         Convert.ToInt32(

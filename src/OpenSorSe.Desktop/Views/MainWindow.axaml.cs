@@ -55,7 +55,19 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel viewModel &&
             sender is Button { DataContext: NavigationItem item })
         {
-            await viewModel.NavigateAsync(item.Destination);
+            try
+            {
+                await viewModel.NavigateAsync(item.Destination);
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Trace.TraceWarning(
+                    "Navigation refresh failed safely ({0}).",
+                    exception.GetType().Name);
+                viewModel.Notifications.Publish(new NotificationRequest(
+                    NotificationSeverity.Warning,
+                    "That page could not refresh. Existing data remains available; try again."));
+            }
         }
     }
 }

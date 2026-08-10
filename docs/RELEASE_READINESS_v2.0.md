@@ -1,11 +1,13 @@
 # OpenSorSe v2.0 release-readiness checklist
 
-**Status:** Implementation-candidate/RC checklist. Every gate is intentionally
-unchecked.
+**Status:** Retained implementation/interactive evidence checklist. Every gate
+is intentionally unchecked.
 
-This checklist is completed only against an exact release-candidate commit.
-Feature implementation, automated validation, manual validation, integration,
-tagging, packaging, and publication are separate facts.
+This checklist records the original implementation and interactive evidence
+matrix without retroactively inventing results. Final automated, integration,
+packaging, tagging, and publication facts are recorded in Git/GitHub and the
+v2.0 validation/release evidence. Broad manual/community testing begins after
+publication; no unchecked item below is implied complete by that decision.
 
 ## Scope and architecture
 

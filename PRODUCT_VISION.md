@@ -56,9 +56,9 @@ OpenSorSe aims to:
 
 ## Current behavior
 
-The current source line is the OpenSorSe v2.0 implementation candidate on
-`v2.0-knowledge-graph`. It is not merged into `main`; final automated evidence,
-RC stabilization, and interactive validation remain open. Exact readiness belongs in
+The current source line targets OpenSorSe v2.0.0. Integration, validation,
+packaging, publication, and interactive/community-testing facts can change
+without changing the product purpose, so exact readiness belongs in
 [Release Status](docs/RELEASE_STATUS.md), not in this vision.
 
 Today, the source implements:
@@ -94,7 +94,7 @@ Today, the source implements:
 Current source does **not** implement cloud synchronization, collaboration,
 OpenSorSe Server, an unrestricted or remote knowledge graph, a conversational
 assistant, unrestricted media understanding, autonomous organization,
-permanent deletion, or a published v2.0 package.
+or permanent deletion.
 
 ## Future vision
 

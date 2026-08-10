@@ -25,6 +25,10 @@ public sealed class AboutViewModelTests
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                 .InformationalVersion);
         Assert.Equal("MIT License", viewModel.License);
+        Assert.Equal("https://github.com/nishdel/OpenSorSe", viewModel.RepositoryAddress);
+        Assert.Equal(
+            "https://github.com/nishdel/OpenSorSe/tree/main/docs",
+            viewModel.DocumentationAddress);
         Assert.NotEmpty(viewModel.Acknowledgements);
     }
 

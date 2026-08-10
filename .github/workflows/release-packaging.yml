@@ -1,0 +1,150 @@
+name: Native release packaging
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Exact main commit or annotated release tag to package
+        required: true
+        default: main
+      version:
+        description: Three-part product version
+        required: true
+        default: 2.0.0
+
+permissions:
+  contents: read
+
+env:
+  AVALONIA_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  windows:
+    name: Windows x64 portable and installer
+    runs-on: windows-latest
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Use repository .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore Windows runtime graph
+        run: dotnet restore OpenSorSe.sln --runtime win-x64 --force --no-cache
+
+      - name: Locate maintained Inno Setup compiler
+        shell: pwsh
+        run: |
+          $compiler = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+          if (-not $compiler) {
+            choco install innosetup --no-progress -y
+            $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw "Inno Setup 6 is unavailable."
+          }
+          "INNO_SETUP_COMPILER=$compiler" >> $env:GITHUB_ENV
+
+      - name: Build Windows artifacts
+        shell: pwsh
+        run: ./eng/release/Build-WindowsArtifacts.ps1 -Version '${{ inputs.version }}' -OutputDirectory '.artifacts/release' -InnoSetupCompiler "$env:INNO_SETUP_COMPILER"
+
+      - name: Install, start, stop, and uninstall package
+        shell: pwsh
+        run: ./eng/release/Validate-WindowsArtifacts.ps1 -Version '${{ inputs.version }}' -ArtifactDirectory '.artifacts/release'
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-release
+          path: |
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64.zip
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS ${{ matrix.suffix }} DMG
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            rid: osx-x64
+            suffix: x64
+          - runner: macos-15
+            rid: osx-arm64
+            suffix: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Use repository .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore macOS runtime graph
+        run: dotnet restore OpenSorSe.sln --runtime '${{ matrix.rid }}' --force --no-cache
+
+      - name: Build native app bundle and disk image
+        run: bash ./eng/release/Build-MacArtifacts.sh '${{ inputs.version }}' '${{ matrix.rid }}' '.artifacts/release'
+
+      - name: Inspect, mount, and smoke-test disk image
+        run: bash ./eng/release/Validate-MacArtifact.sh '${{ inputs.version }}' '${{ matrix.rid }}' '.artifacts/release'
+
+      - name: Upload macOS disk image
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-${{ matrix.suffix }}-release
+          path: .artifacts/release/OpenSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  checksums:
+    name: Assemble and verify release checksums
+    needs:
+      - windows
+      - macos
+    runs-on: windows-latest
+    steps:
+      - name: Check out checksum tooling
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: '*-release'
+          path: .artifacts/release
+          merge-multiple: true
+
+      - name: Generate and independently verify SHA-256 checksums
+        shell: pwsh
+        run: ./eng/release/New-ReleaseChecksums.ps1 -Version '${{ inputs.version }}' -ArtifactDirectory '.artifacts/release'
+
+      - name: Upload complete verified release bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenSorSe-v${{ inputs.version }}-release-bundle
+          path: |
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64.zip
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64-setup.exe
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-macos-x64.dmg
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-macos-arm64.dmg
+            .artifacts/release/OpenSorSe-v${{ inputs.version }}-SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
