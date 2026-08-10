@@ -644,8 +644,10 @@ public sealed class GraphProjectionCoordinatorTests
     [Fact]
     public async Task Reconcile_FastBuilds_CancelAndObserveEveryHeartbeatWait()
     {
-        var scheduler = new TrackingHeartbeatScheduler();
-        var builder = new DeterministicGraphProjectionBuilder(new ConservativeGraphIdentityResolver());
+        using var scheduler = new TrackingHeartbeatScheduler();
+        var builder = new HeartbeatGatedBuilder(
+            new DeterministicGraphProjectionBuilder(new ConservativeGraphIdentityResolver()),
+            scheduler);
         var observations = Enumerable.Range(0, 24)
             .Select(index => (GraphProjectionObservation)TestGraphData.Source(string.Concat("source-", index)))
             .ToArray();
@@ -870,6 +872,21 @@ public sealed class GraphProjectionCoordinatorTests
         public void Dispose() => _release.Dispose();
     }
 
+    private sealed class HeartbeatGatedBuilder(
+        IGraphProjectionBuilder inner,
+        TrackingHeartbeatScheduler scheduler) : IGraphProjectionBuilder
+    {
+        public GraphComponentProjection Build(
+            GraphProjectionObservation observation,
+            GraphProjectionSnapshot snapshot,
+            DateTimeOffset validatedAtUtc,
+            CancellationToken cancellationToken = default)
+        {
+            scheduler.WaitForBuildPermit(cancellationToken);
+            return inner.Build(observation, snapshot, validatedAtUtc, cancellationToken);
+        }
+    }
+
     private sealed class ConcurrencyMeasuringBuilder(
         IGraphProjectionBuilder inner,
         int targetConcurrency) : IGraphProjectionBuilder, IDisposable
@@ -936,20 +953,25 @@ public sealed class GraphProjectionCoordinatorTests
                 : Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
     }
 
-    private sealed class TrackingHeartbeatScheduler : IGraphClaimHeartbeatScheduler
+    private sealed class TrackingHeartbeatScheduler : IGraphClaimHeartbeatScheduler, IDisposable
     {
         private int _active;
         private int _cancelledAndObserved;
         private int _waitCount;
+        private readonly SemaphoreSlim _buildPermits = new(0, int.MaxValue);
 
         internal int ActiveWaitCount => Volatile.Read(ref _active);
         internal int CancelledAndObservedCount => Volatile.Read(ref _cancelledAndObserved);
         internal int WaitCount => Volatile.Read(ref _waitCount);
 
+        internal void WaitForBuildPermit(CancellationToken cancellationToken) =>
+            _buildPermits.Wait(cancellationToken);
+
         public async Task WaitForHeartbeatAsync(CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _waitCount);
             Interlocked.Increment(ref _active);
+            _buildPermits.Release();
             try
             {
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
@@ -965,6 +987,7 @@ public sealed class GraphProjectionCoordinatorTests
             }
         }
 
+        public void Dispose() => _buildPermits.Dispose();
     }
 
 }
