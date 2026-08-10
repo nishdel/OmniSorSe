@@ -5,7 +5,7 @@
 **Authority:** Concise version/branch/date/integration summary; detailed
 release behavior and validation remain in the linked historical records
 
-**Repository history reviewed:** 2026-08-10
+**Repository history reviewed:** 2026-08-11
 
 This document indexes implemented version milestones without replacing their
 implementation specifications, version notes, validation reports, or manual
@@ -37,10 +37,10 @@ evidence, not a current-suite comparison.
 | v1.4 | `v1.4-plugin-foundation` | 2026-07-27 | Plugin Foundation and Extension SDK. | Standalone SDK, eight bounded extension points, local packages, grants, integrity/lifecycle isolation. | 836 | Merged to `main`. |
 | v1.5 | `v1.5-cross-platform-foundation` | 2026-07-27 | Cross-Platform Foundation and Linux Preview. | Platform adapters, XDG paths, Linux semantics, plugin RIDs, source CI foundation. | 850 | Merged to `main`. |
 | v1.6 | `v1.6-reliability-performance` | 2026-07-28 | Reliability, Performance and Production Hardening. | Shared atomic persistence, bounded resources, lifecycle/cancellation hardening, accessibility, native CI. | 895 | Merged to `main`. |
-| v1.7 | `v1.7-deep-indexing-foundation` | 2026-07-29 | Deep Indexing Foundation. | Provider-neutral durable indexing, embedded SQLite, progressive Search, quotas, recovery and controls. | 987 | Not merged to `main`. |
-| v1.8 | `v1.8-search-intelligence-privacy` | 2026-07-29 | Search Intelligence, Quality and Privacy. | Hybrid ranker, visible filters, explanations/snippets, coverage, index privacy/repair, relevance gates. | 1,086 | Not merged to `main`. |
-| v1.9 | `v1.9-relationships-context` | 2026-08-03 | Relationships, Context & Smart Collections. | Evidence-backed relationships, virtual collections/timeline, user corrections, contextual Search, privacy/repair, schema 3. | 1,128 | Not merged to `main`. |
-| v2.0 candidate | `v2.0-knowledge-graph` | 2026-08-10 | Knowledge Graph implementation candidate. | Optional conservative graph projection, isolated schema-1 graph/decision sidecars, bounded browsing/Search context, privacy and recovery. | 1,486 | Not merged to `main`; local automated and native Windows package validation complete; exact-tip hosted validation and integration remain separate. Manual/community testing begins after publication. |
+| v1.7 | `v1.7-deep-indexing-foundation` | 2026-07-29 | Deep Indexing Foundation. | Provider-neutral durable indexing, embedded SQLite, progressive Search, quotas, recovery and controls. | 987 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
+| v1.8 | `v1.8-search-intelligence-privacy` | 2026-07-29 | Search Intelligence, Quality and Privacy. | Hybrid ranker, visible filters, explanations/snippets, coverage, index privacy/repair, relevance gates. | 1,086 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
+| v1.9 | `v1.9-relationships-context` | 2026-08-03 | Relationships, Context & Smart Collections. | Evidence-backed relationships, virtual collections/timeline, user corrections, contextual Search, privacy/repair, schema 3. | 1,128 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
+| v2.0.0 | `v2.0-knowledge-graph` | 2026-08-11 | Knowledge Graph and integrated v1.7-v1.9 release. | Optional conservative graph projection, isolated schema-1 graph/decision sidecars, bounded browsing/Search context, privacy and recovery. | 1,486 | Merged to `main` by explicit history-preserving release merge after exact-tip Windows, Ubuntu, and macOS validation. Manual/community testing begins with publication. |
 
 ## Evidence and detail
 
@@ -78,11 +78,11 @@ Version Notes under `docs/` remain release snapshots. The complete
 - `coding/v0.1` ends in an unmerged README-only commit, while the foundational
   implementation commits are ancestors of `main`. The table reports both facts
   rather than flattening the branch to a misleading yes/no.
-- `main` currently resolves to the v1.6 integration line.
-- v1.7, v1.8, and v1.9 contain implemented source and automated evidence but
-  remain unmerged. v2.0 is an implementation candidate above the validated
-  design tip. Its final local automated and native Windows package validation
-  is complete; exact-tip hosted validation and integration remain separate,
-  and all four branches' applicable manual checklists remain incomplete.
-- The only repository release tag is `v1.0.0`. No v1.7, v1.8, v1.9, or v2.0
-  tag, package, or published release is present in the reviewed repository.
+- `main` contains the complete v1.7, v1.8, v1.9, v2.0 design, and v2.0
+  implementation history through an explicit release merge. No squash or
+  history rewrite was used.
+- Exact-tip Windows, Ubuntu, and macOS validation completed before integration.
+  Applicable v1.7-v2.0 manual checklists remain incomplete; broad
+  manual/community testing begins with v2.0.0 publication.
+- Native release packages, checksums, tag, and publication are GitHub release
+  records rather than generated binaries committed to normal source history.

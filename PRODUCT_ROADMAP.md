@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-08-10
+**Last repository review:** 2026-08-11
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -29,7 +29,7 @@ For concise dates, test totals, and links to historical evidence, see
 
 ## Completed
 
-`main` currently contains the implementation lineage through v1.6.
+`main` currently contains the implementation lineage through v2.0.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -50,6 +50,10 @@ For concise dates, test totals, and links to historical evidence, see
 | v1.4 | `v1.4-plugin-foundation` | Plugin Foundation and Extension SDK | Merged to `main`. |
 | v1.5 | `v1.5-cross-platform-foundation` | Cross-Platform Foundation and Linux Preview | Merged to `main`. |
 | v1.6 | `v1.6-reliability-performance` | Reliability, Performance and Production Hardening | Merged to `main`. |
+| v1.7 | `v1.7-deep-indexing-foundation` | Deep Indexing Foundation | Merged to `main` through the v2.0.0 integration; interactive manual validation is not claimed. |
+| v1.8 | `v1.8-search-intelligence-privacy` | Search Intelligence, Quality and Privacy | Merged to `main` through the v2.0.0 integration; interactive manual validation is not claimed. |
+| v1.9 | `v1.9-relationships-context` | Relationships, Context & Smart Collections | Merged to `main` through the v2.0.0 integration; interactive manual validation is not claimed. |
+| v2.0 | `v2.0-knowledge-graph` | Knowledge Graph | Merged to `main` by an explicit history-preserving release merge after exact-tip Windows, Ubuntu, and macOS validation. Broad manual/community testing begins with publication. |
 
 ### v0.1 — Read-only Processing Foundation
 
@@ -242,18 +246,18 @@ metadata; Windows/Ubuntu/macOS CI.
 
 **Dependencies:** the full v1.5 feature set; no new product service dependency.
 
-## In Progress
+## Integrated v1.7-v2.0 milestones
 
-These versions are implemented in source branches but are not ancestors of
-`main`. Their exact validation state is stated per row; interactive and RC work
-is never implied by source implementation.
+These versions are now ancestors of `main` through the v2.0.0 release merge.
+Their exact validation state is stated per row; integration does not imply that
+the still-unchecked interactive or community scenarios were completed.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
-| v1.7 | `v1.7-deep-indexing-foundation` | Deep Indexing Foundation | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
-| v1.8 | `v1.8-search-intelligence-privacy` | Search Intelligence, Quality and Privacy | Unmerged from `main`; source and automated validation complete, interactive manual validation not claimed. |
-| v1.9 | `v1.9-relationships-context` | Relationships, Context & Smart Collections | Unmerged from `main`; source implementation complete, automated validation tracked on the branch, interactive manual validation not claimed. |
-| v2.0 | `v2.0-knowledge-graph` | Knowledge Graph | Unmerged implementation candidate above the validated design tip; final local automated and native Windows package validation complete; exact-tip hosted validation and integration remain separate. Interactive/community testing begins after publication. |
+| v1.7 | `v1.7-deep-indexing-foundation` | Deep Indexing Foundation | Integrated into `main` through v2.0.0; source and automated validation complete, interactive manual validation not claimed. |
+| v1.8 | `v1.8-search-intelligence-privacy` | Search Intelligence, Quality and Privacy | Integrated into `main` through v2.0.0; source and automated validation complete, interactive manual validation not claimed. |
+| v1.9 | `v1.9-relationships-context` | Relationships, Context & Smart Collections | Integrated into `main` through v2.0.0; source and automated validation complete, interactive manual validation not claimed. |
+| v2.0 | `v2.0-knowledge-graph` | Knowledge Graph | Integrated into `main` after complete local validation and exact-tip Windows, Ubuntu, and macOS CI. Interactive/community testing begins with publication. |
 
 ### v1.7 — Deep Indexing Foundation
 
@@ -269,8 +273,8 @@ maintenance; indexing controls/diagnostics.
 **Dependencies:** v1.6 reliability/platform baseline; embedded SQLite provider
 and native runtime library. No database server is required.
 
-**Open work:** integration into `main`, any maintainer-required interactive
-validation, and separate packaging/tag/publication decisions.
+**Open evidence:** the unchecked v1.7 interactive checklist remains a manual
+evidence tracker; it is not silently completed by v2.0 integration.
 
 ### v1.8 — Search Intelligence, Quality and Privacy
 
@@ -286,9 +290,8 @@ repair; synthetic relevance and performance regression gates.
 **Dependencies:** exact v1.7 tip and its provider-neutral/SQLite indexing
 foundation. Ollama remains optional and is not required for ordinary Search.
 
-**Open work:** integration into `main`; the unchecked v1.8 manual checklist;
-separate package, tag, and publication decisions. The repository contains no
-v1.8 package or tag.
+**Open evidence:** the unchecked v1.8 manual checklist remains a manual
+evidence tracker. No standalone v1.8 package or tag is claimed.
 
 ### v1.9 — Relationships, Context & Smart Collections
 
@@ -306,9 +309,9 @@ exact-first contextual Search.
 **Dependencies:** exact validated v1.8 branch tip and its durable index/Search
 contracts. No database server, new AI provider, or online service is required.
 
-**Open work:** integration into `main`; the fully unchecked v1.9 interactive
-manual checklist; separate package, tag, and publication decisions. The
-repository contains no v1.9 package or tag.
+**Open evidence:** the fully unchecked v1.9 interactive manual checklist
+remains a manual evidence tracker. No standalone v1.9 package or tag is
+claimed.
 
 ### v2.0 — Knowledge Graph
 
@@ -320,8 +323,9 @@ default and never reads or mutates source files.
 **Branch:** `v2.0-knowledge-graph`, created directly from exact validated design
 tip `a2a9a071600de74759937f05a7be61f85e9d5d93`.
 
-**Merged status:** Unmerged implementation candidate. No package, tag, published
-release, completed interactive validation, or completed RC is claimed.
+**Merged status:** Integrated into `main` by an explicit history-preserving
+v2.0.0 release merge after exact-tip Windows, Ubuntu, and macOS CI. Completed
+interactive/community validation is not claimed.
 
 The [stability-first design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md)
 defines the bounded graph projection implemented over existing v1.9 files, relationships,
@@ -342,13 +346,13 @@ Person/Place/Event/Topic identity, graph canvas,
 unrestricted traversal, conversation, autonomous actions, and remote/cross-device
 graphs are deferred.
 
-**Open work:** exact-tip hosted CI, history-preserving integration, native
-macOS packaging, tagging, and publication. The fully unchecked manual and RC
-checklists remain follow-up/community evidence trackers rather than claims of
-completed testing. See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
+**Release boundary:** native Windows/macOS artifacts, checksums, tagging, and
+publication are performed by the release workflow from the exact integrated
+source. The fully unchecked manual and RC checklists remain
+follow-up/community evidence trackers rather than claims of completed testing.
+See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
 [validation report](docs/V2.0_VALIDATION_REPORT.md), and
-[RC plan](docs/V2.0_RC_STABILIZATION_PLAN.md). Integration and publication are
-separate later decisions.
+[RC plan](docs/V2.0_RC_STABILIZATION_PLAN.md).
 
 ## Planned
 
