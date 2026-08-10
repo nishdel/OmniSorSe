@@ -35,6 +35,12 @@ public enum NavigationDestination
     /// <summary>Searches the bounded local deterministic semantic index.</summary>
     SemanticSearch,
 
+    /// <summary>Inspects evidence-backed virtual collections and direct file relationships.</summary>
+    Collections,
+
+    /// <summary>Inspects the optional bounded local Knowledge Graph.</summary>
+    KnowledgeGraph,
+
     /// <summary>Compares stored metadata from two explicit historical catalog snapshots.</summary>
     CatalogComparison,
 

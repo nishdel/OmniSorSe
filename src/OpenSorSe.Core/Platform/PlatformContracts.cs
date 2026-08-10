@@ -11,7 +11,7 @@ public enum HostPlatformKind
     /// <summary>A Linux-based operating system.</summary>
     Linux,
 
-    /// <summary>Apple macOS, which is not a verified v1.5 target.</summary>
+    /// <summary>Apple macOS.</summary>
     MacOS,
 
     /// <summary>An unrecognized operating system.</summary>

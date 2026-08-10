@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.28" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenSorSe.Application\OpenSorSe.Application.csproj" />
+    <ProjectReference Include="..\OpenSorSe.Core\OpenSorSe.Core.csproj" />
+  </ItemGroup>
+</Project>

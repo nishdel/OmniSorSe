@@ -9,6 +9,8 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Features;
+using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
@@ -44,6 +46,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
         new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
+        new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Primary, "C"),
+        new(NavigationDestination.KnowledgeGraph, "Knowledge Graph", FeatureRequirement.Regular, NavigationGroup.Primary, "G"),
         new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Primary, "▣"),
         new(NavigationDestination.Settings, "Settings", FeatureRequirement.Regular, NavigationGroup.Primary, "⚙"),
         new(NavigationDestination.StructureHistory, "Folder plans", FeatureRequirement.Advanced, NavigationGroup.Advanced, "⌘"),
@@ -64,6 +68,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IWorkflowRecipePlanService? _workflowRecipePlanService;
     private readonly IWatchedFolderManager? _watchedFolderManager;
     private readonly IWatchedFolderCoordinator? _watchedFolderCoordinator;
+    private readonly IBackgroundIndexingService? _backgroundIndexingService;
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
@@ -278,7 +283,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowTemplateEngine? workflowTemplateEngine = null,
         IPluginManager? pluginManager = null,
         OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
-        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null)
+        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
+        IBackgroundIndexingService? backgroundIndexingService = null,
+        IRelationshipService? relationshipService = null,
+        KnowledgeGraphViewModel? knowledgeGraphViewModel = null)
         : this(
             configurationService,
             loggingService,
@@ -320,7 +328,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             workflowTemplateEngine,
             pluginManager,
             platformCapabilityProvider,
-            applicationPathProvider)
+            applicationPathProvider,
+            backgroundIndexingService,
+            relationshipService,
+            knowledgeGraphViewModel)
     {
     }
 
@@ -365,7 +376,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IWorkflowTemplateEngine? workflowTemplateEngine = null,
         IPluginManager? pluginManager = null,
         OpenSorSe.Core.Platform.IPlatformCapabilityProvider? platformCapabilityProvider = null,
-        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null)
+        OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
+        IBackgroundIndexingService? backgroundIndexingService = null,
+        IRelationshipService? relationshipService = null,
+        KnowledgeGraphViewModel? knowledgeGraphViewModel = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -378,6 +392,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _workflowRecipePlanService = workflowRecipePlanService;
         _watchedFolderManager = watchedFolderManager;
         _watchedFolderCoordinator = watchedFolderCoordinator;
+        _backgroundIndexingService = backgroundIndexingService;
         Dashboard = new DashboardViewModel(Navigate);
         FolderSelection = new FolderSelectionViewModel(workflowLibrary);
         ScanProgress = new ScanProgressViewModel();
@@ -408,7 +423,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             semanticIndexer,
             semanticSearchService,
             semanticIndexStore,
-            externalFileLauncher);
+            externalFileLauncher,
+            backgroundIndexingService,
+            advancedDiagnosticsWindowService);
+        Collections = new CollectionsViewModel(relationshipService);
+        KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
         StructureHistory = new StructureHistoryViewModel(
             structureHistoryStore,
@@ -477,6 +496,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
         ReviewChanges.PropertyChanged += OnHostedOperationPropertyChanged;
         SemanticSearch.PropertyChanged += OnHostedOperationPropertyChanged;
+        KnowledgeGraph.PropertyChanged += OnHostedOperationPropertyChanged;
         Catalog.EntryOpened += OnCatalogEntryOpened;
         Catalog.CatalogChanged += OnCatalogChanged;
         CatalogSearch.EntryOpened += OnCatalogEntryOpened;
@@ -526,8 +546,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     public CatalogSearchViewModel CatalogSearch { get; }
 
-    /// <summary>Gets local deterministic Semantic Search Beta state.</summary>
+    /// <summary>Gets local deterministic Search state.</summary>
     public SemanticSearchViewModel SemanticSearch { get; }
+
+    /// <summary>Gets evidence-backed virtual collection and Related Files state.</summary>
+    public CollectionsViewModel Collections { get; }
+
+    /// <summary>Gets the optional bounded local Knowledge Graph state.</summary>
+    public KnowledgeGraphViewModel KnowledgeGraph { get; }
 
     /// <summary>
     /// Gets deterministic comparison state for two application-owned historical snapshots.
@@ -675,7 +701,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the advanced Compare scans tab command.</summary>
     public IRelayCommand ShowSavedScanComparisonCommand { get; }
 
-    /// <summary>Gets the command that returns from Meaning Search to Files.</summary>
+    /// <summary>Gets the command that returns from Search to Files.</summary>
     public IRelayCommand BackToFilesCommand { get; }
 
     /// <summary>Gets a single status-bar cancellation command for the active supported operation.</summary>
@@ -683,17 +709,22 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the status bar should show active progress.</summary>
     public bool IsGlobalOperationActive =>
-        IsProcessing || Results.AiSuggestions.IsBusy || ReviewChanges.IsBusy || SemanticSearch.IsBusy;
+        IsProcessing || Results.AiSuggestions.IsBusy || ReviewChanges.IsBusy || SemanticSearch.IsBusy || KnowledgeGraph.IsBusy;
 
     /// <summary>Gets whether the active global operation supports cancellation.</summary>
     public bool CanCancelCurrentOperation => IsGlobalOperationActive;
 
     /// <summary>Gets normalized progress when the active operation reports a known fraction.</summary>
-    public double GlobalProgressValue => SemanticSearch.IsBusy ? SemanticSearch.ProgressValue : 0;
+    public double GlobalProgressValue => SemanticSearch.IsBusy
+        ? SemanticSearch.ProgressValue
+        : KnowledgeGraph.IsBusy
+            ? KnowledgeGraph.ProgressValue
+            : 0;
 
     /// <summary>Gets whether active progress is indeterminate.</summary>
     public bool IsGlobalProgressIndeterminate =>
-        IsGlobalOperationActive && !SemanticSearch.IsBusy;
+        IsGlobalOperationActive && !SemanticSearch.IsBusy &&
+        (!KnowledgeGraph.IsBusy || KnowledgeGraph.IsProgressIndeterminate);
 
     /// <summary>Gets whether the latest global status represents a controlled failure.</summary>
     public bool IsGlobalStatusError =>
@@ -711,6 +742,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             ? Results.AiSuggestions.IsBusy ? Results.AiSuggestions.StatusText : StatusText
             : SemanticSearch.IsBusy || IsSemanticSearchSelected
                 ? SemanticSearch.Status.Message
+            : KnowledgeGraph.IsBusy || IsKnowledgeGraphSelected
+                ? KnowledgeGraph.Status.Message
                 : StatusText;
 
     /// <summary>Gets the active item or stage shown in the persistent status bar.</summary>
@@ -720,6 +753,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             ? ReviewChanges.ProgressText
         : Results.AiSuggestions.IsBusy
             ? Results.AiSuggestions.ProgressText
+        : KnowledgeGraph.IsBusy
+            ? KnowledgeGraph.CurrentStageText
             : null;
 
     /// <summary>Gets or sets the user-facing navigation item selected by the shell.</summary>
@@ -783,6 +818,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsCatalogSearchSelected));
                 OnPropertyChanged(nameof(IsSavedScansAreaSelected));
                 OnPropertyChanged(nameof(IsSemanticSearchSelected));
+                OnPropertyChanged(nameof(IsCollectionsSelected));
+                OnPropertyChanged(nameof(IsKnowledgeGraphSelected));
                 OnPropertyChanged(nameof(IsCatalogComparisonSelected));
                 OnPropertyChanged(nameof(IsStructureHistorySelected));
                 OnPropertyChanged(nameof(IsRulesSelected));
@@ -811,7 +848,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Duplicates => "Duplicates",
         NavigationDestination.Catalog => "Saved scans",
         NavigationDestination.CatalogSearch => "Search saved scans",
-        NavigationDestination.SemanticSearch => "Meaning Search (Beta)",
+        NavigationDestination.SemanticSearch => "Search",
+        NavigationDestination.Collections => "Collections",
+        NavigationDestination.KnowledgeGraph => "Knowledge Graph",
         NavigationDestination.CatalogComparison => "Compare scans",
         NavigationDestination.StructureHistory => "Folder plans",
         NavigationDestination.Rules => "Sorting rules",
@@ -905,8 +944,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsCatalogSearchSelected => SelectedDestination == NavigationDestination.CatalogSearch;
 
-    /// <summary>Gets whether local Semantic Search Beta is selected.</summary>
+    /// <summary>Gets whether local Search is selected.</summary>
     public bool IsSemanticSearchSelected => SelectedDestination == NavigationDestination.SemanticSearch;
+
+    /// <summary>Gets whether evidence-backed virtual Collections are selected.</summary>
+    public bool IsCollectionsSelected => SelectedDestination == NavigationDestination.Collections;
+
+    /// <summary>Gets whether the bounded local Knowledge Graph is selected.</summary>
+    public bool IsKnowledgeGraphSelected => SelectedDestination == NavigationDestination.KnowledgeGraph;
 
     /// <summary>
     /// Gets whether historical saved-snapshot comparison is currently selected.
@@ -947,7 +992,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets whether a later feature-page destination is currently selected.
     /// </summary>
-    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
+    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCollectionsSelected && !IsKnowledgeGraphSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
 
     /// <summary>
     /// Selects a documented application-shell destination.
@@ -978,6 +1023,14 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         else if (destination == NavigationDestination.History)
         {
             _ = UndoHistory.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.SemanticSearch)
+        {
+            _ = SemanticSearch.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.Collections)
+        {
+            _ = Collections.RefreshAsync();
         }
         else if (destination == NavigationDestination.Workflows)
         {
@@ -1040,6 +1093,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             await UndoHistory.RefreshAsync();
         }
+        else if (destination == NavigationDestination.KnowledgeGraph)
+        {
+            await KnowledgeGraph.RefreshAsync();
+        }
     }
 
     /// <summary>
@@ -1071,6 +1128,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.AiSuggestions.PropertyChanged -= OnHostedOperationPropertyChanged;
         ReviewChanges.PropertyChanged -= OnHostedOperationPropertyChanged;
         SemanticSearch.PropertyChanged -= OnHostedOperationPropertyChanged;
+        KnowledgeGraph.PropertyChanged -= OnHostedOperationPropertyChanged;
         Catalog.EntryOpened -= OnCatalogEntryOpened;
         Catalog.CatalogChanged -= OnCatalogChanged;
         CatalogSearch.EntryOpened -= OnCatalogEntryOpened;
@@ -1085,6 +1143,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Catalog.Dispose();
         CatalogSearch.Dispose();
         SemanticSearch.Dispose();
+        Collections.Dispose();
+        KnowledgeGraph.Dispose();
         CatalogComparison.Dispose();
         StructureHistory.Dispose();
         Settings.Dispose();
@@ -1112,7 +1172,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (!_configurationService.Current.SemanticSearch.Enabled)
         {
-            StatusText = "Meaning Search is off. Enable it in Settings first.";
+            StatusText = "Search is off. Enable it in Settings first.";
             return;
         }
 
@@ -1157,6 +1217,36 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void OnWatchedFolderNotificationRequested(object? sender, NotificationRequest request) =>
         Notifications.Publish(request);
+
+    private async Task QueueCompletedScanForBackgroundIndexingAsync(
+        IReadOnlyList<string> folderPaths,
+        CancellationToken cancellationToken)
+    {
+        if (_backgroundIndexingService is null ||
+            !_configurationService.Current.DeepIndexing.Enabled)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var folderPath in folderPaths)
+            {
+                await _backgroundIndexingService.QueueFolderAsync(
+                    folderPath,
+                    _configurationService.Current.DeepIndexing.DefaultLevel,
+                    includeSubfolders: true,
+                    cancellationToken: cancellationToken);
+            }
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            Notifications.Publish(new NotificationRequest(
+                NotificationSeverity.Warning,
+                "The scan completed, but background Search indexing could not be queued. Existing results remain available."));
+        }
+    }
 
     private void OnWorkflowRunScanRequested(object? sender, string profileId)
     {
@@ -1243,6 +1333,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             SemanticSearch.CancelCommand.Execute(null);
         }
+        else if (KnowledgeGraph.IsBusy)
+        {
+            KnowledgeGraph.CancelCurrentCommand.Execute(null);
+        }
     }
 
     private async Task PersistShellFeatureSwitchesAsync()
@@ -1305,6 +1399,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Catalog.ConfigureHelp(HelpTopicId.SavedCatalog, OpenHelp);
         CatalogSearch.ConfigureHelp(HelpTopicId.CatalogSearch, OpenHelp);
         SemanticSearch.ConfigureHelp(HelpTopicId.SemanticSearch, OpenHelp);
+        KnowledgeGraph.ConfigureHelp(HelpTopicId.HelpOverview, OpenHelp);
         CatalogComparison.ConfigureHelp(HelpTopicId.CompareSnapshots, OpenHelp);
         StructureHistory.ConfigureHelp(HelpTopicId.StructureHistory, OpenHelp);
         RuleEditor.ConfigureHelp(HelpTopicId.Rules, OpenHelp);
@@ -1486,6 +1581,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 {
                     await PersistCompletedSnapshotAsync(snapshot, request.FolderPaths.ToArray());
                 }
+
+                await QueueCompletedScanForBackgroundIndexingAsync(
+                    request.FolderPaths,
+                    cancellation.Token);
 
                 Dashboard.UpdateFromCompletedScan(Results.Summary);
                 ScanProgress.Complete(ScanStatus.Completed);

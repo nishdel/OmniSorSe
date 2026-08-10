@@ -1,10 +1,17 @@
-# OpenSorSe 1.5 Safety and Privacy
+# OpenSorSe Safety and Privacy
 
-OpenSorSe is local-first and non-destructive by default. Scanning, watched-folder detection and reconciliation, duplicate review, metadata extraction, OCR, tagging, semantic indexing/search, structure previews/diagrams, catalog comparison, and AI suggestions do not modify selected files.
+**Document type:** Living current safety and privacy contract
+
+OpenSorSe is local-first and non-destructive by default. Scanning,
+watched-folder detection and reconciliation, duplicate review, metadata
+extraction, OCR, tagging, Search/background indexing, relationship analysis,
+virtual Smart Collections, Knowledge Graph projection/query/repair, structure
+previews/diagrams, catalog comparison, and AI suggestions do not modify
+selected files.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe 1.5 continues to authorize only rename file, move file, and create
+OpenSorSe continues to authorize only rename file, move file, and create
 directory through the v1.1 Change Plan execution boundary. Workflow and plugin
 features can contribute configuration, analysis, and proposals; they do not
 receive mutation authority.
@@ -16,6 +23,11 @@ filesystem identity, link/permission/mount inspection, external-tool discovery,
 and desktop opening live behind focused adapters. Windows preserves the existing
 local-data layout. Linux uses XDG categories and never migrates or deletes
 Windows state.
+
+macOS uses Application Support, Caches, and Logs locations. Read-only and
+non-mutating package behavior is available in v2.0.0, while source-file mutation
+remains unavailable when the platform contract cannot prove the required
+identity, link, permission, and same-filesystem guarantees.
 
 Scanning and reconciliation skip symbolic links/reparse points rather than
 following them outside an approved root. Plan validation remains lexical and
@@ -88,13 +100,13 @@ Watched-folder AI is separately disabled by default for every root and still req
 
 ## Advanced diagnostics
 
-Advanced Diagnostics is independent of ordinary logging and disabled by default. Its master switch controls all detailed collection; separate category switches currently instrument AI, OCR/text extraction, and scanning. Duplicate detection, search/indexing, rules/organisation, file operations, and standalone performance diagnostics are clearly marked not yet instrumented.
+Advanced Diagnostics is independent of ordinary logging and disabled by default. Its master switch controls all detailed collection; separate category switches currently instrument AI, OCR/text extraction, scanning, and Search/indexing. Duplicate detection, rules/organisation, file operations, and standalone performance diagnostics are clearly marked not yet instrumented.
 
 Redacted mode is the default. The separate unredacted opt-in may retain filenames, complete paths, document/OCR text, metadata, tags, search terms, prompts, and responses in process memory. Secrets, credentials, authorization headers, passwords, and API keys are removed in every mode. Detailed diagnostic content is never written to normal logs.
 
 The common store retains at most 50 sessions overall, 20 per category, 750 events per session, 100 OCR page records, 500 scan-entry records, 1,048,576 characters per field/event field set, approximately 8 MiB per session, and approximately 32 MiB total. Rendered OCR images are not retained. History is cleared when diagnostics are disabled and saved, when unredacted retention is turned back off, when explicitly cleared, or when OpenSorSe exits. Data leaves memory only through an explicit JSON or text export chosen by the user.
 
-## OCR, metadata, tags, and semantic search
+## OCR, metadata, tags, and Search
 
 - Filesystem, PDF, Open XML, and image extractors open supported files read-only, apply byte/page/text bounds, do not execute macros, and do not fetch external resources.
 - OCR Beta is separately enabled and capability-detected. PdfPig reads native PDF pages; the built-in PDFtoImage/PDFium renderer creates bounded page images only where native text is insufficient; the optional external Tesseract CLI recognizes those images.
@@ -103,9 +115,46 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Temporary page images live only in validated OpenSorSe-owned `job-*` directories and are deleted per page and again on success, error, timeout, or cancellation.
 - OCR and extraction failures are isolated per file and cannot stop normal scanning/search/catalog workflows.
 - Provenance tags distinguish confirmed system/user evidence from unverified generated candidates.
-- Semantic Search Beta is separately enabled, local, deterministic, bounded to configured document/result limits, incremental, cancellable, and rebuildable.
-- Search vectors are not shown as meaning or certainty. Results explain concrete match signals.
-- Clearing content or semantic stores never changes source files.
+- Search is separately enabled, local, bounded, incremental, cancellable, and rebuildable.
+- Search representations are not shown as meaning or certainty. Results explain
+  the concrete ranking signals that actually contributed.
+- Query interpretation is deterministic and local for ordinary filters. Query
+  length, topic tokens, filter count, result candidates, fuzzy candidates,
+  overlapping requests, snippets, and provider projections are bounded.
+  Ordinary queries are never exposed as raw SQLite or FTS syntax.
+- Filename, folder, metadata, text, OCR, filters, ranking, snippets, and
+  explanations remain available without Ollama. Optional related-concept data
+  supplements rather than replaces exact and literal evidence.
+- Durable background indexing uses Basic, Standard, and Deep levels. It stores
+  bounded derived data, never copies complete source files, and remains usable
+  at partial coverage.
+- Indexed-data inspection reports categories and presence without showing raw
+  embedding vectors. Forget, selective clear, policy, and repair operations are
+  index-only; confirmation explicitly states that source files are unaffected.
+  Durable suppression prevents an immediate unintended re-index loop while
+  watched/manual source ownership remains intact.
+- Clearing content, Search, or deep-index stores never changes source files.
+
+## Relationships and virtual collections
+
+- Automatic relationships are produced only from retained bounded evidence;
+  semantic similarity alone cannot create an edge. Evidence, algorithm/version,
+  timestamps, and deterministic confidence levels remain inspectable.
+- Smart Collections, context, and timelines are application-owned virtual
+  projections. Rename, pin, merge, split, link, unlink, forget, rebuild, and
+  repair actions never move, edit, rename, or delete original files.
+- Manual links and confirm/reject/always/never corrections are user-owned index
+  data. They persist across automatic refresh until explicitly changed.
+- File/source forgetting can remove relationship output and suppress future
+  analysis without removing a manually managed or watched indexing source.
+  Suppression also removes the file from relationship lists, collection
+  membership/timelines, and contextual Search expansion.
+- Relationship diagnostics retain aggregate counts, bounded timing, algorithm
+  version, and repair counts. They exclude extracted/OCR text, summaries,
+  vectors, complete paths, and document-derived evidence text.
+- Relationship and collection graphs are bounded. The implementation performs
+  direct non-recursive queries, caps candidates/edges/evidence/membership, and
+  repairs orphan or corrupt derived rows to resist hostile graph expansion.
 
 ## OpenSorSe-owned storage
 
@@ -120,6 +169,9 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Schema 3 embedded SQLite sources, runs, files, stage state, bounded shared text/OCR/summary/chunks/representations, failures, relationship features/evidence/edges, user corrections, virtual collections/membership, maintenance history, and per-file privacy rules. Schema 1/2 migrates transactionally with a recovery copy. Corrupt/newer storage is preserved only after explicit rebuild; no source-file copies; explicit quota and retention policy. |
+| Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
+| Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
 | Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
 | Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
@@ -130,9 +182,36 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
 | Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
 
-Content and semantic stores can contain sensitive words extracted from selected documents. They remain local but should be protected like other application data. Raw OCR/native text, semantic vectors, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs.
+Content and Search stores can contain sensitive words extracted from selected documents. Relationship evidence and virtual membership can also reveal associations between selected files. They remain local but should be protected like other application data. Raw OCR/native text, Search representations, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs. Search-ranking and relationship diagnostic events record duration, bounded counts, filters/coverage/ranking stages, algorithm version, and repair activity, but not the complete query, result snippets, extracted paragraphs, summaries, vectors, source-derived evidence text, or absolute paths. An export remains user-initiated and reviewable before sharing.
 
 Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
+
+## Knowledge Graph privacy and authority
+
+Knowledge Graph is disabled by default. Enabling it projects only stable,
+retained evidence from the durable index, Relationships/Collections, and
+explicit graph decisions. It does not read arbitrary new folders, modify a
+source, authorize a Change Plan, or turn probabilistic similarity into an
+identity fact.
+
+Derived graph data is isolated from graph-native decisions. A rebuild clears
+and recreates only the derived projection; it preserves manual decisions and
+the v1.9 relationship/collection authority. Forget and exclusion operations
+advance privacy fences/tombstones before cleanup so an older projection or
+recovery point cannot silently resurrect active forgotten evidence.
+
+Stable browsing is bounded to direct neighbors. Identity resolution is
+conservative and deterministic; ambiguous entities remain separate. Every
+presented edge/fact uses retained evidence provenance and an algorithm/version,
+and Search graph expansion is opt-in, bounded, deduplicated, and subordinate to
+exact/literal matches.
+
+Ordinary graph diagnostics record stable run/category/state codes, bounded
+counts, watermarks, durations, queue/repair/storage results, and failure
+categories. They exclude document text, OCR, summaries, queries, prompts,
+vectors, aliases, labels, evidence excerpts, and unnecessary absolute paths by
+default. Graph databases, backups, quarantine copies, aliases, and decisions
+can still reveal sensitive associations and are not claimed to be encrypted.
 
 ## Repeat protection and history
 

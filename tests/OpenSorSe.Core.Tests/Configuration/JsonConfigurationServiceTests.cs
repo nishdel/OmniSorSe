@@ -67,6 +67,11 @@ public sealed class JsonConfigurationServiceTests
         Assert.Equal(256, service.Current.Content.MaximumTemporaryStorageMiB);
         Assert.Null(service.Current.Content.TesseractExecutablePath);
         Assert.False(service.Current.SemanticSearch.Enabled);
+        Assert.True(service.Current.DeepIndexing.Enabled);
+        Assert.Equal(IndexingLevel.Basic, service.Current.DeepIndexing.DefaultLevel);
+        Assert.Equal(1, service.Current.DeepIndexing.MaximumConcurrency);
+        Assert.True(service.Current.DeepIndexing.SummaryProcessingEnabled);
+        Assert.True(service.Current.DeepIndexing.SemanticProcessingEnabled);
     }
 
     /// <summary>Verifies the master, category, and privacy controls persist independently.</summary>
@@ -357,6 +362,37 @@ public sealed class JsonConfigurationServiceTests
                 MaximumDocumentCount = 5000,
                 MaximumResultCount = 100,
             },
+            DeepIndexing = new DeepIndexingSettings
+            {
+                Enabled = true,
+                DefaultLevel = IndexingLevel.Deep,
+                ResourceMode = IndexingResourceMode.Fast,
+                MaximumIndexSizeMiB = 2048,
+                MaximumExtractedTextCharacters = 262_144,
+                MaximumOcrTextCharacters = 131_072,
+                MaximumSemanticChunksPerDocument = 16,
+                DeletedFileRetentionDays = 60,
+                FailedJobHistoryRetentionDays = 21,
+                MaximumRetryCount = 5,
+                MaximumConcurrency = 4,
+                ProcessOnlyWhileIdle = true,
+                ProcessOnlyWhileConnectedToPower = true,
+                PauseBelowBatteryPercentage = 20,
+                OcrProcessingEnabled = true,
+                AiProcessingEnabled = true,
+                SummaryProcessingEnabled = false,
+                SemanticProcessingEnabled = false,
+                RelationshipAnalysisEnabled = false,
+                RelationshipExcludedExtensions = [".pem", ".key"],
+                MaximumRelationshipCandidates = 320,
+                MaximumRelationshipsPerFile = 80,
+                MaximumSmartCollectionMembers = 1200,
+                ArchiveIndexingEnabled = true,
+                ExcludeGeneratedFolders = false,
+                BinaryAndExecutableMetadataOnly = false,
+                ProcessingWindowStartHour = 23,
+                ProcessingWindowEndHour = 6,
+            },
         };
 
         try
@@ -398,6 +434,22 @@ public sealed class JsonConfigurationServiceTests
             Assert.True(reader.Current.SemanticSearch.Enabled);
             Assert.Equal(5000, reader.Current.SemanticSearch.MaximumDocumentCount);
             Assert.Equal(100, reader.Current.SemanticSearch.MaximumResultCount);
+            Assert.Equal(IndexingLevel.Deep, reader.Current.DeepIndexing.DefaultLevel);
+            Assert.Equal(IndexingResourceMode.Fast, reader.Current.DeepIndexing.ResourceMode);
+            Assert.Equal(2048, reader.Current.DeepIndexing.MaximumIndexSizeMiB);
+            Assert.Equal(4, reader.Current.DeepIndexing.MaximumConcurrency);
+            Assert.Equal(20, reader.Current.DeepIndexing.PauseBelowBatteryPercentage);
+            Assert.True(reader.Current.DeepIndexing.OcrProcessingEnabled);
+            Assert.True(reader.Current.DeepIndexing.AiProcessingEnabled);
+            Assert.False(reader.Current.DeepIndexing.SummaryProcessingEnabled);
+            Assert.False(reader.Current.DeepIndexing.SemanticProcessingEnabled);
+            Assert.False(reader.Current.DeepIndexing.RelationshipAnalysisEnabled);
+            Assert.Equal([".pem", ".key"], reader.Current.DeepIndexing.RelationshipExcludedExtensions);
+            Assert.Equal(320, reader.Current.DeepIndexing.MaximumRelationshipCandidates);
+            Assert.Equal(80, reader.Current.DeepIndexing.MaximumRelationshipsPerFile);
+            Assert.Equal(1200, reader.Current.DeepIndexing.MaximumSmartCollectionMembers);
+            Assert.Equal(23, reader.Current.DeepIndexing.ProcessingWindowStartHour);
+            Assert.Equal(6, reader.Current.DeepIndexing.ProcessingWindowEndHour);
         }
         finally
         {

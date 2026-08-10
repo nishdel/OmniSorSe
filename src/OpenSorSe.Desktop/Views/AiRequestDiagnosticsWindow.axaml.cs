@@ -72,17 +72,28 @@ public partial class AiRequestDiagnosticsWindow : Window
 
     private async Task SaveAsync(string title, string suggestedName, string label, string pattern, string content)
     {
-        if (!StorageProvider.CanSave) return;
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        if (DataContext is not AiDiagnosticsViewModel viewModel || !StorageProvider.CanSave) return;
+        try
         {
-            Title = title,
-            SuggestedFileName = suggestedName,
-            FileTypeChoices = [new FilePickerFileType(label) { Patterns = [pattern] }],
-        });
-        if (file is null) return;
-        await using var stream = await file.OpenWriteAsync();
-        stream.SetLength(0);
-        await using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(content);
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = title,
+                SuggestedFileName = suggestedName,
+                FileTypeChoices = [new FilePickerFileType(label) { Patterns = [pattern] }],
+            });
+            if (file is null) return;
+            await using var stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            await using var writer = new StreamWriter(stream);
+            await writer.WriteAsync(content);
+            viewModel.ReportExportResult(true);
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "AI diagnostic file export failed safely ({0}).",
+                exception.GetType().Name);
+            viewModel.ReportExportResult(false);
+        }
     }
 }

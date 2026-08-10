@@ -17,14 +17,18 @@ public sealed class AboutViewModelTests
         var viewModel = new AboutViewModel();
 
         Assert.Equal("OpenSorSe", viewModel.ApplicationName);
-        Assert.Equal("1.6", viewModel.Version);
-        Assert.Equal(new Version(1, 6, 0, 0), typeof(AboutViewModel).Assembly.GetName().Version);
+        Assert.Equal("2.0", viewModel.Version);
+        Assert.Equal(new Version(2, 0, 0, 0), typeof(AboutViewModel).Assembly.GetName().Version);
         Assert.Equal(
-            "1.6.0",
+            "2.0.0",
             typeof(AboutViewModel).Assembly
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                 .InformationalVersion);
         Assert.Equal("MIT License", viewModel.License);
+        Assert.Equal("https://github.com/nishdel/OpenSorSe", viewModel.RepositoryAddress);
+        Assert.Equal(
+            "https://github.com/nishdel/OpenSorSe/tree/main/docs",
+            viewModel.DocumentationAddress);
         Assert.NotEmpty(viewModel.Acknowledgements);
     }
 

@@ -1,6 +1,7 @@
 # OpenSorSe system map
 
-These Mermaid diagrams model the v1.5 implementation. They emphasize
+These Mermaid diagrams model the unmerged v2.0 implementation candidate and
+its inherited v1.9 behavior. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
 
@@ -51,6 +52,9 @@ flowchart TB
         Shell["Application shell and navigation"]
         ScanUI["Scan UI"]
         FilesUI["Files and Results UI"]
+        SearchUI["Search filters, explanations, privacy, and coverage UI"]
+        CollectionsUI["Collections, Related Files, evidence, privacy, and repair UI"]
+        GraphUI["Knowledge Graph bounded browser, evidence, privacy, and repair UI"]
         ReviewUI["Change Plan Review"]
         WatchUI["Watched Folders UI"]
         WorkflowUI["Workflows UI"]
@@ -69,6 +73,14 @@ flowchart TB
         PlanAdapters["Change Plan proposal services"]
         HistoryService["Operation-history projection"]
         Stores["Persistence services"]
+        IndexCoordinator["Durable indexing coordinator"]
+        QueryInterpreter["Bounded query interpreter"]
+        HybridRanker["Deterministic hybrid ranker"]
+        IndexPrivacy["Index privacy and repair service"]
+        RelationshipService["Relationship service"]
+        RelationshipEngine["Deterministic evidence engine"]
+        GraphCoordinator["Durable Knowledge Graph projection coordinator"]
+        GraphServices["Provider-neutral graph query, decision, privacy, repair, and Search services"]
     end
 
     subgraph Processing["Read-only processing and suggestion layer"]
@@ -107,11 +119,17 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
+        DeepIndex["Embedded schema 3 durable Search and relationship index"]
+        GraphIndex["Schema 1 rebuildable Knowledge Graph projection"]
+        GraphDecisions["Schema 1 graph-native decision and privacy authority"]
     end
 
     User -->|commands and review| Shell
     Shell --> ScanUI
     Shell --> FilesUI
+    Shell --> SearchUI
+    Shell --> CollectionsUI
+    Shell --> GraphUI
     Shell --> ReviewUI
     Shell --> WatchUI
     Shell --> WorkflowUI
@@ -176,6 +194,31 @@ flowchart TB
     Stores --> Profiles
     Stores --> PluginState
     Stores --> LocalIndexes
+    SearchUI --> IndexCoordinator
+    SearchUI --> QueryInterpreter
+    QueryInterpreter --> HybridRanker
+    HybridRanker --> SearchUI
+    SearchUI --> IndexPrivacy
+    SearchUI --> RelationshipService
+    SearchUI -.->|optional bounded context| GraphServices
+    CollectionsUI --> RelationshipService
+    RelationshipService --> RelationshipEngine
+    RelationshipService --> IndexCoordinator
+    RelationshipService --> DeepIndex
+    GraphUI --> GraphServices
+    GraphUI --> GraphCoordinator
+    GraphCoordinator -->|completed manifest adapter only| DeepIndex
+    GraphCoordinator --> GraphIndex
+    GraphCoordinator --> GraphDecisions
+    GraphServices --> GraphIndex
+    GraphServices --> GraphDecisions
+    IndexPrivacy --> IndexCoordinator
+    IndexPrivacy --> DeepIndex
+    IndexCoordinator --> Enumerate
+    IndexCoordinator --> Metadata
+    IndexCoordinator --> Text
+    IndexCoordinator --> LocalIndexes
+    IndexCoordinator --> DeepIndex
     Reconcile --> WatchedState
     WorkflowResolver --> Profiles
     PluginManager --> PluginState

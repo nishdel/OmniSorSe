@@ -4,7 +4,12 @@
 
 ---
 
-# Purpose
+**Document type:** Living implementation-level guidance. The
+[Engineering Principles](../../../ENGINEERING_PRINCIPLES.md) explain the
+cross-cutting architectural and operational reasoning; this document remains a
+concise coding companion.
+
+## Purpose
 
 The Coding Standards document establishes consistent development practices across the OpenSorSe codebase.
 
@@ -14,7 +19,7 @@ These standards apply to all core components, plugins maintained within the proj
 
 ---
 
-# General Principles
+## General Principles
 
 The codebase should strive to be:
 
@@ -28,7 +33,7 @@ Code should prioritize clarity over unnecessary complexity.
 
 ---
 
-# Design Principles
+## Design Principles
 
 Developers should favor:
 
@@ -43,7 +48,7 @@ Architectural consistency should take precedence over individual coding preferen
 
 ---
 
-# Code Organization
+## Code Organization
 
 Source code should be organized according to the project's architectural structure.
 
@@ -58,7 +63,7 @@ Project organization should reflect the documented architecture.
 
 ---
 
-# Naming
+## Naming
 
 Developers should follow the project's documented naming conventions.
 
@@ -73,7 +78,7 @@ Avoid abbreviations unless they are widely recognized.
 
 ---
 
-# Documentation
+## Documentation
 
 Public interfaces should be documented where appropriate.
 
@@ -89,7 +94,7 @@ Comments should explain *why*, not simply restate *what* the code already expres
 
 ---
 
-# Error Handling
+## Error Handling
 
 Error handling should be:
 
@@ -102,7 +107,7 @@ Exceptions should communicate meaningful information while avoiding unnecessary 
 
 ---
 
-# Testing
+## Testing
 
 The project should encourage:
 
@@ -115,7 +120,7 @@ Code should be designed with testability in mind.
 
 ---
 
-# Performance
+## Performance
 
 Developers should:
 
@@ -128,7 +133,7 @@ Performance improvements should not compromise maintainability without clear ben
 
 ---
 
-# Dependencies
+## Dependencies
 
 External dependencies should be introduced carefully.
 
@@ -144,7 +149,7 @@ Whenever practical, unnecessary dependencies should be avoided.
 
 ---
 
-# Pull Requests
+## Pull Requests
 
 Contributors are encouraged to:
 
@@ -158,7 +163,7 @@ Smaller, well-scoped pull requests are preferred over large unrelated changes.
 
 ---
 
-# Code Reviews
+## Code Reviews
 
 Code reviews should focus on:
 
@@ -172,7 +177,7 @@ Reviews should remain constructive and respectful.
 
 ---
 
-# Future Considerations
+## Future Considerations
 
 As the project evolves, this document may expand to include:
 
@@ -186,8 +191,9 @@ The primary objective should remain consistent, maintainable software developmen
 
 ---
 
-# Related Documents
+## Related Documents
 
 * [Glossary](Glossary.md)
 * [Naming Conventions](Naming_Conventions.md)
-* [Contributing Guide](../../../README.md#contributing)
+* [Engineering Principles](../../../ENGINEERING_PRINCIPLES.md)
+* [Contributing Guide](../../../CONTRIBUTING.md)

@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>OpenSorSe</AssemblyName>
-    <Version>1.6.0</Version>
+    <Version>2.0.0</Version>
     <Nullable>enable</Nullable>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">Assets\opensorse-app-icon.ico</ApplicationIcon>
@@ -38,5 +38,6 @@
     <ProjectReference Include="..\OpenSorSe.Application\OpenSorSe.Application.csproj" />
     <ProjectReference Include="..\OpenSorSe.AI\OpenSorSe.AI.csproj" />
     <ProjectReference Include="..\OpenSorSe.Extensions.Abstractions\OpenSorSe.Extensions.Abstractions.csproj" />
+    <ProjectReference Include="..\OpenSorSe.Indexing.Sqlite\OpenSorSe.Indexing.Sqlite.csproj" />
   </ItemGroup>
 </Project>

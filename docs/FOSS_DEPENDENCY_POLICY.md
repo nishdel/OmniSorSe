@@ -1,6 +1,9 @@
 # Free and Open-Source Dependency Policy
 
-OpenSorSe 1.0 accepts only dependencies with a documented free/open-source license and a redistribution path compatible with the repository's MIT distribution model.
+OpenSorSe accepts only dependencies with a documented free/open-source license
+and a redistribution path compatible with the repository's MIT distribution
+model. The machine-readable inventory tracks the current restored source graph;
+the frozen v1.0 package retains its own historical notices.
 
 ## Rules
 
@@ -23,6 +26,17 @@ OpenSorSe 1.0 accepts only dependencies with a documented free/open-source licen
 | Tesseract language data | External runtime data | Apache-2.0 project distributions; individual sources must be reviewed by distributors | Optional and user installed. |
 
 Poppler and Ghostscript are not selected or bundled. A broken Poppler command shim in one development environment is not considered a runtime capability.
+
+## Embedded SQLite components
+
+| Component | Integration | License | Distribution decision |
+| --- | --- | --- | --- |
+| Microsoft.Data.Sqlite 8.0.28 | Managed embedded provider | MIT | Mandatory only for the current durable-index provider project. |
+| SQLitePCLRaw 2.1.12 and native bundle | Managed interop and per-runtime SQLite native library | Apache-2.0 | Pinned patched bundle; redistributed notices are required. |
+
+These dependencies remain isolated in `OpenSorSe.Indexing.Sqlite`. They do not
+add a database server requirement or adopt PostgreSQL. Target-specific package
+contents must include only the expected native SQLite library for that runtime.
 
 ## Engineering-not-legal disclaimer
 

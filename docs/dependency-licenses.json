@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-26",
+  "generatedAt": "2026-07-29",
   "generatedFrom": "OpenSorSe.sln restored for net8.0",
   "policyDocument": "docs/FOSS_DEPENDENCY_POLICY.md",
   "noticeDocument": "THIRD_PARTY_NOTICES.md",
@@ -132,6 +132,38 @@
       ]
     },
     {
+      "name": "Microsoft SQLite provider",
+      "purpose": "Provider-isolated durable background-index access.",
+      "upstream": "https://github.com/dotnet/efcore",
+      "license": "MIT",
+      "licenseEvidence": "NuGet package license expressions.",
+      "notice": "THIRD_PARTY_NOTICES.md#embedded-sqlite-indexing",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the Microsoft.Data.Sqlite MIT notice.",
+      "packages": [
+        "Microsoft.Data.Sqlite@8.0.28",
+        "Microsoft.Data.Sqlite.Core@8.0.28"
+      ]
+    },
+    {
+      "name": "SQLitePCLRaw native bundle",
+      "purpose": "Cross-platform embedded SQLite native engine and managed interop.",
+      "upstream": "https://github.com/ericsink/SQLitePCL.raw",
+      "license": "Apache-2.0",
+      "licenseEvidence": "NuGet package license expressions.",
+      "notice": "THIRD_PARTY_NOTICES.md#embedded-sqlite-indexing",
+      "distributionStatus": "runtime-build-output",
+      "optional": false,
+      "redistribution": "Retain the SQLitePCLRaw Apache-2.0 notice.",
+      "packages": [
+        "SQLitePCLRaw.bundle_e_sqlite3@2.1.12",
+        "SQLitePCLRaw.core@2.1.12",
+        "SQLitePCLRaw.lib.e_sqlite3@2.1.12",
+        "SQLitePCLRaw.provider.e_sqlite3@2.1.12"
+      ]
+    },
+    {
       "name": "Microsoft test platform",
       "purpose": "Build-time test discovery, execution, and code-coverage collection.",
       "upstream": "https://github.com/microsoft/vstest",
@@ -159,6 +191,7 @@
       "optional": false,
       "redistribution": "Retain the MIT copyright and permission notice.",
       "packages": [
+        "System.Memory@4.5.3",
         "System.IO.Pipelines@8.0.0",
         "System.Reflection.Metadata@1.6.0"
       ]

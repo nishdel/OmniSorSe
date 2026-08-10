@@ -1,5 +1,9 @@
 # v1.0 Semantic Search Beta
 
+> Compatibility note: in OpenSorSe 1.7 the user-facing feature is named
+> **Search**. Internal `Semantic*` contracts and `semantic-index.json` remain
+> stable, and the durable provider-neutral index augments this compatible store.
+
 ## Purpose
 
 Semantic Search Beta provides local, explainable hybrid retrieval across filenames, paths, confirmed/suggested tags, deterministic categories, metadata, native text, and OCR text. It does not require AI or a network service.

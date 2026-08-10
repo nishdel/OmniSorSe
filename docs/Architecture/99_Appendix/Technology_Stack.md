@@ -1,54 +1,97 @@
-# Technology Stack
+# OpenSorSe technology stack
 
-> This document distinguishes technologies used by OpenSorSe 1.0 from post-1.0 design ideas.
+**Document type:** Living technology inventory
 
----
+**Scope:** Current unmerged v2.0 implementation candidate and inherited v1.9
+source; a technology in a roadmap or historical
+architecture document is not a current dependency
 
-## Implemented stack
+## Current stack
 
 | Area | Technology | Current use |
 | --- | --- | --- |
-| Runtime | .NET 8 target framework | All production and test projects target `net8.0`. |
-| Language | C# | Primary implementation language. |
-| Desktop UI | Avalonia UI | Cross-platform-capable desktop presentation framework. |
-| Presentation pattern | MVVM | Separates view state and commands from application and scanner logic. |
-| MVVM support | CommunityToolkit.Mvvm | Observable view models and commands. |
-| Infrastructure | Microsoft.Extensions dependency injection and logging | Service composition and diagnostic logging. |
-| Testing | xUnit, Microsoft.NET.Test.Sdk, coverlet collector | Automated unit and integration test coverage. |
-| Documentation | Markdown and Mermaid | Repository documentation and architecture diagrams. |
-| Version control | Git | Local repository history and collaboration workflow. |
-| Native PDF text | PdfPig 0.1.15 | Read-only bounded page text/metadata with deterministic quality checks. |
-| PDF page rendering | PDFtoImage 5.2.1 + PDFium native packages | Built-in bounded rendering of insufficient scanned/mixed PDF pages. |
-| Local OCR integration | Tesseract CLI capability detection | Optional bounded PNG/JPEG/TIFF and rendered-PDF OCR Beta; the engine and `eng`/`deu` data remain externally installed. |
-| Local similarity | Deterministic feature hashing | Rebuildable Semantic Search Beta vectors without a model download or network service. |
-| Local persistence | `System.Text.Json` + atomic replace | Separate bounded versioned settings/catalog/content/semantic/history stores. |
+| Application target | .NET 8 (`net8.0`) | All production and test projects target .NET 8. |
+| Repository SDK | .NET SDK selected by `global.json` (currently 9.0.315) | Reproducible build/tool selection; the newer SDK does not change the .NET 8 runtime target. |
+| Language | C# with nullable reference types and implicit usings | Production and automated test implementation. |
+| Desktop UI | Avalonia 12.1 | Cross-platform-capable presentation; Windows is primary and Linux remains a preview. |
+| Presentation pattern | MVVM | Views/bindings are separated from ViewModel state/commands and Application/domain services. |
+| MVVM support | CommunityToolkit.Mvvm 8.4.2 | Observable properties and commands. |
+| Composition | Microsoft.Extensions.DependencyInjection 8.x | Desktop composition root and service registration. |
+| Logging | Microsoft.Extensions.Logging 8.x plus OpenSorSe-owned bounded logging | Structured application logging without source content. |
+| JSON persistence | `System.Text.Json` plus shared bounded atomic replacement | Settings, catalogs, workflows, watched state, plans, journals, compatible content/Search stores, and other application-owned data. |
+| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Embedded schema-versioned providers behind Application contracts: schema-3 deep index plus isolated schema-1 graph/decision sidecars; no database server is required. |
+| Native PDF text | PdfPig 0.1.15 | Bounded read-only PDF page text and metadata. |
+| PDF page rendering | PDFtoImage 5.2.1 with PDFium native packages | Bounded rendering of PDF pages that need enabled OCR. |
+| OCR | External Tesseract 5 CLI | Optional local image/scanned-page recognition; executable and language data are not bundled. |
+| Optional AI transport | Ollama-compatible HTTP API | Explicitly configured, capability-gated, bounded review-only suggestions; the endpoint can be local or remote. |
+| Compatible local similarity | Deterministic feature hashing | Rebuildable related-concept representation without a model download. |
+| Durable indexing and Knowledge Graph | Provider-neutral Application contracts plus `OpenSorSe.Indexing.Sqlite` | Sources, jobs, stages, recovery, Search projections, relationship evidence/collections/corrections, optional stable graph projection/decisions, privacy rules, quotas, and repair. |
+| Plugin model | `OpenSorSe.Extensions.Abstractions` plus in-process collectible load contexts | Eight bounded extension points, local packages, explicit grants, validation, and lifecycle containment. Load contexts are not sandboxing. |
+| Testing | xUnit 2.9.3, Microsoft.NET.Test.Sdk 17.8.0, coverlet collector | Unit, integration, ViewModel, provider, repository-policy, relevance, and bounded performance regression tests. |
+| Documentation | Markdown and Mermaid | Living guides, historical evidence, architecture, and diagrams. |
+| CI | GitHub Actions | Native Windows/Ubuntu/macOS restore, build, test, format, and repository-policy validation on configured branches; no automatic publishing. |
+| Version control | Git | Source, documentation, release history, and collaboration. |
 
-The repository pins an SDK version in the root [global.json](../../../global.json). The pinned SDK may be newer than the .NET 8 target framework; the application runtime target remains .NET 8.
+Exact direct/transitive package purpose, license, bundling, and notices are in
+the [machine-readable inventory](../../dependency-licenses.json),
+[Third-Party Notices](../../../THIRD_PARTY_NOTICES.md), and
+[FOSS Dependency Policy](../../FOSS_DEPENDENCY_POLICY.md).
+
+## Why embedded SQLite
+
+The v1.7+ durable Search index needs transactions, migration, recovery,
+integrity checks, query indexes, and durable stage state without requiring a
+separate service. SQLite provides that embedded implementation.
+
+SQLite is isolated in `OpenSorSe.Indexing.Sqlite`. Views, ViewModels, Search
+ranking, and Application orchestration use provider-neutral contracts and do
+not use SQL or SQLite types. A future reviewed server provider can implement
+those contracts; PostgreSQL is not a current desktop dependency.
+
+See [Product Vision](../../../PRODUCT_VISION.md) and
+[Deep Indexing Architecture](../00_System/10_v1.7_Deep_Indexing_Architecture.md).
+
+## Optional components
+
+- Tesseract and language data are installed and managed externally.
+- Ollama-compatible providers are installed and managed externally.
+- External plugins are user-selected local packages and run in-process with the
+  current user’s permissions.
+- Missing optional components must leave unrelated deterministic features
+  usable and report an explicit unavailable/waiting state.
 
 ## Current non-adoptions
 
-The 1.0 release does not use the following as implemented product capabilities:
+Current source does not use or claim:
 
-- SQLite or a database-backed full-text/vector engine.
-- Learned embedding models, cloud AI APIs, or GPU acceleration. Ollama remains the single optional provider for validated review-only suggestions; Semantic Search uses deterministic local feature hashing.
-- Bundled Tesseract executables or language/model data.
-- Plugin loading or a plugin marketplace.
-- Python, PySide, or other legacy desktop stack components.
+- PostgreSQL or another required database server;
+- cloud Search, synchronization, telemetry-based ranking, or a remote query
+  service;
+- learned ranking or a bundled embedding model/GPU requirement;
+- bundled Tesseract executables or language/model data;
+- a plugin marketplace, automatic plugin download/update, publisher signature
+  authority, or OS sandbox;
+- Python/PySide as an application runtime;
+- a signed installer, automatic updater, or v2.0 distribution package;
+- OpenSorSe Server, collaboration, remote/unrestricted graph service, or a
+  conversational assistant.
 
-## Future technology considerations
+Those topics belong to the
+[Product Roadmap](../../../PRODUCT_ROADMAP.md) as planned concepts, research,
+or backlog work. Naming a technology in future design material does not adopt
+it.
 
-Richer readers, additional AI providers, database indexes, learned embeddings,
-packaging, localization, and online/out-of-process plugin services are future
-architectural ideas. The bounded 1.0 extractors, PDF rasterization, local OCR
-integration, deterministic semantic index, JSON structure history, and v1.4
-in-process plugin foundation/SDK are implemented. A technology named in a
-future architecture document is not a dependency until a release specification
-and code add it.
+## Selection principles
 
-Future technology selection should continue to prioritize local-first privacy, user control, maintainability, and explicit safety boundaries for any feature that could affect user files.
+Technology choices should preserve:
 
-## Related documents
+- local-first usefulness and explicit remote boundaries;
+- current safety and recovery invariants;
+- clear ownership and replaceable provider seams;
+- FOSS licensing and redistributable packaging;
+- bounded resources, cancellation, and failure containment;
+- supported-platform evidence rather than framework-level assumptions;
+- backward-compatible data and plugin contracts or an explicit migration.
 
-- [System Overview](../00_System/00_Overview.md)
-- [Release Status](../../RELEASE_STATUS.md)
-- [Roadmap](../../roadmap.md)
+See [Engineering Principles](../../../ENGINEERING_PRINCIPLES.md) for the
+complete dependency and architecture rationale.

@@ -1,108 +1,196 @@
-# OpenSorSe documentation
+# OpenSorSe documentation index
 
-This is the documentation entry point for OpenSorSe 1.6. Start with the section
-that matches what you are trying to do. Documents with a version in their name
-describe that release; older versioned documents are retained as history and
-must not override the current architecture or safety documentation.
+This is the authoritative navigation page for repository documentation. It
+explains what each important document contains, when to read it, and whether it
+is living guidance or a historical/version snapshot.
 
-## Recommended starting points
+## Authority rules
 
-| Audience | Start here | Then read |
+When documents overlap, use this order:
+
+1. current source and tests define implemented behavior;
+2. current living product, architecture, engineering, safety, and release-status
+   documents explain that behavior;
+3. current version-specific guides/specifications explain their subsystem or
+   release boundary;
+4. older versioned documents and the packaged v1.0 tree are historical
+   evidence;
+5. planned roadmap concepts and old long-term architecture are not evidence of
+   implementation.
+
+[Release Status](RELEASE_STATUS.md) is authoritative for current readiness.
+[Release History](../RELEASE_HISTORY.md) is the concise historical index.
+[Product Roadmap](../PRODUCT_ROADMAP.md) is authoritative for future planning.
+
+## Understand the project in one hour
+
+| Time | Read | What it answers | Status |
+| ---: | --- | --- | --- |
+| 5 min | [Repository README](../README.md) | What OpenSorSe is, what exists now, and the current branch/package boundary. | Living |
+| 10 min | [Product Vision](../PRODUCT_VISION.md) | Why the project exists; AI, privacy, Search, review, Undo, SQLite, and provider principles. | Living |
+| 10 min | [Product Roadmap](../PRODUCT_ROADMAP.md) | What is completed, in progress, planned, research, or backlog. | Living |
+| 15 min | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | How components, storage, Search, plugins, and the mutation boundary fit together. | Living |
+| 10 min | [Engineering Principles](../ENGINEERING_PRINCIPLES.md) and [Repository Structure](REPOSITORY_STRUCTURE.md) | Why the engineering model exists and where code belongs. | Living |
+| 10 min | [Contributing](../CONTRIBUTING.md) and [Developer Guide](DEVELOPER_GUIDE.md) | How to branch, build, test, validate, document, and submit a focused change. | Living |
+
+## Living product and project documents
+
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
+| [Repository README](../README.md) | Concise product/current-source boundary, capabilities, safety, platform, build, and navigation. | First contact with the project. | Living |
+| [Product Vision](../PRODUCT_VISION.md) | Purpose, audience, goals, current-versus-future behavior, AI/privacy/control philosophy, Search/storage reasoning. | Before product or architectural decisions. | Living and authoritative for product philosophy |
+| [Product Roadmap](../PRODUCT_ROADMAP.md) | Version branches, dependencies, merge state, completed/in-progress/planned concepts, research, and backlog. | Before describing or proposing future work. | Living and authoritative for roadmap status |
+| [Engineering Principles](../ENGINEERING_PRINCIPLES.md) | Reasoning for architecture, MVVM, stores/providers, testing, releases, CI, performance, safety, compatibility, and recovery. | Before a cross-cutting change or review. | Living and authoritative for cross-cutting engineering policy |
+| [Release History](../RELEASE_HISTORY.md) | Concise branch/date/test/merge history with links to detailed records. | When tracing how the product evolved. | Living historical index |
+| [Release Status](RELEASE_STATUS.md) | Exact current branch, integration, automated/manual validation, package, tag, and publication facts. | Before making a readiness or release claim. | Living and authoritative for current readiness |
+| [v2.0.0 Release Notes](RELEASE_NOTES_v2.0.0.md) | Downloads, changes, trust status, checksums, limitations, and community-testing boundary. | Before installing or publishing v2.0.0. | Current release snapshot |
+| [v2.0 Native Packaging](RELEASE_PACKAGING_v2.0.md) | Native artifact construction, validation, checksums, signing status, and publication order. | Before building or publishing release artifacts. | Living release procedure |
+| [v2.0 Screenshot Checklist](SCREENSHOT_CHECKLIST_v2.0.md) | Privacy-safe real-application capture requirements; intentionally unchecked. | Before adding screenshots to README or documentation. | Pending manual documentation task |
+| [Safety and Privacy](SAFETY_AND_PRIVACY.md) | Complete current source-file mutation, AI, watcher, workflow, plugin, storage, diagnostics, Search, recovery, and Undo boundaries. | Before any privacy, persistence, provider, plugin, or file-operation change. | Living and authoritative |
+| [v2.0 Security Notes](SECURITY_v2.0.md) | Knowledge Graph trust boundaries, hostile-input/resource defenses, store recovery, and explicit non-claims. | Before graph provider, query, suggestion, diagnostics, or recovery changes. | Current implementation-candidate security boundary |
+| [Changelog](CHANGELOG.md) | Detailed user-visible changes by historical version. | When release-by-release detail is required. | Cumulative historical record |
+| [Documentation Inventory](DOCUMENTATION_INVENTORY.md) | Exhaustive family classification, overlap, retention, consolidation, and known documentation debt. | When adding, moving, superseding, or removing documentation. | Living |
+
+The former [project philosophy](project_philosophy.md) and
+[roadmap](roadmap.md) paths are retained as compatibility navigation pages.
+Their authoritative content now lives in the root Product Vision and Product
+Roadmap.
+
+## Current user documentation
+
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
+| [Installation](INSTALLATION.md) | Current source-build instructions, historical package boundary, optional dependencies, update/uninstall, and application data. | Before installing, building, updating, or removing OpenSorSe. | Living |
+| [OpenSorSe 1.9 User Guide](USER_GUIDE_v1.9.md) | Inherited v1.9 relationships, Smart Collections, Search context, privacy, and repair. | When using inherited v1.9 workflows. | Current inherited guidance |
+| [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence/confidence, virtual collections, user control, Search context, privacy, and limits. | Before relying on or changing relationship behavior. | Current feature guide |
+| [OpenSorSe 2.0 Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) | Graph scope, consent, storage, lifecycle, browsing/Search, privacy, repair, limits, and deferred work. | When using, testing, or changing Knowledge Graph. | Current feature guide |
+| [OpenSorSe 2.0 Version Notes](VERSION_NOTES_v2.0.md) | Concise changes, compatibility, defaults, and limits. | For the v2.0 overview. | Current version snapshot |
+| [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) | Inherited Search/index failure, coverage, privacy, repair, and diagnostic guidance. | When Search or indexing is unclear or fails. | Current inherited guidance |
+| [OpenSorSe 1.9 Manual Testing](MANUAL_TESTING_v1.9.md) | Interactive relationship/collection scenarios, intentionally unchecked until observed. | During maintainer manual validation. | Current version-specific evidence template |
+| [OpenSorSe 1.9 Version Notes](VERSION_NOTES_v1.9.md) | Concise v1.9 user-visible changes and limits. | For the v1.9 milestone overview. | Current version snapshot |
+| [v1.9 Implementation Report](V1.9_IMPLEMENTATION_REPORT.md) | What v1.9 changed and reused. | For implementation evidence, not general onboarding. | Current version snapshot |
+| [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.9 validation totals. | Current version snapshot |
+| [v2.0 Implementation Report](V2.0_IMPLEMENTATION_REPORT.md) | Architecture and compatibility implemented by the candidate. | For v2.0 implementation evidence. | Current candidate snapshot |
+| [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md) | Exact automated, native-target, packaging, and explicit manual-exclusion evidence. | Before citing v2.0 validation. | Current release evidence |
+| [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md) | Current support vocabulary and Windows/Linux/macOS capability evidence. | Before making a platform claim. | Living |
+| [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) | Linux source validation, run, and framework-dependent publish steps. | For Linux source work. | Living, conservative preview guidance |
+
+The v1.9 guide builds on stable earlier workflows. Use the versioned v1.1-v1.8
+guides only when the current guide links to an inherited subsystem or when
+researching that release.
+
+## Current architecture
+
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
+| [Architecture Overview](ARCHITECTURE_OVERVIEW.md) | Current component ownership, flows, persistence, safety invariants, concurrency, and debt. | Start of any architecture investigation. | Living and authoritative |
+| [System Map](Architecture/OpenSorSe_System_Map.md) | Five Mermaid views of adapters, communication, processing, safe execution, and plugins. | When relationships are easier to understand visually. | Living and authoritative |
+| [Repository Structure](REPOSITORY_STRUCTURE.md) | Actual project reference graph, project responsibilities, tests, and change locations. | Before selecting a project to edit. | Living and authoritative |
+| [Architecture Library Index](Architecture/README.md) | Which detailed subsystem documents are current versus historical/long-term design. | Before reading any detailed architecture file. | Living |
+| [v1.7 Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md) | Provider-neutral durable stages, SQLite boundary, recovery, identity, quota, and coverage. | For indexing/provider/storage work. | Current subsystem contract inherited by v1.9 |
+| [v1.8 Search Intelligence and Privacy Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md) | Ranking, filters, snippets, concurrency, schema 2, privacy, and repair. | For Search and index-privacy work. | Current subsystem contract inherited by v1.9 |
+| [v1.9 Relationships and Context Architecture](Architecture/06_Search/10_v1.9_Relationships_Context.md) | Evidence, confidence, incremental discovery, schema 3, virtual collections, Search context, privacy, and graph bounds. | For current relationship/collection work. | Current subsystem contract |
+| [Advanced Diagnostics](Architecture/01_Core/10_Advanced_Diagnostics.md) | Current detailed diagnostics model and privacy. | For instrumentation/export changes. | Current subsystem contract |
+| [OCR and Metadata](Architecture/03_Readers/10_v1_OCR_and_Metadata.md) | Implemented extraction/OCR capability and bounds. | For extraction or OCR work. | Current subsystem contract |
+| [Small-model Prompt Contracts](Architecture/04_AI/11_Small_Model_Prompt_Contracts.md) | Implemented prompt/structured-output rules. | For optional AI changes. | Current subsystem contract |
+| [Change Plans and Operation Journal](Architecture/07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md) | Current supported mutation/recovery boundary. | Before any organization or filesystem action change. | Current subsystem contract |
+| [Watched Folders](Architecture/02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md) | Current hint/reconciliation/incremental-processing boundary. | For watcher work. | Current subsystem contract |
+| [Workflow Profiles and Recipes](Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md) | Current workflow/recipe policy and Change Plan integration. | For workflow changes. | Current subsystem contract |
+| [Plugin Foundation](Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md) | Current plugin host/SDK/package/trust boundary. | For host or extension changes. | Current subsystem contract |
+
+[Implementation specification 059](Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md)
+and [implementation specification 060](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md),
+plus [implementation specification 061](Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md),
+are release-specific implementation records. Use the architecture documents
+above for the living subsystem model.
+
+## v2.0 release and design authority
+
+The design package remains the rationale and acceptance authority for the
+v2.0 implementation. Source and tests define what is actually implemented;
+unchecked manual or historical RC gates remain incomplete.
+
+| Document | What it contains | Status |
 | --- | --- | --- |
-| User | [OpenSorSe README](../README.md) | [Installation](INSTALLATION.md), [v1.6 User Guide](USER_GUIDE_v1.6.md), and [Troubleshooting](TROUBLESHOOTING_v1.6.md) |
-| Contributor | [Contributing](../CONTRIBUTING.md) | [Developer Guide](DEVELOPER_GUIDE.md), [Repository Structure](REPOSITORY_STRUCTURE.md), and [Architecture Overview](ARCHITECTURE_OVERVIEW.md) |
-| Plugin author | [Extension SDK](EXTENSION_SDK_v1.4.md) | [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md), [Manifest Reference](PLUGIN_MANIFEST_REFERENCE_v1.4.md), and [v1.5 platform constraints](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md) |
-| Maintainer | [Maintainer Guide](MAINTAINER_GUIDE.md) | [Release Status](RELEASE_STATUS.md), [Safety and Privacy](SAFETY_AND_PRIVACY.md), and [Implementation Specifications](Implementation_Spec/README.md) |
+| [v2.0 Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md) | Implemented stable scope, storage, projection/recovery, Search, privacy, repair, bounds, and deferred work. | Current feature guide |
+| [v2.0 Knowledge Graph stability architecture](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Isolated graph/decision stores, conservative scope, identity, projection, states, bounds, privacy, and RC policy. | Design authority implemented by v2.0 |
+| [v2.0 specification package](Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md) | Failure, migration, recovery, concurrency, integrity, and automated-test acceptance plans. | Accepted implementation authority |
+| [v2.0 compatibility matrix](V2.0_COMPATIBILITY_MATRIX.md) | v1.7/v1.8/v1.9 upgrade and rollback requirements. | Current compatibility boundary |
+| [v2.0 release-readiness checklist](RELEASE_READINESS_v2.0.md) | Historical implementation, validation, RC, and release gates. | Unchecked evidence template; no unobserved completion claimed |
+| [v2.0 manual checklist](MANUAL_TESTING_v2.0.md) | Interactive migration, recovery, graph, Search, privacy, resource, accessibility, and regression scenarios. | Fully unchecked |
+| [v2.0 RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md) | Structured soak, fault, upgrade/rollback, privacy, platform, accessibility, and exit gates. | Follow-up/community validation guide; no completion claimed |
 
-## Users
+These records do not prove validation that has not been run and do not
+supersede v1.9 authority for existing relationships, Collections, privacy, or
+schema-3 persistence.
 
-- [Installation and updates](INSTALLATION.md)
-- [OpenSorSe 1.6 User Guide](USER_GUIDE_v1.6.md)
-- [Manual verification checklist](MANUAL_TESTING_v1.6.md)
-- [Troubleshooting](TROUBLESHOOTING_v1.6.md)
-- [Safety and Privacy](SAFETY_AND_PRIVACY.md)
-- [Version notes](VERSION_NOTES_v1.6.md)
-- [Implementation report](V1.6_IMPLEMENTATION_REPORT.md)
-- [Validation report](V1.6_VALIDATION_REPORT.md)
-- [Platform capability matrix](PLATFORM_COMPATIBILITY_MATRIX.md)
-- [Linux build and launch](LINUX_BUILD_AND_LAUNCH.md)
-- [Known limitations and release readiness](RELEASE_STATUS.md)
+## Contributors and maintainers
 
-The user guide covers the first scan, Files, Watched Folders, Workflow Profiles,
-Sorting Recipes, Change Plan review, Apply, Undo, Recovery, local AI, and Plugin
-management. The safety document is authoritative for privacy and mutation
-boundaries.
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
+| [Contributing](../CONTRIBUTING.md) | Prerequisites, repository layout, MVVM, safety, tests, documentation, branches, manual validation, release and review expectations. | Before making a contribution. | Living |
+| [Developer Guide](DEVELOPER_GUIDE.md) | Guided clone/build/test flow and traces through Scan, Search, Change Plans, and plugins. | For a first code change or subsystem trace. | Living |
+| [Maintainer Guide](MAINTAINER_GUIDE.md) | Release gates, version metadata, migrations, safety, journal/plugin compatibility, and documentation maintenance. | Before integration or release work. | Living |
+| [Coding Standards](Architecture/99_Appendix/Coding_Standards.md) | Code readability and implementation-level conventions. | During implementation/review. | Living companion to Engineering Principles |
+| [Naming Conventions](Architecture/99_Appendix/Naming_Conventions.md) | General naming guidance. | When introducing public/domain vocabulary. | Living guidance; actual source/domain terms take precedence |
+| [Technology Stack](Architecture/99_Appendix/Technology_Stack.md) | Current runtime, UI, persistence, Search, OCR, AI, plugin, test, and documentation technology. | Before adding or describing a dependency. | Living |
+| [Glossary](Architecture/99_Appendix/Glossary.md) | Current shared product and architecture terminology. | When terminology is ambiguous. | Living and authoritative for vocabulary |
+| [ADR Index](Architecture/99_Appendix/ADR.md) | Accepted ADRs and decision-record policy. | Before revisiting an accepted decision or proposing a new one. | Living index; accepted ADRs are immutable records |
+| [FOSS Dependency Policy](FOSS_DEPENDENCY_POLICY.md) | License/inventory rules and optional component policy. | Before adding or distributing a dependency. | Living |
 
-## Contributors
+## Plugin authors
 
-- [Contributing](../CONTRIBUTING.md)
-- [Developer Guide](DEVELOPER_GUIDE.md)
-- [Repository Structure](REPOSITORY_STRUCTURE.md)
-- [Architecture Overview](ARCHITECTURE_OVERVIEW.md)
-- [OpenSorSe System Map](Architecture/OpenSorSe_System_Map.md)
-- [Architecture library](Architecture/README.md)
-- [Coding standards](Architecture/99_Appendix/Coding_Standards.md)
-- [Naming conventions](Architecture/99_Appendix/Naming_Conventions.md)
-- [Technology stack](Architecture/99_Appendix/Technology_Stack.md)
-- [FOSS dependency policy](FOSS_DEPENDENCY_POLICY.md)
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
+| [Extension SDK](EXTENSION_SDK_v1.4.md) | Public contracts, extension points, capabilities, bounds, lifetime, and safety. | First plugin-author document. | Current stable SDK contract introduced in v1.4 |
+| [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md) | Minimal plugin example, reliability, security, privacy, and versioning. | When implementing a plugin. | Current stable guide |
+| [Manifest Reference](PLUGIN_MANIFEST_REFERENCE_v1.4.md) | Strict schema, fields, extension points, capabilities, paths, and dependencies. | When creating `plugin.json`. | Current stable schema plus v1.5 addendum |
+| [Local Plugin Packages](LOCAL_PLUGIN_PACKAGES_v1.4.md) | ZIP layout, install/upgrade/rollback/removal, and trust. | When packaging or installing a plugin. | Current stable package contract |
+| [Plugin Platform Compatibility](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md) | Runtime identifier/native-dependency additions. | For cross-platform plugins. | Current addendum |
+| [Workflow Portability](WORKFLOW_PORTABILITY_v1.5.md) | Filename/platform policy in portable workflows. | For workflow/plugin portability. | Current addendum |
+| [Watched Folders on Linux](WATCHED_FOLDERS_LINUX_v1.5.md) | Linux watcher limits and reconciliation. | For Linux watcher integrations. | Current addendum |
 
-The architecture overview and repository structure guide describe the current
-implementation. Detailed architecture documents that describe future or legacy
-designs are labelled by the [architecture index](Architecture/README.md).
+External plugins run in-process with the current user’s permissions.
+Load-context isolation and hashes are not a security sandbox or publisher
+authentication.
 
-## Current subsystem references
+## Release and implementation records
 
-- [Scanning, metadata, and OCR](Architecture/03_Readers/10_v1_OCR_and_Metadata.md)
-- [Advanced Diagnostics](Architecture/01_Core/10_Advanced_Diagnostics.md)
-- [AI prompt and validation contracts](Architecture/04_AI/11_Small_Model_Prompt_Contracts.md)
-- [Change Plans and Operation Journal](Architecture/07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md)
-- [Watched Folders and incremental scanning](Architecture/02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md)
-- [Workflow Profiles and Sorting Recipes](Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md)
-- [Plugin Foundation](Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md)
-- [v1.5 platform architecture](Architecture/00_System/08_v1.5_Platform_Architecture.md)
-- [v1.6 reliability architecture](Architecture/00_System/09_v1.6_Reliability_Architecture.md)
-- [Workflow portability](WORKFLOW_PORTABILITY_v1.5.md)
-- [Watched Folders on Linux](WATCHED_FOLDERS_LINUX_v1.5.md)
+| Document/family | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
+| [Release History](../RELEASE_HISTORY.md) | Concise complete milestone index. | Start of historical research. | Living historical index |
+| [Changelog](CHANGELOG.md) | Detailed cumulative changes. | User-visible version detail. | Historical record |
+| [Implementation Specification Index](Implementation_Spec/README.md) | Numbered specifications, proposals, decisions, and acceptance boundaries. | Implementation archaeology and release-specific rationale. | Living index over historical records |
+| `VERSION_NOTES_v*.md` | User-facing change summary for one version. | When researching that version. | Historical/version snapshots; v2.0 is a candidate snapshot |
+| `MANUAL_TESTING_v*.md` | Interactive checklist and observed/unobserved state for one version. | Manual validation or evidence review. | Historical/version snapshots |
+| `USER_GUIDE_v*.md` and `TROUBLESHOOTING_v*.md` | User behavior and support at that version. | Compatibility and historical UX research. | Historical except current v1.9/inherited guidance |
+| `V*.*_IMPLEMENTATION_REPORT.md` | What a major branch implemented. | Detailed implementation evidence. | Historical/candidate snapshots; preserve |
+| `V*.*_VALIDATION_REPORT.md` | Exact local/hosted/manual evidence and exclusions. | Before quoting validation. | Historical/pending candidate records; preserve |
+| `DATA_MODEL_v1.0.md`, `MIGRATION_v1.0.md`, `RELEASE_CHECKLIST_v1.0.md` | v1.0 data, migration, and packaging assumptions. | v1.0 compatibility or package research. | Historical snapshots |
 
-## Extension SDK and plugins
+## Historical architecture and packaged release
 
-- [Extension SDK contract](EXTENSION_SDK_v1.4.md)
-- [Plugin authoring](PLUGIN_AUTHOR_GUIDE_v1.4.md)
-- [Manifest schema](PLUGIN_MANIFEST_REFERENCE_v1.4.md)
-- [Local package lifecycle](LOCAL_PLUGIN_PACKAGES_v1.4.md)
-- [Plugin platform compatibility](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md)
-- [Plugin implementation specification](Implementation_Spec/v1.4/056_Plugin_Foundation_and_Extension_SDK.md)
-- [Cross-platform implementation specification](Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md)
-- [Production-hardening implementation specification](Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md)
+Most unversioned detailed files below `Architecture/01_Core` through
+`Architecture/10_Plugins` were original design-library documents. Some describe
+broad readers, reports, databases, generic services, or plugin models that are
+not current implementation. The [Architecture Library Index](Architecture/README.md)
+classifies the current exceptions. Treat all others as historical/long-term
+design.
 
-External plugins run in-process with the current user's permissions. A
-collectible assembly-load context is a dependency-isolation mechanism, not a
-security sandbox. The supported SDK does not expose file mutation, Change Plan
-approval, the executor, credentials, or host dependency injection.
+The entire `release/OpenSorSe-v1.0.0/` tree is a frozen distribution snapshot:
+package README, release notes, changelog, documentation copies, license files,
+and binaries describe that package only. Do not update it to match current
+source. Intentional exact copies inside that tree are package contents, not
+living-document duplicates.
 
-## Maintainers and releases
+## Documentation maintenance
 
-- [Maintainer Guide](MAINTAINER_GUIDE.md)
-- [Release Status](RELEASE_STATUS.md)
-- [Release checklist for the last packaged baseline](RELEASE_CHECKLIST_v1.0.md)
-- [Changelog](CHANGELOG.md)
-- [Roadmap](roadmap.md)
-- [Implementation specification index](Implementation_Spec/README.md)
-- [Documentation inventory](DOCUMENTATION_INVENTORY.md)
-
-`RELEASE_CHECKLIST_v1.0.md` is historical and remains useful as the most recent
-packaging checklist. The v1.6 manual checklist and maintainer guide identify
-additional gates; their completion status is recorded in the v1.6 validation
-report.
-
-## Historical documentation
-
-The repository intentionally keeps earlier User Guides, Troubleshooting guides,
-Manual Testing guides, Version Notes, release proposals, decisions, and
-implementation specifications. They explain why compatibility behavior exists
-and provide release-specific test evidence. Use them for history, not as the
-current product contract.
-
-The [documentation inventory](DOCUMENTATION_INVENTORY.md) classifies every
-documentation family and records the one obsolete file removed during the v1.4
-comprehension pass.
+- Update living documents when current behavior or policy changes.
+- Add or update a version snapshot only as part of that version’s work.
+- Do not rewrite old implementation, validation, release, or manual evidence to
+  look current.
+- Link to authoritative detail instead of copying it.
+- Label planned and research material explicitly.
+- Run documentation link/Mermaid tests and `git diff --check` after changes.
+- Consult the [Documentation Inventory](DOCUMENTATION_INVENTORY.md) before
+  removing or consolidating a path.

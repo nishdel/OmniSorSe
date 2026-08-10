@@ -16,7 +16,7 @@ The implemented Desktop application hosts these user-facing areas:
 | Files | Hosts primary search, progressive filters, a resizable explorer table, selected-file details, warnings, bounded tags, and selection-only File Assistant controls. |
 | Duplicates | Reuses the exact-duplicate review ViewModel as a primary friendly workflow without adding deletion. |
 | Saved scans | Consolidates the scan library, saved metadata search, and advanced comparison behind local tabs. |
-| Meaning Search Beta | Opens from Files, builds/searches a separately enabled bounded local index, and explains filename/tag/metadata/native/OCR/similarity matches. |
+| Search | Opens from Files, explains filename/folder/tag/metadata/text/OCR/related-concept matches, and shows durable indexing progress, coverage, controls, and storage. |
 | Folder plans | Advanced preview/apply/history page with exact confirmation, repeat protection, filters, source/proposed/applied/current structures, and accessible diagrams. |
 | Rules | Edits and validates current-session deterministic rules. Saving exposes the recipe as `current` to watched-folder analysis; rules never execute directly. |
 | Watched Folders | Adds, edits, pauses, resumes, scans, reconciles, opens, reviews, and safely removes persistent watched-root configurations with status and grouped activity. |
@@ -27,7 +27,7 @@ The implemented Desktop application hosts these user-facing areas:
 | Operation History | Presents durable journal summaries/details, report copy, interruption state, and conflict-aware whole/selected-action Undo. |
 | Notifications | Shows non-blocking user-safe status messages. |
 
-The current GUI exposes capped known-file/folder opening, local metadata/OCR controls, Semantic Search Beta, persistent watched folders, reviewable Change Plans, journalled safe execution, and conflict-aware Undo. It does not expose duplicate deletion, direct generic rule execution, autonomous AI mutation, permanent deletion, or background-service monitoring while OpenSorSe is closed. AI remains review-only, and catalog/index/history maintenance changes only OpenSorSe application data.
+The current GUI exposes capped known-file/folder opening, local metadata/OCR controls, Search, persistent watched folders, reviewable Change Plans, journalled safe execution, and conflict-aware Undo. Search has accessible concise help and durable indexing progress/coverage/control/storage presentation. It does not expose duplicate deletion, direct generic rule execution, autonomous AI mutation, permanent deletion, or background-service monitoring while OpenSorSe is closed. AI remains review-only, and catalog/index/history maintenance changes only OpenSorSe application data.
 
 ## Presentation boundary
 

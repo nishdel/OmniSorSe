@@ -222,6 +222,103 @@ public sealed class SettingsViewModelTests
         Assert.Equal(5000, configuration.Current.Content.MaximumRasterDimension);
     }
 
+    /// <summary>Verifies durable indexing policy round-trips through the editable settings boundary.</summary>
+    [Fact]
+    public async Task SaveAsync_DeepIndexingPolicy_PersistsEveryResourceAndRetentionControl()
+    {
+        var configuration = new TestConfigurationService();
+        using var viewModel = new SettingsViewModel(configuration);
+        viewModel.Draft.DeepIndexingEnabled = true;
+        viewModel.Draft.DefaultIndexingLevel = IndexingLevel.Deep;
+        viewModel.Draft.IndexingResourceMode = IndexingResourceMode.Eco;
+        viewModel.Draft.MaximumIndexSizeMiB = 2048;
+        viewModel.Draft.MaximumExtractedTextCharacters = 262_144;
+        viewModel.Draft.MaximumDeepOcrTextCharacters = 131_072;
+        viewModel.Draft.MaximumSemanticChunksPerDocument = 12;
+        viewModel.Draft.DeletedFileRetentionDays = 45;
+        viewModel.Draft.FailedJobHistoryRetentionDays = 21;
+        viewModel.Draft.MaximumIndexingRetryCount = 5;
+        viewModel.Draft.MaximumIndexingConcurrency = 2;
+        viewModel.Draft.ProcessIndexOnlyWhileIdle = true;
+        viewModel.Draft.ProcessIndexOnlyOnPower = true;
+        viewModel.Draft.PauseIndexingOnLowBattery = true;
+        viewModel.Draft.PauseBelowBatteryPercentage = 25;
+        viewModel.Draft.DeepOcrProcessingEnabled = true;
+        viewModel.Draft.DeepAiProcessingEnabled = true;
+        viewModel.Draft.DeepSummaryProcessingEnabled = false;
+        viewModel.Draft.DeepSemanticProcessingEnabled = false;
+        viewModel.Draft.RelationshipAnalysisEnabled = false;
+        viewModel.Draft.RelationshipExcludedExtensions = ".pem, key, .pem";
+        viewModel.Draft.MaximumRelationshipCandidates = 320;
+        viewModel.Draft.MaximumRelationshipsPerFile = 80;
+        viewModel.Draft.MaximumSmartCollectionMembers = 1200;
+        viewModel.Draft.ArchiveIndexingEnabled = true;
+        viewModel.Draft.ExcludeGeneratedFolders = false;
+        viewModel.Draft.BinaryAndExecutableMetadataOnly = false;
+        viewModel.Draft.UseIndexingTimeWindow = true;
+        viewModel.Draft.IndexingWindowStartHour = 22;
+        viewModel.Draft.IndexingWindowEndHour = 6;
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        var saved = configuration.Current.DeepIndexing;
+        Assert.Equal(IndexingLevel.Deep, saved.DefaultLevel);
+        Assert.Equal(IndexingResourceMode.Eco, saved.ResourceMode);
+        Assert.Equal(2048, saved.MaximumIndexSizeMiB);
+        Assert.Equal(262_144, saved.MaximumExtractedTextCharacters);
+        Assert.Equal(131_072, saved.MaximumOcrTextCharacters);
+        Assert.Equal(12, saved.MaximumSemanticChunksPerDocument);
+        Assert.Equal(45, saved.DeletedFileRetentionDays);
+        Assert.Equal(21, saved.FailedJobHistoryRetentionDays);
+        Assert.Equal(5, saved.MaximumRetryCount);
+        Assert.Equal(2, saved.MaximumConcurrency);
+        Assert.True(saved.ProcessOnlyWhileIdle);
+        Assert.True(saved.ProcessOnlyWhileConnectedToPower);
+        Assert.Equal(25, saved.PauseBelowBatteryPercentage);
+        Assert.True(saved.OcrProcessingEnabled);
+        Assert.True(saved.AiProcessingEnabled);
+        Assert.False(saved.SummaryProcessingEnabled);
+        Assert.False(saved.SemanticProcessingEnabled);
+        Assert.False(saved.RelationshipAnalysisEnabled);
+        Assert.Equal([".pem", ".key"], saved.RelationshipExcludedExtensions);
+        Assert.Equal(320, saved.MaximumRelationshipCandidates);
+        Assert.Equal(80, saved.MaximumRelationshipsPerFile);
+        Assert.Equal(1200, saved.MaximumSmartCollectionMembers);
+        Assert.True(saved.ArchiveIndexingEnabled);
+        Assert.False(saved.ExcludeGeneratedFolders);
+        Assert.False(saved.BinaryAndExecutableMetadataOnly);
+        Assert.Equal(22, saved.ProcessingWindowStartHour);
+        Assert.Equal(6, saved.ProcessingWindowEndHour);
+    }
+
+    /// <summary>Verifies an unsafe storage quota is rejected without replacing valid settings.</summary>
+    [Fact]
+    public async Task SaveAsync_DeepIndexingQuotaBelowMinimum_IsRejected()
+    {
+        var configuration = new TestConfigurationService();
+        using var viewModel = new SettingsViewModel(configuration);
+        viewModel.Draft.MaximumIndexSizeMiB = 15;
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, configuration.ReplacementSaveCount);
+        Assert.Equal("Background indexing settings are invalid.", viewModel.StatusText);
+    }
+
+    /// <summary>Verifies malformed relationship exclusions are rejected without replacing valid settings.</summary>
+    [Fact]
+    public async Task SaveAsync_MalformedRelationshipExclusion_IsRejected()
+    {
+        var configuration = new TestConfigurationService();
+        using var viewModel = new SettingsViewModel(configuration);
+        viewModel.Draft.RelationshipExcludedExtensions = ".";
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, configuration.ReplacementSaveCount);
+        Assert.Equal("Background indexing settings are invalid.", viewModel.StatusText);
+    }
+
     /// <summary>Verifies both documented timeout boundaries persist and out-of-range text is rejected.</summary>
     [Theory]
     [InlineData("5", true)]

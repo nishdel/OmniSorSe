@@ -90,7 +90,27 @@ public sealed class AiDiagnosticsViewModel : ViewModelBase
         StatusText = $"{_sessions.Count} request diagnostic(s) retained in memory.";
     }
 
-    public Task CopyAsync(string text) => _clipboard.SetTextAsync(text ?? "", CancellationToken.None);
+    public async Task CopyAsync(string text)
+    {
+        try
+        {
+            await _clipboard.SetTextAsync(text ?? "", CancellationToken.None);
+            StatusText = "Diagnostic text copied to the clipboard.";
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                "AI diagnostic clipboard export failed safely ({0}).",
+                exception.GetType().Name);
+            StatusText = "The diagnostic text could not be copied. No retained diagnostic data was changed.";
+        }
+    }
+
+    /// <summary>Reports the outcome of an explicit diagnostic-file export.</summary>
+    public void ReportExportResult(bool succeeded) =>
+        StatusText = succeeded
+            ? "Diagnostic report saved. Review it before sharing."
+            : "The diagnostic report could not be saved. No retained diagnostic data was changed.";
 
     public string BuildJsonReport() =>
         SelectedSession is null ? "{}" : JsonSerializer.Serialize(SelectedSession, new JsonSerializerOptions { WriteIndented = true });

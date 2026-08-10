@@ -1,0 +1,324 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             xmlns:rel="using:OpenSorSe.Application.Relationships"
+             x:Class="OpenSorSe.Desktop.Views.CollectionsView"
+             x:DataType="vm:CollectionsViewModel">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <StackPanel Spacing="3">
+                <TextBlock Classes="page-title" Text="Collections" />
+                <TextBlock Classes="page-subtitle"
+                           Text="Virtual groups built from retained evidence. Collections never move or change original files."
+                           TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Classes="secondary"
+                    Content="Refresh"
+                    Command="{Binding RefreshCommand}"
+                    AutomationProperties.Name="Refresh relationships and Smart Collections" />
+            <Button Grid.Column="2"
+                    Classes="secondary"
+                    Content="Cancel"
+                    IsVisible="{Binding IsBusy}"
+                    Command="{Binding CancelCommand}"
+                    AutomationProperties.Name="Cancel current relationship operation" />
+        </Grid>
+
+        <Border Grid.Row="1" Classes="card">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding StatusText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Text="{Binding DiagnosticsText}"
+                           Classes="page-subtitle"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <TabControl Grid.Row="2">
+            <TabItem Header="Smart Collections">
+                <Grid Margin="0,10,0,0" ColumnDefinitions="300,*" ColumnSpacing="12">
+                    <Border Classes="card">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Virtual collections" FontSize="18" FontWeight="SemiBold" />
+                            <ListBox ItemsSource="{Binding Collections}"
+                                     SelectedItem="{Binding SelectedCollection, Mode=TwoWay}"
+                                     AutomationProperties.Name="Smart Collections">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="rel:SmartCollection">
+                                        <StackPanel Margin="4" Spacing="2">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding MemberCount, StringFormat='{}{0} members'}" />
+                                            <TextBlock Text="{Binding Confidence, StringFormat='Confidence: {0}'}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel Spacing="12">
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Collection inspector" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding SelectedCollection.Description}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding SelectedCollection.RelationshipSummary, StringFormat='Evidence summary: {0}'}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding SelectedCollection.CreationSource, StringFormat='Origin: {0}'}" />
+                                    <TextBlock Text="{Binding SelectedCollection.Confidence, StringFormat='Confidence: {0}'}" />
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                        <TextBox Text="{Binding RenameText, Mode=TwoWay}"
+                                                 AutomationProperties.Name="Collection title" />
+                                        <Button Grid.Column="1"
+                                                Classes="secondary"
+                                                Content="Rename"
+                                                Command="{Binding RenameCollectionCommand}" />
+                                        <Button Grid.Column="2"
+                                                Classes="secondary"
+                                                Content="Pin or unpin"
+                                                Command="{Binding TogglePinCommand}"
+                                                AutomationProperties.Name="Toggle collection pin" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <ComboBox ItemsSource="{Binding Collections}"
+                                                  SelectedItem="{Binding MergeCollection, Mode=TwoWay}"
+                                                  PlaceholderText="Choose a collection to merge"
+                                                  AutomationProperties.Name="Collection to merge">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="rel:SmartCollection">
+                                                    <TextBlock Text="{Binding Title}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button Grid.Column="1"
+                                                Classes="secondary"
+                                                Content="Merge into selected"
+                                                Command="{Binding MergeCollectionCommand}" />
+                                    </Grid>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,8,0"
+                                                Classes="danger"
+                                                Content="Forget collection"
+                                                Command="{Binding RequestForgetCollectionCommand}"
+                                                AutomationProperties.HelpText="Removes only virtual collection data. Original files are unchanged." />
+                                        <Button Margin="0,0,8,0"
+                                                Classes="danger"
+                                                Content="Confirm forget"
+                                                IsVisible="{Binding IsForgetCollectionPending}"
+                                                Command="{Binding ConfirmForgetCollectionCommand}" />
+                                        <Button Classes="secondary"
+                                                Content="Keep collection"
+                                                IsVisible="{Binding IsForgetCollectionPending}"
+                                                Command="{Binding CancelForgetCollectionCommand}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Members" FontSize="18" FontWeight="SemiBold" />
+                                    <ListBox ItemsSource="{Binding Members}"
+                                             SelectedItem="{Binding SelectedMember, Mode=TwoWay}"
+                                             AutomationProperties.Name="Collection members">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="rel:SmartCollectionMember">
+                                                <StackPanel Margin="4" Spacing="2">
+                                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding SourceName, StringFormat='Source: {0}'}" />
+                                                    <TextBlock Text="{Binding MembershipSource, StringFormat='Membership: {0}'}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <Button Classes="secondary"
+                                            HorizontalAlignment="Left"
+                                            Content="Split selected member"
+                                            Command="{Binding SplitMemberCommand}"
+                                            AutomationProperties.HelpText="Removes the selected member from this virtual collection without moving the original file." />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Relationship inspector" FontSize="18" FontWeight="SemiBold" />
+                                    <ListBox ItemsSource="{Binding Relationships}"
+                                             SelectedItem="{Binding SelectedRelationship, Mode=TwoWay}"
+                                             AutomationProperties.Name="Collection relationships">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="rel:FileRelationship">
+                                                <StackPanel Margin="4" Spacing="2">
+                                                    <TextBlock Text="{Binding Type}" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding Confidence, StringFormat='Confidence: {0}'}" />
+                                                    <TextBlock Text="{Binding Algorithm, StringFormat='Origin: {0}'}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,8,0" Classes="secondary" Content="Confirm" Command="{Binding ConfirmRelationshipCommand}" />
+                                        <Button Margin="0,0,8,0"
+                                                Classes="secondary"
+                                                Content="Always relate"
+                                                Command="{Binding AlwaysRelateRelationshipCommand}"
+                                                AutomationProperties.HelpText="Keeps this virtual relationship when automatic evidence changes. Original files remain unchanged." />
+                                        <Button Margin="0,0,8,0" Classes="secondary" Content="Ignore suggestion" Command="{Binding RejectRelationshipCommand}" />
+                                        <Button Margin="0,0,8,0" Classes="secondary" Content="Never relate" Command="{Binding NeverRelateCommand}" />
+                                        <Button Classes="danger" Content="Unlink" Command="{Binding UnlinkCommand}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Timeline" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="Timeline events use retained indexed timestamps; they do not claim an event that is absent from the index."
+                                               Classes="page-subtitle"
+                                               TextWrapping="Wrap" />
+                                    <ItemsControl ItemsSource="{Binding Timeline}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="rel:CollectionTimelineEvent">
+                                                <Grid Margin="0,3" ColumnDefinitions="180,*,Auto" ColumnSpacing="8">
+                                                    <TextBlock Text="{Binding OccurredAtUtc}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding FileName}" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding Label}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Related Files">
+                <ScrollViewer Margin="0,10,0,0">
+                    <StackPanel Spacing="12">
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Related Files" FontSize="18" FontWeight="SemiBold" />
+                                <ComboBox ItemsSource="{Binding Files}"
+                                          SelectedItem="{Binding SelectedFile, Mode=TwoWay}"
+                                          PlaceholderText="Choose an indexed file"
+                                          AutomationProperties.Name="File to inspect for relationships">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="rel:RelationshipFileDocument">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding SourceName}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Grid ColumnDefinitions="*,*,*,Auto" ColumnSpacing="8">
+                                    <ComboBox ItemsSource="{Binding RelationshipTypes}"
+                                              SelectedItem="{Binding RelationshipFilter, Mode=TwoWay}"
+                                              PlaceholderText="Any relationship"
+                                              AutomationProperties.Name="Relationship type filter" />
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding ConfidenceLevels}"
+                                              SelectedItem="{Binding MinimumConfidence, Mode=TwoWay}"
+                                              PlaceholderText="Any confidence"
+                                              AutomationProperties.Name="Minimum relationship confidence" />
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding RelatedFileSorts}"
+                                              SelectedItem="{Binding RelatedFileSort, Mode=TwoWay}"
+                                              AutomationProperties.Name="Related Files sort order" />
+                                    <Button Grid.Column="3"
+                                            Classes="secondary"
+                                            Content="Apply"
+                                            Command="{Binding RefreshRelatedFilesCommand}" />
+                                </Grid>
+                                <ListBox ItemsSource="{Binding RelatedFiles}"
+                                         AutomationProperties.Name="Related files with evidence">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="rel:RelatedFile">
+                                            <StackPanel Margin="4" Spacing="2">
+                                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Relationship.Type, StringFormat='Relationship: {0}'}" />
+                                                <TextBlock Text="{Binding Relationship.Explanation, StringFormat='Evidence: {0}'}" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding Relationship.Confidence, StringFormat='Confidence: {0}'}" />
+                                                <TextBlock Text="{Binding Relationship.Algorithm, StringFormat='Origin: {0}'}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,0"
+                                            Classes="secondary"
+                                            Content="Rebuild selected file"
+                                            Command="{Binding RebuildFileRelationshipsCommand}"
+                                            AutomationProperties.HelpText="Rebuilds only relationship data. The original file remains unchanged." />
+                                    <Button Margin="0,0,8,0"
+                                            Classes="danger"
+                                            Content="Forget and exclude selected file"
+                                            Command="{Binding ForgetFileRelationshipsCommand}"
+                                            AutomationProperties.HelpText="Forgets only relationship data and prevents future relationship analysis. The original file remains unchanged." />
+                                    <Button Margin="0,0,8,0"
+                                            Classes="danger"
+                                            Content="Forget selected source relationships"
+                                            Command="{Binding ForgetSourceRelationshipsCommand}"
+                                            AutomationProperties.HelpText="Forgets relationship data for the indexed source without changing source files, watched-folder ownership, or manual-source ownership." />
+                                    <Button Classes="secondary"
+                                            Content="Repair relationship storage"
+                                            Command="{Binding RepairCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Link files manually" FontSize="18" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                    <ComboBox ItemsSource="{Binding Files}"
+                                              SelectedItem="{Binding FirstLinkFile, Mode=TwoWay}"
+                                              PlaceholderText="First file"
+                                              AutomationProperties.Name="First file to link">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="rel:RelationshipFileDocument">
+                                                <TextBlock Text="{Binding FileName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding Files}"
+                                              SelectedItem="{Binding SecondLinkFile, Mode=TwoWay}"
+                                              PlaceholderText="Second file"
+                                              AutomationProperties.Name="Second file to link">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="rel:RelationshipFileDocument">
+                                                <TextBlock Text="{Binding FileName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+                                    <ComboBox ItemsSource="{Binding RelationshipTypes}"
+                                              SelectedItem="{Binding LinkType, Mode=TwoWay}"
+                                              AutomationProperties.Name="Manual relationship type" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding CustomType, Mode=TwoWay}"
+                                             IsVisible="{Binding IsCustomLinkType}"
+                                             PlaceholderText="Custom relationship name"
+                                             AutomationProperties.Name="Custom relationship name" />
+                                    <CheckBox Grid.Column="2"
+                                              Content="Always relate"
+                                              IsChecked="{Binding AlwaysRelate, Mode=TwoWay}" />
+                                </Grid>
+                                <Button Classes="primary"
+                                        HorizontalAlignment="Left"
+                                        Content="Link files"
+                                        Command="{Binding LinkFilesCommand}"
+                                        AutomationProperties.HelpText="Creates a virtual link only. Neither original file is changed." />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

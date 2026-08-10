@@ -151,4 +151,18 @@ public sealed class FolderSelectionViewModelTests : IDisposable
         Assert.False(eventRaised);
         Assert.Equal("Select at least one folder before starting a scan.", viewModel.StatusText);
     }
+
+    /// <summary>Verifies native picker failures leave manual path entry available.</summary>
+    [Fact]
+    public void ReportFolderPickerFailure_ProvidesSafeManualFallback()
+    {
+        var viewModel = new FolderSelectionViewModel();
+
+        viewModel.ReportFolderPickerFailure();
+
+        Assert.Equal(
+            "The folder picker could not be opened. Enter an absolute folder path instead.",
+            viewModel.StatusText);
+        Assert.Empty(viewModel.SelectedFolders);
+    }
 }

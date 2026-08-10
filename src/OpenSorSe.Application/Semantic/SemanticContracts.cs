@@ -44,7 +44,24 @@ public sealed record SemanticSearchHit(
     IReadOnlyList<string> MatchedTags,
     bool MatchedMetadata,
     bool MatchedNativeText,
-    bool MatchedOcrText);
+    bool MatchedOcrText,
+    string? FileId = null,
+    IReadOnlyList<SearchRankingComponent>? RankingComponents = null,
+    SearchSnippet? Snippet = null,
+    bool IsFullyIndexed = true,
+    OpenSorSe.Core.Configuration.IndexingLevel? IndexingLevel = null,
+    string? SourceName = null)
+{
+    /// <summary>Gets a plain-language result source indicator.</summary>
+    public string SourceIndicator => string.IsNullOrWhiteSpace(SourceName)
+        ? "Compatible local Search index"
+        : SourceName;
+
+    /// <summary>Gets a plain-language per-result indexing coverage indicator.</summary>
+    public string CoverageIndicator => IsFullyIndexed
+        ? "Fully indexed"
+        : "Partially indexed";
+}
 
 /// <summary>Contains one controlled semantic operation outcome.</summary>
 public sealed record SemanticResult<T>(
@@ -92,4 +109,27 @@ public interface ISemanticSearchService
     Task<SemanticResult<IReadOnlyList<SemanticSearchHit>>> SearchAsync(
         string query,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Searches with visible interpreted filters. Existing implementations retain compatibility
+    /// through the default query-only adapter.
+    /// </summary>
+    async Task<SearchExecutionResult> SearchAsync(
+        SearchRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var result = await SearchAsync(request.QueryText, cancellationToken).ConfigureAwait(false);
+        var interpretation = new SearchInterpretation(
+            request.QueryText,
+            request.TopicTextOverride ?? request.QueryText,
+            [],
+            request.ActiveFilters ?? []);
+        return new SearchExecutionResult(
+            result.State,
+            result.Message,
+            result.Value,
+            interpretation,
+            new Indexing.SearchCoverage(0, 0, 0, 0, 0, 0));
+    }
 }

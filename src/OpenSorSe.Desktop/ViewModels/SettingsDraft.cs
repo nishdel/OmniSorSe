@@ -51,6 +51,36 @@ public sealed class SettingsDraft : ViewModelBase
     private bool _semanticSearchEnabled;
     private int _maximumSemanticDocuments = 10_000;
     private int _maximumSemanticResults = 200;
+    private bool _deepIndexingEnabled = true;
+    private IndexingLevel _defaultIndexingLevel = IndexingLevel.Basic;
+    private IndexingResourceMode _indexingResourceMode = IndexingResourceMode.Balanced;
+    private int _maximumIndexSizeMiB = 1024;
+    private int _maximumExtractedTextCharacters = 131_072;
+    private int _maximumDeepOcrTextCharacters = 65_536;
+    private int _maximumSemanticChunksPerDocument = 8;
+    private int _deletedFileRetentionDays = 30;
+    private int _failedJobHistoryRetentionDays = 14;
+    private int _maximumIndexingRetryCount = 3;
+    private int _maximumIndexingConcurrency = 1;
+    private bool _processIndexOnlyWhileIdle;
+    private bool _processIndexOnlyOnPower;
+    private bool _pauseIndexingOnLowBattery;
+    private int _pauseBelowBatteryPercentage = 20;
+    private bool _deepOcrProcessingEnabled;
+    private bool _deepAiProcessingEnabled;
+    private bool _deepSummaryProcessingEnabled = true;
+    private bool _deepSemanticProcessingEnabled = true;
+    private bool _archiveIndexingEnabled;
+    private bool _excludeGeneratedFolders = true;
+    private bool _binaryAndExecutableMetadataOnly = true;
+    private bool _useIndexingTimeWindow;
+    private int _indexingWindowStartHour = 22;
+    private int _indexingWindowEndHour = 7;
+    private bool _relationshipAnalysisEnabled = true;
+    private string _relationshipExcludedExtensions = string.Empty;
+    private int _maximumRelationshipCandidates = 256;
+    private int _maximumRelationshipsPerFile = 64;
+    private int _maximumSmartCollectionMembers = 1000;
 
     /// <summary>Gets or sets whether specialist and troubleshooting interface features are shown.</summary>
     public bool ShowAdvancedFeatures
@@ -373,7 +403,7 @@ public sealed class SettingsDraft : ViewModelBase
         set => SetProperty(ref _backgroundContentProcessingEnabled, value);
     }
 
-    /// <summary>Gets or sets whether local Semantic Search Beta is enabled.</summary>
+    /// <summary>Gets or sets whether local Search is enabled.</summary>
     public bool SemanticSearchEnabled
     {
         get => _semanticSearchEnabled;
@@ -392,6 +422,216 @@ public sealed class SettingsDraft : ViewModelBase
     {
         get => _maximumSemanticResults;
         set => SetProperty(ref _maximumSemanticResults, value);
+    }
+
+    /// <summary>Gets or sets whether durable background indexing is enabled.</summary>
+    public bool DeepIndexingEnabled
+    {
+        get => _deepIndexingEnabled;
+        set => SetProperty(ref _deepIndexingEnabled, value);
+    }
+
+    /// <summary>Gets or sets the default indexing level for new sources.</summary>
+    public IndexingLevel DefaultIndexingLevel
+    {
+        get => _defaultIndexingLevel;
+        set => SetProperty(ref _defaultIndexingLevel, value);
+    }
+
+    /// <summary>Gets or sets the background resource mode.</summary>
+    public IndexingResourceMode IndexingResourceMode
+    {
+        get => _indexingResourceMode;
+        set => SetProperty(ref _indexingResourceMode, value);
+    }
+
+    /// <summary>Gets or sets the maximum index size in MiB.</summary>
+    public int MaximumIndexSizeMiB
+    {
+        get => _maximumIndexSizeMiB;
+        set => SetProperty(ref _maximumIndexSizeMiB, value);
+    }
+
+    /// <summary>Gets or sets whether evidence-backed relationship analysis may run.</summary>
+    public bool RelationshipAnalysisEnabled
+    {
+        get => _relationshipAnalysisEnabled;
+        set => SetProperty(ref _relationshipAnalysisEnabled, value);
+    }
+
+    /// <summary>Gets or sets comma-separated file extensions excluded only from relationship analysis.</summary>
+    public string RelationshipExcludedExtensions
+    {
+        get => _relationshipExcludedExtensions;
+        set => SetProperty(ref _relationshipExcludedExtensions, value ?? string.Empty);
+    }
+
+    /// <summary>Gets or sets the bounded candidate count for one incremental relationship pass.</summary>
+    public int MaximumRelationshipCandidates
+    {
+        get => _maximumRelationshipCandidates;
+        set => SetProperty(ref _maximumRelationshipCandidates, value);
+    }
+
+    /// <summary>Gets or sets the bounded direct relationships retained per file.</summary>
+    public int MaximumRelationshipsPerFile
+    {
+        get => _maximumRelationshipsPerFile;
+        set => SetProperty(ref _maximumRelationshipsPerFile, value);
+    }
+
+    /// <summary>Gets or sets the bounded member count retained per Smart Collection.</summary>
+    public int MaximumSmartCollectionMembers
+    {
+        get => _maximumSmartCollectionMembers;
+        set => SetProperty(ref _maximumSmartCollectionMembers, value);
+    }
+
+    /// <summary>Gets or sets maximum retained extracted text characters per file.</summary>
+    public int MaximumExtractedTextCharacters
+    {
+        get => _maximumExtractedTextCharacters;
+        set => SetProperty(ref _maximumExtractedTextCharacters, value);
+    }
+
+    /// <summary>Gets or sets maximum retained OCR characters in the durable index.</summary>
+    public int MaximumDeepOcrTextCharacters
+    {
+        get => _maximumDeepOcrTextCharacters;
+        set => SetProperty(ref _maximumDeepOcrTextCharacters, value);
+    }
+
+    /// <summary>Gets or sets maximum selected chunks retained per Deep document.</summary>
+    public int MaximumSemanticChunksPerDocument
+    {
+        get => _maximumSemanticChunksPerDocument;
+        set => SetProperty(ref _maximumSemanticChunksPerDocument, value);
+    }
+
+    /// <summary>Gets or sets deleted-file record retention in days.</summary>
+    public int DeletedFileRetentionDays
+    {
+        get => _deletedFileRetentionDays;
+        set => SetProperty(ref _deletedFileRetentionDays, value);
+    }
+
+    /// <summary>Gets or sets failed-job history retention in days.</summary>
+    public int FailedJobHistoryRetentionDays
+    {
+        get => _failedJobHistoryRetentionDays;
+        set => SetProperty(ref _failedJobHistoryRetentionDays, value);
+    }
+
+    /// <summary>Gets or sets maximum retry attempts per durable stage.</summary>
+    public int MaximumIndexingRetryCount
+    {
+        get => _maximumIndexingRetryCount;
+        set => SetProperty(ref _maximumIndexingRetryCount, value);
+    }
+
+    /// <summary>Gets or sets maximum simultaneous indexing stages.</summary>
+    public int MaximumIndexingConcurrency
+    {
+        get => _maximumIndexingConcurrency;
+        set => SetProperty(ref _maximumIndexingConcurrency, value);
+    }
+
+    /// <summary>Gets or sets whether indexing prefers user-idle periods where supported.</summary>
+    public bool ProcessIndexOnlyWhileIdle
+    {
+        get => _processIndexOnlyWhileIdle;
+        set => SetProperty(ref _processIndexOnlyWhileIdle, value);
+    }
+
+    /// <summary>Gets or sets whether indexing prefers external power where supported.</summary>
+    public bool ProcessIndexOnlyOnPower
+    {
+        get => _processIndexOnlyOnPower;
+        set => SetProperty(ref _processIndexOnlyOnPower, value);
+    }
+
+    /// <summary>Gets or sets whether a supported battery monitor may pause indexing.</summary>
+    public bool PauseIndexingOnLowBattery
+    {
+        get => _pauseIndexingOnLowBattery;
+        set => SetProperty(ref _pauseIndexingOnLowBattery, value);
+    }
+
+    /// <summary>Gets or sets the configured low-battery threshold.</summary>
+    public int PauseBelowBatteryPercentage
+    {
+        get => _pauseBelowBatteryPercentage;
+        set => SetProperty(ref _pauseBelowBatteryPercentage, value);
+    }
+
+    /// <summary>Gets or sets whether applicable Deep OCR stages may run.</summary>
+    public bool DeepOcrProcessingEnabled
+    {
+        get => _deepOcrProcessingEnabled;
+        set => SetProperty(ref _deepOcrProcessingEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether optional local-AI indexing enrichment may run.</summary>
+    public bool DeepAiProcessingEnabled
+    {
+        get => _deepAiProcessingEnabled;
+        set => SetProperty(ref _deepAiProcessingEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether generated summaries and keywords may be retained.</summary>
+    public bool DeepSummaryProcessingEnabled
+    {
+        get => _deepSummaryProcessingEnabled;
+        set => SetProperty(ref _deepSummaryProcessingEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether related-concept data and selected chunks may be retained.</summary>
+    public bool DeepSemanticProcessingEnabled
+    {
+        get => _deepSemanticProcessingEnabled;
+        set => SetProperty(ref _deepSemanticProcessingEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether archive contents may be indexed.</summary>
+    public bool ArchiveIndexingEnabled
+    {
+        get => _archiveIndexingEnabled;
+        set => SetProperty(ref _archiveIndexingEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether known generated folders are excluded.</summary>
+    public bool ExcludeGeneratedFolders
+    {
+        get => _excludeGeneratedFolders;
+        set => SetProperty(ref _excludeGeneratedFolders, value);
+    }
+
+    /// <summary>Gets or sets whether binaries and executables remain metadata-only.</summary>
+    public bool BinaryAndExecutableMetadataOnly
+    {
+        get => _binaryAndExecutableMetadataOnly;
+        set => SetProperty(ref _binaryAndExecutableMetadataOnly, value);
+    }
+
+    /// <summary>Gets or sets whether an optional processing time window is active.</summary>
+    public bool UseIndexingTimeWindow
+    {
+        get => _useIndexingTimeWindow;
+        set => SetProperty(ref _useIndexingTimeWindow, value);
+    }
+
+    /// <summary>Gets or sets the local processing-window start hour.</summary>
+    public int IndexingWindowStartHour
+    {
+        get => _indexingWindowStartHour;
+        set => SetProperty(ref _indexingWindowStartHour, value);
+    }
+
+    /// <summary>Gets or sets the local processing-window end hour.</summary>
+    public int IndexingWindowEndHour
+    {
+        get => _indexingWindowEndHour;
+        set => SetProperty(ref _indexingWindowEndHour, value);
     }
 
     /// <summary>
@@ -448,6 +688,36 @@ public sealed class SettingsDraft : ViewModelBase
             SemanticSearchEnabled = settings.SemanticSearch.Enabled,
             MaximumSemanticDocuments = settings.SemanticSearch.MaximumDocumentCount,
             MaximumSemanticResults = settings.SemanticSearch.MaximumResultCount,
+            DeepIndexingEnabled = settings.DeepIndexing.Enabled,
+            DefaultIndexingLevel = settings.DeepIndexing.DefaultLevel,
+            IndexingResourceMode = settings.DeepIndexing.ResourceMode,
+            MaximumIndexSizeMiB = settings.DeepIndexing.MaximumIndexSizeMiB,
+            MaximumExtractedTextCharacters = settings.DeepIndexing.MaximumExtractedTextCharacters,
+            MaximumDeepOcrTextCharacters = settings.DeepIndexing.MaximumOcrTextCharacters,
+            MaximumSemanticChunksPerDocument = settings.DeepIndexing.MaximumSemanticChunksPerDocument,
+            DeletedFileRetentionDays = settings.DeepIndexing.DeletedFileRetentionDays,
+            FailedJobHistoryRetentionDays = settings.DeepIndexing.FailedJobHistoryRetentionDays,
+            MaximumIndexingRetryCount = settings.DeepIndexing.MaximumRetryCount,
+            MaximumIndexingConcurrency = settings.DeepIndexing.MaximumConcurrency,
+            ProcessIndexOnlyWhileIdle = settings.DeepIndexing.ProcessOnlyWhileIdle,
+            ProcessIndexOnlyOnPower = settings.DeepIndexing.ProcessOnlyWhileConnectedToPower,
+            PauseIndexingOnLowBattery = settings.DeepIndexing.PauseBelowBatteryPercentage.HasValue,
+            PauseBelowBatteryPercentage = settings.DeepIndexing.PauseBelowBatteryPercentage ?? 20,
+            DeepOcrProcessingEnabled = settings.DeepIndexing.OcrProcessingEnabled,
+            DeepAiProcessingEnabled = settings.DeepIndexing.AiProcessingEnabled,
+            DeepSummaryProcessingEnabled = settings.DeepIndexing.SummaryProcessingEnabled,
+            DeepSemanticProcessingEnabled = settings.DeepIndexing.SemanticProcessingEnabled,
+            ArchiveIndexingEnabled = settings.DeepIndexing.ArchiveIndexingEnabled,
+            ExcludeGeneratedFolders = settings.DeepIndexing.ExcludeGeneratedFolders,
+            BinaryAndExecutableMetadataOnly = settings.DeepIndexing.BinaryAndExecutableMetadataOnly,
+            UseIndexingTimeWindow = settings.DeepIndexing.ProcessingWindowStartHour.HasValue,
+            IndexingWindowStartHour = settings.DeepIndexing.ProcessingWindowStartHour ?? 22,
+            IndexingWindowEndHour = settings.DeepIndexing.ProcessingWindowEndHour ?? 7,
+            RelationshipAnalysisEnabled = settings.DeepIndexing.RelationshipAnalysisEnabled,
+            RelationshipExcludedExtensions = string.Join(", ", settings.DeepIndexing.RelationshipExcludedExtensions),
+            MaximumRelationshipCandidates = settings.DeepIndexing.MaximumRelationshipCandidates,
+            MaximumRelationshipsPerFile = settings.DeepIndexing.MaximumRelationshipsPerFile,
+            MaximumSmartCollectionMembers = settings.DeepIndexing.MaximumSmartCollectionMembers,
         };
     }
 
@@ -529,6 +799,41 @@ public sealed class SettingsDraft : ViewModelBase
                 Enabled = SemanticSearchEnabled,
                 MaximumDocumentCount = MaximumSemanticDocuments,
                 MaximumResultCount = MaximumSemanticResults,
+            },
+            DeepIndexing = new DeepIndexingSettings
+            {
+                Enabled = DeepIndexingEnabled,
+                DefaultLevel = DefaultIndexingLevel,
+                ResourceMode = IndexingResourceMode,
+                MaximumIndexSizeMiB = MaximumIndexSizeMiB,
+                MaximumExtractedTextCharacters = MaximumExtractedTextCharacters,
+                MaximumOcrTextCharacters = MaximumDeepOcrTextCharacters,
+                MaximumSemanticChunksPerDocument = MaximumSemanticChunksPerDocument,
+                DeletedFileRetentionDays = DeletedFileRetentionDays,
+                FailedJobHistoryRetentionDays = FailedJobHistoryRetentionDays,
+                MaximumRetryCount = MaximumIndexingRetryCount,
+                MaximumConcurrency = MaximumIndexingConcurrency,
+                ProcessOnlyWhileIdle = ProcessIndexOnlyWhileIdle,
+                ProcessOnlyWhileConnectedToPower = ProcessIndexOnlyOnPower,
+                PauseBelowBatteryPercentage = PauseIndexingOnLowBattery ? PauseBelowBatteryPercentage : null,
+                OcrProcessingEnabled = DeepOcrProcessingEnabled,
+                AiProcessingEnabled = DeepAiProcessingEnabled,
+                SummaryProcessingEnabled = DeepSummaryProcessingEnabled,
+                SemanticProcessingEnabled = DeepSemanticProcessingEnabled,
+                ArchiveIndexingEnabled = ArchiveIndexingEnabled,
+                ExcludeGeneratedFolders = ExcludeGeneratedFolders,
+                BinaryAndExecutableMetadataOnly = BinaryAndExecutableMetadataOnly,
+                ProcessingWindowStartHour = UseIndexingTimeWindow ? IndexingWindowStartHour : null,
+                ProcessingWindowEndHour = UseIndexingTimeWindow ? IndexingWindowEndHour : null,
+                RelationshipAnalysisEnabled = RelationshipAnalysisEnabled,
+                RelationshipExcludedExtensions = RelationshipExcludedExtensions
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(extension => "." + extension.TrimStart('.').ToLowerInvariant())
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray(),
+                MaximumRelationshipCandidates = MaximumRelationshipCandidates,
+                MaximumRelationshipsPerFile = MaximumRelationshipsPerFile,
+                MaximumSmartCollectionMembers = MaximumSmartCollectionMembers,
             },
         };
     }

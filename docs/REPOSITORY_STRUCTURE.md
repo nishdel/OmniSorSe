@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the OpenSorSe 1.5 solution as it exists in source. It describes
+This guide maps the OpenSorSe 1.8 solution as it exists in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -11,6 +11,7 @@ flowchart TB
     Desktop["OpenSorSe.Desktop"]
     Ai["OpenSorSe.AI"]
     Application["OpenSorSe.Application"]
+    Indexing["OpenSorSe.Indexing.Sqlite"]
     Executor["OpenSorSe.Executor"]
     Rules["OpenSorSe.Rules"]
     Scanner["OpenSorSe.Scanner"]
@@ -19,6 +20,7 @@ flowchart TB
 
     Desktop --> Ai
     Desktop --> Application
+    Desktop --> Indexing
     Desktop --> Executor
     Desktop --> Rules
     Desktop --> Scanner
@@ -31,6 +33,8 @@ flowchart TB
     Application --> Scanner
     Application --> Core
     Application --> Sdk
+    Indexing --> Application
+    Indexing --> Core
     Executor --> Rules
     Executor --> Core
     Rules --> Scanner
@@ -134,7 +138,9 @@ reference cycles.
 - **Owns:** Manual processing sessions, Results projection, local content/OCR,
   catalog/search/comparison, semantic indexing, tags, structure planning and
   history, provider-neutral AI policy, watched-folder coordination, workflows,
-  plugin host/lifecycle/packages, and suggestion-to-Change-Plan adapters.
+  plugin host/lifecycle/packages, relationship/context contracts and engine,
+  provider-neutral Knowledge Graph projection/query/decision/privacy/repair
+  contracts, and suggestion-to-Change-Plan adapters.
 - **Must not own:** Avalonia views, shell navigation, Ollama HTTP details, or
   direct approved user-file mutation.
 - **Principal entry points:** `IApplicationController`,
@@ -150,6 +156,12 @@ reference cycles.
   - `Content`: bounded metadata/text extraction, PDF rendering, OCR, and cache.
   - `Plugins`: manifest, discovery, integrity, dependencies, packages,
     lifecycle, registry, invocation, provenance, and built-ins.
+  - `Relationships`: evidence, confidence, deterministic discovery, Smart
+    Collection/context projections, service/store contracts, Search expansion,
+    privacy, repair, and diagnostics.
+  - `KnowledgeGraph`: conservative identity/projection, completed-manifest
+    lifecycle, four-axis state, bounded query/Search, graph-native decisions,
+    privacy, repair, suggestions, and diagnostics contracts/services.
   - `Semantic`: deterministic local index and explained search.
   - `Structure`: snapshots, preview plans, history, and comparisons.
   - `Tags`: provenance-aware generated tag candidates.
@@ -172,6 +184,24 @@ reference cycles.
 - **Dependencies:** Application and Core.
 - **Reference rule:** Desktop composes this transport behind
   `IAiSuggestionProvider`; lower projects do not reference it.
+
+### `OpenSorSe.Indexing.Sqlite`
+
+- **Purpose:** Initial embedded implementation of the provider-neutral durable
+  background-index store.
+- **Owns:** SQLite schema/versioning, migrations/backups, transactions,
+  integrity checks, durable sources/runs/jobs/stages, shared bounded content,
+  coverage/search projections, relationship evidence/edges/corrections,
+  virtual collections/membership, isolated Knowledge Graph/decision sidecars,
+  retention, quota maintenance, and compaction.
+- **Must not own:** Views, ViewModels, Search ranking, discovery/processing
+  policy, source-file mutation, PostgreSQL clients, or server configuration.
+- **Principal entry points:** `SqliteDeepIndexStore`, `SqliteGraphStore`,
+  `SqliteGraphDecisionStore`, and the schema-3 graph projection adapter.
+- **Dependencies:** Application and Core.
+- **Reference rule:** Desktop composes this provider behind `IDeepIndexStore`,
+  `IIndexPrivacyStore`, `IRelationshipStore`, and provider-neutral graph
+  contracts. No Application, ViewModel, or View may use SQLite-specific APIs.
 
 ### `OpenSorSe.Desktop`
 
@@ -198,8 +228,9 @@ reference cycles.
 | `OpenSorSe.Scanner.Tests` | Traversal, metadata, hashes, classification, duplicates, bounds, and cancellation |
 | `OpenSorSe.Rules.Tests` | Rule evaluation, planning, conflicts, and pure models |
 | `OpenSorSe.Executor.Tests` | Change Plans, validation, journalling, execution, rollback, recovery, Undo, and compatibility regressions |
-| `OpenSorSe.Application.Tests` | Orchestration, stores, OCR/content, AI policy, catalog/search, watchers, workflows, plugins, and provenance |
-| `OpenSorSe.Desktop.Tests` | Composition, navigation, ViewModels, command state, persistence presentation, and plugin UI |
+| `OpenSorSe.Application.Tests` | Orchestration, stores, OCR/content, AI policy, catalog/search, watchers, workflows, plugins, provenance, and provider-neutral Knowledge Graph behavior |
+| `OpenSorSe.Indexing.Sqlite.Tests` | Schema, migration, corruption, incremental identity, durable stages, graph/decision sidecars, concurrency, cancellation, recovery, quota, Search coverage, and bounded performance regressions |
+| `OpenSorSe.Desktop.Tests` | Composition, navigation, ViewModels, command state, persistence presentation, Knowledge Graph accessibility, and plugin UI |
 
 Tests may reference the production project under test and explicit
 collaborators needed for integration. Production projects never reference test
@@ -207,6 +238,10 @@ projects.
 
 ## Repository-level directories
 
+- Root living documents: `README.md`, `PRODUCT_VISION.md`,
+  `PRODUCT_ROADMAP.md`, `ENGINEERING_PRINCIPLES.md`, `RELEASE_HISTORY.md`, and
+  `CONTRIBUTING.md` define the product, direction, policy, history, and
+  contribution entry points.
 - `docs/`: Current guides, historical release records, architecture, and
   implementation specifications. Start at [docs/README.md](README.md).
 - `docs/Architecture/`: Current architectural summaries plus clearly indexed
@@ -227,6 +262,9 @@ projects.
 | Pure rule/plan behavior | `OpenSorSe.Rules` plus Rules tests |
 | Change Plan, validation, journal, execution, recovery, or Undo | `OpenSorSe.Executor` plus Executor tests |
 | Product orchestration, persistence, watcher, workflow, content, or plugin host | `OpenSorSe.Application` plus Application tests |
+| Embedded durable-index schema/provider mechanics | `OpenSorSe.Indexing.Sqlite` plus SQLite provider tests |
+| Knowledge Graph identity/projection/query/privacy policy | `OpenSorSe.Application/KnowledgeGraph` plus Application tests |
+| Knowledge Graph SQLite lifecycle/persistence | `OpenSorSe.Indexing.Sqlite/KnowledgeGraph` plus SQLite provider tests |
 | Ollama HTTP behavior | `OpenSorSe.AI` plus Application integration tests |
 | Navigation, ViewModel, or XAML | `OpenSorSe.Desktop` plus Desktop tests |
 | Plugin-author contract | `OpenSorSe.Extensions.Abstractions`, compatibility docs, and adversarial host tests |

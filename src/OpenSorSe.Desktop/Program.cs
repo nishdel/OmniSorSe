@@ -13,8 +13,16 @@ sealed class Program
     /// </summary>
     /// <param name="args">Command-line arguments supplied to the application.</param>
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp()
-        .StartWithClassicDesktopLifetime(args);
+    public static int Main(string[] args)
+    {
+        if (args is ["--package-smoke-test", var smokeDataRoot])
+        {
+            return PackageSmokeTest.RunAsync(smokeDataRoot).GetAwaiter().GetResult();
+        }
+
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        return 0;
+    }
 
     /// <summary>
     /// Builds the Avalonia application configuration used at runtime and by design tools.

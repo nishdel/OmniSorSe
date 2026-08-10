@@ -1,15 +1,23 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for the OpenSorSe 1.6 source
-tree. The [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
+This is the authoritative top-level architecture for OpenSorSe v2.0 and its
+inherited v1.7-v1.9 source lineage. The
+[system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
 
+The root [Product Vision](../PRODUCT_VISION.md) explains the product reasons
+for local-first, review-before-change, Search, SQLite, and provider neutrality.
+[Engineering Principles](../ENGINEERING_PRINCIPLES.md) explains the
+cross-cutting implementation and validation policy.
+
 ## Architectural shape
 
-OpenSorSe is a local-first Windows desktop application with a Linux preview, built with .NET 8,
-Avalonia, MVVM, dependency injection, asynchronous bounded services, and
-user-local JSON persistence. Most of the application analyses data or creates
+OpenSorSe is a local-first cross-platform desktop application with a primary
+Windows target, native macOS distribution, and Linux source-build preview. It is built with .NET 8,
+Avalonia, MVVM, dependency injection, asynchronous bounded services,
+user-local JSON persistence, an embedded provider-isolated SQLite Search index,
+and optional isolated Knowledge Graph sidecars. Most of the application analyses data or creates
 proposals. A narrow, explicit Change Plan boundary separates those activities
 from approved user-file mutation.
 
@@ -28,6 +36,11 @@ internal services.
 | File discovery | `FileScanner` enumerates selected roots read-only with progress, cancellation, and isolated issues. |
 | Basic analysis | `FileMetadataReader`, `FileHasher`, `FileClassifier`, and `DuplicateDetector`. |
 | Text and OCR | `ContentIndexingService` → `MetadataExtractionPipeline`; `OcrService`, `PdfPageRasterizer`, and `TesseractCliOcrEngine` supply bounded local OCR where enabled and needed. |
+| Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
+| Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
+| Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
+| Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
+| Knowledge Graph | Provider-neutral graph projection/query/decision/privacy/repair contracts and a durable coordinator own conservative graph behavior; the SQLite provider owns isolated schema-1 sidecars, and `KnowledgeGraphViewModel` owns bounded accessible presentation. |
 | Rules and planning | `RuleEngine`, `ActionPlanner`, and `ConflictResolver` produce deterministic proposals; they do not execute them. |
 | Optional AI | `AiSuggestionService` owns gates, prompts, parsing, validation, and review outcomes. `OllamaSuggestionProvider` owns HTTP transport. |
 | Workflows and recipes | `WorkflowLibraryService`, `WorkflowConfigurationResolver`, `WorkflowTemplateEngine`, and `WorkflowRecipePlanService`. |
@@ -65,7 +78,7 @@ The current plugin foundation exposes all eight bounded invocation surfaces.
 Workflow dependency checks and plugin recipe fields are integrated with
 Workflow/Profile resolution and recipe planning. Other extension-point adapters
 are host-callable through `IPluginExtensionHost`; broad insertion into every
-legacy scanner/content pipeline stage is deliberately not implied by v1.6.
+legacy scanner/content pipeline stage is deliberately not implied by v1.9.
 
 ## v1.6 reliability boundary
 
@@ -76,6 +89,83 @@ query/projection use bounded allocations and cooperative cancellation.
 Processing-session history is bounded, background task progress is terminal
 safe, observer failures are isolated, and watcher initialization/disposal is
 idempotent. See [Reliability Architecture](Architecture/00_System/09_v1.6_Reliability_Architecture.md).
+
+## v1.7 deep-indexing boundary
+
+Application owns provider-independent stage, progress, storage, Search, and
+control contracts. The SQLite project owns relational schema and provider
+mechanics; Views, ViewModels, Search ranking, and other application services do
+not reference SQLite APIs. Durable transactions separate discovery batches,
+claims, and stage outputs. Startup recovers interrupted `running` rows,
+completed compatible work is reused, content-derived values can be shared by
+hash, and quota maintenance is explicit. PostgreSQL is not a desktop runtime
+dependency; a future server adapter can implement the same contracts. See
+[Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md).
+
+## v1.8 Search-intelligence and privacy boundary
+
+`ISearchQueryInterpreter` turns bounded ordinary text into visible removable
+filters while preserving uncertain words as topic terms. `IHybridSearchRanker`
+owns all score tiers and deterministic tie-breaking; Views and ViewModels never
+calculate ranking weights. `ISearchSnippetService` derives bounded snippets only
+from retained indexed material, and explanations are assembled from the actual
+ranking components. The JSON compatibility index and SQLite progressive source
+may fail independently; Search uses whichever remains available and reports
+coverage limits.
+
+Index inspection, forgetting, policy, and selective repair use Application
+contracts. The SQLite provider owns transactions and schema 2 privacy rules;
+the background coordinator owns cancellation, durable queued repair, and
+coverage refresh. Every such action changes application-owned index state only.
+See [Search Intelligence and Privacy
+Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md).
+
+## v1.9 relationships and context boundary
+
+`IRelationshipEngine` compares only bounded retained index projections and
+publishes automatic edges only with actual evidence. `IRelationshipStore`
+isolates schema 3 persistence, while `IRelationshipService` coordinates durable
+analysis, manual decisions, virtual collection control, privacy, Search
+expansion, diagnostics, and repair. Views and ViewModels do not use SQL or
+calculate confidence.
+
+The existing durable relationship stage performs incremental work and reuses
+unchanged completed processing. Pair corrections, collection splits, and
+forgotten collection tombstones prevent unwanted regeneration. Queries are
+direct and bounded; no recursive graph traversal or O(n²) all-file comparison
+is performed. Relationship-only Search results remain below exact/literal
+matches and can be disabled per query. See [Relationships, Context and Smart
+Collections](Architecture/06_Search/10_v1.9_Relationships_Context.md).
+
+## v2.0 Knowledge Graph boundary
+
+The v2.0 graph projects only retained, authoritative v1.9 observations; it does
+not open source files or join the v1.7 `FileFullyIndexed` critical path. Stable
+nodes are File, Source, Folder, Collection, Document Set, and Manual Entity.
+Stable edges are Related File, Owned by Source, Located in Folder, Member Of,
+Same Document Set, and Manual. Identity uses stable provider keys, source-scoped
+relative folders, validated exact hashes, authoritative v1.9 facts, and explicit
+user decisions. Merely similar text or semantic data cannot merge identities.
+
+`knowledge-graph.db` schema 1 is rebuildable derived state;
+`knowledge-decisions.db` schema 1 is non-rebuildable graph-native decision and
+privacy authority. `deep-index.db` remains schema 3 and authoritative for v1.9
+relationships, Collections, decisions, and privacy. Completed source manifests
+carry a canonical count and hash, and projection keeps source, decision, and
+privacy ingestion watermarks separate from applied watermarks.
+
+Run control, job execution, freshness, and integrity are independent durable
+axes. Projection publication is generation-based. Coordinator epochs and
+per-claim tokens fence stale workers; heartbeat, claim TTL, and shutdown grace
+are 5, 30, and 5 seconds respectively. Graph reads and Search context fail
+closed until source/decision/privacy authority is current and applied.
+
+Ordinary graph pages default to 50 and cap at 100. Stable traversal is one hop
+and 100 nodes. Search uses at most 16 existing ranked seeds and 50 graph-only
+expansions within the combined contextual cap of 100. Exact/literal ranking and
+v1.9 direct relationships keep authority. See
+[Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) and the
+[stability design](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md).
 
 ## Platform boundary
 
@@ -195,6 +285,9 @@ them.
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
 | Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
 | Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
+| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v3; v1/v2 migrate transactionally with a recovery copy; transactional stages, privacy rules, relationship evidence/corrections/virtual collections, targeted repair, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
+| Knowledge Graph projection | `SqliteGraphStore` | `index/knowledge-graph.db` | Schema v1; rebuildable completed-manifest projection, jobs, generations, nodes/edges/evidence, applied/ingested watermarks, repair, and bounded diagnostics. |
+| Knowledge Graph decisions | `SqliteGraphDecisionStore` | `index/knowledge-decisions.db` | Schema v1; append-only graph-native decisions, checkpoints, exclusions, privacy floor, and verified recovery points; never silently reset. |
 | AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
 | Structure history | `JsonStructureHistoryStore` | `structure-history.json` | Schema v1; bounded snapshots and relative paths. |
 | Workflow Profiles and Sorting Recipes | `JsonWorkflowLibraryStore` | `workflow-library.json` | Library schema v2; migration occurs on load/save; a corrupt source is preserved where possible before built-in recovery. |
@@ -219,6 +312,10 @@ never be committed.
 - Plugins contribute bounded data or proposals but have no supported direct
   mutation or approval API.
 - Watched Folders detect, reconcile, and analyse but never execute.
+- Relationships and Smart Collections are derived or user-authored index data;
+  their controls never modify original files.
+- Knowledge Graph data is optional application-owned projection/decision data;
+  graph privacy, repair, and browsing never open or modify original files.
 - Workflow Profiles configure processing; they do not approve actions.
 - Sorting Recipes generate sanitized names and destinations; they do not apply
   them.
@@ -243,6 +340,16 @@ never be committed.
   per-root debounce state, and one lifetime cancellation source.
 - JSON stores serialize writes with semaphores and replace only their own target
   after complete serialization and size validation.
+- The durable Search provider serializes provider operations, moves synchronous
+  SQLite work off the UI thread, uses short transactions, supports concurrent
+  external readers through WAL, and cooperatively cancels discovery/workers.
+- Search admits at most four overlapping queries per service instance; query
+  size, token/filter count, fuzzy candidates, result count, snippets, and
+  provider projections are bounded and cancellation-aware.
+- Knowledge Graph projection uses completed immutable manifests, durable claims,
+  generation publication, epoch/token fencing, 5-second heartbeats, 30-second
+  leases, and a 5-second cooperative shutdown grace. Reads require current
+  integrity plus applied source, decision, and privacy authority.
 - Plugin lifecycle and package operations are serialized by `PluginManager`;
   extension calls receive linked timeout/caller cancellation.
 - Executor cancellation is checked at safe action boundaries so a partially

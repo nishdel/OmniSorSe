@@ -1,7 +1,13 @@
 # Linux Build and Launch
 
-OpenSorSe 1.5 provides a framework-dependent Linux x64 source-build foundation.
-No Linux package or installer is produced by this task.
+OpenSorSe provides a framework-dependent Linux x64 source-build preview. The
+current v1.9 source extends the embedded SQLite provider for relationships and
+selects a Linux native SQLite library when cross-targeted, but interactive Linux
+v1.9 validation is not
+recorded. No Linux package or installer is published by this repository.
+
+Read the living [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md)
+before making a broader support claim.
 
 ## Prerequisites
 
@@ -51,10 +57,13 @@ chmod u+x /tmp/opensorse-linux-x64/OpenSorSe
 A self-contained publish can use `--self-contained true`, but it is only build
 output, not a tested installer or supported distribution package. Preserve the
 main executable bit when copying. Native Avalonia/PDF renderer compatibility,
-fonts, file picker, clipboard, file manager, sandbox/container restrictions,
-Wayland/X11 behavior, Tesseract, and filesystem behavior must be checked on the
-target distribution.
+SQLite native loading, fonts, file picker, clipboard, file manager,
+sandbox/container restrictions, Wayland/X11 behavior, Tesseract, and filesystem
+behavior must be checked on the target distribution.
 
-CI validates source on `ubuntu-latest` and `windows-latest`; it does not publish
-artifacts. See the [manual checklist](MANUAL_TESTING_v1.5.md) before making any
-broader support statement.
+Repository CI is configured for `windows-latest`, `ubuntu-latest`, and
+`macos-latest`; it does not publish artifacts. The immutable v1.6 report proves
+a successful three-host run, while the current v1.9 source report records local
+Windows execution and cross-target compilation only. Use the relevant current
+[manual checklist](MANUAL_TESTING_v1.9.md) before making a broader support
+statement.

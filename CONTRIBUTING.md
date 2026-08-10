@@ -3,10 +3,17 @@
 Thank you for improving OpenSorSe. Changes should remain local-first,
 reviewable, bounded, and explicit about their safety and privacy effects.
 
+Before a cross-cutting change, read the
+[Product Vision](PRODUCT_VISION.md),
+[Engineering Principles](ENGINEERING_PRINCIPLES.md), and
+[Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md). The
+[Documentation Index](docs/README.md) provides a one-hour project reading path.
+
 ## Prerequisites
 
-- Windows 10 or later for the verified Desktop runtime, or a Linux x64
-  graphical environment for the v1.5 preview.
+- Windows 10 or later for the primary Desktop runtime, macOS 12 or later for
+  native package work, or a Linux x64 graphical environment for the
+  conservative source-build preview.
 - The .NET SDK selected by [`global.json`](global.json).
 - Git.
 - Optional: Ollama for manual AI-provider testing.
@@ -34,10 +41,16 @@ weaken an existing test to make a change pass.
 
 ## Branch and commit guidance
 
-- Use a focused branch. Codex-created development branches normally use the
-  `codex/` prefix; release branches use
-  `v<version>-<primary-feature>` when a maintainer starts a release.
+- Use a focused, descriptive branch. A prefix is optional when it adds no
+  useful information.
+- Release branches normally use `v<version>-<primary-feature>` only when a
+  maintainer starts that release. Planned roadmap concepts do not receive
+  invented branches.
+- Preserve historical exceptions: v1.1 used `v1.1`; v0.1/v0.2 used
+  `coding/v0.1` and `coding/v0.2`; v0.4-v0.9 were delivered together on
+  `v0.9`.
 - Do not commit directly to `main`.
+- Do not modify or reuse an earlier release branch for unrelated work.
 - Keep commits reviewable and describe behavior, not just edited files.
 - Do not mix generated output, release packages, or unrelated formatting with a
   product change.
@@ -56,6 +69,8 @@ project:
 - Application: use-case orchestration, stores, content/OCR, AI policy,
   workflows, watchers, and plugin host.
 - AI: concrete Ollama-compatible transport.
+- Indexing.Sqlite: the embedded implementation of provider-neutral durable
+  indexing contracts; SQL and migrations stay inside this project.
 - Desktop: Avalonia composition and presentation.
 - Extensions.Abstractions: stable plugin-author API only.
 - Core/Platform: path semantics, application locations, filesystem identity and
@@ -63,6 +78,24 @@ project:
 
 Preserve the documented dependency direction. New cycles or an internal
 dependency in the standalone SDK are not acceptable.
+
+## MVVM expectations
+
+- Views own layout, bindings, accessibility metadata, and strictly
+  presentation-specific interaction.
+- ViewModels own observable presentation state, commands, command gating,
+  cancellation sources, and user-safe status.
+- Application/domain services own workflows, Search interpretation/ranking,
+  relationship evidence/confidence, persistence, provider calls, validation,
+  and side effects.
+- Code-behind must not become an alternate service locator or contain
+  filesystem, database, AI, plugin, or business logic.
+- ViewModels must not create SQL, calculate Search weights or relationship
+  confidence, project/query Knowledge Graph storage directly, call Ollama
+  directly, or perform raw file operations.
+- New ViewModel behavior should be covered without requiring a live desktop
+  where practical. Keyboard, focus, assistive-technology, pointer/touch, and
+  visual behavior still require manual validation.
 
 ## Safety expectations
 
@@ -108,6 +141,14 @@ ownership and confinement.
 - **Persistence field:** update the owning schema, migration or explicit
   rejection, bounds, corruption behavior, tests, Safety and Privacy, and
   release notes together.
+- **Relationship signal:** retain the actual bounded evidence and algorithm
+  version, preserve user corrections, keep candidate/graph queries bounded,
+  and test conservative false-positive and false-negative behavior.
+- **Knowledge Graph behavior:** keep provider-neutral contracts in Application,
+  SQLite mechanics in the provider, schema-3 v1.9 authority unchanged, source/
+  decision/privacy ingestion and applied watermarks distinct, and source files
+  unopened. Preserve hard page/traversal/Search/component bounds and test
+  recovery/fencing before widening a contract.
 
 ## Tests
 
@@ -121,25 +162,70 @@ inputs cross a trust boundary. Relevant cases include:
 - stale identity, occupied destinations, and overwrite prevention;
 - concurrent command/lifecycle races;
 - migration and backward compatibility;
+- completed-manifest count/hash, idempotent projection, stale claim fencing,
+  applied-watermark lag, decision recovery privacy floor, graph bounds, and
+  ordinary Search fallback;
 - exact diagnostics/provenance where it is a safety fact.
 
 Use unique temporary directories and delete only the exact path created by the
 test. Never point a test at a user folder.
 
+## Manual validation
+
+Automated coverage does not prove desktop interaction, accessibility,
+platform/filesystem behavior, watcher delivery, real Tesseract/Ollama behavior,
+or subjective Search quality. Use the smallest relevant current manual
+checklist with disposable synthetic data.
+
+Record the operating system, architecture, commit, dependencies, locale,
+filesystem/data shape, and observed result. Leave an item unchecked when it was
+not actually performed. A target build is not native execution, and a CI
+workflow definition is not a passing hosted run.
+
 ## Documentation
 
 Every behavior change should update the smallest authoritative document:
 
+- product purpose or future direction: Product Vision or Product Roadmap;
+- cross-cutting engineering policy: Engineering Principles;
 - user-visible workflow: current User Guide and Troubleshooting if needed;
 - architecture or ownership: Architecture Overview/System Map;
 - safety/privacy/persistence: Safety and Privacy;
 - plugin contract: SDK, author guide, manifest/package documentation;
-- release behavior: Changelog, Version Notes, Release Status, and manual
-  checklist;
+- release behavior: Changelog, Version Notes, Release Status, Release History,
+  and manual checklist as applicable;
 - public API: meaningful XML documentation.
 
 Retain historical versioned documentation. If a document is removed, preserve
 its useful information elsewhere, update inbound links, and state why.
+Do not rewrite a release report, validation report, manual checklist,
+implementation specification, or packaged-release document to describe current
+behavior. Label planned concepts and research rather than writing them as
+implemented features.
+
+## Release workflow
+
+Implementation, integration, automated validation, manual validation,
+packaging, tagging, and publication are separate steps and must be reported
+separately.
+
+1. Start from an identified base and focused branch.
+2. Update implementation, tests, migration/compatibility, and documentation
+   together.
+3. Run the complete repository validation plus relevant focused/manual checks.
+4. Review every changed and generated artifact.
+5. Merge only after the intended review and integration gates.
+6. Tag, package, sign, or publish only with explicit maintainer authorization.
+
+Native release artifacts are built by the reviewed scripts under
+`eng/release/` and the manual `release-packaging.yml` workflow. They are
+generated outside normal source tracking, must correspond to one exact green
+commit, and must pass payload, startup/shutdown, uninstall or bundle, native
+SQLite, and checksum checks before publication. See
+[Native Release Packaging](docs/RELEASE_PACKAGING_v2.0.md).
+
+Do not infer a release from a version string, successful build, source branch,
+or unchecked release checklist.
 
 ## Pull-request checklist
 
@@ -152,6 +238,8 @@ its useful information elsewhere, update inbound links, and state why.
 - [ ] Complete Debug and Release test suites pass with no skips.
 - [ ] `dotnet format --verify-no-changes` and `git diff --check` pass.
 - [ ] Documentation links and Mermaid blocks validate.
+- [ ] Relevant manual scenarios were performed and recorded, or are explicitly
+  reported as not performed.
 - [ ] No secrets, machine-specific paths, `bin`, `obj`, logs, packages, or
   application-data files are included.
 - [ ] The diff contains no unrelated formatting churn.

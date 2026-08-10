@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - main
-      - v1.6-reliability-performance
+      - v1.7-deep-indexing-foundation
+      - v1.8-search-intelligence-privacy
+      - v1.9-relationships-context
+      - v2.0-knowledge-graph-design
+      - v2.0-knowledge-graph
   pull_request:
 
 permissions:
@@ -27,10 +31,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Use repository .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 

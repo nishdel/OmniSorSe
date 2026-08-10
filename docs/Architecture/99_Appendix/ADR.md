@@ -4,7 +4,10 @@
 
 ---
 
-# Purpose
+**Document type:** Living ADR index and policy. Accepted ADR files are
+historical decisions and should be superseded, not rewritten.
+
+## Purpose
 
 Architecture Decision Records document significant architectural decisions made during the design and evolution of OpenSorSe.
 
@@ -12,7 +15,7 @@ Their purpose is to preserve the reasoning behind important decisions, making it
 
 ADRs record decisions, not implementation details.
 
-## Current records
+### Current records
 
 | ADR | Status | Decision |
 | --- | --- | --- |
@@ -22,7 +25,7 @@ ADRs record decisions, not implementation details.
 
 ---
 
-# Why ADRs?
+## Why ADRs?
 
 As the project evolves, contributors may ask questions such as:
 
@@ -35,7 +38,7 @@ Architecture Decision Records provide documented answers to these questions.
 
 ---
 
-# When to Create an ADR
+## When to Create an ADR
 
 An ADR should be created whenever a significant architectural decision is made.
 
@@ -52,7 +55,7 @@ Minor implementation details generally do not require ADRs.
 
 ---
 
-# Recommended ADR Structure
+## Recommended ADR Structure
 
 Each Architecture Decision Record should include:
 
@@ -69,7 +72,7 @@ A consistent structure makes ADRs easier to review and maintain.
 
 ---
 
-# Decision Principles
+## Decision Principles
 
 Architecture decisions should be:
 
@@ -83,7 +86,7 @@ Every architectural decision involves trade-offs that should be acknowledged.
 
 ---
 
-# Versioning
+## Versioning
 
 ADRs should be:
 
@@ -95,22 +98,25 @@ Historical decisions remain valuable even after newer decisions replace them.
 
 ---
 
-# Example Topics
+## Decision coverage
 
-Potential ADRs for OpenSorSe include:
+Only ADR-001 through ADR-003 currently exist as standalone accepted records.
+Later significant decisions are documented in versioned implementation
+specifications and current architecture, including:
 
-* Adoption of MVVM.
-* Local AI as the primary processing model.
-* SQLite as the embedded database.
-* Plugin-based extensibility.
-* Separation of Readers and AI.
-* Event-driven processing pipeline.
+* Change Plans, the Operation Journal, and conflict-aware Undo;
+* the in-process plugin trust/capability boundary;
+* provider-neutral durable indexing with embedded SQLite;
+* exact/literal-first hybrid Search ranking and index-only privacy controls.
 
-Additional ADRs should be added as the architecture evolves.
+Those documents are authoritative for current implementation, but they are not
+retroactively labelled ADRs. Future changes that revisit these decisions should
+create a new ADR that references the existing specification/architecture and
+records the new evidence and consequences.
 
 ---
 
-# Design Principles
+## Design Principles
 
 Architecture Decision Records should remain:
 
@@ -124,7 +130,7 @@ Their purpose is to preserve architectural knowledge rather than implementation 
 
 ---
 
-# Future Considerations
+## Future Considerations
 
 The project may eventually support:
 
@@ -138,9 +144,10 @@ These enhancements should preserve the primary purpose of documenting architectu
 
 ---
 
-# Related Documents
+## Related Documents
 
 * [Glossary](Glossary.md)
 * [Coding Standards](Coding_Standards.md)
 * [Naming Conventions](Naming_Conventions.md)
 * [Technology Stack](Technology_Stack.md)
+* [Engineering Principles](../../../ENGINEERING_PRINCIPLES.md)

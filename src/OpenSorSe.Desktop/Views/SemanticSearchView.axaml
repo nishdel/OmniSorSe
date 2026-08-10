@@ -2,32 +2,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
              xmlns:semantic="using:OpenSorSe.Application.Semantic"
+             xmlns:indexing="using:OpenSorSe.Application.Indexing"
              xmlns:views="using:OpenSorSe.Desktop.Views"
              x:Class="OpenSorSe.Desktop.Views.SemanticSearchView"
              x:DataType="vm:SemanticSearchViewModel">
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <StackPanel Spacing="3">
-                <WrapPanel>
-                    <TextBlock Classes="page-title" Text="Meaning Search" />
-                    <Border Margin="8,5,0,0"
-                            Padding="7,2"
-                            CornerRadius="8"
-                            Background="{DynamicResource AccentAIMutedBrush}">
-                        <TextBlock Text="BETA"
-                                   FontSize="10"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource AccentSearchBrush}" />
-                    </Border>
-                </WrapPanel>
+                <TextBlock Classes="page-title" Text="Search" />
                 <TextBlock Classes="page-subtitle"
-                           Text="Find files using related ideas, not only exact words." />
+                           Text="Find files using names, metadata, document text, tags, and related concepts." />
             </StackPanel>
             <Button Grid.Column="1"
                     Classes="help"
                     Content="?"
+                    Focusable="True"
                     Command="{Binding HelpCommand}"
-                    ToolTip.Tip="Meaning Search builds a local index. It does not send content to Ollama." />
+                    AutomationProperties.Name="About Search coverage"
+                    AutomationProperties.HelpText="Search can find files using names, metadata, document text, OCR, tags, and related concepts. Results improve as background indexing completes."
+                    ToolTip.Tip="Search can find files using names, metadata, document text, OCR, tags, and related concepts. Results improve as background indexing completes." />
         </Grid>
 
         <Border Grid.Row="1" Classes="card">
@@ -35,7 +28,7 @@
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <TextBox Text="{Binding QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              PlaceholderText="Try: tax documents from 2023"
-                             AutomationProperties.Name="Meaning search query" />
+                             AutomationProperties.Name="Search query" />
                     <Button Grid.Column="1"
                             Classes="primary"
                             Content="Search"
@@ -45,10 +38,68 @@
                             Content="Clear"
                             Command="{Binding ClearQueryCommand}" />
                 </Grid>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Button Classes="secondary"
+                            Content="Filter options"
+                            Command="{Binding ToggleFiltersCommand}"
+                            AutomationProperties.Name="Show or hide Search filter guidance" />
+                    <TextBlock Grid.Column="1"
+                               Text="Filters interpreted from your query appear below and can be removed individually."
+                               Classes="page-subtitle"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </Grid>
+                <CheckBox Content="Include explainable related files"
+                          IsChecked="{Binding IncludeRelationshipContext, Mode=TwoWay}"
+                          AutomationProperties.Name="Include relationship context in Search"
+                          AutomationProperties.HelpText="When enabled, Search may add directly related files below exact and literal matches. Every contextual result includes retained evidence." />
+                <CheckBox Content="Include bounded Knowledge Graph context"
+                          IsChecked="{Binding IncludeGraphContext, Mode=TwoWay}"
+                          AutomationProperties.Name="Include Knowledge Graph context in Search"
+                          AutomationProperties.HelpText="When enabled, Search may add privacy-filtered files connected by current, validated graph evidence. Exact filename and literal matches remain higher priority." />
+                <TextBlock Text="{Binding GraphCoverageText}"
+                           Classes="page-subtitle"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite" />
+                <Border IsVisible="{Binding AreFiltersVisible}"
+                        Classes="subtle-card"
+                        Padding="8">
+                    <TextBlock Text="Search recognises conservative file type, extension, date, size, source, folder, tag, indexing, OCR, and related-concept filters. Uncertain phrases stay as topic words."
+                               TextWrapping="Wrap" />
+                </Border>
+                <StackPanel IsVisible="{Binding HasActiveFilters}" Spacing="5">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Active filters"
+                                   FontWeight="SemiBold" />
+                        <Button Grid.Column="1"
+                                Classes="secondary"
+                                Content="Clear all filters"
+                                Command="{Binding ClearFiltersCommand}"
+                                AutomationProperties.Name="Clear all active Search filters" />
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding ActiveFilters}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="semantic:SearchFilter">
+                                <Button Margin="0,0,8,5"
+                                        Classes="secondary"
+                                        Content="{Binding DisplayName, StringFormat='Remove: {0}'}"
+                                        Command="{Binding DataContext.RemoveFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        AutomationProperties.Name="{Binding DisplayName, StringFormat='Remove Search filter {0}'}"
+                                        x:CompileBindings="False" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
                 <WrapPanel>
                     <Button Margin="0,0,8,0"
                             Classes="secondary"
-                            Content="Build or refresh index"
+                            Content="Build or refresh existing index"
                             Command="{Binding BuildIndexCommand}" />
                     <Button Margin="0,0,8,0"
                             Classes="secondary"
@@ -60,8 +111,9 @@
                             Content="Cancel"
                             Command="{Binding CancelCommand}" />
                     <Button Classes="secondary"
-                            Content="Clear index"
-                            Command="{Binding RequestClearIndexCommand}" />
+                            Content="Clear generated Search data"
+                            Command="{Binding RequestClearIndexCommand}"
+                            AutomationProperties.HelpText="Clears application-owned generated Search data after confirmation. Indexed sources and original files remain unchanged." />
                     <Button Margin="8,0,0,0"
                             IsVisible="{Binding IsClearPending}"
                             Classes="danger"
@@ -76,15 +128,242 @@
                 <ProgressBar Minimum="0"
                              Maximum="1"
                              Value="{Binding ProgressValue}"
-                             IsVisible="{Binding IsBusy}" />
+                             IsVisible="{Binding IsBusy}"
+                             AutomationProperties.Name="Current Search operation progress" />
                 <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
                 <views:StatusBanner DataContext="{Binding Status}" />
             </StackPanel>
         </Border>
 
         <Border Grid.Row="2" Classes="card">
-            <Grid>
-                <StackPanel IsVisible="{Binding !HasHits}"
+            <StackPanel Spacing="9">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Background indexing"
+                                   FontSize="18"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding BackgroundStateText}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Classes="secondary"
+                            Content="Refresh status"
+                            Command="{Binding RefreshIndexingStatusCommand}" />
+                </Grid>
+                <ProgressBar Minimum="0"
+                             Maximum="1"
+                             Value="{Binding BackgroundProgressValue}"
+                             AutomationProperties.Name="Overall background indexing progress"
+                             AutomationProperties.HelpText="{Binding ProcessedCountText}" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding CurrentStageText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding CurrentFileText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ProcessedCountText}" />
+                        <TextBlock Text="{Binding RemainingCountText}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock Text="{Binding OutcomeCountText}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ThroughputText}" />
+                        <TextBlock Text="{Binding EstimatedTimeText}"
+                                   IsVisible="{Binding HasEstimatedTime}" />
+                        <TextBlock Text="{Binding StorageText}" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding CoverageText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Text="{Binding StorageBreakdownText}"
+                           TextWrapping="Wrap"
+                           Classes="page-subtitle" />
+                <WrapPanel>
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Pause"
+                            Command="{Binding PauseIndexingCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Resume"
+                            Command="{Binding ResumeIndexingCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Cancel safely"
+                            Command="{Binding CancelIndexingCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Retry failed items"
+                            Command="{Binding RetryFailedItemsCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Rebuild background index"
+                            Command="{Binding RebuildBackgroundIndexCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Maintain storage"
+                            Command="{Binding MaintainIndexCommand}" />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Open run diagnostics"
+                            Command="{Binding OpenIndexingDiagnosticsCommand}"
+                            AutomationProperties.HelpText="Opens privacy-minimized diagnostics for background indexing runs." />
+                </WrapPanel>
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <ComboBox ItemsSource="{Binding Sources}"
+                              SelectedItem="{Binding SelectedSource, Mode=TwoWay}"
+                              PlaceholderText="No indexed folder selected"
+                              DisplayMemberBinding="{Binding DisplayName}"
+                              AutomationProperties.Name="Indexed folder" />
+                    <Button Grid.Column="1"
+                            Classes="secondary"
+                            Content="Prioritize"
+                            Command="{Binding PrioritizeSourceCommand}" />
+                    <Button Grid.Column="2"
+                            Classes="secondary"
+                            Content="Remove source"
+                            Command="{Binding RemoveSourceCommand}"
+                            AutomationProperties.HelpText="Removes this folder from indexing without changing source files." />
+                </Grid>
+                <WrapPanel>
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Rebuild selected source"
+                            Command="{Binding RebuildSelectedSourceCommand}"
+                            AutomationProperties.HelpText="Replaces generated indexed information for the selected source. Original files remain untouched." />
+                    <Button Margin="0,0,8,8"
+                            Classes="secondary"
+                            Content="Forget selected source index"
+                            Command="{Binding RequestForgetSourceCommand}"
+                            AutomationProperties.HelpText="Requests confirmation before forgetting indexed records. Source files and source ownership remain unchanged." />
+                    <Button Margin="0,0,8,8"
+                            IsVisible="{Binding IsForgetSourcePending}"
+                            Classes="danger"
+                            Content="Confirm forget source index"
+                            Command="{Binding ConfirmForgetSourceCommand}" />
+                    <Button Margin="0,0,8,8"
+                            IsVisible="{Binding IsForgetSourcePending}"
+                            Classes="secondary"
+                            Content="Keep source index"
+                            Command="{Binding CancelForgetSourceCommand}" />
+                </WrapPanel>
+                <Expander Header="{Binding FailureSummaryText}"
+                          AutomationProperties.Name="Indexing failures">
+                    <ItemsControl ItemsSource="{Binding IndexingFailures}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="indexing:IndexingFailure">
+                                <Border Classes="result-row" Padding="0,6">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding FileName}"
+                                                   FontWeight="SemiBold"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Stage, StringFormat='Stage: {0}'}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Category, StringFormat='Category: {0}'}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Attempt, StringFormat='Attempt: {0}'}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Classes="card">
+            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+                <Expander Grid.Row="0"
+                          IsVisible="{Binding HasPrivacyItem}"
+                          IsExpanded="True"
+                          Header="Indexed data inspection"
+                          AutomationProperties.Name="Indexed data inspection and privacy actions">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{Binding PrivacyText}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Text="Every action below changes only OpenSorSe's generated index. The original source file is never deleted or modified."
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <WrapPanel>
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Re-index file"
+                                    Command="{Binding ReindexFileCommand}"
+                                    AutomationProperties.HelpText="Replaces applicable generated index stages for this file. The original file remains untouched." />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Retry failed stage"
+                                    Command="{Binding RetryFileCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Clear OCR data"
+                                    Command="{Binding ClearOcrDataCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Clear related-concept data"
+                                    Command="{Binding ClearSemanticDataCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Use metadata only"
+                                    Command="{Binding UseMetadataOnlyCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Exclude from future deep indexing"
+                                    Command="{Binding ExcludeFileCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Forget this file's indexed data"
+                                    Command="{Binding RequestForgetFileCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    IsVisible="{Binding IsForgetFilePending}"
+                                    Classes="danger"
+                                    Content="Confirm forget indexed data"
+                                    Command="{Binding ConfirmForgetFileCommand}"
+                                    AutomationProperties.HelpText="Forgets generated indexed data only. The original source file remains untouched." />
+                            <Button Margin="0,0,8,8"
+                                    IsVisible="{Binding IsForgetFilePending}"
+                                    Classes="secondary"
+                                    Content="Keep indexed data"
+                                    Command="{Binding CancelForgetFileCommand}" />
+                        </WrapPanel>
+                        <Expander Header="Selective repair"
+                                  AutomationProperties.Name="Selective indexed-data repair actions">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="Repair replaces only the selected indexed stage and its dependants. External OCR or local AI is required only for the corresponding stage. Original files remain untouched."
+                                           TextWrapping="Wrap" />
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Verify record"
+                                            Command="{Binding VerifyFileCommand}" />
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Refresh metadata"
+                                            Command="{Binding RefreshMetadataCommand}" />
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Refresh document text"
+                                            Command="{Binding RefreshTextCommand}" />
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Refresh OCR"
+                                            Command="{Binding RefreshOcrCommand}"
+                                            AutomationProperties.HelpText="Requires the configured OCR dependency when applicable." />
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Regenerate summary and keywords"
+                                            Command="{Binding RegenerateSummaryCommand}"
+                                            AutomationProperties.HelpText="May require optional local AI according to indexing settings." />
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Regenerate related-concept data"
+                                            Command="{Binding RegenerateSemanticCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </Expander>
+                <StackPanel Grid.Row="1"
+                            IsVisible="{Binding !HasHits}"
                             Classes="empty-state"
                             Spacing="6"
                             HorizontalAlignment="Center"
@@ -94,14 +373,15 @@
                                FontWeight="Bold"
                                Foreground="{DynamicResource AccentSearchBrush}"
                                HorizontalAlignment="Center" />
-                    <TextBlock Text="No meaning matches yet"
+                    <TextBlock Text="No Search results yet"
                                FontSize="18"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="Build the local index, then search using an idea or phrase."
+                    <TextBlock Text="Build or refresh the index, then search using a name, detail, or phrase."
                                Classes="page-subtitle"
                                TextAlignment="Center" />
                 </StackPanel>
-                <ScrollViewer IsVisible="{Binding HasHits}"
+                <ScrollViewer Grid.Row="1"
+                              IsVisible="{Binding HasHits}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding Hits}">
@@ -111,9 +391,36 @@
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                         <TextBlock Text="{Binding FullPath}" TextWrapping="Wrap" />
-                                        <TextBlock Text="{Binding Explanation}"
-                                                   Foreground="{DynamicResource AccentSearchBrush}"
-                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SourceIndicator, StringFormat='Source: {0}'}"
+                                                   Classes="page-subtitle"
+                                                   AutomationProperties.Name="{Binding SourceIndicator, StringFormat='Indexed source {0}'}" />
+                                        <TextBlock Text="{Binding CoverageIndicator, StringFormat='Coverage: {0}'}"
+                                                   Classes="page-subtitle"
+                                                   AutomationProperties.Name="{Binding CoverageIndicator, StringFormat='Search coverage {0}'}" />
+                                        <StackPanel IsVisible="{Binding Snippet}">
+                                            <TextBlock Text="{Binding Snippet.SourceLabel}"
+                                                       Classes="page-subtitle"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock TextWrapping="Wrap"
+                                                       AutomationProperties.Name="{Binding Snippet.AccessibleText}">
+                                                <Run Text="{Binding Snippet.Prefix}" />
+                                                <Run Text="{Binding Snippet.MatchedText}"
+                                                     FontWeight="Bold"
+                                                     Foreground="{DynamicResource AccentSearchBrush}" />
+                                                <Run Text="{Binding Snippet.Suffix}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <Expander Header="Why this result?"
+                                                  AutomationProperties.Name="{Binding FileName, StringFormat='Why {0} is a Search result'}">
+                                            <StackPanel Spacing="3">
+                                                <TextBlock Text="{Binding Explanation}"
+                                                           Foreground="{DynamicResource AccentSearchBrush}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock IsVisible="{Binding !IsFullyIndexed}"
+                                                           Text="This file is only partially indexed, so additional matches may appear later."
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Expander>
                                         <WrapPanel>
                                             <Button Margin="0,0,8,0"
                                                     Classes="secondary"
@@ -125,6 +432,13 @@
                                                     Content="Open folder"
                                                     Command="{Binding DataContext.OpenContainingFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
+                                                    x:CompileBindings="False" />
+                                            <Button Margin="8,0,0,0"
+                                                    Classes="secondary"
+                                                    Content="Inspect indexed data"
+                                                    Command="{Binding DataContext.InspectIndexedDataCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding FileName, StringFormat='Inspect indexed data stored for {0}'}"
                                                     x:CompileBindings="False" />
                                         </WrapPanel>
                                     </StackPanel>

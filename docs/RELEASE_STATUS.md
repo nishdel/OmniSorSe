@@ -1,5 +1,27 @@
 # Release Status
 
+**Document type:** Living release-readiness record
+
+This document answers whether implementation, integration, automated
+validation, manual validation, packaging, tagging, and publication are
+complete. It is not the product roadmap or the concise version history.
+
+- Use [Release History](../RELEASE_HISTORY.md) for dates, branches, test totals,
+  and links to historical evidence.
+- Use [Product Roadmap](../PRODUCT_ROADMAP.md) for completed, in-progress,
+  planned, research, and backlog work.
+- Use [Changelog](CHANGELOG.md) for detailed user-visible changes.
+
+Repository history currently places `main` at the v1.6 integration line. v1.7,
+v1.8, and v1.9 are implemented on their own linear branches and remain
+unmerged. `v2.0-knowledge-graph` is an implementation candidate created from
+the exact validated `v2.0-knowledge-graph-design` tip. It remains unmerged. Its
+final local automated and native Windows package validation is complete;
+exact-tip hosted validation, integration, native macOS packaging, tagging, and
+publication remain separate gates. Its
+[release-readiness](RELEASE_READINESS_v2.0.md) and
+[manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked.
+
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
 | v0.1 Foundation | Complete | Restore, build, automated tests, and manual UI validation complete. | Read-only scan pipeline, metadata, hashing, deterministic rules, Dashboard, Settings, Diagnostics, and supporting application infrastructure. |
@@ -19,14 +41,27 @@
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
 | v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
+| v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
+| v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
+| v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md), and the [manual checklist](MANUAL_TESTING_v1.9.md) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
+| v2.0 Knowledge Graph | Unmerged implementation candidate on `v2.0-knowledge-graph`; final local automated and native Windows package validation complete; exact-tip hosted validation and integration remain pending | Non-incremental zero-warning Debug/Release builds and 1,486 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, indexing, relationship, migration/recovery, concurrency/cancellation, performance, policy, vulnerability, and four-runtime cross-target gates passed. The Windows portable ZIP and unsigned installer passed controlled package validation. See the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md). The [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked; broad manual/community testing begins after publication. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
 
 ## Current product boundary
 
-OpenSorSe 1.6 is a safe, local-first desktop application for understanding,
-monitoring, and organizing explicitly selected folders. The v1.5 platform
-foundation remains intact; v1.6 adds production hardening and a native
-Windows/Ubuntu/macOS CI definition. Reusable workflows and plugin contributions
+OpenSorSe 1.9 is a safe, local-first desktop application for understanding,
+monitoring, searching, and organizing explicitly selected folders. The v1.6
+production-hardening and cross-platform foundation remains intact; v1.7 adds
+durable progressive background indexing, and v1.8 adds bounded Search
+intelligence and index-only privacy/repair controls. v1.9 adds evidence-backed
+relationships and virtual Smart Collections without granting any new
+source-file mutation authority. Reusable workflows and plugin contributions
 configure scanning and analysis but do not grant mutation authority.
+
+The unmerged v2.0 implementation candidate adds an optional Knowledge Graph
+projection over those retained facts. It is disabled by default, does not open
+source files, and keeps v1.9 schema-3 data authoritative. Its isolated schema-1
+graph and decision sidecars, UI, and Search context are candidate behavior—not
+a published release claim.
 
 The current Desktop workflow does not:
 
@@ -35,7 +70,7 @@ The current Desktop workflow does not:
 - Contact Ollama when AI is disabled or merely because the global AI switch is enabled. Provider requests additionally require an enabled capability, valid context, endpoint, and model.
 - Treat catalog or structure comparison as certainty. Stored snapshots and semantic similarities are bounded review aids, not live filesystem truth.
 
-Scanning, duplicate review, extraction, OCR, tagging, indexing/search, comparison, diagrams, and AI generation are non-mutating. Supported v1.1 mutations are rename file, move file, and create directory, exclusively through a user-reviewed Change Plan and dedicated execution service. Immediate revalidation rejects stale/invalid/linked/conflicting/occupied paths, overwrite is disabled, every attempt is journalled, success is verified, and safe inverse operations are recorded. AI output cannot execute.
+Scanning, duplicate review, extraction, OCR, tagging, indexing/search, Knowledge Graph projection, comparison, diagrams, and AI generation are non-mutating. Supported v1.1 mutations are rename file, move file, and create directory, exclusively through a user-reviewed Change Plan and dedicated execution service. Immediate revalidation rejects stale/invalid/linked/conflicting/occupied paths, overwrite is disabled, every attempt is journalled, success is verified, and safe inverse operations are recorded. AI output cannot execute.
 
 > OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
@@ -49,7 +84,28 @@ Watcher APIs are treated as fallible hints. Enabled roots are reconciled on star
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic semantic vectors, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite schema-3 index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, index-only privacy rules, relationship evidence, user corrections, and virtual collection membership. The v2.0 candidate adds schema-1 graph and graph-native decision sidecars without changing schema 3. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+
+## v1.8 validation
+
+The exact clean local automated results, independently parsed Debug and Release
+TRX totals, relevance/performance gates, target builds, and advisory audit are
+recorded in the [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). The report
+explicitly leaves exact-tip hosted evidence to a post-commit handoff; that
+hosted result is not self-recorded in the repository. No interactive manual
+scenario is marked complete.
+
+## v1.7 validation
+
+The final clean local sequence passed restore, zero-warning Debug and Release
+builds, and **987 tests in each configuration** with zero failures and zero
+skips. Analyzer, style, whitespace, documentation/dependency/architecture,
+vulnerability, patch, artifact, privacy, and four-runtime target-compilation
+gates passed. The validation report leaves exact immutable
+push/synchronization and native Windows/Ubuntu/macOS GitHub Actions evidence to
+the post-commit handoff; that hosted result is not self-recorded in the
+repository. Interactive manual validation is not claimed. See the
+[v1.7 Validation Report](V1.7_VALIDATION_REPORT.md).
 
 ## v1.6 validation
 
@@ -103,19 +159,37 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe 1.6 source implementation is on `v1.6-reliability-performance`.
-Automated validation and the required interactive manual smoke testing are
-complete with no release-blocking issues. Packaging, signing, tagging, and
-publishing remain separate release activities. See the [user guide](USER_GUIDE_v1.6.md), [implementation
-specification](Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md),
-[implementation report](V1.6_IMPLEMENTATION_REPORT.md), and
-[manual checklist](MANUAL_TESTING_v1.6.md).
+OpenSorSe v2.0 is an implementation candidate on `v2.0-knowledge-graph`, based
+directly on exact validated design tip
+`a2a9a071600de74759937f05a7be61f85e9d5d93`. Earlier v1.7-v1.9 and design
+history is preserved and unmerged. Final local automated and native Windows
+package evidence is recorded in the validation report; exact-tip hosted
+validation, integration, native macOS packaging, tagging, and publication
+remain open gates. The repository does not yet contain a v2.0 tag or published
+package. Manual and RC checklists remain unchecked evidence trackers; broad
+manual/community testing begins after publication.
+
+Integration, packaging, signing, tagging, and publishing remain separate
+release activities.
+See the [Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md),
+[implementation report](V2.0_IMPLEMENTATION_REPORT.md),
+[validation report](V2.0_VALIDATION_REPORT.md),
+[RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md), and
+[manual checklist](MANUAL_TESTING_v2.0.md).
 
 ## Release identity
 
-- Version: `v1.6`
-- Release name: **Reliability, Performance, and Production Hardening**
-- Git branch: `v1.6-reliability-performance`
-- Status: source implementation and required automated/manual validation complete; no package, tag, or published release is claimed.
+- Version: `v2.0` implementation candidate
+- Release name: **Knowledge Graph**
+- Git branch: `v2.0-knowledge-graph`
+- Status: source implementation candidate; unmerged from `main`; final local
+  automated and native Windows package validation complete; exact-tip hosted
+  validation and integration incomplete; no tag or published release is
+  claimed. Interactive/community validation is intentionally deferred until
+  publication.
 
-The branch convention is `v<version>-<primary-feature>`, for example `v1.1-safe-file-operations`, `v1.2-watched-folders`, `v1.3-workflow-profiles`, `v1.4-plugin-foundation`, and `v1.5-cross-platform-foundation`.
+Release branches normally use `v<version>-<primary-feature>`, as demonstrated
+by v1.2-v2.0. Historical branch names are retained as created: v1.1 used
+`v1.1`, v0.1/v0.2 used `coding/v0.1` and `coding/v0.2`, and v0.4-v0.9 were
+delivered together on `v0.9`. Planned roadmap entries have no branch until
+implementation actually begins.

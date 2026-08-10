@@ -1,5 +1,201 @@
 # Changelog
 
+**Document type:** Cumulative historical change record
+
+Entries below preserve release-specific terminology and claims. Use
+[Release History](../RELEASE_HISTORY.md) for the concise branch/date/merge
+index, [Release Status](RELEASE_STATUS.md) for current readiness, and
+[Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
+
+## v2.0.0
+
+Release history: v1.7 Deep Indexing, v1.8 Search, v1.9 Relationships/Smart
+Collections, the v2.0 stability design, and the v2.0 Knowledge Graph candidate
+are integrated without squashing their version ancestry.
+
+### Added
+
+- Optional, default-off, provider-neutral Knowledge Graph projection over
+  stable files, sources, folders, virtual Collections, exact-content document
+  sets, and explicit manual entities.
+- Isolated schema-1 SQLite derived and decision sidecars with completed
+  manifests, active-generation publication, leases/fencing, watermarks,
+  privacy floors, recovery points, repair, and corruption/newer-schema
+  handling.
+- Bounded accessible graph list/detail/evidence/privacy/repair UI and optional
+  explainable Search context that remains subordinate to exact/literal ranking.
+- Self-contained Windows x64 portable ZIP and per-user installer plus native
+  Intel and Apple Silicon macOS app/DMG packages, package startup/shutdown
+  probes, and a verified SHA-256 checksum bundle.
+- Process-boundary startup/shutdown exception containment, observed indexing
+  task faults, strict UTF-8 documentation validation, and defensive validation
+  of internal SQLite identifiers.
+
+### Changed
+
+- `main` now includes the preserved v1.7, v1.8, v1.9, v2.0 design, and v2.0
+  implementation history developed above v1.6.
+- GitHub Actions use maintained Node.js 24 action majors and validate Windows,
+  Ubuntu, and macOS. Native release packaging runs separately from ordinary CI.
+- Assembly, file, informational, product, installer, and bundle versions are
+  consistently `2.0.0` (`2.0.0.0` where four-part metadata is required).
+- User, contributor, platform, privacy/security, installation, packaging, and
+  release documentation is reconciled to the current implementation.
+
+### Safety, privacy, and limitations
+
+- Search, indexing, OCR/AI analysis, Relationships, Smart Collections, and
+  Knowledge Graph operations never modify original files. Explicit reviewed
+  Change Plans remain the production mutation boundary.
+- Graph facts require retained evidence; ambiguous identities remain separate;
+  decisions and forgetting fences survive derived rebuilds.
+- Windows artifacts are unsigned and macOS artifacts are unsigned/unnotarized
+  unless the official release page explicitly records otherwise. Linux remains
+  source-build only for v2.0.0.
+- Broad interactive/community validation begins after publication and is not
+  claimed by automated package or CI evidence.
+
+## v1.9.0
+
+Release branch: `v1.9-relationships-context`.
+
+### Added
+
+- Provider-neutral relationship engine, storage, service, Search-expansion,
+  evidence, collection, context, timeline, privacy, repair, and diagnostic
+  contracts.
+- Deterministic bounded relationship discovery from concrete retained signals,
+  with versioned algorithms and Low/Medium/High confidence instead of invented
+  percentages.
+- Embedded SQLite schema 3 for candidate features, relationships/evidence,
+  pair corrections, Smart Collections/membership, forgotten projections, and
+  aggregate diagnostics, including transactional migration from schema 2.
+- Accessible Collections and Related Files surfaces with inspectors, sorting,
+  filtering, timeline, manual link/unlink, confirm/reject, always/never,
+  rename/pin/merge/split, privacy, rebuild, and repair controls.
+- Synthetic deterministic relationship, migration, corruption, Search
+  integration, accessibility, and bounded performance regression coverage.
+
+### Changed
+
+- The existing durable `RelationshipAnalysisCompleted` stage now produces
+  incremental evidence-backed output and tracks relevant configuration in its
+  processor fingerprint.
+- Search may add bounded direct related-file context after ordinary v1.8
+  ranking. Exact and literal matches remain above context-only results, and a
+  per-query control can disable expansion.
+- Index privacy inspection, storage breakdown, forgetting, cleanup, and repair
+  include relationship-derived data without modifying source files.
+- Product, assembly, file, manifest, and About versions are `1.9.0` /
+  `1.9.0.0`.
+
+### Preserved boundaries
+
+- Every automatic relationship retains actual evidence and algorithm
+  provenance. Semantic similarity alone cannot create a relationship.
+- Smart Collections and timelines are virtual index projections; they never
+  move or edit source files or invent unrecorded events.
+- Ordinary Search remains useful when relationship analysis is disabled or
+  unavailable. Ollama remains optional.
+- v1.7/v1.8 indexing, Search, catalogs, watched folders, duplicate detection,
+  workflows, plugins, Change Plans, Operation Journal, recovery, and Undo keep
+  their existing contracts.
+- No Knowledge Graph, conversational assistant, database server, tag, package,
+  merge, or published release is added.
+
+## v1.8.0
+
+Release branch: `v1.8-search-intelligence-privacy`.
+
+### Added
+
+- Provider-neutral Search query, interpreted-filter, candidate, ranking-signal,
+  explanation, snippet, coverage, privacy-inspection, forget, and repair
+  contracts.
+- Deterministic bounded query interpretation for common file type, extension,
+  date, size, source, folder, tag, indexing, OCR, semantic, and failure filters
+  with an injectable clock and visible removable filters.
+- One coherent hybrid ranker with exact/literal tiers, bounded typo tolerance,
+  optional semantic supplementation, explicit components, deterministic
+  tie-breaking, bounded snippets, and source indicators.
+- Search-quality evaluation over a synthetic corpus, relevance metrics, and
+  separate bounded performance regression tests.
+- User-facing indexed-data inspection, file/source forgetting, per-file
+  processing policy, selective clearing, and targeted durable repair controls.
+- SQLite schema 2 privacy rules with transactional migration, recovery copy,
+  parameterized operations, and corrupt-ranking-data fallback.
+
+### Changed
+
+- Search distinguishes excluded, OCR-waiting, AI-waiting, failed-stage,
+  unavailable-index, and incomplete coverage without treating partial results
+  as exhaustive.
+- Search diagnostics record duration, counts, filters, coverage, and ranking
+  stages without complete query text, snippets, extracted content, or absolute
+  paths.
+- Summary and semantic processing can be disabled independently while filename,
+  folder, metadata, text, OCR, filtering, ranking, snippets, and explanations
+  remain local and usable without Ollama.
+- Product, assembly, file, manifest, and About versions are `1.8.0` /
+  `1.8.0.0`.
+
+### Preserved boundaries
+
+- v1.7 indexes migrate without silent loss; existing catalogs, saved scans,
+  watched folders, duplicate detection, workflows, plugins, Change Plans,
+  Operation Journal, recovery, and Undo remain compatible.
+- Forget and repair actions alter only application-owned indexed data. Original
+  user files are never deleted or modified.
+- No database server, remote query service, improvised encryption,
+  conversational assistant, autonomous organization, package, tag, installer,
+  merge, or release publishing is added.
+
+## v1.7.0
+
+Release branch: `v1.7-deep-indexing-foundation`.
+
+### Added
+
+- Provider-neutral durable background-index contracts and a separate embedded
+  SQLite provider with schema 1, migrations/backups, integrity checks,
+  transactions, WAL/full synchronization, recovery, and disposal.
+- Basic, Standard, and Deep indexing policies; stable file identity/content
+  fingerprints; incremental invalidation; duplicate content sharing; deletion
+  retention; exclusions; storage quota/maintenance; and bounded chunks/text.
+- Persistent staged jobs with pause, resume, safe cancellation, retry,
+  dependency waiting, prioritization, source removal, rebuild, and
+  interruption recovery. Interrupted discovery resumes without resetting
+  completed work; paused/cancelled state remains explicit across restart.
+- Progressive Search documents/coverage and accurate indexing progress,
+  counts, speed, sample-gated ETA, storage usage/breakdown, failures, and
+  privacy-safe diagnostics.
+- Watched-folder source ownership, automatic eligible-wait recovery, explicit
+  corruption/newer-schema recovery copies, and bounded backup sidecar cleanup.
+- Expanded unit, integration, persistence, migration, corruption, concurrency,
+  cancellation, recovery, ViewModel/accessibility, and bounded synthetic
+  performance-regression coverage.
+
+### Changed
+
+- User-facing **Meaning Search** is now **Search**. Stable internal types,
+  schemas, APIs, and migration identifiers retain compatible names.
+- Search includes an accessible pointer/keyboard/touch/screen-reader help
+  affordance and remains usable with an explicit partial-coverage warning.
+- Product, assembly, file, manifest, and About versions are `1.7.0` /
+  `1.7.0.0`.
+- Search/index diagnostics are now an instrumented category.
+- Search exposes a bounded failure inspector and direct current-run diagnostics
+  navigation; compatible existing Search stays available if the derived store
+  requires recovery.
+
+### Preserved boundaries
+
+- Existing JSON settings/catalog/content/Search/history/watch/workflow/plugin/
+  Change Plan/Operation Journal data remains compatible.
+- No PostgreSQL or database server, conversational Search, final hybrid ranker,
+  cloud indexing, autonomous file organization, new mutation path, package,
+  tag, installer, or release publishing is added.
+
 ## v1.6.0
 
 Release name: **Reliability, Performance, and Production Hardening**<br>

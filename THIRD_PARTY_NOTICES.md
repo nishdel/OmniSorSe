@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-OpenSorSe is MIT licensed and uses free/open-source dependencies. The exact package/version inventory used for the final 1.0 validation is in [`docs/dependency-licenses.json`](docs/dependency-licenses.json). This engineering notice is not legal advice. The portable binary distribution includes this notice, the OpenSorSe license, and the dependency license/notice files applicable to its shipped runtime files.
+OpenSorSe is MIT licensed and uses free/open-source dependencies. The exact package/version inventory used for the current validation is in [`docs/dependency-licenses.json`](docs/dependency-licenses.json). This engineering notice is not legal advice. The portable binary distribution includes this notice, the OpenSorSe license, and the dependency license/notice files applicable to its shipped runtime files.
 
 ## Avalonia
 
@@ -13,6 +13,10 @@ Avalonia UI and its managed/platform packages are MIT licensed. Copyright and li
 ## Microsoft .NET
 
 Microsoft.Extensions, .NET compatibility/runtime libraries, and the Microsoft test platform packages listed in the inventory use the MIT license. Test-only packages are not part of the application runtime output.
+
+## Embedded SQLite indexing
+
+Microsoft.Data.Sqlite 8.0.28 is MIT licensed. SQLitePCLRaw 2.1.12 and its bundled native SQLite packages use Apache-2.0. OpenSorSe pins the patched native bundle rather than accepting the older transitive minimum. These components are used only inside the embedded, provider-isolated indexing store; users do not need to install a database server. Retain the applicable MIT and Apache-2.0 notices when redistributing application binaries.
 
 ## PDFtoImage
 

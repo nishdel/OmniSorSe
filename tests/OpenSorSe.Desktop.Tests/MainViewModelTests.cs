@@ -39,6 +39,7 @@ public sealed class MainViewModelTests
         Assert.Contains(NavigationDestination.ReviewChanges, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Catalog, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Duplicates, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.KnowledgeGraph, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.CatalogSearch, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.SemanticSearch, viewModel.Destinations);
     }
@@ -136,7 +137,7 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
         Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
         Assert.Equal(
-            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
+            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Collections", "Knowledge Graph", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
         Assert.Contains(
             viewModel.NavigationItems,
@@ -195,7 +196,7 @@ public sealed class MainViewModelTests
         Assert.False(viewModel.ShowAdvancedFeatures);
         viewModel.Results.OpenMeaningSearchCommand.Execute(null);
         Assert.True(viewModel.IsSemanticSearchSelected);
-        Assert.Equal("Meaning Search (Beta)", viewModel.CurrentPageTitle);
+        Assert.Equal("Search", viewModel.CurrentPageTitle);
         Assert.Equal(NavigationDestination.Results, viewModel.SelectedNavigationItem.Destination);
     }
 

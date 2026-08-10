@@ -245,7 +245,7 @@ public static class DiagnosticCategoryRegistry
         new(DiagnosticCategory.OcrAndTextExtraction, "OCR and text extraction diagnostics", "Native extraction, quality decisions, OCR fallback, per-page results, and downstream text.", true),
         new(DiagnosticCategory.Scanning, "Scanning diagnostics", "Filesystem traversal, accepted entries, skip decisions, issues, progress, and counts.", true),
         new(DiagnosticCategory.DuplicateDetection, "Duplicate detection diagnostics", "Planned: detailed hash grouping and duplicate-decision events are not yet instrumented.", false),
-        new(DiagnosticCategory.SearchAndIndexing, "Search and indexing diagnostics", "Planned: detailed query, snapshot, and indexing events are not yet instrumented.", false),
+        new(DiagnosticCategory.SearchAndIndexing, "Search and indexing diagnostics", "Durable run IDs, stage timing, queue state, retry counts, dependency waits, storage size, and privacy-safe failures.", true),
         new(DiagnosticCategory.RulesAndOrganisation, "Rules and organisation diagnostics", "Planned: detailed rule evaluation and organisation-planning events are not yet instrumented.", false),
         new(DiagnosticCategory.FileOperations, "File operation diagnostics", "Planned: detailed execution and undo events are not yet instrumented.", false),
         new(DiagnosticCategory.Performance, "Performance diagnostics", "Planned: cross-feature performance sessions are not yet instrumented; instrumented sessions already include timing fields.", false),

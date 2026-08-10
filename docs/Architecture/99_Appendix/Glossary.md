@@ -1,211 +1,311 @@
-# Glossary
+# OpenSorSe glossary
 
-> This document defines the common terminology used throughout the OpenSorSe architecture and documentation.
+**Document type:** Living terminology reference
 
----
+**Authority:** Current product and architecture vocabulary. Historical
+documents retain the terminology used by their release.
 
-# Purpose
+## Product and data
 
-The Glossary establishes a shared vocabulary for contributors, users, and plugin developers.
+### OpenSorSe
 
-Its purpose is to ensure that important concepts are used consistently across the codebase, documentation, architecture, and user interface.
+The complete local-first desktop application and its supported extension,
+storage, Search, review, execution, and recovery boundaries.
 
-Unless explicitly stated otherwise, the definitions in this document should be considered authoritative.
+### File
 
----
+The primary source item discovered and analyzed by OpenSorSe. A file may be a
+document, image, audio/video item, archive, executable, or another supported
+filesystem item. Do not use **document** as a synonym when behavior applies to
+all files.
 
-# Core Terms
+### Source file
 
-## Application
+A user-controlled file in an explicitly selected or watched root. Source files
+are distinct from OpenSorSe-owned settings, indexes, plans, journals, packages,
+logs, and temporary workspaces.
 
-The complete OpenSorSe software system.
+### Document
 
----
+A file format from which OpenSorSe may extract bounded structured metadata or
+text, such as PDF or supported Open XML formats.
 
-## Document
+### OpenSorSe-owned data
 
-A file managed by OpenSorSe.
+State created in application-controlled locations: settings, logs, catalogs,
+indexes, workflows, watched state, plugin state/packages, Change Plans, the
+Operation Journal, histories, and managed temporary/recovery files. Removing
+this data is not the same as modifying a source file.
 
-Examples include:
+### Metadata
 
-* PDF
-* Word document
-* Image
-* Text file
-* Spreadsheet
+Structured information about a file, such as name, path, extension, size,
+timestamps, type, or safely extracted document/image fields. Metadata can be
+sensitive even when it is not file content.
 
-A document is the primary unit processed throughout the application.
+### Extracted text
 
----
+Bounded text read from a supported document without OCR. It remains local
+application data unless an explicitly enabled provider flow sends bounded text
+to its configured endpoint.
 
-## Document Library
+### OCR
 
-The collection of documents currently managed by OpenSorSe.
+Optical character recognition. OpenSorSe can use an externally installed local
+Tesseract 5 command-line engine for enabled recognition of supported images and
+scanned PDF pages.
 
----
+### Tag
 
-## Metadata
+A bounded application-owned label associated with a file record. Tags have
+provenance such as deterministic, extracted, user accepted/rejected, plugin
+derived, or AI suggested. OpenSorSe does not currently write tags into source
+file metadata.
 
-Structured factual information describing a document.
+## Discovery, analysis, and Search
 
-Examples include:
+### Scan
 
-* File size
-* Author
-* Creation date
-* Page count
-* MIME type
+A bounded read-only traversal and analysis of explicitly selected roots.
 
-Metadata describes a document without interpreting it.
+### Watched Folder
 
----
+An opt-in root whose operating-system notifications are treated as hints.
+OpenSorSe reconciles hints against actual state and can update its own
+catalogue or create proposals. A watcher does not authorize file mutation.
 
-## Enrichment
+### Reconciliation
 
-Additional information generated after basic document processing.
+Comparison of actual discoverable filesystem state with an OpenSorSe-owned
+catalogue to recover from duplicate, missing, reordered, overflowed, offline,
+or unobserved watcher events.
 
-Examples include:
+### Search
 
-* AI summaries
-* AI classifications
-* Embeddings
-* Generated tags
+The user-facing retrieval feature. Write **Search** when referring to the
+product feature. Current Search can use filename, folder/path, type, metadata,
+tags, retained document/OCR text, summaries, keywords, selected text, and
+optional related-concept evidence.
 
-Enrichments extend a document's knowledge without modifying the original file.
+Historical UI used **Semantic Search Beta** and **Meaning Search**. Compatible
+internal types and the older `semantic-index.json` retain `Semantic*` names
+where renaming would risk persisted or API compatibility.
 
----
+### Compatible semantic index
 
-## Knowledge
+The established bounded JSON Search representation retained for compatibility.
+It can continue supplying results independently of the durable provider.
 
-The complete information known about a document, including metadata, enrichments, tags, relationships, and processing history.
+### Durable Search index
 
-Knowledge combines factual and generated information.
+The provider-neutral v1.7+ background-indexing system. The current embedded
+provider stores schema-versioned data in SQLite, including sources, runs, jobs,
+stages, bounded derived content, coverage, failures, maintenance, and privacy
+rules.
 
----
+### Index
 
-## Reader
+Rebuildable OpenSorSe-owned data that improves retrieval. An index is not the
+source file and is not authoritative proof of current filesystem state.
 
-A component responsible for extracting information from a specific document type.
+### Progressive coverage
 
-Examples include:
+The reported amount and type of indexing evidence currently available.
+Coverage distinguishes names/metadata, text, OCR, related-concept data,
+completeness, exclusions, waits, failures, and provider unavailability so an
+empty result is not overstated.
 
-* PDF Reader
-* Image Reader
-* Office Reader
+### Knowledge Graph
 
-Readers transform raw files into structured information.
+An optional, disabled-by-default local projection of stable indexed files,
+sources, folders, existing Collections, exact-content document sets, manual
+entities, typed edges, and actual retained evidence. It is bounded and
+provider-neutral, does not open source files, and is not an authority for v1.9
+relationships or file operations.
 
----
+### Graph manifest
 
-## Scanner
+An immutable completed projection input identified by stable ID, canonical row
+count, canonical hash, and revision. Partial or mismatched manifests never
+replace the active graph input.
 
-The subsystem responsible for discovering documents and initiating processing.
+### Applied watermark
 
----
+The latest source, decision, or privacy authority reflected in published graph
+data. It is separate from the corresponding ingestion watermark. Graph reads
+fail closed while applied authority lags ingested or current authority.
 
-## Rule
+### Graph-native decision
 
-A user-defined automation consisting of conditions and actions.
+An explicit user command owned by `knowledge-decisions.db`, such as a manual
+entity, alias, link, never-merge rule, or graph-only exclusion. Existing v1.9
+relationship and Collection decisions remain authoritative in schema 3.
 
-Rules determine when automated behavior should occur.
+### Related-concept data
 
----
+A bounded local representation used as optional lower-priority retrieval
+evidence. It is not a claim of meaning, certainty, or user intent. Exact and
+literal evidence rank above related-concept-only similarity.
 
-## Condition
+### Search explanation
 
-A logical expression evaluated by the Rules subsystem.
+Plain-language projection of the actual ranking components that contributed to
+a result. It must not invent a reason after ranking.
 
-Conditions determine whether a rule should execute.
+### Snippet
 
----
+A bounded, source-labelled excerpt built only from retained candidate/index
+data. Search does not reopen a source file at query time to create a snippet.
 
-## Action
+## Configuration and extension
 
-An operation performed after a rule's conditions evaluate successfully.
+### Workflow Profile
 
-Examples include moving files, adding tags, or requesting AI processing.
+A typed, versioned set of scan/analysis policy. Profiles configure processing
+and can narrow global capabilities; they do not approve or apply file changes.
 
----
+### Sorting Recipe
 
-## Tag
+A constrained declarative organization template that produces a deterministic
+preview/proposal. It cannot execute code or authorize mutation.
 
-A descriptive label associated with one or more documents.
+### Plugin
 
-Tags may originate from users, AI, plugins, or the system.
+An extension loaded through the supported
+`OpenSorSe.Extensions.Abstractions` contract. External plugins are local
+packages, disabled until explicit enable/grants, and run in-process as the
+current user.
 
----
+### Plugin capability
 
-## Index
+A declared and user-granted category of plugin intent. A grant is enforced by
+the host but is not an operating-system sandbox or proof that the plugin is
+safe.
 
-A searchable data structure used to improve retrieval performance.
+### Provider
 
-Indexes support search but are not the authoritative source of information.
+A concrete implementation behind an application-owned contract, such as the
+Ollama-compatible AI transport or embedded SQLite index store. A provider does
+not define the product-facing contract.
 
----
+### AI
 
-## Plugin
+Optional provider-assisted inference used only by explicitly enabled bounded
+flows. AI output is untrusted, validated, provenance-bearing, and
+suggestion-only. The term does not include deterministic Search filters,
+ranking, OCR, hashing, or rules.
 
-An external extension that adds functionality to OpenSorSe through the supported Plugin API.
+## Proposals, file changes, and recovery
 
----
+### Rule
 
-## Plugin API
+A deterministic condition/action definition evaluated as data. Current Rules
+produce decisions and planned proposals. A rule does not itself execute a
+source-file operation.
 
-The official public interface through which plugins interact with the application.
+### Proposal or suggestion
 
----
+A non-mutating candidate organization or interpretation produced by a rule,
+recipe, plugin-influenced value, optional AI, or user edit.
 
-## Provider
+### Change Plan
 
-A component that implements a particular service behind a common interface.
+A persisted, versioned set of proposed supported file actions with stable
+identities, source observations, provenance, review decisions, validation, and
+conflicts. Creating or editing a Change Plan does not modify source files.
 
-Examples include:
+### Review Changes
 
-* AI providers
-* OCR providers
-* Embedding providers
+The user workflow for approving, rejecting, editing, filtering, validating,
+and separately confirming Change Plan actions.
 
----
+### Apply
 
-## Report
+The explicit command, separately confirmed after review/validation, that asks
+the execution service to perform immediate preflight and execute only approved
+safe actions.
 
-A structured analysis or summary generated from application data.
+### Supported file mutation
 
-Reports are read-only representations of existing information.
+Current production source-file changes are rename file, verified
+same-filesystem move file, and create directory. Permanent deletion and silent
+overwrite are not supported.
 
----
+### Operation Journal
 
-## Processing Pipeline
+Durable action-level facts written before and during supported mutation. The
+journal supports result verification, Operation History, rollback, restart
+recovery, and Undo. It is recovery state, not expendable telemetry.
 
-The sequence of stages through which a document moves after discovery.
+### Rollback
 
-Typical stages include:
+A reverse-order attempt to undo verified reversible actions after a blocking
+failure in the current operation. Rollback is verified and may be partial when
+the filesystem no longer permits a safe inverse.
 
-1. Discovery
-2. Reading
-3. Metadata extraction
-4. AI enrichment
-5. Database storage
-6. Indexing
-7. Search availability
-8. Rule evaluation
+### Recovery
 
----
+Inspection and controlled continuation/rebuild/repair of interrupted or invalid
+OpenSorSe-owned state. Recovery does not guess ownership or bypass the ordinary
+mutation boundary.
 
-# Design Principles
+### Undo
 
-The terminology defined in this glossary should remain:
+A user-requested conflict-aware inverse based on journalled facts plus current
+filesystem verification. Undo blocks rather than overwriting when the result
+changed, the original path is occupied, identity is uncertain, or later work
+depends on the path.
 
-* Consistent.
-* Unambiguous.
-* Architecture-independent.
-* Stable.
-* Easy to understand.
+## Release and documentation status
 
-Changes to core terminology should be made carefully to preserve consistency throughout the project.
+### Implemented in source
 
----
+Code and tests exist on an identified commit/branch. This does not mean the work
+is integrated, manually validated, packaged, tagged, or published.
 
-# Related Documents
+### Integrated
 
-All architectural documentation may reference definitions contained in this glossary.
+The implementation commit is an ancestor of `main`.
+
+### Automated validation complete
+
+The documented automated gates passed in an identified environment. It does not
+claim interactive desktop, accessibility, provider, or platform behavior that
+was not observed.
+
+### Manual validation complete
+
+Required interactive scenarios were actually performed and recorded. An
+unchecked checklist is not complete.
+
+### Packaged, tagged, or published
+
+Separate release facts. A build directory is not a package; a version string is
+not a tag; a tag is not a published release.
+
+### Living document
+
+Guidance intended to track current behavior or policy.
+
+### Historical/version snapshot
+
+Evidence preserved for a particular release, implementation, validation, or
+decision context. It should not be rewritten to match current behavior.
+
+### Planned concept
+
+A named possible future direction without an implementation claim or delivery
+commitment.
+
+### Research
+
+Evidence-gathering work that may result in a decision, prototype, measurement,
+or rejection, but is not a product capability.
+
+## Related documents
+
+- [Product Vision](../../../PRODUCT_VISION.md)
+- [Engineering Principles](../../../ENGINEERING_PRINCIPLES.md)
+- [Architecture Overview](../../ARCHITECTURE_OVERVIEW.md)
+- [Safety and Privacy](../../SAFETY_AND_PRIVACY.md)
+- [Documentation Index](../../README.md)

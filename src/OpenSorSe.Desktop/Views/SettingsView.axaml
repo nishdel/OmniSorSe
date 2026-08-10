@@ -75,11 +75,160 @@
             </Border>
 
             <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Background indexing" FontSize="18" FontWeight="SemiBold" />
+                    <CheckBox Content="Build Search coverage gradually in the background"
+                              IsChecked="{Binding Draft.DeepIndexingEnabled, Mode=TwoWay}" />
+                    <TextBlock Text="Basic stores names and metadata. Standard adds document text and related concepts. Deep adds applicable OCR and richer bounded analysis. Completed stages resume after interruption."
+                               TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Default indexing level" FontWeight="SemiBold" />
+                            <ComboBox ItemsSource="{Binding AvailableIndexingLevels}"
+                                      SelectedItem="{Binding Draft.DefaultIndexingLevel, Mode=TwoWay}"
+                                      AutomationProperties.Name="Default indexing level" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Resource mode" FontWeight="SemiBold" />
+                            <ComboBox ItemsSource="{Binding AvailableIndexingResourceModes}"
+                                      SelectedItem="{Binding Draft.IndexingResourceMode, Mode=TwoWay}"
+                                      AutomationProperties.Name="Background indexing resource mode" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Maximum index size (MiB)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumIndexSizeMiB, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum index size" />
+                        </StackPanel>
+                    </Grid>
+                    <WrapPanel>
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Enable OCR stages"
+                                  IsChecked="{Binding Draft.DeepOcrProcessingEnabled, Mode=TwoWay}" />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Enable optional local AI stages"
+                                  IsChecked="{Binding Draft.DeepAiProcessingEnabled, Mode=TwoWay}" />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Store generated summaries and keywords"
+                                  IsChecked="{Binding Draft.DeepSummaryProcessingEnabled, Mode=TwoWay}"
+                                  AutomationProperties.HelpText="Generated summaries and keywords are stored only in OpenSorSe's local index." />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Store related-concept data and selected chunks"
+                                  IsChecked="{Binding Draft.DeepSemanticProcessingEnabled, Mode=TwoWay}"
+                                  AutomationProperties.HelpText="Related-concept data supports local Search and is not sent to a remote service." />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Exclude generated folders"
+                                  IsChecked="{Binding Draft.ExcludeGeneratedFolders, Mode=TwoWay}" />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Keep binaries and executables metadata-only"
+                                  IsChecked="{Binding Draft.BinaryAndExecutableMetadataOnly, Mode=TwoWay}" />
+                        <CheckBox Margin="0,0,16,6"
+                                  Content="Index archive contents"
+                                  IsChecked="{Binding Draft.ArchiveIndexingEnabled, Mode=TwoWay}" />
+                    </WrapPanel>
+                    <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
+                          ColumnDefinitions="*,*,*"
+                          RowDefinitions="Auto,Auto,Auto"
+                          ColumnSpacing="8"
+                          RowSpacing="6">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Maximum workers" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumIndexingConcurrency, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum retries" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumIndexingRetryCount, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Maximum chunks per document" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumSemanticChunksPerDocument, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Spacing="3">
+                            <TextBlock Text="Maximum document text characters" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumExtractedTextCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum OCR text characters" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumDeepOcrTextCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Deleted records retained (days)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.DeletedFileRetentionDays, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Spacing="3">
+                            <TextBlock Text="Failed history retained (days)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.FailedJobHistoryRetentionDays, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Spacing="3">
+                            <CheckBox Content="Only while idle, where supported"
+                                      IsChecked="{Binding Draft.ProcessIndexOnlyWhileIdle, Mode=TwoWay}" />
+                            <CheckBox Content="Only while connected to power, where supported"
+                                      IsChecked="{Binding Draft.ProcessIndexOnlyOnPower, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="2" Spacing="3">
+                            <CheckBox Content="Pause below a battery threshold, where supported"
+                                      IsChecked="{Binding Draft.PauseIndexingOnLowBattery, Mode=TwoWay}" />
+                            <TextBox Text="{Binding Draft.PauseBelowBatteryPercentage, Mode=TwoWay}"
+                                     IsEnabled="{Binding Draft.PauseIndexingOnLowBattery}"
+                                     AutomationProperties.Name="Battery pause threshold percentage" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
+                          ColumnDefinitions="Auto,*,*"
+                          ColumnSpacing="8">
+                        <CheckBox Content="Use a local processing time window"
+                                  IsChecked="{Binding Draft.UseIndexingTimeWindow, Mode=TwoWay}" />
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding Draft.IndexingWindowStartHour, Mode=TwoWay}"
+                                 IsEnabled="{Binding Draft.UseIndexingTimeWindow}"
+                                 PlaceholderText="Start hour 0–23"
+                                 AutomationProperties.Name="Indexing window start hour" />
+                        <TextBox Grid.Column="2"
+                                 Text="{Binding Draft.IndexingWindowEndHour, Mode=TwoWay}"
+                                 IsEnabled="{Binding Draft.UseIndexingTimeWindow}"
+                                 PlaceholderText="End hour 0–23"
+                                 AutomationProperties.Name="Indexing window end hour" />
+                    </Grid>
+                    <TextBlock Text="Idle, power, and battery controls use platform signals only when available; unsupported controls degrade safely without blocking Search."
+                               IsVisible="{Binding IsAdvancedSettingsVisible}"
+                               TextWrapping="Wrap"
+                               Classes="page-subtitle" />
+                    <CheckBox Content="Build evidence-backed file relationships and Smart Collections"
+                              IsChecked="{Binding Draft.RelationshipAnalysisEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable relationship analysis" />
+                    <TextBox Text="{Binding Draft.RelationshipExcludedExtensions, Mode=TwoWay}"
+                             PlaceholderText="Relationship-only file-type exclusions, for example: .key, .pem"
+                             AutomationProperties.Name="File extensions excluded from relationship analysis" />
+                    <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
+                          ColumnDefinitions="*,*,*"
+                          ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Relationship candidates per file" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumRelationshipCandidates, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum relationship candidates per file" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Relationships per file" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumRelationshipsPerFile, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum relationships per file" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Collection members" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumSmartCollectionMembers, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum Smart Collection members" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Relationships use retained index evidence, never move source files, and can be disabled or forgotten independently."
+                               TextWrapping="Wrap"
+                               Classes="page-subtitle" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
                 <StackPanel Spacing="7">
-                    <TextBlock Text="Meaning Search (Beta)" FontSize="18" FontWeight="SemiBold" />
-                    <CheckBox Content="Enable local Meaning Search Beta"
+                    <TextBlock Text="Search" FontSize="18" FontWeight="SemiBold" />
+                    <CheckBox Content="Enable local Search"
                               IsChecked="{Binding Draft.SemanticSearchEnabled, Mode=TwoWay}" />
-                    <TextBlock Text="Off by default. Uses a deterministic local feature-hashing index over filenames, confirmed and suggested tags, metadata, native text, and bounded OCR text. It does not require AI and never sends content to a model."
+                    <TextBlock Text="Uses a local index over names, folders, metadata, document text, OCR, tags, and related concepts. Search remains useful while background coverage is still being built."
                                TextWrapping="Wrap" />
                     <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
                           ColumnDefinitions="*,*"
