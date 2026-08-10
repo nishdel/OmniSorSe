@@ -90,6 +90,7 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         }
 
         var targetFeatures = CreateFeatures(target);
+        var targetIdentifier = ExtractIdentifier(target);
         var proposals = new List<RelationshipProposal>(Math.Min(maximumRelationships, candidates.Count));
         foreach (var candidate in candidates
                      .Where(item => !string.Equals(item.FileId, target.FileId, StringComparison.Ordinal))
@@ -103,7 +104,13 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             }
 
             ValidateDocument(candidate);
-            var proposal = Compare(target, targetFeatures, candidate, CreateFeatures(candidate));
+            var proposal = Compare(
+                target,
+                targetFeatures,
+                targetIdentifier,
+                candidate,
+                CreateFeatures(candidate),
+                ExtractIdentifier(candidate));
             if (proposal is not null)
             {
                 proposals.Add(proposal);
@@ -121,8 +128,10 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
     private RelationshipProposal? Compare(
         RelationshipFileDocument target,
         RelationshipFeatureSet targetFeatures,
+        string? targetIdentifier,
         RelationshipFileDocument candidate,
-        RelationshipFeatureSet candidateFeatures)
+        RelationshipFeatureSet candidateFeatures,
+        string? candidateIdentifier)
     {
         var evidence = new List<RelationshipEvidence>(RelationshipLimits.MaximumEvidencePerRelationship);
         var score = 0;
@@ -135,8 +144,6 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             strongContext = $"content:{HashKey(targetFeatures.ContentHash!)}";
         }
 
-        var targetIdentifier = ExtractIdentifier(target);
-        var candidateIdentifier = ExtractIdentifier(candidate);
         if (EqualNonEmpty(targetIdentifier, candidateIdentifier))
         {
             var key = HashKey(targetIdentifier!);
@@ -464,9 +471,9 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         }
     }
 
-    [GeneratedRegex(@"\b(?:(?:invoice|inv|order|receipt|project|trip)[\s_\-:#]*)?[a-z]{0,6}\d{3,}(?:[._\-/]\d+)*\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 50)]
+    [GeneratedRegex(@"\b(?:(?:invoice|inv|order|receipt|project|trip)[\s_\-:#]*)?[a-z]{0,6}\d{3,}(?:[._\-/]\d+)*\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex DocumentIdentifierPattern();
 
-    [GeneratedRegex(@"\bv?\d+(?:\.\d+){1,3}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 50)]
+    [GeneratedRegex(@"\bv?\d+(?:\.\d+){1,3}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)]
     private static partial Regex VersionPattern();
 }

@@ -305,7 +305,7 @@ The principal source evidence used below is:
 | R24 | No targeted source | No deterministic decision/graph/Search/maintenance lock-order stress fixture was located. |
 | R25 | Partial | Independent-lock tests prove the finite ordinary deadline, prompt cancellable slices, correct `Busy`/cancellation classification, atomicity, and recovery. A fully parameterized below/at/above cumulative-threshold matrix remains RC work. |
 | R26 | Partial | Recovery reserve and bounded run/manifest history are covered; inbox retention age/row boundaries and all quota-retention invariants are not. |
-| R27 | Partial | Alias, evidence, query, degree, and traversal bounds are targeted; candidate-text and CPU-yield ceilings plus every first-exceeded-bound ordering are not. |
+| R27 | Partial | Alias, evidence, query, degree, traversal, and maximum-candidate bounded identifier text are targeted; CPU-yield ceilings plus every first-exceeded-bound ordering are not. |
 | R28 | Partial | Combined decision-ledger quota failure leaves the ledger unchanged; reserve boundaries and actionable ViewModel status are not fully parameterized. |
 | R29 | Direct | Concurrent authority-unavailable expansion fails restrictive while bounded ordinary exact Search remains responsive. |
 

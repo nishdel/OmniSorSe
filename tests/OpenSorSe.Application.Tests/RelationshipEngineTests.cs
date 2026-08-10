@@ -144,6 +144,26 @@ public sealed class RelationshipEngineTests
         Assert.Throws<InvalidDataException>(() => engine.CreateFeatures(malformed));
     }
 
+    /// <summary>Verifies bounded near-match text cannot trigger regex backtracking or wall-clock timeout failures.</summary>
+    [Fact]
+    public void Discover_BoundedAdversarialIdentifierText_RemainsDeterministic()
+    {
+        var engine = CreateEngine();
+        var nearMatch = "invoice-" + new string('a', 4_080);
+        var target = Document("target", "invoice-target.txt") with { MetadataText = nearMatch };
+        var candidates = Enumerable.Range(0, RelationshipLimits.MaximumCandidates)
+            .Select(index => Document(index.ToString(System.Globalization.CultureInfo.InvariantCulture), $"record-{index:D4}.txt") with
+            {
+                MetadataText = nearMatch,
+            })
+            .ToArray();
+
+        var first = engine.Discover(target, candidates, RelationshipLimits.MaximumRelationshipsPerFile);
+        var second = engine.Discover(target, candidates.Reverse().ToArray(), RelationshipLimits.MaximumRelationshipsPerFile);
+
+        Assert.Equal(JsonSerializer.Serialize(first), JsonSerializer.Serialize(second));
+    }
+
     /// <summary>Verifies relationship context remains below precise literal matches and exposes its actual evidence.</summary>
     [Fact]
     public void Rank_ExactFilename_RemainsAboveRelationshipExpansion()
