@@ -17,6 +17,8 @@ public static class AiStructuredOutputContracts
             "Assign supplied opaque file IDs to a small declared folder hierarchy. Return one JSON object matching the schema; no Markdown or prose.",
         AiSuggestionKind.DocumentTextInterpretation =>
             "Extract review-only metadata from supplied text. Return one JSON object matching the schema; no Markdown or prose.",
+        AiSuggestionKind.SearchReranking =>
+            "Order only the supplied opaque Search candidate IDs by query relevance. Return one JSON object matching the schema; no Markdown or prose.",
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -30,6 +32,7 @@ public static class AiStructuredOutputContracts
         AiSuggestionKind.FileRename => RenameSchema,
         AiSuggestionKind.FolderStructure => FolderSchema,
         AiSuggestionKind.DocumentTextInterpretation => DocumentSchema,
+        AiSuggestionKind.SearchReranking => SearchRerankingSchema,
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
@@ -53,6 +56,9 @@ public static class AiStructuredOutputContracts
 
     private const string DocumentSchema =
         """{"oneOf":[{"type":"object","additionalProperties":false,"required":["taskId","status","sourceFileId","documentType","title","tags","dates","issuer","suggestedFolder","reason"],"properties":{"taskId":{"const":"document-text-interpretation-v1"},"status":{"const":"suggestion"},"sourceFileId":{"type":"string","minLength":1,"maxLength":32},"documentType":{"type":["string","null"],"maxLength":96},"title":{"type":["string","null"],"maxLength":240},"tags":{"type":"array","maxItems":12,"items":{"type":"string","minLength":1,"maxLength":64}},"dates":{"type":"array","maxItems":8,"items":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}},"issuer":{"type":["string","null"],"maxLength":160},"suggestedFolder":{"type":["string","null"],"maxLength":64},"reason":{"type":"string","minLength":1,"maxLength":160},"confidence":{"type":["number","null"],"minimum":0,"maximum":1}}},{"type":"object","additionalProperties":false,"required":["taskId","status","reason"],"properties":{"taskId":{"const":"document-text-interpretation-v1"},"status":{"const":"no_suggestion"},"reason":{"type":"string","minLength":1,"maxLength":160}}}]}""";
+
+    private const string SearchRerankingSchema =
+        """{"type":"object","additionalProperties":false,"required":["taskId","status","orderedCandidateIds","summary"],"properties":{"taskId":{"const":"search-rerank-v1"},"status":{"const":"reranked"},"orderedCandidateIds":{"type":"array","minItems":1,"maxItems":12,"uniqueItems":true,"items":{"type":"string","pattern":"^result-[0-9]{3}$"}},"summary":{"type":"string","minLength":1,"maxLength":160}}}""";
 }
 
 /// <summary>Defines the exact case-sensitive file-rename response DTO.</summary>
@@ -186,4 +192,25 @@ public sealed record AiDocumentInterpretationResponseContract
     /// <summary>Gets an optional bounded confidence value.</summary>
     [JsonPropertyName("confidence"), JsonPropertyOrder(10)]
     public double? Confidence { get; init; }
+}
+
+/// <summary>Defines the strict response accepted from optional Search reranking.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record AiSearchRerankingResponseContract
+{
+    /// <summary>Gets the exact versioned task identity.</summary>
+    [JsonPropertyName("taskId"), JsonPropertyOrder(0)]
+    public string? TaskId { get; init; }
+
+    /// <summary>Gets the required reranked status.</summary>
+    [JsonPropertyName("status"), JsonPropertyOrder(1)]
+    public string? Status { get; init; }
+
+    /// <summary>Gets only request-local candidate identities supplied by OpenSorSe.</summary>
+    [JsonPropertyName("orderedCandidateIds"), JsonPropertyOrder(2)]
+    public IReadOnlyList<string>? OrderedCandidateIds { get; init; }
+
+    /// <summary>Gets one bounded presentation summary.</summary>
+    [JsonPropertyName("summary"), JsonPropertyOrder(3)]
+    public string? Summary { get; init; }
 }

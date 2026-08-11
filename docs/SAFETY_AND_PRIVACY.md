@@ -88,7 +88,21 @@ Deterministic and optional AI suggestions become ordinary reviewable Change Plan
 
 AI and Advanced mode are independent and disabled by default. While AI is disabled, provider detection, discovery, requests, and background communication are rejected at the application boundary.
 
-The AI capabilities are separately enabled file-rename, logical folder-structure, and document-text interpretation suggestions. Rename/folder requests use bounded filenames, extensions, deterministic categories, existing logical folder names, request-local identities, and optional concise preferences; they exclude absolute paths and file contents.
+The AI capabilities are separately enabled file-rename, logical
+folder-structure, document-text interpretation, and Search-assistance flows.
+Rename/folder requests use bounded filenames, extensions, deterministic
+categories, existing logical folder names, request-local identities, and
+optional concise preferences; they exclude absolute paths and file contents.
+
+Search assistance is separately off by default and also requires an explicit
+per-query checkbox. Deterministic local Search selects the candidates first.
+The provider receives at most 12 request-local IDs, filenames, actual match
+reasons, the bounded query, and bounded existing snippets. It receives no
+absolute paths, vectors, whole index, or complete documents. The validated
+response may reorder only known candidates within equal deterministic evidence
+tiers; it cannot add a file, change a score, cross an exact/literal tier, or
+invoke any filesystem action. A custom endpoint may be remote, so Settings
+discloses that the bounded query/candidate text then leaves the device.
 
 Document-text interpretation has its own default-off switch. It requires global AI, the capability, a valid endpoint/model, one explicitly selected known content record, and a direct **Generate** command. Its prompt contains bounded normalized extracted text with page/native/OCR provenance, never file bytes or an absolute path. A custom endpoint may be remote, so Settings warns before this switch is enabled. The prompt forbids exact/legal/financial transcription claims and any filesystem action.
 
@@ -125,6 +139,10 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Filename, folder, metadata, text, OCR, filters, ranking, snippets, and
   explanations remain available without Ollama. Optional related-concept data
   supplements rather than replaces exact and literal evidence.
+- Optional AI-assisted Search runs only after deterministic Search, over at
+  most 12 known candidates. Provider failure, timeout, cancellation, invalid
+  JSON, or unknown candidate identity cannot remove or invent a local result;
+  ordinary Search remains available.
 - Durable background indexing uses Basic, Standard, and Deep levels. It stores
   bounded derived data, never copies complete source files, and remains usable
   at partial coverage.

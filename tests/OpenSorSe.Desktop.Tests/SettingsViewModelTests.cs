@@ -202,6 +202,7 @@ public sealed class SettingsViewModelTests
         viewModel.Draft.AiEnabled = true;
         viewModel.Draft.FileRenameSuggestionsEnabled = true;
         viewModel.Draft.FolderStructureSuggestionsEnabled = false;
+        viewModel.Draft.SearchAssistanceEnabled = true;
         viewModel.Draft.DocumentTextInterpretationEnabled = true;
         viewModel.Draft.SelectedAiModel = "newly-selected-model";
         viewModel.Draft.ShowAdvancedFeatures = true;
@@ -215,11 +216,90 @@ public sealed class SettingsViewModelTests
         Assert.True(configuration.Current.Ai.Enabled);
         Assert.True(configuration.Current.Ai.FileRenameSuggestionsEnabled);
         Assert.False(configuration.Current.Ai.FolderStructureSuggestionsEnabled);
+        Assert.True(configuration.Current.Ai.SearchAssistanceEnabled);
         Assert.True(configuration.Current.Ai.DocumentTextInterpretationEnabled);
         Assert.Equal("newly-selected-model", configuration.Current.Ai.SelectedModel);
         Assert.True(configuration.Current.Features.ShowAdvancedFeatures);
         Assert.Equal(300, configuration.Current.Content.PdfRasterizationDpi);
         Assert.Equal(5000, configuration.Current.Content.MaximumRasterDimension);
+    }
+
+    /// <summary>Verifies discovery reports a provider-confirmed running model without inventing state.</summary>
+    [Fact]
+    public async Task DiscoverModels_ShowsSelectedRunningState()
+    {
+        var models = new AiConnectionResult(
+            AiAvailabilityState.Connected,
+            "Discovered models",
+            [new AiModel("local-model", "local-model") { RuntimeState = AiModelRuntimeState.Running }])
+        {
+            RuntimeStateAvailable = true,
+        };
+        using var viewModel = new SettingsViewModel(
+            new TestConfigurationService(settings: AiAdvancedSettings()),
+            new RecordingAiSuggestionService(discovery: models));
+
+        await viewModel.DiscoverAiModelsCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsSelectedModelAvailable);
+        Assert.Contains("currently running", viewModel.SelectedModelStatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies a removed persisted model falls back to a deterministic installed choice in the draft.</summary>
+    [Fact]
+    public async Task DiscoverModels_MissingSelectionFallsBackAndExplainsSaveRequirement()
+    {
+        var models = new AiConnectionResult(
+            AiAvailabilityState.Connected,
+            "Discovered models",
+            [new AiModel("available-a", "available-a"), new AiModel("available-b", "available-b")]);
+        using var viewModel = new SettingsViewModel(
+            new TestConfigurationService(settings: AiAdvancedSettings()),
+            new RecordingAiSuggestionService(discovery: models));
+
+        await viewModel.DiscoverAiModelsCommand.ExecuteAsync(null);
+
+        Assert.Equal("available-a", viewModel.Draft.SelectedAiModel);
+        Assert.Contains("no longer installed", viewModel.AiStatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("save Settings", viewModel.AiStatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies endpoint privacy text only calls a verified loopback URI local.</summary>
+    [Theory]
+    [InlineData("http://localhost:11434", "Local endpoint")]
+    [InlineData("http://127.0.0.1:11434", "Local endpoint")]
+    [InlineData("http://[::1]:11434", "Local endpoint")]
+    [InlineData("https://ollama.example.test", "Remote endpoint")]
+    [InlineData("not an endpoint", "valid HTTP or HTTPS")]
+    public void AiEndpointPrivacy_ClassifiesConservatively(string endpoint, string expected)
+    {
+        using var viewModel = new SettingsViewModel(new TestConfigurationService());
+
+        viewModel.Draft.AiEndpoint = endpoint;
+
+        Assert.Contains(expected, viewModel.AiEndpointPrivacyText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies changing provider identity invalidates stale discovery and tells the user what to do.</summary>
+    [Fact]
+    public async Task AiEndpointChanged_ClearsDiscoveredModelsAndRequiresRetry()
+    {
+        var models = new AiConnectionResult(
+            AiAvailabilityState.Connected,
+            "Discovered models",
+            [new AiModel("local-model", "local-model")]);
+        using var viewModel = new SettingsViewModel(
+            new TestConfigurationService(settings: AiAdvancedSettings()),
+            new RecordingAiSuggestionService(discovery: models));
+        await viewModel.DiscoverAiModelsCommand.ExecuteAsync(null);
+        Assert.NotEmpty(viewModel.AvailableAiModels);
+
+        viewModel.Draft.AiEndpoint = "https://ollama.example.test";
+
+        Assert.Empty(viewModel.AvailableAiModels);
+        Assert.Equal(AiReadinessState.NotChecked, viewModel.AiReadinessState);
+        Assert.Contains("Retry the connection", viewModel.AiStatusText, StringComparison.Ordinal);
+        Assert.Contains("may leave this computer", viewModel.AiEndpointPrivacyText, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies durable indexing policy round-trips through the editable settings boundary.</summary>
@@ -451,7 +531,9 @@ public sealed class SettingsViewModelTests
         }
     }
 
-    private sealed class RecordingAiSuggestionService(bool blockConnection = false) : IAiSuggestionService
+    private sealed class RecordingAiSuggestionService(
+        bool blockConnection = false,
+        AiConnectionResult? discovery = null) : IAiSuggestionService
     {
         public TaskCompletionSource<bool> ConnectionStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -469,7 +551,7 @@ public sealed class SettingsViewModelTests
         }
 
         public Task<AiConnectionResult> DiscoverModelsAsync(ApplicationSettings settings, CancellationToken cancellationToken) =>
-            Task.FromResult(new AiConnectionResult(AiAvailabilityState.NoModelsAvailable, "No models", []));
+            Task.FromResult(discovery ?? new AiConnectionResult(AiAvailabilityState.NoModelsAvailable, "No models", []));
 
         public Task<AiFileRenameResult> GenerateFileRenameAsync(
             AiFileRenameRequest request,

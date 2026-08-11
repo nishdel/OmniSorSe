@@ -153,12 +153,31 @@ public sealed class DesktopBrandingAndLayoutTests
             StringComparison.Ordinal);
         Assert.NotNull(help.Attribute("Command"));
         Assert.Contains("Text=\"Search\"", source, StringComparison.Ordinal);
-        Assert.Contains("Include Knowledge Graph context in Search", source, StringComparison.Ordinal);
+        Assert.Contains("Include broader Related Files context in Search", source, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding SearchModeText}\"", source, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"{Binding IncludeGraphContext, Mode=TwoWay}\"", source, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding GraphCoverageText}\"", source, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Meaning Search", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("embedding", source, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies major persistent-workflow pages expose keyboard-addressable contextual Help.</summary>
+    [Theory]
+    [InlineData("WatchedFoldersView.axaml", "Watched Folders help")]
+    [InlineData("WorkflowsView.axaml", "Workflows help")]
+    public void MajorWorkflowPages_ExposeContextualHelp(string fileName, string accessibleName)
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            fileName));
+
+        Assert.Contains("Command=\"{Binding HelpCommand}\"", source, StringComparison.Ordinal);
+        Assert.Contains($"AutomationProperties.Name=\"{accessibleName}\"", source, StringComparison.Ordinal);
+        Assert.Contains("ToolTip.Tip", source, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies v1.8 result evidence and privacy actions work beyond pointer hover.</summary>
@@ -187,6 +206,10 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("RefreshOcrCommand", source, StringComparison.Ordinal);
         Assert.Contains("RegenerateSummaryCommand", source, StringComparison.Ordinal);
         Assert.Contains("RegenerateSemanticCommand", source, StringComparison.Ordinal);
+        Assert.Contains("CopyFullPathCommand", source, StringComparison.Ordinal);
+        Assert.Contains("UseAiAssistance", source, StringComparison.Ordinal);
+        Assert.Contains("IsBackgroundProgressIndeterminate", source, StringComparison.Ordinal);
+        Assert.Contains("cannot add files", source, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("original source file is never deleted or modified", source, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("AutomationProperties.Name", source, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"{Binding}\"", source, StringComparison.Ordinal);

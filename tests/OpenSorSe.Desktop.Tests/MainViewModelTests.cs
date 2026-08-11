@@ -62,6 +62,26 @@ public sealed class MainViewModelTests
         Assert.Equal(NavigationDestination.CatalogSearch, viewModel.SelectedDestination);
     }
 
+    /// <summary>Verifies current major pages route directly to their maintained v2.1 Help topics.</summary>
+    [Fact]
+    public void ContextualHelp_MajorPagesOpenCurrentTopics()
+    {
+        using var viewModel = new MainViewModel();
+
+        viewModel.KnowledgeGraph.HelpCommand.Execute(null);
+        Assert.Equal(HelpTopicId.RelatedFiles, viewModel.Help.SelectedTopic.Id);
+        viewModel.Help.BackCommand.Execute(null);
+
+        viewModel.WatchedFolders.HelpCommand.Execute(null);
+        Assert.Equal(HelpTopicId.WatchedFolders, viewModel.Help.SelectedTopic.Id);
+        viewModel.Help.BackCommand.Execute(null);
+
+        viewModel.Workflows.HelpCommand.Execute(null);
+        Assert.Equal(HelpTopicId.Workflows, viewModel.Help.SelectedTopic.Id);
+        Assert.Contains(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.Privacy);
+        Assert.Contains(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.Troubleshooting);
+    }
+
     /// <summary>Verifies the shell retains one Settings instance across navigation and Help round-trips.</summary>
     [Fact]
     public void Navigation_RetainsLongLivedSettingsInstance()
@@ -137,7 +157,7 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
         Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
         Assert.Equal(
-            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Collections", "Knowledge Graph", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
+            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Collections", "Related Files", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
         Assert.Contains(
             viewModel.NavigationItems,

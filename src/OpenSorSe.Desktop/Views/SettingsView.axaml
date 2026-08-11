@@ -76,9 +76,11 @@
 
             <Border Classes="card">
                 <StackPanel Spacing="8">
-                    <TextBlock Text="Background indexing" FontSize="18" FontWeight="SemiBold" />
-                    <CheckBox Content="Build Search coverage gradually in the background"
+                    <TextBlock Text="File analysis" FontSize="18" FontWeight="SemiBold" />
+                    <CheckBox Content="Extract searchable information and build Search coverage in the background"
                               IsChecked="{Binding Draft.DeepIndexingEnabled, Mode=TwoWay}" />
+                    <TextBlock Text="Search indexing is performed locally and does not require AI. The index is stored in OpenSorSe application data; original files are not changed."
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Basic stores names and metadata. Standard adds document text and related concepts. Deep adds applicable OCR and richer bounded analysis. Completed stages resume after interruption."
                                TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
@@ -105,7 +107,7 @@
                                   Content="Enable OCR stages"
                                   IsChecked="{Binding Draft.DeepOcrProcessingEnabled, Mode=TwoWay}" />
                         <CheckBox Margin="0,0,16,6"
-                                  Content="Enable optional local AI stages"
+                                  Content="Enable optional AI-generated indexing stages"
                                   IsChecked="{Binding Draft.DeepAiProcessingEnabled, Mode=TwoWay}" />
                         <CheckBox Margin="0,0,16,6"
                                   Content="Store generated summaries and keywords"
@@ -348,12 +350,16 @@
                                TextWrapping="Wrap" />
 
                     <StackPanel IsVisible="{Binding IsAiCapabilitySettingsVisible}" Spacing="8">
-                        <TextBlock Text="File Assistant setup" FontWeight="SemiBold" />
-                        <StackPanel IsVisible="{Binding IsAdvancedSettingsVisible}" Spacing="4">
-                            <TextBlock Text="Ollama endpoint" FontWeight="SemiBold" />
+                        <TextBlock Text="AI connection" FontWeight="SemiBold" />
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Ollama-compatible endpoint" FontWeight="SemiBold" />
                             <TextBox Text="{Binding Draft.AiEndpoint, Mode=TwoWay}"
                                      ToolTip.Tip="Default: http://127.0.0.1:11434"
                                      AutomationProperties.Name="Ollama endpoint" />
+                            <TextBlock Text="{Binding AiEndpointPrivacyText}"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.Name="AI endpoint privacy status"
+                                       AutomationProperties.LiveSetting="Polite" />
                         </StackPanel>
 
                         <WrapPanel>
@@ -386,7 +392,7 @@
                                    TextWrapping="Wrap" />
                         <TextBlock Text="{Binding SelectedModelStatusText}" TextWrapping="Wrap" />
 
-                        <StackPanel IsVisible="{Binding IsAdvancedSettingsVisible}" Spacing="4">
+                        <StackPanel Spacing="4">
                             <TextBlock Text="Request timeout (seconds)" FontWeight="SemiBold" />
                             <TextBox Text="{Binding Draft.AiRequestTimeoutText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      AutomationProperties.Name="AI request timeout in seconds" />
@@ -398,6 +404,12 @@
                                   IsChecked="{Binding Draft.FileRenameSuggestionsEnabled, Mode=TwoWay}" />
                         <CheckBox Content="Enable folder structure suggestions"
                                   IsChecked="{Binding Draft.FolderStructureSuggestionsEnabled, Mode=TwoWay}" />
+                        <CheckBox Content="Enable AI-assisted Search reranking"
+                                  IsChecked="{Binding Draft.SearchAssistanceEnabled, Mode=TwoWay}"
+                                  AutomationProperties.Name="Enable optional local AI assistance for Search"
+                                  AutomationProperties.HelpText="When explicitly selected on the Search page, sends the query, filenames, match reasons, and bounded indexed snippets for at most twelve known results to the configured Ollama-compatible endpoint. Local Search remains authoritative." />
+                        <TextBlock Text="AI-assisted Search is off by default. A Search-page checkbox controls each request. Only known local results can be reordered; the model cannot add files. A non-local endpoint receives the bounded query and candidate text outside this device."
+                                   TextWrapping="Wrap" />
                         <CheckBox Content="Allow local AI to analyze extracted document text"
                                   IsChecked="{Binding Draft.DocumentTextInterpretationEnabled, Mode=TwoWay}" />
                         <TextBlock Text="This separate switch is off by default. When enabled, an explicit interpretation request may send bounded extracted native/OCR text to the configured endpoint. Non-local endpoints receive that text outside this device."

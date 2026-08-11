@@ -153,6 +153,9 @@ public sealed partial class RepositoryDocumentationTests
             "MANUAL_TESTING_v2.0.md",
             "RELEASE_READINESS_v2.0.md",
             "RELEASE_NOTES_v2.0.0.md",
+            "RELEASE_NOTES_v2.1.0.md",
+            "SEARCH_AND_AI_QUALITY_v2.1.md",
+            "MANUAL_TESTING_v2.1.md",
             "RELEASE_PACKAGING_v2.0.md",
             "SCREENSHOT_CHECKLIST_v2.0.md",
             "V2.0_COMPATIBILITY_MATRIX.md",
@@ -230,6 +233,21 @@ public sealed partial class RepositoryDocumentationTests
                 File.Exists(Path.Combine(RepositoryRoot, "eng", "release", script)),
                 $"Missing native release script: {script}");
         }
+
+        var windowsPackaging = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "eng",
+            "release",
+            "Build-WindowsArtifacts.ps1"));
+        var macPackaging = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "eng",
+            "release",
+            "Build-MacArtifacts.sh"));
+        Assert.Contains("RELEASE_NOTES_v$Version.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("RELEASE_NOTES_v$version.md", macPackaging, StringComparison.Ordinal);
+        Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", macPackaging, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies production project references remain the documented acyclic dependency graph.</summary>

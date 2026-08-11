@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:-2.0.0}"
+version="${1:-2.1.0}"
 rid="${2:?A macOS runtime identifier is required.}"
 output_directory="${3:?A release output directory is required.}"
 
@@ -43,7 +43,12 @@ cp "$repository_root/LICENSE" "$resources_directory/LICENSE"
 cp "$repository_root/THIRD_PARTY_NOTICES.md" "$resources_directory/THIRD_PARTY_NOTICES.md"
 cp "$repository_root/docs/dependency-licenses.json" "$resources_directory/dependency-licenses.json"
 cp "$repository_root/docs/INSTALLATION.md" "$resources_directory/INSTALLATION.md"
-cp "$repository_root/docs/RELEASE_NOTES_v2.0.0.md" "$resources_directory/RELEASE_NOTES.md"
+release_notes="$repository_root/docs/RELEASE_NOTES_v$version.md"
+if [[ ! -f "$release_notes" ]]; then
+  echo "Release notes for v$version are missing: $release_notes" >&2
+  exit 1
+fi
+cp "$release_notes" "$resources_directory/RELEASE_NOTES.md"
 find "$macos_directory" -type f -name '*.pdb' -delete
 
 icon_source="$repository_root/src/OpenSorSe.Desktop/Assets/opensorse-app-icon.png"

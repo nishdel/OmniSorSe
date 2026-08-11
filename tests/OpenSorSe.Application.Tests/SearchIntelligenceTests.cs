@@ -199,6 +199,46 @@ public sealed class SearchIntelligenceTests
         Assert.Equal(SearchRankingSignalKind.ExactFilename, result[0].Components[0].Kind);
     }
 
+    /// <summary>Verifies documented filename tiers remain explicit and stronger than weaker field matches.</summary>
+    [Fact]
+    public void Ranker_FilenameTiersAreDeterministicAndExplainable()
+    {
+        var exact = Candidate("exact", "raspberry setup", @"C:\docs\raspberry setup");
+        var stem = Candidate("stem", "raspberry setup.pdf", @"C:\docs\raspberry setup.pdf");
+        var prefix = Candidate("prefix", "raspberry setup notes.pdf", @"C:\docs\raspberry setup notes.pdf");
+        var substring = Candidate("substring", "old-raspberry_setup-notes.pdf", @"C:\docs\old-raspberry_setup-notes.pdf");
+        var content = Candidate("content", "opaque.bin", @"C:\docs\opaque.bin") with
+        {
+            ExtractedText = "raspberry setup",
+        };
+
+        var result = Rank("raspberry setup", content, substring, prefix, stem, exact);
+
+        Assert.Equal(["exact", "stem", "prefix", "substring", "content"],
+            result.Select(item => item.Document.FileId));
+        Assert.Contains(result[0].Components, item => item.Kind == SearchRankingSignalKind.ExactFilename);
+        Assert.Contains(result[1].Components, item => item.Kind == SearchRankingSignalKind.ExactFilenameStem);
+        Assert.Contains(result[2].Components, item => item.Kind == SearchRankingSignalKind.FilenamePrefix);
+        Assert.Contains(result[3].Components, item => item.Kind == SearchRankingSignalKind.FilenameSubstring);
+        Assert.Contains(result[4].Components, item => item.Kind == SearchRankingSignalKind.ExactPhrase);
+    }
+
+    /// <summary>Verifies a complete literal document phrase remains stronger than a weak partial filename token.</summary>
+    [Fact]
+    public void Ranker_StrongContentPhraseOutranksWeakPartialFilename()
+    {
+        var content = Candidate("content", "opaque.dat", @"C:\docs\opaque.dat") with
+        {
+            ExtractedText = "battery degradation research",
+        };
+        var partialName = Candidate("partial", "battery-charger.jpg", @"C:\photos\battery-charger.jpg");
+
+        var result = Rank("battery degradation research", partialName, content);
+
+        Assert.Equal("content", result[0].Document.FileId);
+        Assert.Contains(result[0].Components, item => item.Kind == SearchRankingSignalKind.ExactPhrase);
+    }
+
     /// <summary>Verifies an exact retained phrase is distinguished from independent token matches.</summary>
     [Fact]
     public void Ranker_ExactPhraseProducesExplicitEvidence()
@@ -357,6 +397,7 @@ public sealed class SearchIntelligenceTests
     [Theory]
     [InlineData("invoce", true)]
     [InlineData("invoixe", true)]
+    [InlineData("invocie", true)]
     [InlineData("inx", false)]
     [InlineData("zzzzzz", false)]
     public void Ranker_TypoToleranceIsBounded(string query, bool expected)
@@ -429,9 +470,17 @@ public sealed class SearchIntelligenceTests
             CreateRanker());
 
         var metrics = evaluator.Evaluate(corpus, cases, 3);
+        var topResults = cases.Select(item =>
+        {
+            var interpreted = new DeterministicSearchQueryInterpreter().Interpret(new SearchRequest(item.Query));
+            var first = CreateRanker().Rank(interpreted, corpus, corpus.Count, CancellationToken.None).FirstOrDefault();
+            return $"{item.Query} [topic={interpreted.TopicText}; filters={string.Join(',', interpreted.Filters.Select(filter => filter.DisplayName))}] => {first?.Document.FileId ?? "<none>"}";
+        });
 
         Assert.Equal(cases.Length, metrics.QueryCount);
-        Assert.InRange(metrics.TopResultCorrectness, 0.90, 1);
+        Assert.True(
+            metrics.TopResultCorrectness is >= 0.90 and <= 1,
+            $"Unexpected top results: {string.Join("; ", topResults)}");
         Assert.InRange(metrics.TopKRecall, 0.90, 1);
         Assert.InRange(metrics.MeanReciprocalRank, 0.90, 1);
         Assert.Equal(1, metrics.ExactMatchPreservation);

@@ -44,6 +44,22 @@ public sealed class FileScannerTests
             }.SetEquals(result.Directories.Select(entry => entry.FullPath)));
     }
 
+    /// <summary>Verifies application-owned recovery data cannot feed back into later manual scans.</summary>
+    [Fact]
+    public async Task ScanAsync_ExcludesApplicationOwnedRecoveryDirectory()
+    {
+        using var directory = new TemporaryDirectory();
+        var visible = directory.CreateFile("visible.txt");
+        directory.CreateFile(Path.Combine(".opensorse", "duplicate-recovery", "copy.txt"));
+
+        var result = await CreateScanner().ScanAsync(CreateRequest(directory.Path));
+
+        Assert.Equal([visible], result.Files.Select(file => file.FullPath));
+        Assert.DoesNotContain(
+            result.Directories,
+            entry => entry.FullPath.Contains(".opensorse", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>
     /// Verifies that an empty root is returned as a discovered directory.
     /// </summary>

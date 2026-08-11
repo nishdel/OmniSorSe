@@ -107,6 +107,51 @@ public sealed class SuggestionChangePlanFactoryTests
         Assert.True(File.Exists(file.FullPath));
     }
 
+    /// <summary>Verifies safe duplicate removal preserves a known copy and creates only reviewable recovery moves.</summary>
+    [Fact]
+    public async Task CreateDuplicateRemovalPlanAsync_PreservesCopyAndDoesNotMutateFiles()
+    {
+        using var directory = new TemporaryDirectory();
+        var unwanted = Result("file:unwanted", directory.File("copy.txt", "same"), "group:one");
+        var keeperFolder = Directory.CreateDirectory(directory.PathOf("keeper")).FullName;
+        var keeperPath = Path.Combine(keeperFolder, "copy.txt");
+        File.WriteAllText(keeperPath, "same");
+        var keeper = Result("file:keeper", keeperPath, "group:one");
+
+        var plan = await CreateService().CreateDuplicateRemovalPlanAsync(
+            [unwanted],
+            [keeper],
+            "scan:duplicates",
+            CancellationToken.None);
+
+        var move = Assert.Single(plan.Actions, action => action.ActionType == ChangeActionType.MoveFile);
+        Assert.Equal(ChangeSuggestionSource.DuplicateAnalysis, move.SuggestionSource);
+        Assert.Equal(unwanted.FullPath, move.SourcePath);
+        Assert.Contains(Path.Combine(".opensorse", "duplicate-recovery"), move.DestinationPath, StringComparison.Ordinal);
+        Assert.Contains(plan.Warnings, warning => warning.Contains("does not permanently delete", StringComparison.Ordinal));
+        Assert.True(File.Exists(unwanted.FullPath));
+        Assert.True(File.Exists(keeper.FullPath));
+        Assert.False(File.Exists(move.DestinationPath));
+    }
+
+    /// <summary>Verifies a forged removal request can never select every known member of a duplicate group.</summary>
+    [Fact]
+    public async Task CreateDuplicateRemovalPlanAsync_RejectsRemovingEveryKnownCopy()
+    {
+        using var directory = new TemporaryDirectory();
+        var unwanted = Result("file:only", directory.File("only.txt", "same"), "group:one");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService().CreateDuplicateRemovalPlanAsync(
+                [unwanted],
+                [],
+                "scan:duplicates",
+                CancellationToken.None));
+
+        Assert.Contains("must remain", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(File.Exists(unwanted.FullPath));
+    }
+
     private static SuggestionChangePlanFactory CreateService()
     {
         var fileSystem = new PhysicalFileSystemGateway();
@@ -115,7 +160,7 @@ public sealed class SuggestionChangePlanFactoryTests
             new ChangePlanFactory(fileSystem, validator, new InMemoryChangePlanStore()));
     }
 
-    private static ResultFile Result(string id, string path)
+    private static ResultFile Result(string id, string path, string? duplicateGroupId = null)
     {
         var info = new FileInfo(path);
         return new ResultFile(
@@ -127,8 +172,8 @@ public sealed class SuggestionChangePlanFactoryTests
             new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero),
             FileCategory.Document,
             "Document",
-            DuplicateStatus.Unique,
-            null,
+            duplicateGroupId is null ? DuplicateStatus.Unique : DuplicateStatus.Duplicate,
+            duplicateGroupId,
             false);
     }
 

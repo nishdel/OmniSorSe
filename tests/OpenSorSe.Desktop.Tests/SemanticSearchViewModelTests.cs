@@ -278,6 +278,113 @@ public sealed class SemanticSearchViewModelTests
         Assert.Contains("partial", viewModel.GraphCoverageText, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Verifies explicit local-AI settings flow into one request and publish a safe outcome.</summary>
+    [Fact]
+    public async Task AiAssistanceIsOptionalPerSearchAndPublishesFallbackState()
+    {
+        var search = new InterpretingSearch([])
+        {
+            AiAssistance = new AiSearchAssistanceResult(
+                AiSearchAssistanceState.Unavailable,
+                "Ollama is unavailable. Deterministic local ordering was preserved.",
+                0,
+                false),
+        };
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true, aiSearchEnabled: true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher())
+        {
+            QueryText = "raspberry pi setup",
+        };
+
+        Assert.True(viewModel.IsAiAssistanceAvailable);
+        Assert.False(viewModel.UseAiAssistance);
+        viewModel.UseAiAssistance = true;
+        await viewModel.SearchCommand.ExecuteAsync(null);
+
+        Assert.True(search.LastRequest!.UseAiAssistance);
+        Assert.Contains("Deterministic local ordering", viewModel.AiAssistanceText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies discovery reports indeterminate progress instead of a fabricated zero-percent total.</summary>
+    [Fact]
+    public async Task ActiveDiscoveryWithUnknownTotalIsIndeterminate()
+    {
+        var background = new BackgroundIndexing
+        {
+            Progress = new IndexingProgressSnapshot
+            {
+                RunId = "discovering",
+                Status = IndexingRunStatus.Running,
+                TotalDiscovered = 0,
+                Processed = 2,
+            },
+        };
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([]),
+            new Store(),
+            new Launcher(),
+            background);
+
+        await viewModel.RefreshAsync();
+
+        Assert.True(viewModel.IsBackgroundProgressIndeterminate);
+        Assert.Contains("determining the total", viewModel.ProcessedCountText, StringComparison.Ordinal);
+        Assert.Contains("not yet known", viewModel.RemainingCountText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies a known result path uses the existing cross-platform clipboard boundary.</summary>
+    [Fact]
+    public async Task CopyFullPathUsesClipboardBoundary()
+    {
+        var hit = Hit("C:\\Docs\\tax records.pdf");
+        var clipboard = new Clipboard();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
+            new Launcher(),
+            clipboard: clipboard)
+        {
+            QueryText = "tax",
+        };
+        await viewModel.SearchCommand.ExecuteAsync(null);
+
+        await viewModel.CopyFullPathCommand.ExecuteAsync(hit);
+
+        Assert.Equal(hit.FullPath, clipboard.Text);
+        Assert.Contains("copied", viewModel.Status.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies platform clipboard failure remains actionable and does not escape the command.</summary>
+    [Fact]
+    public async Task CopyFullPathFailureProducesActionableFallback()
+    {
+        var hit = Hit("C:\\Docs\\tax records.pdf");
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
+            new Launcher(),
+            clipboard: new Clipboard(shouldFail: true))
+        {
+            QueryText = "tax",
+        };
+        await viewModel.SearchCommand.ExecuteAsync(null);
+
+        await viewModel.CopyFullPathCommand.ExecuteAsync(hit);
+
+        Assert.Equal(StatusKind.Warning, viewModel.Status.Kind);
+        Assert.Contains("copy it manually", viewModel.Status.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Verifies privacy inspection reports categories without exposing raw vectors or text.</summary>
     [Fact]
     public async Task InspectIndexedDataShowsCategoriesAndPlainLanguageSemanticPresence()
@@ -470,11 +577,17 @@ public sealed class SemanticSearchViewModelTests
         LastIndexedUtc = DateTimeOffset.UnixEpoch,
     };
 
-    private sealed class Configuration(bool enabled) : IConfigurationService
+    private sealed class Configuration(bool enabled, bool aiSearchEnabled = false) : IConfigurationService
     {
         public ApplicationSettings Current { get; private set; } = new()
         {
             SemanticSearch = new SemanticSearchSettings { Enabled = enabled },
+            Ai = new AiSettings
+            {
+                Enabled = aiSearchEnabled,
+                SearchAssistanceEnabled = aiSearchEnabled,
+                SelectedModel = aiSearchEnabled ? "small-local" : null,
+            },
         };
         public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task SaveAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -568,6 +681,8 @@ public sealed class SemanticSearchViewModelTests
 
         public GraphProjectionCoverage? GraphCoverage { get; init; }
 
+        public AiSearchAssistanceResult AiAssistance { get; init; } = AiSearchAssistanceResult.NotRequested;
+
         public Task<SemanticResult<IReadOnlyList<SemanticSearchHit>>> SearchAsync(
             string query,
             CancellationToken cancellationToken) =>
@@ -594,6 +709,7 @@ public sealed class SemanticSearchViewModelTests
                 new SearchCoverage(0, 0, 0, 0, 0, 0))
             {
                 GraphCoverage = GraphCoverage,
+                AiAssistance = AiAssistance,
             });
         }
     }
@@ -624,6 +740,23 @@ public sealed class SemanticSearchViewModelTests
         {
             Opened.Add(fullPath);
             return Task.FromResult(ExternalLaunchResult.Success("Opened"));
+        }
+    }
+
+    private sealed class Clipboard(bool shouldFail = false) : IClipboardService
+    {
+        public string? Text { get; private set; }
+
+        public Task SetTextAsync(string text, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (shouldFail)
+            {
+                throw new NotSupportedException("Synthetic clipboard is unavailable.");
+            }
+
+            Text = text;
+            return Task.CompletedTask;
         }
     }
 

@@ -53,6 +53,7 @@ public sealed class JsonConfigurationServiceTests
         Assert.False(service.Current.Ai.Enabled);
         Assert.False(service.Current.Ai.FileRenameSuggestionsEnabled);
         Assert.False(service.Current.Ai.FolderStructureSuggestionsEnabled);
+        Assert.False(service.Current.Ai.SearchAssistanceEnabled);
         Assert.False(service.Current.Ai.RequestDiagnosticsEnabled);
         Assert.False(service.Current.Diagnostics.EnableDiagnostics);
         Assert.False(service.Current.Diagnostics.AiDiagnostics);
@@ -135,6 +136,7 @@ public sealed class JsonConfigurationServiceTests
             Assert.Equal(45, service.Current.Ai.RequestTimeoutSeconds);
             Assert.False(service.Current.Ai.FileRenameSuggestionsEnabled);
             Assert.False(service.Current.Ai.FolderStructureSuggestionsEnabled);
+            Assert.False(service.Current.Ai.SearchAssistanceEnabled);
             Assert.False(service.Current.Ai.RequestDiagnosticsEnabled);
             Assert.False(service.Current.Ai.DocumentTextInterpretationEnabled);
             Assert.False(service.Current.Features.ShowAdvancedFeatures);
@@ -328,6 +330,7 @@ public sealed class JsonConfigurationServiceTests
                 Enabled = true,
                 FileRenameSuggestionsEnabled = true,
                 FolderStructureSuggestionsEnabled = false,
+                SearchAssistanceEnabled = true,
                 RequestDiagnosticsEnabled = true,
                 ShowUnredactedDiagnosticContent = true,
                 Endpoint = "http://127.0.0.1:11434",
@@ -412,6 +415,7 @@ public sealed class JsonConfigurationServiceTests
             Assert.Equal(0.41, reader.Current.Features.FilesPageDetailsPanelWidthRatio);
             Assert.True(reader.Current.Ai.FileRenameSuggestionsEnabled);
             Assert.False(reader.Current.Ai.FolderStructureSuggestionsEnabled);
+            Assert.True(reader.Current.Ai.SearchAssistanceEnabled);
             Assert.True(reader.Current.Ai.RequestDiagnosticsEnabled);
             Assert.True(reader.Current.Ai.ShowUnredactedDiagnosticContent);
             Assert.Equal("llama3:latest", reader.Current.Ai.SelectedModel);

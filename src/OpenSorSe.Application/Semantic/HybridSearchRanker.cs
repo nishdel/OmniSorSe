@@ -143,7 +143,7 @@ public sealed class HybridSearchRanker : ISearchRanker
             if (normalizedTopic.Length > 0 &&
                 string.Equals(fields.FileName, normalizedTopic, StringComparison.Ordinal))
             {
-                rankClass = 5;
+                rankClass = 7;
                 literalScore += Add(
                     components,
                     SearchRankingSignalKind.ExactFilename,
@@ -152,8 +152,45 @@ public sealed class HybridSearchRanker : ISearchRanker
                     "Exact filename match",
                     candidate.FileName);
             }
+            else if (normalizedTopic.Length > 0 &&
+                     string.Equals(fields.FileNameStem, normalizedTopic, StringComparison.Ordinal))
+            {
+                rankClass = 6;
+                literalScore += Add(
+                    components,
+                    SearchRankingSignalKind.ExactFilenameStem,
+                    "filename",
+                    800,
+                    "Exact filename match without the extension",
+                    Path.GetFileNameWithoutExtension(candidate.FileName));
+            }
             else
             {
+                if (normalizedTopic.Length >= 2 &&
+                    fields.FileNameStem.StartsWith(normalizedTopic, StringComparison.Ordinal))
+                {
+                    rankClass = 5;
+                    literalScore += Add(
+                        components,
+                        SearchRankingSignalKind.FilenamePrefix,
+                        "filename",
+                        420,
+                        "Filename starts with the Search phrase",
+                        interpretation.TopicText);
+                }
+                else if (normalizedTopic.Length >= 3 &&
+                         fields.FileNameStem.Contains(normalizedTopic, StringComparison.Ordinal))
+                {
+                    rankClass = 4;
+                    literalScore += Add(
+                        components,
+                        SearchRankingSignalKind.FilenameSubstring,
+                        "filename",
+                        320,
+                        "Filename contains the Search phrase",
+                        interpretation.TopicText);
+                }
+
                 if (normalizedTopic.Length >= 3)
                 {
                     var phrase = BestPhraseField(fields, normalizedTopic);
@@ -173,7 +210,7 @@ public sealed class HybridSearchRanker : ISearchRanker
                 var filenameMatches = CountMatches(fields.FileName, tokens);
                 if (filenameMatches > 0)
                 {
-                    rankClass = Math.Max(rankClass, filenameMatches == tokens.Length ? 3 : 2);
+                    rankClass = Math.Max(rankClass, filenameMatches == tokens.Length ? 4 : 2);
                     literalScore += Add(
                         components,
                         SearchRankingSignalKind.FilenameToken,
@@ -575,6 +612,11 @@ public sealed class HybridSearchRanker : ISearchRanker
             return false;
         }
 
+        if (maximumDistance >= 1 && HasSingleAdjacentTransposition(left, right))
+        {
+            return true;
+        }
+
         Span<int> previous = stackalloc int[65];
         Span<int> current = stackalloc int[65];
         for (var column = 0; column <= right.Length; column++)
@@ -606,6 +648,35 @@ public sealed class HybridSearchRanker : ISearchRanker
         }
 
         return previous[right.Length] <= maximumDistance;
+    }
+
+    private static bool HasSingleAdjacentTransposition(string left, string right)
+    {
+        if (left.Length != right.Length || left.Length < 2)
+        {
+            return false;
+        }
+
+        var firstDifference = -1;
+        for (var index = 0; index < left.Length; index++)
+        {
+            if (left[index] == right[index])
+            {
+                continue;
+            }
+
+            if (firstDifference >= 0)
+            {
+                return index == firstDifference + 1 &&
+                    left[firstDifference] == right[index] &&
+                    left[index] == right[firstDifference] &&
+                    left.AsSpan(index + 1).SequenceEqual(right.AsSpan(index + 1));
+            }
+
+            firstDifference = index;
+        }
+
+        return false;
     }
 
     private static double Cosine(IReadOnlyList<float> left, IReadOnlyList<float>? right)
@@ -670,6 +741,7 @@ public sealed class HybridSearchRanker : ISearchRanker
 
     private sealed record CandidateFields(
         string FileName,
+        string FileNameStem,
         IReadOnlyList<string> FileNameTokens,
         string FolderName,
         string Path,
@@ -685,6 +757,7 @@ public sealed class HybridSearchRanker : ISearchRanker
     {
         public static CandidateFields Create(SearchCandidateDocument candidate) => new(
             SearchTextNormalizer.Normalize(candidate.FileName),
+            SearchTextNormalizer.Normalize(System.IO.Path.GetFileNameWithoutExtension(candidate.FileName)),
             SemanticTokenizer.Tokenize(SearchTextNormalizer.Normalize(candidate.FileName), 16),
             SearchTextNormalizer.Normalize(candidate.FolderName),
             SearchTextNormalizer.Normalize(string.Join(' ', candidate.RelativePath, candidate.FullPath)),
@@ -728,6 +801,9 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
             SearchRankingSignalKind.Keyword or
             SearchRankingSignalKind.Path or
             SearchRankingSignalKind.ExactFilename or
+            SearchRankingSignalKind.ExactFilenameStem or
+            SearchRankingSignalKind.FilenamePrefix or
+            SearchRankingSignalKind.FilenameSubstring or
             SearchRankingSignalKind.FilenameToken or
             SearchRankingSignalKind.FuzzyFilename);
         if (component is null)

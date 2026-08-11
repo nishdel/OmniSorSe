@@ -525,7 +525,7 @@
                                       HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel Spacing="9">
-                                <TextBlock Text="Review only. OpenSorSe does not remove copies automatically."
+                                <TextBlock Text="Choose unwanted copies, then review a Change Plan before anything moves. OpenSorSe never removes every known copy."
                                            TextWrapping="Wrap" />
                                 <TextBlock Text="{Binding SelectedGroupPotentialReclaimableText, StringFormat=Space you could save: {0}}"
                                            TextWrapping="Wrap" />
@@ -562,7 +562,25 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <TextBlock Text="{Binding SelectedMemberCountText}"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.LiveSetting="Polite" />
+                                <Border Classes="notice-card">
+                                    <TextBlock Text="Safe removal moves selected copies into a hidden OpenSorSe recovery area under this scan root. It does not permanently delete them or reclaim disk space immediately. A successful move is journalled and can be undone while conflict checks pass."
+                                               TextWrapping="Wrap" />
+                                </Border>
                                 <WrapPanel>
+                                    <Button Margin="0,0,8,8"
+                                            Classes="primary"
+                                            Content="Request safe removal"
+                                            Command="{Binding RequestRemovalPlanCommand}"
+                                            AutomationProperties.Name="Request safe removal Change Plan"
+                                            ToolTip.Tip="Leave at least one copy unselected. You will review the plan before files move." />
+                                    <Button IsVisible="{Binding IsCreatingRemovalPlan}"
+                                            Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Cancel plan creation"
+                                            Command="{Binding CancelRemovalPlanCommand}" />
                                     <Button IsVisible="{Binding IsExactPair}"
                                             Margin="0,0,8,8"
                                             Classes="secondary"

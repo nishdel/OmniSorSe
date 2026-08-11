@@ -15,6 +15,7 @@ public sealed class NotificationCenterViewModel : ViewModelBase, IDisposable
     private readonly ITimer _timer;
     private long _nextIdentifier;
     private NotificationMessage? _selectedNotification;
+    private bool _isOpen;
     private bool _isDisposed;
 
     /// <summary>
@@ -30,8 +31,20 @@ public sealed class NotificationCenterViewModel : ViewModelBase, IDisposable
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _synchronizationContext = SynchronizationContext.Current;
         Notifications = new ReadOnlyObservableCollection<NotificationMessage>(_notifications);
-        _notifications.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNotifications));
+        _notifications.CollectionChanged += (_, _) => NotifyNotificationStateChanged();
         DismissSelectedCommand = new RelayCommand(DismissSelected, () => SelectedNotification is not null);
+        DismissCommand = new RelayCommand<NotificationMessage>(
+            notification =>
+            {
+                if (notification is not null)
+                {
+                    Dismiss(notification.Id);
+                }
+            },
+            notification => notification is not null && _notifications.Contains(notification));
+        ToggleCommand = new RelayCommand(() => IsOpen = !IsOpen, () => HasNotifications);
+        CloseCommand = new RelayCommand(() => IsOpen = false, () => IsOpen);
+        ClearAllCommand = new RelayCommand(ClearAll, () => HasNotifications);
         _timer = _timeProvider.CreateTimer(static state => ((NotificationCenterViewModel)state!).DispatchExpiration(), this, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
@@ -44,6 +57,35 @@ public sealed class NotificationCenterViewModel : ViewModelBase, IDisposable
     /// Gets whether at least one notification is currently displayed.
     /// </summary>
     public bool HasNotifications => _notifications.Count > 0;
+
+    /// <summary>Gets the number of currently visible transient notifications.</summary>
+    public int NotificationCount => _notifications.Count;
+
+    /// <summary>Gets the number of visible warnings and errors.</summary>
+    public int AttentionCount => _notifications.Count(item =>
+        item.Severity is NotificationSeverity.Warning or NotificationSeverity.Error);
+
+    /// <summary>Gets a compact, screen-reader-independent badge label.</summary>
+    public string BadgeText => AttentionCount > 0
+        ? $"⚠ {AttentionCount}"
+        : $"ℹ {NotificationCount}";
+
+    /// <summary>Gets an explicit accessible description of the notification badge.</summary>
+    public string BadgeAutomationText =>
+        $"Open notifications. {NotificationCount} total; {AttentionCount} warning or error.";
+
+    /// <summary>Gets or sets whether the transient notification drawer is open.</summary>
+    public bool IsOpen
+    {
+        get => _isOpen;
+        set
+        {
+            if (SetProperty(ref _isOpen, value && HasNotifications))
+            {
+                CloseCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
 
     /// <summary>
     /// Gets or sets the notification selected for manual dismissal.
@@ -64,6 +106,18 @@ public sealed class NotificationCenterViewModel : ViewModelBase, IDisposable
     /// Gets the command that dismisses the currently selected notification.
     /// </summary>
     public IRelayCommand DismissSelectedCommand { get; }
+
+    /// <summary>Gets the command that dismisses one supplied transient notification.</summary>
+    public IRelayCommand<NotificationMessage> DismissCommand { get; }
+
+    /// <summary>Gets the command that opens or closes the compact notification drawer.</summary>
+    public IRelayCommand ToggleCommand { get; }
+
+    /// <summary>Gets the command that closes the drawer without deleting notifications.</summary>
+    public IRelayCommand CloseCommand { get; }
+
+    /// <summary>Gets the command that dismisses all transient notifications.</summary>
+    public IRelayCommand ClearAllCommand { get; }
 
     /// <summary>
     /// Queues a validated notification and returns its immutable displayed representation.
@@ -159,6 +213,33 @@ public sealed class NotificationCenterViewModel : ViewModelBase, IDisposable
         {
             Dismiss(SelectedNotification.Id);
         }
+    }
+
+    private void ClearAll()
+    {
+        _notifications.Clear();
+        SelectedNotification = null;
+        IsOpen = false;
+    }
+
+    private void NotifyNotificationStateChanged()
+    {
+        if (!HasNotifications)
+        {
+            _isOpen = false;
+            OnPropertyChanged(nameof(IsOpen));
+        }
+
+        OnPropertyChanged(nameof(HasNotifications));
+        OnPropertyChanged(nameof(NotificationCount));
+        OnPropertyChanged(nameof(AttentionCount));
+        OnPropertyChanged(nameof(BadgeText));
+        OnPropertyChanged(nameof(BadgeAutomationText));
+        ToggleCommand.NotifyCanExecuteChanged();
+        CloseCommand.NotifyCanExecuteChanged();
+        ClearAllCommand.NotifyCanExecuteChanged();
+        DismissSelectedCommand.NotifyCanExecuteChanged();
+        DismissCommand.NotifyCanExecuteChanged();
     }
 
     private void DispatchExpiration()

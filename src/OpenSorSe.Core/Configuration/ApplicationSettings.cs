@@ -58,6 +58,7 @@ public sealed class ApplicationSettings
             Enabled = aiEnabled,
             FileRenameSuggestionsEnabled = Ai.FileRenameSuggestionsEnabled,
             FolderStructureSuggestionsEnabled = Ai.FolderStructureSuggestionsEnabled,
+            SearchAssistanceEnabled = Ai.SearchAssistanceEnabled,
             RequestDiagnosticsEnabled = Ai.RequestDiagnosticsEnabled,
             ShowUnredactedDiagnosticContent = Ai.ShowUnredactedDiagnosticContent,
             Endpoint = Ai.Endpoint,
@@ -501,6 +502,8 @@ public enum AiCapability
     FolderStructureSuggestions,
     /// <summary>Review-only interpretation of bounded locally extracted document text.</summary>
     DocumentTextInterpretation,
+    /// <summary>Optional reranking of a bounded set of deterministic local Search results.</summary>
+    SearchAssistance,
 }
 
 /// <summary>
@@ -546,6 +549,12 @@ public sealed class AiSettings
     /// <summary>Gets or initializes whether review-only folder-structure suggestions are enabled.</summary>
     public bool FolderStructureSuggestionsEnabled { get; init; }
 
+    /// <summary>
+    /// Gets or initializes whether an explicit Search request may send its query and a bounded
+    /// candidate summary to the configured Ollama-compatible endpoint for supplemental reranking.
+    /// </summary>
+    public bool SearchAssistanceEnabled { get; init; }
+
     /// <summary>Gets or initializes opt-in, session-only raw AI request diagnostics.</summary>
     public bool RequestDiagnosticsEnabled { get; init; }
 
@@ -585,6 +594,7 @@ public sealed class AiSettings
         AiCapability.FileRenameSuggestions => FileRenameSuggestionsEnabled,
         AiCapability.FolderStructureSuggestions => FolderStructureSuggestionsEnabled,
         AiCapability.DocumentTextInterpretation => DocumentTextInterpretationEnabled,
+        AiCapability.SearchAssistance => SearchAssistanceEnabled,
         _ => false,
     };
 

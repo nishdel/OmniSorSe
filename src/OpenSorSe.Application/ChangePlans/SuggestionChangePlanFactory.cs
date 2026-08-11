@@ -29,8 +29,24 @@ public interface ISuggestionChangePlanFactory
         CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Creates a reviewable, non-destructive plan for moving unwanted exact copies out of normal scan results.
+/// </summary>
+public interface IDuplicateRemovalPlanFactory
+{
+    /// <summary>
+    /// Creates a Change Plan that preserves at least one known member and moves selected copies into the
+    /// scan root's application-owned recovery area. The method never executes filesystem changes.
+    /// </summary>
+    Task<ChangePlan> CreateDuplicateRemovalPlanAsync(
+        IReadOnlyList<ResultFile> filesToRemove,
+        IReadOnlyList<ResultFile> filesToKeep,
+        string? sourceScanId,
+        CancellationToken cancellationToken);
+}
+
 /// <summary>Keeps AI and rule output upstream of the generic plan validator and executor.</summary>
-public sealed class SuggestionChangePlanFactory : ISuggestionChangePlanFactory
+public sealed class SuggestionChangePlanFactory : ISuggestionChangePlanFactory, IDuplicateRemovalPlanFactory
 {
     private readonly IChangePlanFactory _factory;
 
@@ -160,6 +176,77 @@ public sealed class SuggestionChangePlanFactory : ISuggestionChangePlanFactory
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task<ChangePlan> CreateDuplicateRemovalPlanAsync(
+        IReadOnlyList<ResultFile> filesToRemove,
+        IReadOnlyList<ResultFile> filesToKeep,
+        string? sourceScanId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(filesToRemove);
+        ArgumentNullException.ThrowIfNull(filesToKeep);
+        if (filesToRemove.Count == 0)
+        {
+            throw new ArgumentException("Select at least one unwanted duplicate copy.", nameof(filesToRemove));
+        }
+
+        if (filesToKeep.Count == 0)
+        {
+            throw new ArgumentException("At least one known duplicate copy must remain.", nameof(filesToKeep));
+        }
+
+        var allFiles = filesToRemove.Concat(filesToKeep).ToArray();
+        if (allFiles.Any(file => file is null) ||
+            allFiles.Select(file => file.Id).Distinct(StringComparer.Ordinal).Count() != allFiles.Length)
+        {
+            throw new ArgumentException("Duplicate removal requires distinct known files from one result group.");
+        }
+
+        var groupIds = allFiles.Select(file => file.DuplicateGroupId).Distinct(StringComparer.Ordinal).ToArray();
+        if (groupIds.Length != 1 || string.IsNullOrWhiteSpace(groupIds[0]))
+        {
+            throw new ArgumentException("Duplicate removal is limited to one verified exact-copy group.");
+        }
+
+        var root = CommonRoot(allFiles.Select(file => file.FullPath));
+        var recoveryRoot = Path.Combine(root, ".opensorse", "duplicate-recovery", SafePathSegment(groupIds[0]!));
+        var actions = filesToRemove.Select((file, index) => new ChangeActionProposal(
+            ChangeActionType.MoveFile,
+            file.FullPath,
+            Path.Combine(recoveryRoot, SafePathSegment(file.Id), file.DisplayFileName),
+            ChangeSuggestionSource.DuplicateAnalysis,
+            $"The user selected this exact copy for safe removal; {filesToKeep.Count} known identical copy or copies will remain.",
+            index + 1,
+            file.Id,
+            file.SizeInBytes,
+            file.LastWriteTimeUtc)).ToArray();
+        return _factory.CreateAsync(
+            new ChangePlanCreationRequest(
+                root,
+                sourceScanId,
+                actions,
+                [
+                    "Duplicate removal moves selected copies into the hidden .opensorse/duplicate-recovery area; it does not permanently delete them or immediately reclaim disk space.",
+                    "Successful moves are recorded in the Operation Journal and can be undone while normal conflict checks still pass.",
+                ]),
+            cancellationToken);
+    }
+
+    private static string SafePathSegment(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
+        var characters = value
+            .Take(80)
+            .Select(character => invalid.Contains(character) || char.IsControl(character) || character is '/' or '\\'
+                ? '-'
+                : character)
+            .ToArray();
+        var segment = new string(characters).Trim().TrimEnd('.');
+        return string.IsNullOrWhiteSpace(segment) || segment is "." or ".."
+            ? "copy"
+            : segment;
+    }
+
     internal static string CommonRoot(IEnumerable<string> filePaths)
     {
         var directories = filePaths
@@ -189,4 +276,3 @@ public sealed class SuggestionChangePlanFactory : ISuggestionChangePlanFactory
         return root;
     }
 }
-

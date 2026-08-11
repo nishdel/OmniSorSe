@@ -99,9 +99,12 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         UserTags = new ReadOnlyObservableCollection<ResultTagRow>(_userTags);
         ContentMetadata = new ReadOnlyObservableCollection<ExtractedMetadataField>(_contentMetadata);
         _contentStore = contentStore;
-        DuplicateReview = new DuplicateReviewViewModel(externalFileLauncher);
+        DuplicateReview = new DuplicateReviewViewModel(
+            externalFileLauncher,
+            changePlanFactory as IDuplicateRemovalPlanFactory);
         DuplicateReview.ShowGroupFilesRequested += OnShowGroupFilesRequested;
         DuplicateReview.BackToExplorerRequested += OnBackToExplorerRequested;
+        DuplicateReview.ChangePlanCreated += OnChangePlanCreated;
         AiSuggestions = new AiSuggestionsViewModel(
             configurationService,
             aiSuggestionService,
@@ -721,6 +724,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     {
         DuplicateReview.ShowGroupFilesRequested -= OnShowGroupFilesRequested;
         DuplicateReview.BackToExplorerRequested -= OnBackToExplorerRequested;
+        DuplicateReview.ChangePlanCreated -= OnChangePlanCreated;
         DuplicateReview.Dispose();
         var contentCancellation = Interlocked.Exchange(ref _contentDetailsCancellation, null);
         contentCancellation?.Cancel();

@@ -60,6 +60,42 @@ public sealed class NotificationCenterViewModelTests
         Assert.Null(viewModel.SelectedNotification);
     }
 
+    /// <summary>Verifies the compact badge opens and closes without deleting transient evidence.</summary>
+    [Fact]
+    public void Drawer_OpenCloseAndEscapeCommandPreserveNotifications()
+    {
+        using var viewModel = new NotificationCenterViewModel();
+        viewModel.Publish(new NotificationRequest(NotificationSeverity.Warning, "Warning"));
+        viewModel.Publish(new NotificationRequest(NotificationSeverity.Error, "Error"));
+
+        Assert.Equal("⚠ 2", viewModel.BadgeText);
+        viewModel.ToggleCommand.Execute(null);
+        Assert.True(viewModel.IsOpen);
+
+        viewModel.CloseCommand.Execute(null);
+
+        Assert.False(viewModel.IsOpen);
+        Assert.Equal(2, viewModel.Notifications.Count);
+    }
+
+    /// <summary>Verifies individual and clear-all dismissal affect only the transient queue.</summary>
+    [Fact]
+    public void DismissAndClearAll_UpdateCountsAndCloseDrawer()
+    {
+        using var viewModel = new NotificationCenterViewModel();
+        var information = viewModel.Publish(new NotificationRequest(NotificationSeverity.Information, "Information"));
+        viewModel.Publish(new NotificationRequest(NotificationSeverity.Warning, "Warning"));
+        viewModel.ToggleCommand.Execute(null);
+
+        viewModel.DismissCommand.Execute(information);
+
+        Assert.Equal(1, viewModel.NotificationCount);
+        Assert.Equal(1, viewModel.AttentionCount);
+        viewModel.ClearAllCommand.Execute(null);
+        Assert.Empty(viewModel.Notifications);
+        Assert.False(viewModel.IsOpen);
+    }
+
     /// <summary>
     /// Verifies invalid notification requests are rejected before they enter the queue.
     /// </summary>

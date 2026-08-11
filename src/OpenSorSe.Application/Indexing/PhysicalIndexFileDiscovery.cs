@@ -11,7 +11,7 @@ namespace OpenSorSe.Application.Indexing;
 public sealed class PhysicalIndexFileDiscovery : IIndexFileDiscovery
 {
     private static readonly HashSet<string> GeneratedDirectoryNames = new(
-        [".git", ".svn", ".hg", ".vs", ".idea", "bin", "obj", "node_modules", "TestResults", ".artifacts"],
+        [".git", ".svn", ".hg", ".vs", ".idea", ".opensorse", "bin", "obj", "node_modules", "TestResults", ".artifacts"],
         StringComparer.OrdinalIgnoreCase);
 
     private readonly IFileIdentityProvider _identityProvider;

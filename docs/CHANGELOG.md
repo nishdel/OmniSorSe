@@ -7,6 +7,54 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v2.1.0
+
+Release branch: `v2.1-search-ai-quality`. Published as the Search & AI Quality
+release after local and hosted release gates.
+
+### Added
+
+- Explicit exact filename-stem, filename-prefix, and filename-substring ranking
+  signals plus bounded adjacent-letter transposition matching.
+- Default-off, per-query local-AI ordering for at most 12 already-ranked known
+  results, with strict schema/identity validation and deterministic tier
+  fencing.
+- Provider-confirmed Ollama running-model discovery with graceful installed-
+  model fallback when runtime status is unavailable.
+- Cross-platform **Copy full path** Search result action and truthful
+  indeterminate indexing progress while discovery has no known total.
+- Monotonic live scan elapsed time that freezes at terminal operation state.
+- Reviewable safe duplicate-removal plans that preserve a known keeper and move
+  selected copies into an excluded recovery area through the existing executor.
+- Compact dismissible categorized notifications without deleting durable
+  diagnostic evidence.
+- Contextual Help topics for the current product, including Watched Folders,
+  Workflows, Related Files, Privacy, and Troubleshooting.
+
+### Changed
+
+- Filename matches are stronger and more explicit without allowing one weak
+  filename word to overwhelm a multi-field or exact document-text match.
+- Missing persisted Ollama models fall back to a deterministic installed model
+  in the editable Settings draft with a clear save requirement.
+- Ollama endpoint, timeout, missing-model, malformed-response, and cancellation
+  outcomes preserve ordinary deterministic Search.
+- Local file-analysis/indexing settings are separate from optional AI settings;
+  only verified loopback endpoints are labelled local.
+- The ordinary graph-navigation label is **Related Files** and Search shows
+  **Hybrid** or **Hybrid + AI assistance** without changing internal contracts.
+
+### Safety and compatibility
+
+- AI cannot discover or invent files, cross deterministic relevance tiers,
+  modify scores, or mutate original files.
+- Search assistance sends no absolute paths, vectors, complete index, or whole
+  documents. A configured non-local endpoint receives the explicitly enabled
+  bounded query/candidate text.
+- No database/index schema or source-file mutation boundary changed.
+- Duplicate recovery moves remain reviewable, journalled, and undoable; they do
+  not permanently delete data or immediately reclaim disk space.
+
 ## v2.0.0
 
 Release history: v1.7 Deep Indexing, v1.8 Search, v1.9 Relationships/Smart

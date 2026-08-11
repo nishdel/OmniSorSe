@@ -179,6 +179,46 @@ public sealed class SearchServiceResilienceTests
         Assert.Empty(result.Hits);
     }
 
+    /// <summary>Verifies the service invokes the optional assistant only for an explicit request.</summary>
+    [Fact]
+    public async Task ExplicitAiAssistanceUsesOnlyRankedLocalCandidates()
+    {
+        var assistant = new RecordingAssistant();
+        var service = new SemanticSearchService(
+            new Configuration(),
+            Embeddings,
+            new Store([Legacy("report-one.txt"), Legacy("report-two.txt")]),
+            aiSearchAssistant: assistant);
+
+        var result = await service.SearchAsync(
+            new SearchRequest("report") { UseAiAssistance = true },
+            CancellationToken.None);
+
+        Assert.Equal(AiSearchAssistanceState.Applied, result.AiAssistance.State);
+        Assert.Equal(2, assistant.Candidates.Count);
+        Assert.Equal(
+            assistant.Candidates.Reverse().Select(item => item.Document.FullPath),
+            result.Hits.Select(item => item.FullPath));
+    }
+
+    /// <summary>Verifies missing optional AI composition never prevents deterministic Search.</summary>
+    [Fact]
+    public async Task MissingAiAssistantFallsBackWithoutLosingResults()
+    {
+        var service = new SemanticSearchService(
+            new Configuration(),
+            Embeddings,
+            new Store([Legacy("fallback-report.txt")]));
+
+        var result = await service.SearchAsync(
+            new SearchRequest("fallback-report") { UseAiAssistance = true },
+            CancellationToken.None);
+
+        Assert.Equal(SemanticState.Ready, result.State);
+        Assert.Single(result.Hits);
+        Assert.Equal(AiSearchAssistanceState.Unavailable, result.AiAssistance.State);
+    }
+
     private static SemanticIndexEntry Legacy(string fileName, string? fullPath = null) => new(
         fullPath ?? Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", fileName)),
         "source",
@@ -385,6 +425,28 @@ public sealed class SearchServiceResilienceTests
                 Values.Add(field.Name);
                 Values.Add(field.Value);
             }
+        }
+    }
+
+    private sealed class RecordingAssistant : IAiSearchAssistant
+    {
+        public IReadOnlyList<RankedSearchCandidate> Candidates { get; private set; } = [];
+
+        public Task<AiSearchRerankResult> RerankAsync(
+            SearchInterpretation interpretation,
+            IReadOnlyList<RankedSearchCandidate> candidates,
+            AiSettings settings,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Candidates = candidates;
+            return Task.FromResult(new AiSearchRerankResult(
+                candidates.Reverse().ToArray(),
+                new AiSearchAssistanceResult(
+                    AiSearchAssistanceState.Applied,
+                    "Synthetic known-result order applied.",
+                    candidates.Count,
+                    true)));
         }
     }
 }

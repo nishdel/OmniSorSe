@@ -136,12 +136,15 @@ the request crossing layers.
 4. `HybridSearchRanker` evaluates explicit signals, exact/literal tiers,
    bounded typo candidates, optional semantic similarity, completeness,
    recency, and deterministic ties.
-5. `SearchSnippetService` creates a bounded source-labelled snippet from
+5. `SearchSnippetFactory` creates a bounded source-labelled snippet from
    content already present in the candidate. It never extracts a source file at
    query time.
 6. The ViewModel projects actual components into **Why this result?** and
    displays coverage limitations.
-7. Inspection/forget/clear/policy/repair commands use `IIndexPrivacyService`;
+7. When explicitly enabled, `SemanticSearchService` passes at most 12 already
+   ranked candidates to `IAiSearchAssistant`. The assistant may reorder only
+   within deterministic tiers; failure returns the original candidates.
+8. Inspection/forget/clear/policy/repair commands use `IIndexPrivacyService`;
    `BackgroundIndexingService` coordinates cancellation and durable repair,
    while `SqliteDeepIndexStore` owns transactional provider state.
 

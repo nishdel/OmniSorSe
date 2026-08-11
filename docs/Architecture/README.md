@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the current
-unmerged v2.0 implementation candidate plus inherited v1.9 system and take
+integrated v2.0 implementation plus inherited v1.9 system and take
 precedence when an older document uses future-oriented
 language.
 
@@ -29,6 +29,9 @@ compatibility, and recovery.
 - `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: implemented-candidate
   graph/decision isolation, conservative identity, deterministic projection,
   concurrency, bounds, privacy, and mandatory RC contract.
+- `06_Search/12_v2.1_Search_AI_Quality.md`: current development boundary for
+  filename tiers, bounded optional Ollama reranking, model runtime discovery,
+  fallback, indexing clarity, result commands, and compatibility.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
@@ -50,7 +53,7 @@ compatibility, and recovery.
 - `10_Plugins/06_v1.4_Plugin_Foundation.md`: current plugin host and SDK.
 - `99_Appendix/ADR-001` through `ADR-003`: accepted architectural decisions.
 
-## v2.0 candidate architecture
+## v2.0 implemented architecture
 
 - `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: accepted isolated,
   deterministic, bounded Knowledge Graph design implemented by the unmerged

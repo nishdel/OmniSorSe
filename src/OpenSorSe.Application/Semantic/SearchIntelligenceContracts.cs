@@ -85,6 +85,12 @@ public sealed record SearchRequest(
     bool IncludeRelationshipContext = true)
 {
     /// <summary>
+    /// Gets whether this explicit request may ask the optional configured local-AI provider to
+    /// rerank a bounded set of already-known local results. Deterministic Search remains authoritative.
+    /// </summary>
+    public bool UseAiAssistance { get; init; }
+
+    /// <summary>
     /// Gets whether the optional v2.0 Knowledge Graph may add bounded one-hop
     /// context. This is independent from the existing v1.9 relationship context.
     /// </summary>
@@ -103,6 +109,12 @@ public enum SearchRankingSignalKind
 {
     /// <summary>The complete filename matched.</summary>
     ExactFilename,
+    /// <summary>The query exactly matched the filename without its extension.</summary>
+    ExactFilenameStem,
+    /// <summary>The normalized filename begins with the complete topic phrase.</summary>
+    FilenamePrefix,
+    /// <summary>The normalized filename contains the complete topic phrase.</summary>
+    FilenameSubstring,
     /// <summary>The complete topic phrase matched a literal field.</summary>
     ExactPhrase,
     /// <summary>Filename tokens matched.</summary>
@@ -145,6 +157,8 @@ public enum SearchRankingSignalKind
     IndexingCompleteness,
     /// <summary>An evidence-backed bounded Knowledge Graph edge contributed.</summary>
     GraphContext,
+    /// <summary>Optional local AI changed order only among equally strong deterministic tiers.</summary>
+    AiAssistedOrder,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -335,11 +349,65 @@ public sealed record SearchExecutionResult(
     SearchInterpretation Interpretation,
     SearchCoverage Coverage)
 {
+    /// <summary>Gets the outcome of the optional bounded AI-assistance layer.</summary>
+    public AiSearchAssistanceResult AiAssistance { get; init; } = AiSearchAssistanceResult.NotRequested;
+
     /// <summary>
     /// Gets graph-projection coverage independently from deep-index Search coverage.
     /// A null value means no graph provider was configured.
     /// </summary>
     public GraphProjectionCoverage? GraphCoverage { get; init; }
+}
+
+/// <summary>Identifies the user-visible outcome of optional local-AI Search assistance.</summary>
+public enum AiSearchAssistanceState
+{
+    /// <summary>The Search request did not ask for AI assistance.</summary>
+    NotRequested,
+    /// <summary>The explicit setting or capability gate is disabled.</summary>
+    Disabled,
+    /// <summary>The configured provider or selected model was unavailable.</summary>
+    Unavailable,
+    /// <summary>The provider returned invalid or ungrounded data and local order was preserved.</summary>
+    InvalidResponse,
+    /// <summary>The bounded request completed but did not change deterministic order.</summary>
+    NoChange,
+    /// <summary>The bounded request safely changed order within deterministic relevance tiers.</summary>
+    Applied,
+}
+
+/// <summary>Describes optional AI assistance without exposing prompts or private candidate text.</summary>
+public sealed record AiSearchAssistanceResult(
+    AiSearchAssistanceState State,
+    string Message,
+    int CandidateCount,
+    bool WasApplied)
+{
+    /// <summary>Gets the default result used by ordinary deterministic Search.</summary>
+    public static AiSearchAssistanceResult NotRequested { get; } = new(
+        AiSearchAssistanceState.NotRequested,
+        "AI assistance was not requested. Deterministic local Search was used.",
+        0,
+        false);
+}
+
+/// <summary>Contains safely reranked candidates and the assistance outcome.</summary>
+public sealed record AiSearchRerankResult(
+    IReadOnlyList<RankedSearchCandidate> Candidates,
+    AiSearchAssistanceResult Assistance);
+
+/// <summary>Optionally reranks a bounded candidate set without discovering or inventing files.</summary>
+public interface IAiSearchAssistant
+{
+    /// <summary>
+    /// May reorder supplied candidates within deterministic relevance tiers. Implementations must
+    /// return only the supplied candidates and preserve their deterministic scores.
+    /// </summary>
+    Task<AiSearchRerankResult> RerankAsync(
+        SearchInterpretation interpretation,
+        IReadOnlyList<RankedSearchCandidate> candidates,
+        AiSettings settings,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>Interprets conservative local filters without calling AI or a storage provider.</summary>
