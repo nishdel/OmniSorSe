@@ -9,6 +9,7 @@ on:
       - v1.9-relationships-context
       - v2.0-knowledge-graph-design
       - v2.0-knowledge-graph
+      - v2.1-search-ai-quality
   pull_request:
 
 permissions:

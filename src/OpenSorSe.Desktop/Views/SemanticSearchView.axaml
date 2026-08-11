@@ -12,6 +12,12 @@
                 <TextBlock Classes="page-title" Text="Search" />
                 <TextBlock Classes="page-subtitle"
                            Text="Find files using names, metadata, document text, tags, and related concepts." />
+                <TextBlock Text="{Binding SearchModeText}"
+                           FontWeight="SemiBold"
+                           AutomationProperties.Name="Current Search mode" />
+                <TextBlock Classes="page-subtitle"
+                           Text="Hybrid Search combines filenames, paths, metadata, and indexed content locally. Optional AI can refine known results but does not perform the underlying file search."
+                           TextWrapping="Wrap" />
             </StackPanel>
             <Button Grid.Column="1"
                     Classes="help"
@@ -53,10 +59,23 @@
                           IsChecked="{Binding IncludeRelationshipContext, Mode=TwoWay}"
                           AutomationProperties.Name="Include relationship context in Search"
                           AutomationProperties.HelpText="When enabled, Search may add directly related files below exact and literal matches. Every contextual result includes retained evidence." />
-                <CheckBox Content="Include bounded Knowledge Graph context"
+                <CheckBox Content="Include broader Related Files context"
                           IsChecked="{Binding IncludeGraphContext, Mode=TwoWay}"
-                          AutomationProperties.Name="Include Knowledge Graph context in Search"
+                          AutomationProperties.Name="Include broader Related Files context in Search"
                           AutomationProperties.HelpText="When enabled, Search may add privacy-filtered files connected by current, validated graph evidence. Exact filename and literal matches remain higher priority." />
+                <CheckBox Content="Use optional local AI to refine known results"
+                          IsChecked="{Binding UseAiAssistance, Mode=TwoWay}"
+                          IsEnabled="{Binding IsAiAssistanceAvailable}"
+                          AutomationProperties.Name="Use optional local AI assistance for this Search"
+                          AutomationProperties.HelpText="Ollama may reorder at most 12 already-known results within equally strong deterministic match tiers. It cannot add files."
+                          ToolTip.Tip="Optional local AI can refine a bounded set of known results. Search remains fully usable without it." />
+                <TextBlock Text="{Binding AiAssistanceAvailabilityText}"
+                           Classes="page-subtitle"
+                           TextWrapping="Wrap" />
+                <TextBlock Text="{Binding AiAssistanceText}"
+                           Classes="page-subtitle"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite" />
                 <TextBlock Text="{Binding GraphCoverageText}"
                            Classes="page-subtitle"
                            TextWrapping="Wrap"
@@ -153,6 +172,7 @@
                 <ProgressBar Minimum="0"
                              Maximum="1"
                              Value="{Binding BackgroundProgressValue}"
+                             IsIndeterminate="{Binding IsBackgroundProgressIndeterminate}"
                              AutomationProperties.Name="Overall background indexing progress"
                              AutomationProperties.HelpText="{Binding ProcessedCountText}" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
@@ -432,6 +452,13 @@
                                                     Content="Open folder"
                                                     Command="{Binding DataContext.OpenContainingFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
+                                                    x:CompileBindings="False" />
+                                            <Button Margin="8,0,0,0"
+                                                    Classes="secondary"
+                                                    Content="Copy full path"
+                                                    Command="{Binding DataContext.CopyFullPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding FileName, StringFormat='Copy full path for {0}'}"
                                                     x:CompileBindings="False" />
                                             <Button Margin="8,0,0,0"
                                                     Classes="secondary"

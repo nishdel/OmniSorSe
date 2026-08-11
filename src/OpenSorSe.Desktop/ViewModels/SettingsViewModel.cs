@@ -23,6 +23,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IOcrService? _ocrService;
     private readonly ObservableCollection<string> _availableAiModels = [];
     private readonly HashSet<string> _installedAiModelIds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AiModelRuntimeState> _aiModelRuntimeStates = new(StringComparer.Ordinal);
     private SettingsDraft _draft;
     private bool _restartRequired;
     private bool _isAiBusy;
@@ -33,6 +34,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private long _aiOperationVersion;
     private bool _isDisposed;
     private bool _hasCompletedModelDiscovery;
+    private bool _isAiRuntimeStateAvailable;
     private AiReadinessState _aiReadinessState = AiReadinessState.NotConfigured;
     private string _statusText = "Ready";
     private StatusPresentation _status = StatusPresentation.Information("Ready");
@@ -171,12 +173,19 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         : !HasCompletedModelDiscovery
             ? $"Configured model: {Draft.SelectedAiModel}. Refresh models to verify that it is installed."
             : IsSelectedModelAvailable
-                ? $"Selected model '{Draft.SelectedAiModel}' is installed."
+                ? _aiModelRuntimeStates.GetValueOrDefault(Draft.SelectedAiModel) == AiModelRuntimeState.Running
+                    ? $"Selected model '{Draft.SelectedAiModel}' is installed and currently running."
+                    : _isAiRuntimeStateAvailable
+                        ? $"Selected model '{Draft.SelectedAiModel}' is installed and available; Ollama does not report it as currently running."
+                        : $"Selected model '{Draft.SelectedAiModel}' is installed. Its current runtime state could not be checked."
                 : $"Selected model '{Draft.SelectedAiModel}' is not in the discovered installed-model list. Select an installed model.";
 
     /// <summary>Gets whether normal AI setup is ready for at least one enabled capability.</summary>
     public bool IsAiSetupReady => Draft.AiEnabled && IsSelectedModelAvailable &&
-        (Draft.FileRenameSuggestionsEnabled || Draft.FolderStructureSuggestionsEnabled);
+        (Draft.FileRenameSuggestionsEnabled ||
+            Draft.FolderStructureSuggestionsEnabled ||
+            Draft.DocumentTextInterpretationEnabled ||
+            Draft.SearchAssistanceEnabled);
 
     /// <summary>Gets concise setup readiness guidance.</summary>
     public string AiSetupReadinessText => IsAiSetupReady
@@ -186,6 +195,25 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets timeout range guidance for predictable validation.</summary>
     public string AiRequestTimeoutValidation =>
         $"Enter a whole number from {AiSettings.MinimumRequestTimeoutSeconds} through {AiSettings.MaximumRequestTimeoutSeconds} seconds.";
+
+    /// <summary>Gets a conservative privacy classification for the configured AI endpoint.</summary>
+    public string AiEndpointPrivacyText
+    {
+        get
+        {
+            if (!Uri.TryCreate(Draft.AiEndpoint?.Trim(), UriKind.Absolute, out var endpoint) ||
+                endpoint.Scheme is not ("http" or "https") ||
+                string.IsNullOrWhiteSpace(endpoint.Host) ||
+                !string.IsNullOrEmpty(endpoint.UserInfo))
+            {
+                return "Enter a valid HTTP or HTTPS endpoint before using AI assistance.";
+            }
+
+            return endpoint.IsLoopback
+                ? "Local endpoint — AI request information stays on this computer when Ollama is running locally."
+                : "Remote endpoint — information supplied to AI requests may leave this computer.";
+        }
+    }
 
     /// <summary>
     /// Gets whether saved settings require application restart to reconfigure active services.
@@ -832,20 +860,28 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     private void PublishAiConnection(AiConnectionResult result, bool publishModels)
     {
+        string? replacedModel = null;
         if (publishModels)
         {
+            var previouslySelectedModel = Draft.SelectedAiModel;
             _installedAiModelIds.Clear();
+            _aiModelRuntimeStates.Clear();
             _availableAiModels.Clear();
             foreach (var model in result.Models)
             {
                 _installedAiModelIds.Add(model.Id);
+                _aiModelRuntimeStates[model.Id] = model.RuntimeState;
                 _availableAiModels.Add(model.Id);
             }
 
+            _isAiRuntimeStateAvailable = result.RuntimeStateAvailable;
             _hasCompletedModelDiscovery = true;
-            if (!string.IsNullOrWhiteSpace(Draft.SelectedAiModel) && !_installedAiModelIds.Contains(Draft.SelectedAiModel))
+            if (!string.IsNullOrWhiteSpace(previouslySelectedModel) &&
+                !_installedAiModelIds.Contains(previouslySelectedModel) &&
+                _availableAiModels.Count > 0)
             {
-                _availableAiModels.Insert(0, Draft.SelectedAiModel);
+                replacedModel = previouslySelectedModel;
+                Draft.SelectedAiModel = _availableAiModels[0];
             }
         }
 
@@ -859,7 +895,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             else if (_installedAiModelIds.Contains(Draft.SelectedAiModel))
             {
                 AiReadinessState = AiReadinessState.Ready;
-                SetAiStatus(AiAvailabilityState.ModelSelected, $"Local AI is ready with '{Draft.SelectedAiModel}'.");
+                SetAiStatus(
+                    AiAvailabilityState.ModelSelected,
+                    replacedModel is null
+                        ? $"Local AI is ready with '{Draft.SelectedAiModel}'."
+                        : $"The previously selected model '{replacedModel}' is no longer installed. " +
+                          $"Using '{Draft.SelectedAiModel}' for this draft; save Settings to keep the fallback.");
             }
             else
             {
@@ -920,6 +961,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         if (eventArgs.PropertyName is nameof(SettingsDraft.SelectedAiModel)
             or nameof(SettingsDraft.FileRenameSuggestionsEnabled)
             or nameof(SettingsDraft.FolderStructureSuggestionsEnabled)
+            or nameof(SettingsDraft.DocumentTextInterpretationEnabled)
+            or nameof(SettingsDraft.SearchAssistanceEnabled)
             or nameof(SettingsDraft.AiRequestTimeoutText))
         {
             if (eventArgs.PropertyName is nameof(SettingsDraft.SelectedAiModel))
@@ -934,6 +977,23 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                         : $"Model changed to '{Draft.SelectedAiModel}'. Save settings, then retry the connection.");
             }
 
+            NotifyAiReadinessChanged();
+        }
+
+        if (eventArgs.PropertyName == nameof(SettingsDraft.AiEndpoint))
+        {
+            _hasCompletedModelDiscovery = false;
+            _isAiRuntimeStateAvailable = false;
+            _installedAiModelIds.Clear();
+            _aiModelRuntimeStates.Clear();
+            _availableAiModels.Clear();
+            AiReadinessState = Draft.AiEnabled ? AiReadinessState.NotChecked : AiReadinessState.NotConfigured;
+            SetAiStatus(
+                Draft.AiEnabled ? AiAvailabilityState.Unavailable : AiAvailabilityState.Disabled,
+                Draft.AiEnabled
+                    ? "AI endpoint changed. Retry the connection and refresh installed models."
+                    : "AI assistance is disabled until enabled and configured.");
+            OnPropertyChanged(nameof(AiEndpointPrivacyText));
             NotifyAiReadinessChanged();
         }
     }
@@ -961,12 +1021,15 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsAiSetupReady));
         OnPropertyChanged(nameof(AiSetupReadinessText));
         OnPropertyChanged(nameof(AiRequestTimeoutValidation));
+        OnPropertyChanged(nameof(AiEndpointPrivacyText));
         OnPropertyChanged(nameof(AiReadinessText));
     }
 
     private static string FriendlyAiMessage(AiAvailabilityState state, string fallback) => state switch
     {
-        AiAvailabilityState.Unavailable => "Your local AI is not running. Start Ollama, then retry.",
+        AiAvailabilityState.Unavailable => string.IsNullOrWhiteSpace(fallback)
+            ? "Ollama could not be reached at the configured endpoint. Search remains available without AI assistance."
+            : fallback,
         AiAvailabilityState.RequestCancelled => "Connection check cancelled. You can retry.",
         AiAvailabilityState.NoModelsAvailable => "Ollama is running, but no installed models were found.",
         AiAvailabilityState.ModelUnavailable => "The selected model is not installed.",

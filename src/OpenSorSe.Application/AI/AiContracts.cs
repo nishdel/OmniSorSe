@@ -51,6 +51,8 @@ public enum AiSuggestionKind
     FolderStructure,
     /// <summary>Interprets bounded locally extracted document text for review.</summary>
     DocumentTextInterpretation,
+    /// <summary>Reranks only a bounded set of already-known deterministic Search results.</summary>
+    SearchReranking,
 }
 
 /// <summary>Identifies truthful progress stages for one explicit AI request.</summary>
@@ -140,8 +142,24 @@ public enum AiSuggestionDecisionOutcome
     Edited,
 }
 
+/// <summary>Identifies provider-reported runtime information for one installed model.</summary>
+public enum AiModelRuntimeState
+{
+    /// <summary>The model is installed; the provider did not report it as currently running.</summary>
+    Available,
+    /// <summary>The provider explicitly reported the model as currently loaded and running.</summary>
+    Running,
+}
+
 /// <summary>Represents a model discovered from an optional AI provider.</summary>
-public sealed record AiModel(string Id, string DisplayName);
+public sealed record AiModel(string Id, string DisplayName)
+{
+    /// <summary>
+    /// Gets the runtime state supported by the provider. Ollama exposes installed and running
+    /// models, but not a reliable intermediate loading state, so OpenSorSe does not invent one.
+    /// </summary>
+    public AiModelRuntimeState RuntimeState { get; init; } = AiModelRuntimeState.Available;
+}
 
 /// <summary>Represents a user-safe provider connection result.</summary>
 public sealed record AiConnectionResult(
@@ -160,6 +178,9 @@ public sealed record AiConnectionResult(
 
     /// <summary>Gets the concrete request duration.</summary>
     public TimeSpan? Elapsed { get; init; }
+
+    /// <summary>Gets whether provider runtime-state discovery completed successfully.</summary>
+    public bool RuntimeStateAvailable { get; init; }
 }
 
 /// <summary>Describes safe metadata for one explicit file-rename request.</summary>
@@ -290,7 +311,8 @@ public sealed record AiProviderGenerationRequest(
     public string SystemPrompt { get; init; } =
         Kind is AiSuggestionKind.FileRename or
             AiSuggestionKind.FolderStructure or
-            AiSuggestionKind.DocumentTextInterpretation
+            AiSuggestionKind.DocumentTextInterpretation or
+            AiSuggestionKind.SearchReranking
             ? AiStructuredOutputContracts.GetSystemPrompt(Kind)
             : string.Empty;
 

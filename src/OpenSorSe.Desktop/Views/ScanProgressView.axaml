@@ -24,7 +24,7 @@
             <TextBlock Grid.Row="2" Text="Folders scanned" FontWeight="SemiBold" />
             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FoldersScanned}" />
             <TextBlock Grid.Row="3" Text="Elapsed" FontWeight="SemiBold" />
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Elapsed}" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ElapsedText}" />
         </Grid>
         <Button Content="Cancel scan" IsEnabled="{Binding IsActive}" Click="OnCancelClick"
                 AutomationProperties.Name="Cancel scan"

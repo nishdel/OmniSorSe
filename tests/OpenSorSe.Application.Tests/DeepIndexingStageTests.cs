@@ -250,6 +250,7 @@ public sealed class DeepIndexingStageTests
         fixture.File("keep.txt", string.Empty);
         fixture.File("ignore.tmp", "temporary");
         fixture.File(Path.Combine("bin", "generated.dll"), "binary");
+        fixture.File(Path.Combine(".opensorse", "duplicate-recovery", "copy.txt"), "recovery");
         var discovery = new PhysicalIndexFileDiscovery(
             FileIdentityProviderFactory.CreateCurrent(),
             PlatformServices.CurrentPathSemantics);

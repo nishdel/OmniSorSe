@@ -2,12 +2,12 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** OpenSorSe v2.0.0 release source
+**Current source:** OpenSorSe v2.1.0 release source
 
 **Last reviewed:** 2026-08-10
 
 OpenSorSe is a Windows-first desktop application with a conservative Linux x64
-source-build preview. v2.0.0 adds native Intel/Apple Silicon macOS packages and
+source-build preview. v2.0.0 added native Intel/Apple Silicon macOS packages and
 package startup/shutdown probes while retaining conservative, fail-closed
 mutation limits. Native packaging is not evidence of broad interactive or
 filesystem validation.
@@ -74,7 +74,7 @@ file mutation are separate claims.
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.0.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs. Linux remains source build only. |
+| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.1.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs through the established release workflow. Linux remains source build only. |
 
 ## Filesystem limitations
 

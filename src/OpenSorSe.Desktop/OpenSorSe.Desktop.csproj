@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>OpenSorSe</AssemblyName>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <Nullable>enable</Nullable>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">Assets\opensorse-app-icon.ico</ApplicationIcon>

@@ -22,6 +22,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly ISemanticIndexStore _indexStore;
     private readonly IProgressiveSearchSource? _progressiveSearchSource;
     private readonly IProgressiveSearchDocumentLookup? _searchDocumentLookup;
+    private readonly IAiSearchAssistant? _aiSearchAssistant;
     private readonly IRelationshipSearchSource? _relationshipSearchSource;
     private readonly IGraphSearchSource? _graphSearchSource;
     private readonly SemaphoreSlim _queryGate = new(MaximumConcurrentQueries, MaximumConcurrentQueries);
@@ -40,7 +41,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
         IDiagnosticsEventSink? diagnostics = null,
         IRelationshipSearchSource? relationshipSearchSource = null,
         IGraphSearchSource? graphSearchSource = null,
-        IProgressiveSearchDocumentLookup? searchDocumentLookup = null)
+        IProgressiveSearchDocumentLookup? searchDocumentLookup = null,
+        IAiSearchAssistant? aiSearchAssistant = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         ArgumentNullException.ThrowIfNull(embeddingProvider);
@@ -53,6 +55,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
         _relationshipSearchSource = relationshipSearchSource;
         _graphSearchSource = graphSearchSource;
         _searchDocumentLookup = searchDocumentLookup ?? progressiveSearchSource as IProgressiveSearchDocumentLookup;
+        _aiSearchAssistant = aiSearchAssistant;
     }
 
     /// <inheritdoc />
@@ -255,6 +258,31 @@ public sealed class SemanticSearchService : ISemanticSearchService
                             cancellationToken);
                     }
                 }
+                var aiAssistance = AiSearchAssistanceResult.NotRequested;
+                if (request.UseAiAssistance)
+                {
+                    if (_aiSearchAssistant is null)
+                    {
+                        aiAssistance = new AiSearchAssistanceResult(
+                            AiSearchAssistanceState.Unavailable,
+                            "AI assistance is unavailable. Deterministic local ordering was preserved.",
+                            0,
+                            false);
+                    }
+                    else
+                    {
+                        var assisted = await _aiSearchAssistant
+                            .RerankAsync(
+                                interpretation,
+                                ranked,
+                                _configurationService.Current.Ai,
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        ranked = assisted.Candidates;
+                        aiAssistance = assisted.Assistance;
+                    }
+                }
+
                 var hits = ranked.Select(ToHit).ToArray();
                 var message = CoverageMessage(coverage, hits.Length > 0);
                 CompleteDiagnostics(
@@ -265,14 +293,16 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     interpretation,
                     coverage,
                     "Bounded local ranking completed.",
-                    graphCoverage);
+                    graphCoverage,
+                    aiAssistance);
                 return Result(
                     hits.Length == 0 ? SemanticState.Empty : SemanticState.Ready,
                     message,
                     Array.AsReadOnly(hits),
                     interpretation,
                     coverage,
-                    graphCoverage);
+                    graphCoverage,
+                    aiAssistance);
             }
             finally
             {
@@ -753,7 +783,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
         SearchInterpretation interpretation,
         SearchCoverage coverage,
         string summary,
-        GraphProjectionCoverage? graphCoverage = null)
+        GraphProjectionCoverage? graphCoverage = null,
+        AiSearchAssistanceResult? aiAssistance = null)
     {
         var fields = new List<DiagnosticField>
         {
@@ -763,6 +794,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
             new("Known file coverage", coverage.KnownFileCount.ToString(CultureInfo.InvariantCulture)),
             new("Fully indexed coverage", coverage.FullyIndexedCount.ToString(CultureInfo.InvariantCulture)),
             new("Index available", coverage.IsAvailable.ToString(CultureInfo.InvariantCulture)),
+            new("AI assistance state", (aiAssistance?.State ?? AiSearchAssistanceState.NotRequested).ToString()),
+            new("AI candidate count", (aiAssistance?.CandidateCount ?? 0).ToString(CultureInfo.InvariantCulture)),
         };
         if (graphCoverage is not null)
         {
@@ -792,10 +825,12 @@ public sealed class SemanticSearchService : ISemanticSearchService
         IReadOnlyList<SemanticSearchHit> hits,
         SearchInterpretation interpretation,
         SearchCoverage coverage,
-        GraphProjectionCoverage? graphCoverage = null) =>
+        GraphProjectionCoverage? graphCoverage = null,
+        AiSearchAssistanceResult? aiAssistance = null) =>
         new SearchExecutionResult(state, message, hits, interpretation, coverage)
         {
             GraphCoverage = graphCoverage,
+            AiAssistance = aiAssistance ?? AiSearchAssistanceResult.NotRequested,
         };
 
     private static SearchInterpretation EmptyInterpretation(string? query) => new(

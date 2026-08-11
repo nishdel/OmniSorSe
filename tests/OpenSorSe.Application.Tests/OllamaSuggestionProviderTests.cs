@@ -28,6 +28,46 @@ public sealed class OllamaSuggestionProviderTests
         Assert.Equal(["llama3:latest", "mistral"], result.Models.Select(model => model.Id));
     }
 
+    /// <summary>Verifies official running-model discovery distinguishes only provider-confirmed runtime state.</summary>
+    [Fact]
+    public async Task GetConnectionAsync_RunningModelsAreReportedWithoutInventingLoadingState()
+    {
+        using var client = new HttpClient(new StubHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/api/tags" => Json(HttpStatusCode.OK, """{"models":[{"name":"available"},{"name":"running"}]}"""),
+            "/api/ps" => Json(HttpStatusCode.OK, """{"models":[{"name":"running"}]}"""),
+            _ => Json(HttpStatusCode.NotFound, "{}"),
+        }));
+        var provider = new OllamaSuggestionProvider(client, new LoggingService());
+
+        var result = await provider.GetConnectionAsync(EnabledSettings(), CancellationToken.None);
+
+        Assert.True(result.RuntimeStateAvailable);
+        Assert.Equal(AiModelRuntimeState.Available, result.Models.Single(model => model.Id == "available").RuntimeState);
+        Assert.Equal(AiModelRuntimeState.Running, result.Models.Single(model => model.Id == "running").RuntimeState);
+        Assert.Contains("1 currently running", result.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies runtime-state failure does not discard a valid deterministic installed-model list.</summary>
+    [Fact]
+    public async Task GetConnectionAsync_RuntimeCheckFailurePreservesInstalledModels()
+    {
+        using var client = new HttpClient(new StubHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/api/tags" => Json(HttpStatusCode.OK, """{"models":[{"name":"small-local"}]}"""),
+            "/api/ps" => Json(HttpStatusCode.ServiceUnavailable, "{}"),
+            _ => Json(HttpStatusCode.NotFound, "{}"),
+        }));
+        var provider = new OllamaSuggestionProvider(client, new LoggingService());
+
+        var result = await provider.GetConnectionAsync(EnabledSettings(), CancellationToken.None);
+
+        Assert.Equal(AiAvailabilityState.Connected, result.State);
+        Assert.False(result.RuntimeStateAvailable);
+        Assert.Equal("small-local", Assert.Single(result.Models).Id);
+        Assert.Contains("could not be checked", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Verifies the dedicated connection check uses version without discovering or selecting models.</summary>
     [Fact]
     public async Task CheckConnectionAsync_ReachableProvider_UsesVersionEndpointOnly()
@@ -197,6 +237,28 @@ public sealed class OllamaSuggestionProviderTests
             requestRoot.GetProperty("format").GetRawText());
         Assert.Equal("""{"response":"{\"fileName\":null}"}""", result.Diagnostics.RawHttpResponse);
         Assert.Equal("{\"fileName\":null}", result.Diagnostics.ExtractedAssistantResponse);
+    }
+
+    /// <summary>Verifies bounded Search reranking uses its strict structured response contract.</summary>
+    [Fact]
+    public async Task GenerateAsync_SearchRerankingUsesDedicatedSchema()
+    {
+        using var client = new HttpClient(new StubHandler(_ =>
+            Json(HttpStatusCode.OK, """{"response":"{\"taskId\":\"search-rerank-v1\",\"status\":\"reranked\",\"orderedCandidateIds\":[\"result-001\"],\"summary\":\"Reviewed.\"}"}""")));
+        var provider = new OllamaSuggestionProvider(client, new LoggingService());
+
+        var result = await provider.GenerateAsync(new AiProviderGenerationRequest(
+            AiSuggestionKind.SearchReranking,
+            "http://127.0.0.1:11434",
+            "small-local",
+            "bounded prompt",
+            TimeSpan.FromSeconds(AiSettings.MinimumRequestTimeoutSeconds)), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        using var requestDocument = JsonDocument.Parse(result.Diagnostics!.RequestJson);
+        Assert.Equal(
+            AiStructuredOutputContracts.GetSchemaJson(AiSuggestionKind.SearchReranking),
+            requestDocument.RootElement.GetProperty("format").GetRawText());
     }
 
     /// <summary>Verifies the live collector separates the exact payload, raw envelope, and assistant content.</summary>

@@ -4,13 +4,19 @@
              x:Class="OpenSorSe.Desktop.Views.WorkflowsView"
              x:DataType="vm:WorkflowsViewModel">
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
             <StackPanel Spacing="3">
                 <TextBlock Classes="page-title" Text="Workflows" />
                 <TextBlock Classes="page-subtitle"
                            Text="Reusable profiles and declarative sorting recipes. Every file change still requires a reviewed Change Plan." />
             </StackPanel>
             <Button Grid.Column="1" Classes="secondary" Content="Refresh" Command="{Binding RefreshCommand}" />
+            <Button Grid.Column="2"
+                    Classes="help"
+                    Content="?"
+                    Command="{Binding HelpCommand}"
+                    AutomationProperties.Name="Workflows help"
+                    ToolTip.Tip="How reusable profiles and recipes remain behind Change Plan review." />
         </Grid>
 
         <Border Grid.Row="1" Classes="card" Padding="12">

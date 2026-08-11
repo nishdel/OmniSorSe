@@ -18,17 +18,19 @@ Ollama-compatible assistance.
 It is not an autonomous file manager. Analysis and suggestions do not authorize
 file changes.
 
-## OpenSorSe v2.0.0
+## OpenSorSe v2.1.0
 
-v2.0.0 integrates the v1.7 Deep Indexing, v1.8 Search, v1.9 Relationships and
-Smart Collections, and v2.0 Knowledge Graph history into `main`. The release is
-automatically validated on Windows, Ubuntu, and macOS before publication.
+v2.1.0 is the Search & AI Quality release. It improves deterministic filename
+ranking, conservative typo handling, result explanations and workflows,
+optional bounded Ollama reranking, model discovery/failure states, truthful
+scan/index progress, duplicate review, notifications, privacy wording, Related
+Files guidance, and contextual Help without replacing the v2.0 architecture.
 
-Broad interactive and community testing begins with v2.0.0; it is not claimed
-to have happened already. Real-world defects will be triaged normally and may
-be corrected in v2.0.x patches or later releases. Read
-[Release Status](docs/RELEASE_STATUS.md) for exact commits and validation,
-[v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) for user-facing changes,
+The release is automatically validated on Windows, Ubuntu, and macOS. Automated
+validation is not a claim of broad interactive testing on every host or with
+every Ollama/OCR configuration. Read [Release Status](docs/RELEASE_STATUS.md)
+for the evidence boundary,
+[v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) for user-facing changes,
 and [Release History](RELEASE_HISTORY.md) for earlier milestones.
 
 ## Screenshots
@@ -42,15 +44,15 @@ remaining capture work is explicit in the unchecked
 ## Downloads and installation
 
 Use only the official
-[v2.0.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.0.0):
+[v2.1.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.1.0):
 
-- Windows x64 installer: `OpenSorSe-v2.0.0-win-x64-setup.exe`;
-- Windows x64 portable: `OpenSorSe-v2.0.0-win-x64.zip`;
-- macOS Intel: `OpenSorSe-v2.0.0-macos-x64.dmg`;
-- macOS Apple Silicon: `OpenSorSe-v2.0.0-macos-arm64.dmg`;
-- SHA-256 checksums: `OpenSorSe-v2.0.0-SHA256SUMS.txt`.
+- Windows x64 installer: `OpenSorSe-v2.1.0-win-x64-setup.exe`;
+- Windows x64 portable: `OpenSorSe-v2.1.0-win-x64.zip`;
+- macOS Intel: `OpenSorSe-v2.1.0-macos-x64.dmg`;
+- macOS Apple Silicon: `OpenSorSe-v2.1.0-macos-arm64.dmg`;
+- SHA-256 checksums: `OpenSorSe-v2.1.0-SHA256SUMS.txt`.
 
-The v2.0.0 Windows and macOS artifacts are unsigned, and the macOS packages are
+The v2.1.0 Windows and macOS artifacts are unsigned, and the macOS packages are
 not notarized, unless the release page explicitly records otherwise. Windows
 SmartScreen or macOS Gatekeeper may therefore warn. Checksums detect changed
 bytes but do not authenticate an unsigned publisher.
@@ -66,14 +68,14 @@ update, uninstall, application-data, and checksum guidance is in
 | --- | --- |
 | Scanning and analysis | Recursively discovers selected files with progress, cancellation, metadata, classification, SHA-256 hashing, exact duplicate detection, and isolated errors. |
 | Watched Folders | Treats operating-system events as hints, verifies actual state, performs bounded incremental analysis, and reconciles missed/offline changes. Watching never applies file changes. |
-| Search | Uses local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context with visible filters and progressive coverage. |
+| Search | Uses deterministic local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context. v2.1 strengthens exact/stem/prefix filename order, bounded typo handling, match explanations, and progressive coverage. |
 | Search explanations | Preserves exact/literal evidence above related-concept-only similarity and exposes actual ranking reasons plus bounded source-labelled snippets. |
 | Relationships and Collections | Discovers bounded deterministic relationships from retained evidence, provides virtual Smart Collections and timelines, preserves user corrections, and never moves original files. |
-| Knowledge Graph | Optionally projects stable files, sources, folders, Collections, exact-content sets, and manual entities into an evidence-backed local graph with bounded browsing, privacy/repair controls, and opt-out Search context. It is disabled by default. |
+| Related Files | Optionally projects stable files, sources, folders, Collections, exact-content sets, and manual entities into an evidence-backed local Knowledge Graph with bounded browsing, privacy/repair controls, and opt-out Search context. It is disabled by default. |
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
-| Local AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated, review-only suggestions. Ordinary Search and OCR do not require AI. |
+| Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
-| Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, and create-directory actions require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
+| Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
 | Persistence | Uses bounded versioned local JSON stores, the schema-3 embedded Search index, and isolated schema-1 Knowledge Graph/decision sidecars behind provider-neutral Application contracts. No database server is required. |
 
@@ -126,7 +128,7 @@ contract.
 - **macOS Intel and Apple Silicon:** native `.app`/DMG packages. Read-only and
   non-mutating capabilities are packaged and smoke-tested; source-file mutation
   remains disabled where platform capability policy cannot prove equivalent
-  safety. Packages are unsigned/unnotarized for v2.0.0.
+  safety. Packages are unsigned/unnotarized for v2.1.0.
 - **Linux x64:** source-build preview with documented filesystem, watcher,
   desktop, and packaging limitations; no binary installer is advertised.
 - **Ollama-compatible service:** optional and externally managed.
@@ -167,10 +169,12 @@ documents are:
 | [Product Roadmap](PRODUCT_ROADMAP.md) | Completed, in-progress, planned, research, and backlog work with branch/integration truth. |
 | [Engineering Principles](ENGINEERING_PRINCIPLES.md) | Reasoning behind architecture, MVVM, persistence, testing, releases, security, privacy, recovery, and review. |
 | [Release History](RELEASE_HISTORY.md) | Concise version, branch, date, test-total, and merged-status index. |
-| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative implementation-candidate component, data, safety, persistence, and dependency boundaries. |
+| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | Authoritative current component, data, safety, persistence, and dependency boundaries. |
 | [System Map](docs/Architecture/OpenSorSe_System_Map.md) | Visual architecture and mutation-path diagrams. |
+| [v2.1 Search and AI quality](docs/SEARCH_AND_AI_QUALITY_v2.1.md) | Current development behavior for ranking, optional Ollama reranking, truthful model/indexing states, fallbacks, privacy, and limits. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
-| [v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) | Downloads, major changes, checksums, trust status, limitations, and community-testing boundary. |
+| [v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) | Downloads, Search/AI quality changes, checksums, trust status, limitations, and validation boundary. |
+| [v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) | Historical v2.0.0 release and integration record. |
 | [v2.0 Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md) | Implemented scope, sidecar storage, projection/recovery, Search, privacy, bounds, and deferred behavior. |
 | [v2.0 Security Notes](docs/SECURITY_v2.0.md) | Trust boundaries, hostile-input/resource defenses, recovery, and explicit non-claims. |
 | [Native Release Packaging](docs/RELEASE_PACKAGING_v2.0.md) | Windows/macOS artifact construction, validation, checksums, signing status, and publication order. |

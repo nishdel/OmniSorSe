@@ -2,7 +2,7 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '2.0.0',
+    [string]$Version = '2.1.0',
 
     [Parameter()]
     [string]$OutputDirectory = '',
@@ -56,7 +56,11 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination $appli
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'THIRD_PARTY_NOTICES.md') -Destination $applicationDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\dependency-licenses.json') -Destination $applicationDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\INSTALLATION.md') -Destination $applicationDirectory
-Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\RELEASE_NOTES_v2.0.0.md') -Destination (Join-Path $applicationDirectory 'RELEASE_NOTES.md')
+$releaseNotes = Join-Path $repositoryRoot "docs\RELEASE_NOTES_v$Version.md"
+if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
+    throw "Release notes for v$Version are missing: $releaseNotes"
+}
+Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $applicationDirectory 'RELEASE_NOTES.md')
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\OpenSorSe.Desktop\Assets\opensorse-app-icon.ico') -Destination (Join-Path $applicationDirectory 'OpenSorSe.ico')
 
 Get-ChildItem -LiteralPath $applicationDirectory -Recurse -Force -File -Filter '*.pdb' |

@@ -18,6 +18,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly ISemanticSearchService? _searchService;
     private readonly ISemanticIndexStore? _indexStore;
     private readonly IExternalFileLauncher? _launcher;
+    private readonly IClipboardService? _clipboard;
     private readonly IIndexPrivacyService? _privacyService;
     private readonly IAdvancedDiagnosticsWindowService? _advancedDiagnosticsWindowService;
     private readonly ObservableCollection<SemanticSearchHit> _hits = [];
@@ -46,6 +47,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private bool _filtersWereEdited;
     private bool _includeRelationshipContext = true;
     private bool _includeGraphContext = true;
+    private bool _useAiAssistance;
+    private string _aiAssistanceText = "Deterministic local Search is active.";
     private string _graphCoverageText = "Knowledge Graph coverage has not been inspected for this query.";
     private long _queryVersion;
 
@@ -64,13 +67,15 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         IExternalFileLauncher? launcher,
         IBackgroundIndexingService? backgroundIndexingService = null,
         IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null,
-        IIndexPrivacyService? privacyService = null)
+        IIndexPrivacyService? privacyService = null,
+        IClipboardService? clipboard = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _indexer = indexer;
         _searchService = searchService;
         _indexStore = indexStore;
         _launcher = launcher;
+        _clipboard = clipboard;
         _backgroundIndexingService = backgroundIndexingService;
         _privacyService = privacyService ?? backgroundIndexingService as IIndexPrivacyService;
         _advancedDiagnosticsWindowService = advancedDiagnosticsWindowService;
@@ -88,6 +93,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         CancelClearIndexCommand = new RelayCommand(CancelClearIndex, () => !IsBusy && IsClearPending);
         OpenFileCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFileAsync, CanOpenHit);
         OpenContainingFolderCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFolderAsync, CanOpenHit);
+        CopyFullPathCommand = new AsyncRelayCommand<SemanticSearchHit>(CopyFullPathAsync, CanCopyHit);
         ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
         RemoveFilterCommand = new AsyncRelayCommand<SearchFilter>(RemoveFilterAsync, filter => filter is not null && !IsBusy);
         ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync, () => _activeFilters.Count > 0 && !IsBusy);
@@ -201,6 +207,41 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     {
         get => _includeGraphContext;
         set => SetProperty(ref _includeGraphContext, value);
+    }
+
+    /// <summary>Gets or sets whether this Search may use optional bounded local-AI assistance.</summary>
+    public bool UseAiAssistance
+    {
+        get => _useAiAssistance;
+        set
+        {
+            if (SetProperty(ref _useAiAssistance, value && IsAiAssistanceAvailable))
+            {
+                OnPropertyChanged(nameof(SearchModeText));
+            }
+        }
+    }
+
+    /// <summary>Gets a plain-language description of the active Search composition.</summary>
+    public string SearchModeText => UseAiAssistance
+        ? "Search mode: Hybrid + AI assistance"
+        : "Search mode: Hybrid";
+
+    /// <summary>Gets whether settings provide an enabled local model for AI-assisted Search.</summary>
+    public bool IsAiAssistanceAvailable =>
+        _configurationService.Current.Ai.IsCapabilityEnabled(AiCapability.SearchAssistance) &&
+        !string.IsNullOrWhiteSpace(_configurationService.Current.Ai.SelectedModel);
+
+    /// <summary>Gets actionable availability guidance for the optional per-query control.</summary>
+    public string AiAssistanceAvailabilityText => IsAiAssistanceAvailable
+        ? "Optional local AI can refine only the order of known results for this Search."
+        : "Enable AI-assisted Search and select an installed Ollama model in Settings to use this option.";
+
+    /// <summary>Gets the safe outcome of the most recent optional AI-assisted ordering attempt.</summary>
+    public string AiAssistanceText
+    {
+        get => _aiAssistanceText;
+        private set => SetProperty(ref _aiAssistanceText, value);
     }
 
     /// <summary>Gets graph-projection coverage independently from deep-index Search coverage.</summary>
@@ -367,6 +408,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(HasIndexingActivity));
                 OnPropertyChanged(nameof(BackgroundProgressValue));
+                OnPropertyChanged(nameof(IsBackgroundProgressIndeterminate));
                 OnPropertyChanged(nameof(BackgroundStateText));
                 OnPropertyChanged(nameof(CurrentStageText));
                 OnPropertyChanged(nameof(CurrentFileText));
@@ -384,6 +426,14 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets normalized persistent progress from zero through one.</summary>
     public double BackgroundProgressValue => BackgroundProgress.OverallPercentage / 100d;
 
+    /// <summary>Gets whether discovery is active but a truthful total is not yet known.</summary>
+    public bool IsBackgroundProgressIndeterminate =>
+        BackgroundProgress.TotalDiscovered <= 0 &&
+        BackgroundProgress.Status is IndexingRunStatus.Pending or
+            IndexingRunStatus.Running or
+            IndexingRunStatus.Waiting or
+            IndexingRunStatus.Cancelling;
+
     /// <summary>Gets the durable run-state label.</summary>
     public string BackgroundStateText => $"Indexing state: {FormatRunStatus(BackgroundProgress.Status)}";
 
@@ -398,11 +448,14 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         : $"Current file: {BackgroundProgress.CurrentFile}";
 
     /// <summary>Gets processed and discovered counts.</summary>
-    public string ProcessedCountText =>
-        $"Processed {BackgroundProgress.Processed:N0} of {BackgroundProgress.TotalDiscovered:N0} discovered files";
+    public string ProcessedCountText => BackgroundProgress.TotalDiscovered > 0
+        ? $"Processed {BackgroundProgress.Processed:N0} of {BackgroundProgress.TotalDiscovered:N0} discovered files"
+        : $"Processed {BackgroundProgress.Processed:N0} files; discovery is still determining the total";
 
     /// <summary>Gets the remaining-file count.</summary>
-    public string RemainingCountText => $"{BackgroundProgress.Remaining:N0} files remaining";
+    public string RemainingCountText => BackgroundProgress.TotalDiscovered > 0
+        ? $"{BackgroundProgress.Remaining:N0} files remaining"
+        : "Files remaining: not yet known";
 
     /// <summary>Gets completed, skipped, failed, waiting, and retry counts.</summary>
     public string OutcomeCountText =>
@@ -471,6 +524,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the controlled containing-folder command for one known hit.</summary>
     public IAsyncRelayCommand<SemanticSearchHit> OpenContainingFolderCommand { get; }
+
+    /// <summary>Gets the cross-platform clipboard command for one known result path.</summary>
+    public IAsyncRelayCommand<SemanticSearchHit> CopyFullPathCommand { get; }
 
     /// <summary>Gets the command that expands or collapses contextual filters.</summary>
     public IRelayCommand ToggleFiltersCommand { get; }
@@ -574,6 +630,13 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Refreshes command availability after persisted feature settings change.</summary>
     public void RefreshFeatureAvailability()
     {
+        if (!IsAiAssistanceAvailable)
+        {
+            UseAiAssistance = false;
+        }
+
+        OnPropertyChanged(nameof(IsAiAssistanceAvailable));
+        OnPropertyChanged(nameof(AiAssistanceAvailabilityText));
         NotifyCommands();
         _ = RefreshIndexingStatusAsync();
     }
@@ -613,6 +676,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                 : new SearchRequest(QueryText ?? string.Empty, IncludeRelationshipContext: IncludeRelationshipContext)) with
             {
                 IncludeGraphContext = IncludeGraphContext,
+                UseAiAssistance = UseAiAssistance,
             };
             var result = await _searchService.SearchAsync(request, operation.Token);
             if (queryVersion != Volatile.Read(ref _queryVersion))
@@ -638,6 +702,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             ClearFiltersCommand.NotifyCanExecuteChanged();
             OnPropertyChanged(nameof(HasHits));
             GraphCoverageText = FormatGraphCoverage(result.GraphCoverage, IncludeGraphContext);
+            AiAssistanceText = result.AiAssistance.Message;
             Status = Present(result.State, result.Message);
         }
         finally
@@ -687,6 +752,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                     IncludeRelationshipContext: IncludeRelationshipContext)
                 {
                     IncludeGraphContext = IncludeGraphContext,
+                    UseAiAssistance = UseAiAssistance,
                 },
                 operation.Token);
             _hits.Clear();
@@ -697,6 +763,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
             OnPropertyChanged(nameof(HasHits));
             GraphCoverageText = FormatGraphCoverage(result.GraphCoverage, IncludeGraphContext);
+            AiAssistanceText = result.AiAssistance.Message;
             Status = Present(result.State, result.Message);
         }
         finally
@@ -820,6 +887,34 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private Task OpenFileAsync(SemanticSearchHit? hit) => OpenAsync(hit, false);
 
     private Task OpenFolderAsync(SemanticSearchHit? hit) => OpenAsync(hit, true);
+
+    private bool CanCopyHit(SemanticSearchHit? hit) =>
+        _clipboard is not null &&
+        !IsBusy &&
+        hit is not null &&
+        Hits.Contains(hit);
+
+    private async Task CopyFullPathAsync(SemanticSearchHit? hit)
+    {
+        if (!CanCopyHit(hit) || _clipboard is null || hit is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _clipboard.SetTextAsync(hit.FullPath, CancellationToken.None);
+            Status = StatusPresentation.Success("Full path copied to the clipboard.");
+        }
+        catch (Exception exception) when (exception is
+            InvalidOperationException or
+            UnauthorizedAccessException or
+            NotSupportedException)
+        {
+            Status = StatusPresentation.Warning(
+                "The full path could not be copied on this platform. Select the path text and copy it manually.");
+        }
+    }
 
     private async Task OpenAsync(SemanticSearchHit? hit, bool folder)
     {
@@ -1084,6 +1179,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         CancelClearIndexCommand.NotifyCanExecuteChanged();
         OpenFileCommand.NotifyCanExecuteChanged();
         OpenContainingFolderCommand.NotifyCanExecuteChanged();
+        CopyFullPathCommand.NotifyCanExecuteChanged();
         RemoveFilterCommand.NotifyCanExecuteChanged();
         ClearFiltersCommand.NotifyCanExecuteChanged();
         InspectIndexedDataCommand.NotifyCanExecuteChanged();

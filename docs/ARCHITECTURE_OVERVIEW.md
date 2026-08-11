@@ -105,9 +105,9 @@ dependency; a future server adapter can implement the same contracts. See
 ## v1.8 Search-intelligence and privacy boundary
 
 `ISearchQueryInterpreter` turns bounded ordinary text into visible removable
-filters while preserving uncertain words as topic terms. `IHybridSearchRanker`
+filters while preserving uncertain words as topic terms. `ISearchRanker`
 owns all score tiers and deterministic tie-breaking; Views and ViewModels never
-calculate ranking weights. `ISearchSnippetService` derives bounded snippets only
+calculate ranking weights. `ISearchSnippetFactory` derives bounded snippets only
 from retained indexed material, and explanations are assembled from the actual
 ranking components. The JSON compatibility index and SQLite progressive source
 may fail independently; Search uses whichever remains available and reports
@@ -119,6 +119,22 @@ the background coordinator owns cancellation, durable queued repair, and
 coverage refresh. Every such action changes application-owned index state only.
 See [Search Intelligence and Privacy
 Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md).
+
+## v2.1 Search and optional-AI quality boundary
+
+The deterministic ranker adds explicit complete-filename, filename-stem,
+prefix, substring, and bounded transposition evidence while retaining strong
+literal document phrases and the existing stable tie-breakers. An explicit
+`SearchRequest.UseAiAssistance` may invoke `IAiSearchAssistant` only after local
+ranking. The assistant supplies at most 12 known candidates with opaque IDs to
+the existing `IAiSuggestionProvider`, rejects ungrounded output, preserves
+scores/membership, and can reorder only within deterministic relevance tiers.
+
+Ollama remains optional. Installed and provider-confirmed running state are
+discovered asynchronously; failure of the secondary runtime check does not
+discard installed models. Search, result explanations/actions, and indexing
+coverage remain usable without AI. v2.1 changes no SQLite or JSON schema. See
+[v2.1 Search and AI Quality](Architecture/06_Search/12_v2.1_Search_AI_Quality.md).
 
 ## v1.9 relationships and context boundary
 

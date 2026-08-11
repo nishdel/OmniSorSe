@@ -257,6 +257,14 @@ public sealed class FileScanner : IFileScanner
             return;
         }
 
+        // Application-owned recovery and bookkeeping files must not feed back into a later manual scan.
+        // Watched-folder and deep-index discovery enforce the same boundary independently.
+        if (attributes.HasFlag(FileAttributes.Directory) &&
+            string.Equals(Path.GetFileName(entryPath), ".opensorse", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         var normalizedEntryPath = NormalizePath(entryPath);
         if (!discoveredPaths.Add(normalizedEntryPath))
         {

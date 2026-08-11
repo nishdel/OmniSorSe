@@ -383,6 +383,7 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton(new HttpClient { Timeout = Timeout.InfiniteTimeSpan });
         services.AddSingleton<IAiSuggestionProvider, OllamaSuggestionProvider>();
+        services.AddSingleton<IAiSearchAssistant, AiSearchAssistant>();
         services.AddSingleton<IAiPromptBuilder, AiPromptBuilder>();
         services.AddSingleton<IAiResponseParser, AiResponseParser>();
         services.AddSingleton<IAiRequestDiagnosticsStore, AiRequestDiagnosticsStore>();

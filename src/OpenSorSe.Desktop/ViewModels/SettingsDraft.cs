@@ -28,6 +28,7 @@ public sealed class SettingsDraft : ViewModelBase
     private bool _aiEnabled;
     private bool _fileRenameSuggestionsEnabled;
     private bool _folderStructureSuggestionsEnabled;
+    private bool _searchAssistanceEnabled;
     private string _aiEndpoint = "http://127.0.0.1:11434";
     private string? _selectedAiModel;
     private int _aiRequestTimeoutSeconds = 30;
@@ -233,6 +234,13 @@ public sealed class SettingsDraft : ViewModelBase
     {
         get => _folderStructureSuggestionsEnabled;
         set => SetProperty(ref _folderStructureSuggestionsEnabled, value);
+    }
+
+    /// <summary>Gets or sets whether explicit Search requests may use bounded local-AI reranking.</summary>
+    public bool SearchAssistanceEnabled
+    {
+        get => _searchAssistanceEnabled;
+        set => SetProperty(ref _searchAssistanceEnabled, value);
     }
 
     /// <summary>Gets or sets whether bounded raw AI request diagnostics are retained for this session.</summary>
@@ -665,6 +673,7 @@ public sealed class SettingsDraft : ViewModelBase
             AiEnabled = settings.Ai.Enabled,
             FileRenameSuggestionsEnabled = settings.Ai.FileRenameSuggestionsEnabled,
             FolderStructureSuggestionsEnabled = settings.Ai.FolderStructureSuggestionsEnabled,
+            SearchAssistanceEnabled = settings.Ai.SearchAssistanceEnabled,
             AiEndpoint = settings.Ai.Endpoint,
             SelectedAiModel = settings.Ai.SelectedModel,
             AiRequestTimeoutSeconds = settings.Ai.RequestTimeoutSeconds,
@@ -764,6 +773,7 @@ public sealed class SettingsDraft : ViewModelBase
                 Enabled = AiEnabled,
                 FileRenameSuggestionsEnabled = FileRenameSuggestionsEnabled,
                 FolderStructureSuggestionsEnabled = FolderStructureSuggestionsEnabled,
+                SearchAssistanceEnabled = SearchAssistanceEnabled,
                 RequestDiagnosticsEnabled = DiagnosticsEnabled && AiDiagnosticsEnabled,
                 ShowUnredactedDiagnosticContent = ShowUnredactedDiagnosticContent,
                 Endpoint = AiEndpoint?.Trim() ?? string.Empty,

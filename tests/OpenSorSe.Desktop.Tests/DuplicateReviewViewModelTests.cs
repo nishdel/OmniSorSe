@@ -1,7 +1,9 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Executor.Models;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -38,7 +40,7 @@ public sealed class DuplicateReviewViewModelTests
         viewModel.SelectedGroup = Assert.Single(viewModel.VisibleGroups);
 
         Assert.True(viewModel.CanOpenBothFiles);
-        Assert.Equal(2, viewModel.SelectedMemberCount);
+        Assert.Equal(0, viewModel.SelectedMemberCount);
         await viewModel.OpenBothFilesCommand.ExecuteAsync(null);
 
         Assert.Equal(["C:\\Duplicates\\file-0.txt", "C:\\Duplicates\\file-1.txt"], launcher.OpenedFiles);
@@ -113,6 +115,54 @@ public sealed class DuplicateReviewViewModelTests
         Assert.False(viewModel.IsOpening);
         Assert.Equal(StatusKind.Information, viewModel.Status.Kind);
         Assert.Contains("cancellation", viewModel.Status.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies removal requires a keeper, creates a Change Plan, and refreshes only after successful execution.</summary>
+    [Fact]
+    public async Task RequestRemovalPlan_RequiresKeeperAndRefreshesAfterExecution()
+    {
+        var factory = new RecordingRemovalPlanFactory();
+        using var viewModel = new DuplicateReviewViewModel(null, factory);
+        viewModel.LoadSnapshot(CreateSnapshot("session:removal", 2));
+        viewModel.SelectedGroup = Assert.Single(viewModel.VisibleGroups);
+        ChangePlan? created = null;
+        viewModel.ChangePlanCreated += (_, plan) => created = plan;
+
+        Assert.False(viewModel.CanRequestRemovalPlan);
+        viewModel.MemberRows[0].IsSelected = true;
+        Assert.True(viewModel.CanRequestRemovalPlan);
+
+        await viewModel.RequestRemovalPlanCommand.ExecuteAsync(null);
+
+        Assert.NotNull(created);
+        Assert.Equal("file:0", Assert.Single(factory.Removed).Id);
+        Assert.Equal("file:1", Assert.Single(factory.Kept).Id);
+        Assert.Single(viewModel.VisibleGroups);
+
+        viewModel.ApplyExecutedChangePlan(created!);
+        Assert.Empty(viewModel.VisibleGroups);
+        Assert.False(viewModel.HasDuplicateGroups);
+        Assert.Contains("moved to the recovery area", viewModel.Status.Message, StringComparison.Ordinal);
+
+        viewModel.RevertExecutedChangePlan(created!);
+        Assert.Single(viewModel.VisibleGroups);
+        Assert.True(viewModel.HasDuplicateGroups);
+    }
+
+    /// <summary>Verifies selection gates cannot create a plan that removes every known copy.</summary>
+    [Fact]
+    public void RequestRemovalPlan_AllMembersSelected_IsDisabled()
+    {
+        using var viewModel = new DuplicateReviewViewModel(null, new RecordingRemovalPlanFactory());
+        viewModel.LoadSnapshot(CreateSnapshot("session:safety", 2));
+        viewModel.SelectedGroup = Assert.Single(viewModel.VisibleGroups);
+        foreach (var row in viewModel.MemberRows)
+        {
+            row.IsSelected = true;
+        }
+
+        Assert.False(viewModel.CanRequestRemovalPlan);
+        Assert.False(viewModel.RequestRemovalPlanCommand.CanExecute(null));
     }
 
     /// <summary>Verifies replacing Results context cancels launch work tied to the previous snapshot.</summary>
@@ -220,6 +270,53 @@ public sealed class DuplicateReviewViewModelTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(ExternalLaunchResult.Success("Opened"));
+        }
+    }
+
+    private sealed class RecordingRemovalPlanFactory : IDuplicateRemovalPlanFactory
+    {
+        public IReadOnlyList<ResultFile> Removed { get; private set; } = [];
+        public IReadOnlyList<ResultFile> Kept { get; private set; } = [];
+
+        public Task<ChangePlan> CreateDuplicateRemovalPlanAsync(
+            IReadOnlyList<ResultFile> filesToRemove,
+            IReadOnlyList<ResultFile> filesToKeep,
+            string? sourceScanId,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Removed = filesToRemove;
+            Kept = filesToKeep;
+            var actions = filesToRemove.Select((file, index) => new ProposedChangeAction(
+                $"action:{index}",
+                "plan:duplicate",
+                ChangeActionType.MoveFile,
+                file.FullPath,
+                $"C:\\Duplicates\\.opensorse\\duplicate-recovery\\{file.DisplayFileName}",
+                file.DisplayFileName,
+                file.DisplayFileName,
+                new FileIdentitySnapshot(file.Id, file.SizeInBytes ?? 0, file.LastWriteTimeUtc ?? DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, null),
+                ChangeSuggestionSource.DuplicateAnalysis,
+                "Safe duplicate removal.",
+                ChangeValidationState.Valid,
+                ChangeApprovalState.Approved,
+                index + 1,
+                [],
+                [],
+                false,
+                null,
+                null)).ToArray();
+            return Task.FromResult(new ChangePlan(
+                ChangePlanSchema.CurrentVersion,
+                "plan:duplicate",
+                DateTimeOffset.UnixEpoch,
+                sourceScanId,
+                "C:\\Duplicates",
+                ChangePlanStatus.Approved,
+                actions,
+                [],
+                DateTimeOffset.UnixEpoch,
+                false));
         }
     }
 }

@@ -47,7 +47,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
         new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Primary, "C"),
-        new(NavigationDestination.KnowledgeGraph, "Knowledge Graph", FeatureRequirement.Regular, NavigationGroup.Primary, "G"),
+        new(NavigationDestination.KnowledgeGraph, "Related Files", FeatureRequirement.Regular, NavigationGroup.Primary, "R"),
         new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Primary, "▣"),
         new(NavigationDestination.Settings, "Settings", FeatureRequirement.Regular, NavigationGroup.Primary, "⚙"),
         new(NavigationDestination.StructureHistory, "Folder plans", FeatureRequirement.Advanced, NavigationGroup.Advanced, "⌘"),
@@ -425,7 +425,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             semanticIndexStore,
             externalFileLauncher,
             backgroundIndexingService,
-            advancedDiagnosticsWindowService);
+            advancedDiagnosticsWindowService,
+            clipboard: clipboardService);
         Collections = new CollectionsViewModel(relationshipService);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
@@ -492,6 +493,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Workflows.AssignToWatchedFolderRequested += OnWorkflowAssignRequested;
         Workflows.LibraryChanged += OnWorkflowLibraryChanged;
         ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
+        ReviewChanges.ChangePlanApplied += OnChangePlanApplied;
+        ReviewChanges.ChangePlanUndone += OnChangePlanUndone;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
         ReviewChanges.PropertyChanged += OnHostedOperationPropertyChanged;
@@ -850,7 +853,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.CatalogSearch => "Search saved scans",
         NavigationDestination.SemanticSearch => "Search",
         NavigationDestination.Collections => "Collections",
-        NavigationDestination.KnowledgeGraph => "Knowledge Graph",
+        NavigationDestination.KnowledgeGraph => "Related Files",
         NavigationDestination.CatalogComparison => "Compare scans",
         NavigationDestination.StructureHistory => "Folder plans",
         NavigationDestination.Rules => "Sorting rules",
@@ -1118,6 +1121,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
         Results.ChangePlanCreated -= OnChangePlanCreated;
+        ReviewChanges.ChangePlanApplied -= OnChangePlanApplied;
+        ReviewChanges.ChangePlanUndone -= OnChangePlanUndone;
         WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested -= OnWatchedFolderNotificationRequested;
         Workflows.RunScanRequested -= OnWorkflowRunScanRequested;
@@ -1138,6 +1143,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Help.BackRequested -= OnHelpBackRequested;
         _processingCancellation?.Cancel();
         Results.Dispose();
+        ScanProgress.Dispose();
         WatchedFolders.Dispose();
         ReviewChanges.Dispose();
         Catalog.Dispose();
@@ -1196,6 +1202,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             StatusText = "The Change Plan could not be opened safely. No file was changed.";
         }
     }
+
+    private void OnChangePlanApplied(object? sender, ChangePlan plan) =>
+        Results.DuplicateReview.ApplyExecutedChangePlan(plan);
+
+    private void OnChangePlanUndone(object? sender, ChangePlan plan) =>
+        Results.DuplicateReview.RevertExecutedChangePlan(plan);
 
     private async void OnWatchedFolderReviewPlanRequested(object? sender, ChangePlan plan)
     {
@@ -1399,13 +1411,15 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Catalog.ConfigureHelp(HelpTopicId.SavedCatalog, OpenHelp);
         CatalogSearch.ConfigureHelp(HelpTopicId.CatalogSearch, OpenHelp);
         SemanticSearch.ConfigureHelp(HelpTopicId.SemanticSearch, OpenHelp);
-        KnowledgeGraph.ConfigureHelp(HelpTopicId.HelpOverview, OpenHelp);
+        KnowledgeGraph.ConfigureHelp(HelpTopicId.RelatedFiles, OpenHelp);
         CatalogComparison.ConfigureHelp(HelpTopicId.CompareSnapshots, OpenHelp);
         StructureHistory.ConfigureHelp(HelpTopicId.StructureHistory, OpenHelp);
         RuleEditor.ConfigureHelp(HelpTopicId.Rules, OpenHelp);
         Settings.ConfigureHelp(HelpTopicId.Settings, OpenHelp);
         LogViewer.ConfigureHelp(HelpTopicId.Diagnostics, OpenHelp);
         UndoHistory.ConfigureHelp(HelpTopicId.OperationHistory, OpenHelp);
+        WatchedFolders.ConfigureHelp(HelpTopicId.WatchedFolders, OpenHelp);
+        Workflows.ConfigureHelp(HelpTopicId.Workflows, OpenHelp);
         Help.ConfigureHelp(HelpTopicId.HelpOverview, OpenHelp);
         About.ConfigureHelp(HelpTopicId.About, OpenHelp);
     }
@@ -1518,7 +1532,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         using var cancellation = new CancellationTokenSource();
         _processingCancellation = cancellation;
         IsProcessing = true;
-        ScanProgress.Start();
         StatusText = "Scanning selected folders...";
 
         try
@@ -1547,6 +1560,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 }
             }
 
+            ScanProgress.Start();
             var progress = new Progress<ProcessingProgress>(ApplyProgress);
             var rules = workflow is null
                 ? RuleEditor.Rules.ToArray()
@@ -1653,6 +1667,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             else
             {
                 StatusText = result.Session.FailureMessage ?? "The processing session could not be completed.";
+                ScanProgress.Fail(StatusText);
                 Notifications.Publish(new NotificationRequest(NotificationSeverity.Error, StatusText));
             }
         }
@@ -1665,6 +1680,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         catch (Exception)
         {
             StatusText = "The scan could not be started or completed.";
+            ScanProgress.Fail(StatusText);
             Notifications.Publish(new NotificationRequest(NotificationSeverity.Error, StatusText));
         }
         finally

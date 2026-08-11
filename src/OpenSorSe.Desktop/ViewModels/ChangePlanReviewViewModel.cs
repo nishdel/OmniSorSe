@@ -142,6 +142,12 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
     }
 
     public event EventHandler? ReturnRequested;
+
+    /// <summary>Occurs after every approved action in a Change Plan completes successfully.</summary>
+    public event EventHandler<ChangePlan>? ChangePlanApplied;
+
+    /// <summary>Occurs after every action from the current Change Plan is restored successfully.</summary>
+    public event EventHandler<ChangePlan>? ChangePlanUndone;
     public ReadOnlyObservableCollection<ChangePlanActionRow> Actions { get; }
     public IReadOnlyList<ChangeActionTypeFilterOption> AvailableTypeFilters { get; }
     public IReadOnlyList<ChangePlanIssueFilter> AvailableIssueFilters { get; }
@@ -486,8 +492,12 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
                     ? ChangePlanStatus.Applied
                     : execution.Operation.Status == OperationStatus.RollbackPartiallyFailed
                         ? ChangePlanStatus.PartiallyApplied
-                        : ChangePlanStatus.Failed,
+                    : ChangePlanStatus.Failed,
             };
+            if (execution.Succeeded)
+            {
+                ChangePlanApplied?.Invoke(this, CurrentPlan);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -529,6 +539,13 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
                 _operationCancellation.Token);
             LastExecution = LastExecution with { Operation = LastUndo.Operation };
             StatusText = LastUndo.Summary;
+            if (CurrentPlan is not null &&
+                LastUndo.ActionsUndone == CurrentPlan.ApprovedActionCount &&
+                LastUndo.ActionsBlocked == 0 &&
+                LastUndo.ActionsFailed == 0)
+            {
+                ChangePlanUndone?.Invoke(this, CurrentPlan);
+            }
         }
         finally
         {

@@ -9,19 +9,19 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock x:Name="GraphPageHeading"
                                Classes="page-title"
-                               Text="Knowledge Graph"
+                               Text="Related Files"
                                Focusable="True"
-                               AutomationProperties.Name="Knowledge Graph page" />
+                               AutomationProperties.Name="Related Files page" />
                     <Button Classes="secondary"
                             Content="?"
                             Focusable="True"
-                            AutomationProperties.Name="About Knowledge Graph"
-                            AutomationProperties.HelpText="Knowledge Graph connects indexed items using retained evidence. It is local, optional, bounded, and never changes original files."
-                            ToolTip.Tip="Knowledge Graph connects indexed items using retained evidence. It is local, optional, bounded, and never changes original files."
+                            AutomationProperties.Name="About Related Files"
+                            AutomationProperties.HelpText="Related Files discovers explainable connections between indexed documents, folders, topics, and metadata. It never changes original files."
+                            ToolTip.Tip="Discover why indexed files are connected without changing them."
                             Command="{Binding HelpCommand}" />
                 </StackPanel>
                 <TextBlock Classes="page-subtitle"
-                           Text="Inspect bounded, evidence-backed connections without changing original files."
+                           Text="Discover relationships between your files—related documents, shared topics, folders, and metadata—with evidence for every connection."
                            TextWrapping="Wrap" />
             </StackPanel>
             <WrapPanel Grid.Column="1" VerticalAlignment="Center">

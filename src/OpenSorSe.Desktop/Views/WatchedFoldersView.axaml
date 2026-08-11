@@ -5,7 +5,7 @@
              x:Class="OpenSorSe.Desktop.Views.WatchedFoldersView"
              x:DataType="vm:WatchedFoldersViewModel">
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
             <StackPanel Spacing="3">
                 <TextBlock Classes="page-title" Text="Watched Folders" />
                 <TextBlock Classes="page-subtitle"
@@ -15,6 +15,12 @@
                     Classes="secondary"
                     Content="Refresh"
                     Command="{Binding RefreshCommand}" />
+            <Button Grid.Column="2"
+                    Classes="help"
+                    Content="?"
+                    Command="{Binding HelpCommand}"
+                    AutomationProperties.Name="Watched Folders help"
+                    ToolTip.Tip="How watched folders observe changes while keeping file operations reviewable." />
         </Grid>
 
         <Border Grid.Row="1"

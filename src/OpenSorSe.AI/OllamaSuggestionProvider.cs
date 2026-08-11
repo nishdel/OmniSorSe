@@ -149,22 +149,35 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
                 return ConnectionFailure("Ollama returned an invalid model list.", endpoint, elapsed, response.StatusCode);
             }
 
+            var runtime = await GetRunningModelsAsync(endpoint, cancellationToken).ConfigureAwait(false);
             var models = payload.Models
                 .Where(model => IsValidModelIdentifier(model.Name))
-                .Select(model => new AiModel(model.Name!, model.Name!))
+                .Select(model => new AiModel(model.Name!, model.Name!)
+                {
+                    RuntimeState = runtime.ModelIds.Contains(model.Name!)
+                        ? AiModelRuntimeState.Running
+                        : AiModelRuntimeState.Available,
+                })
                 .DistinctBy(model => model.Id, StringComparer.Ordinal)
                 .OrderBy(model => model.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .Take(OllamaTransportLimits.MaximumPublishedModelCount)
                 .ToArray();
-            _logger.LogInformation("Ollama model discovery found {ModelCount} model(s) after {ElapsedMilliseconds} ms.", models.Length, (long)elapsed.TotalMilliseconds);
+            var runningCount = models.Count(model => model.RuntimeState == AiModelRuntimeState.Running);
+            var completedElapsed = Stopwatch.GetElapsedTime(started);
+            _logger.LogInformation("Ollama model discovery found {ModelCount} model(s) after {ElapsedMilliseconds} ms.", models.Length, (long)completedElapsed.TotalMilliseconds);
             return new AiConnectionResult(
                 models.Length == 0 ? AiAvailabilityState.NoModelsAvailable : AiAvailabilityState.Connected,
-                models.Length == 0 ? "Ollama is reachable, but no installed models were found." : $"Discovered {models.Length} installed Ollama model(s).",
+                models.Length == 0
+                    ? "Ollama is reachable, but no installed models were found."
+                    : runtime.IsAvailable
+                        ? $"Discovered {models.Length} installed Ollama model(s); {runningCount} currently running."
+                        : $"Discovered {models.Length} installed Ollama model(s). Current runtime state could not be checked.",
                 Array.AsReadOnly(models))
             {
                 NormalizedEndpoint = endpoint.AbsoluteUri.TrimEnd('/'),
                 HttpStatusCode = (int)response.StatusCode,
-                Elapsed = elapsed,
+                Elapsed = completedElapsed,
+                RuntimeStateAvailable = runtime.IsAvailable,
             };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -194,7 +207,7 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
     public async Task<AiProviderGenerationResult> GenerateAsync(AiProviderGenerationRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Kind is not (AiSuggestionKind.FileRename or AiSuggestionKind.FolderStructure or AiSuggestionKind.DocumentTextInterpretation) ||
+        if (request.Kind is not (AiSuggestionKind.FileRename or AiSuggestionKind.FolderStructure or AiSuggestionKind.DocumentTextInterpretation or AiSuggestionKind.SearchReranking) ||
             !OllamaEndpointNormalizer.TryNormalize(request.Endpoint, out var endpoint) ||
             !IsValidModelIdentifier(request.Model) ||
             string.IsNullOrWhiteSpace(request.Prompt) ||
@@ -441,6 +454,54 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
         value.Length <= AiSettings.MaximumModelIdentifierLength &&
         !value.Any(char.IsControl);
 
+    private async Task<RunningModelsResult> GetRunningModelsAsync(
+        Uri endpoint,
+        CancellationToken cancellationToken)
+    {
+        using var runtimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        runtimeCancellation.CancelAfter(TimeSpan.FromSeconds(2));
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(endpoint, "api/ps"));
+            using var response = await _httpClient
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, runtimeCancellation.Token)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return RunningModelsResult.Unavailable;
+            }
+
+            var responseBytes = await ReadBoundedContentAsync(response.Content, runtimeCancellation.Token)
+                .ConfigureAwait(false);
+            var payload = JsonSerializer.Deserialize<ModelsResponse>(responseBytes, JsonOptions);
+            if (payload?.Models is null)
+            {
+                return RunningModelsResult.Unavailable;
+            }
+
+            return new RunningModelsResult(
+                true,
+                payload.Models
+                    .Where(model => IsValidModelIdentifier(model.Name))
+                    .Select(model => model.Name!)
+                    .Take(OllamaTransportLimits.MaximumPublishedModelCount)
+                    .ToHashSet(StringComparer.Ordinal));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is
+            OperationCanceledException or
+            HttpRequestException or
+            JsonException or
+            InvalidDataException)
+        {
+            _logger.LogDebug(exception, "Ollama running-model status was unavailable; installed-model discovery remains usable.");
+            return RunningModelsResult.Unavailable;
+        }
+    }
+
     private static async Task<byte[]> ReadBoundedContentAsync(HttpContent content, CancellationToken cancellationToken)
     {
         if (content.Headers.ContentLength is > OllamaTransportLimits.MaximumResponseBytes)
@@ -498,6 +559,11 @@ public sealed class OllamaSuggestionProvider : IAiSuggestionProvider
 
     private sealed record GenerateOptions([property: JsonPropertyName("temperature")] double Temperature);
     private sealed record GenerateResponse([property: JsonPropertyName("response")] string? Response);
+
+    private sealed record RunningModelsResult(bool IsAvailable, IReadOnlySet<string> ModelIds)
+    {
+        public static RunningModelsResult Unavailable { get; } = new(false, new HashSet<string>(StringComparer.Ordinal));
+    }
 
     private static IReadOnlyDictionary<string, string> SafeHeaders(HttpResponseMessage response)
     {
