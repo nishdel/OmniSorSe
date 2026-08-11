@@ -49,7 +49,7 @@ public sealed class SqliteDeepIndexStoreTests
                 id, root_path, root_path_key, display_name, indexing_level,
                 include_subfolders, enabled, priority, exclusions_json,
                 managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
-            VALUES ('source:v21', 'C:\v21', 'c:\v21', 'v2.1 fixture', 1, 1, 1, 0, '[]', 0, 0, 0);
+            VALUES ('source:v21', 'C:/v21', 'c:/v21', 'v2.1 fixture', 1, 1, 1, 0, '[]', 0, 0, 0);
             INSERT INTO index_content(
                 content_hash, extracted_text, ocr_text, summary, keywords_json,
                 semantic_json, coverage_level, processor_fingerprint, updated_utc_ticks)
@@ -61,7 +61,7 @@ public sealed class SqliteDeepIndexStoreTests
                 processor_fingerprint, indexing_level, fully_indexed, deleted_utc_ticks,
                 last_seen_run_id, updated_utc_ticks)
             VALUES (
-                'file:v21', 'source:v21', 'C:\v21\notes.txt', 'c:\v21\notes.txt',
+                'file:v21', 'source:v21', 'C:/v21/notes.txt', 'c:/v21/notes.txt',
                 'notes.txt', 'notes.txt', NULL, NULL, 42, 0, 0, 0, 'metadata:v21',
                 'hash:v21', 'processor:v21', 1, 1, NULL, NULL, 0);
             PRAGMA user_version = 3;
