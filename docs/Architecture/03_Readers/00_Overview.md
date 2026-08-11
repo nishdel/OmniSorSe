@@ -1,6 +1,6 @@
 # Readers Overview
 
-> This document distinguishes the bounded 1.0 content pipeline from richer future readers.
+> This document distinguishes the bounded released v2.2 content pipeline from broader future readers.
 
 ---
 
@@ -8,7 +8,18 @@
 
 OpenSorSe 1.0 implements `IMetadataExtractor` and `IMetadataExtractionPipeline` for filesystem metadata, page-aware PdfPig PDF fields/native text, bounded DOCX/XLSX core properties/native text, and PNG/JPEG dimensions. It also provides separately enabled OCR Beta through built-in PDFtoImage/PDFium page rendering and a capability-detected external Tesseract CLI for PNG/JPEG/TIFF and insufficient scanned/mixed-PDF pages. Extractors are read-only, bounded, cancellable, never execute macros, and never fetch remote resources.
 
-Rich document layout, handwriting/table recognition, media/archive readers, formula evaluation, embedded-object execution, and full-fidelity content parsing remain future work. Format-specific documents in this directory are authoritative only where the v1.0 implementation/specification explicitly says a capability is delivered.
+v2.2 adds provider-neutral media evidence, deterministic
+image headers/EXIF, bounded lazy thumbnails, existing OCR reuse, optional
+`ffprobe` audio/video metadata, and optional bounded `ffmpeg` representative
+frames. It defines transcription and visual-description contracts but bundles
+no implementation. The authoritative scope and format list are in
+[Media Intelligence v2.2](../../MEDIA_INTELLIGENCE_v2.2.md).
+
+Rich document layout, handwriting/table recognition, archive readers, formula
+evaluation, embedded-object execution, full-fidelity parsing, broad codec
+support, and whole-video understanding remain future work. The older
+format-specific reader documents are design history where they exceed the
+v1.0 or v2.2 implementation guides.
 
 ---
 

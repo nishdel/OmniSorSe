@@ -356,53 +356,38 @@ See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
 
 ## Current release
 
-### v2.1 — Search & AI Quality
+### v2.2 — Media Intelligence
 
-**Branch:** `v2.1-search-ai-quality`.
+**Branch:** `v2.2-media-intelligence`.
 
-**Merged status:** Released as v2.1.0 from a history-preserving merge into
-`main`; the v2.0.0 tag and release remain historical records.
+**Merged status:** Released as v2.2.0 from a history-preserving merge into
+`main`; the v2.1.0 and v2.0.0 tags/releases remain historical records.
 
-v2.1 is a focused quality release over the stable v2.0.0 architecture. It adds
-explicit filename full/stem/prefix/substring ranking, bounded adjacent-letter
-typo handling, optional local-Ollama reranking of known deterministic results,
-truthful installed/running model discovery and model fallback, unknown-total
-indexing progress, and a cross-platform Copy full path result action.
+v2.2 extends the provider-neutral durable index and unified Search with bounded
+image, audio, and video evidence. It provides deterministic image metadata,
+EXIF/GPS, optional local OCR, lazy thumbnails, optional user-managed `ffprobe`
+metadata, and optional user-managed `ffmpeg` representative frames. Schema 4
+shares bounded media evidence by content hash and preserves transactional
+migration from the v2.1 schema-3 index.
 
-The final quality pass also corrects truthful live scan timing, adds reviewable
-safe duplicate-recovery moves, separates dismissible notifications from durable
-diagnostics, clarifies local indexing versus endpoint privacy, uses Related
-Files as the ordinary graph label, and refreshes contextual Help.
+The final quality pass adds truthful smoothed scan ETA, reviewable multi-group
+duplicate recovery, corrected Collections/Related Files scrolling, one visible
+Related Files destination, primary Search navigation, and clearer local file
+analysis versus optional remote-AI endpoint wording.
 
-Deterministic Search remains authoritative and fully usable without Ollama. AI
-assistance is separately default-off, requires an explicit per-query choice,
-cannot add files or cross deterministic relevance tiers, sends at most 12
-bounded candidates, and introduces no cloud, telemetry, database schema, or
-file-mutation authority. See the [v2.1 Search and AI quality guide](docs/SEARCH_AND_AI_QUALITY_v2.1.md).
+Deterministic Search remains authoritative and usable without optional media
+tools or AI. No transcription runtime/model or visual-description provider is
+bundled, no media is silently uploaded, and no facial recognition is present.
+See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md),
+[release notes](docs/RELEASE_NOTES_v2.2.0.md), and
+[manual checklist](docs/MANUAL_TESTING_v2.2.md).
 
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.
-The repository contains no corresponding branches, implementation
-specifications, source, commits, tags, or release promises. Titles, order, and
-scope may change after research and review.
-
-### v2.2 — Media Intelligence
-
-**Branch:** None; no branch exists.
-
-**Merged status:** Not applicable; planned concept only.
-
-The concept is richer bounded understanding of images, audio, and video while
-retaining local-first processing, optional dependencies, and honest capability
-states.
-
-**Potential major capabilities:** media metadata/timelines; optional local
-transcription or visual analysis; searchable segments; provenance and resource
-controls.
-
-**Conceptual dependencies:** reader/security research, platform/native
-dependency policy, storage quotas, and explicit performance/privacy limits.
+The repository contains no corresponding implementation branches, commits,
+tags, or release promises. Titles, order, and scope may change after research
+and review.
 
 ### v2.3 — Conversational Assistant
 

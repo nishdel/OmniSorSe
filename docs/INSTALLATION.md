@@ -4,8 +4,8 @@
 
 ## Availability
 
-OpenSorSe v2.1.0 is distributed from the official
-[GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.1.0) as:
+OpenSorSe v2.2.0 is distributed from the official
+[GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.2.0) as:
 
 - a self-contained Windows x64 portable ZIP;
 - a per-user Windows x64 installer;
@@ -15,24 +15,24 @@ OpenSorSe v2.1.0 is distributed from the official
 
 No Linux installer is published. Linux x64 remains a source-build preview.
 Do not download packages from unrelated sites. Check [Release Status](RELEASE_STATUS.md)
-and [v2.1.0 Release Notes](RELEASE_NOTES_v2.1.0.md) before relying on a package.
+and [v2.2.0 Release Notes](RELEASE_NOTES_v2.2.0.md) before relying on a package.
 
 ## Windows x64 installer
 
-1. Download `OpenSorSe-v2.1.0-win-x64-setup.exe` and the checksum file from the
+1. Download `OpenSorSe-v2.2.0-win-x64-setup.exe` and the checksum file from the
    same official release.
 2. Verify the checksum as described below.
 3. Run the installer. The default is a per-user installation below Local
    AppData, with a Start Menu shortcut and uninstall entry.
 4. Start OpenSorSe and select only folders you intend to analyse.
 
-The installer and executable are unsigned for v2.1.0 unless the release page
+The installer and executable are unsigned for v2.2.0 unless the release page
 explicitly records otherwise. Windows SmartScreen may warn that the publisher
 is unrecognized. Review the source location and checksum before continuing.
 
 ## Windows x64 portable
 
-1. Download `OpenSorSe-v2.1.0-win-x64.zip` and the checksum file from the same
+1. Download `OpenSorSe-v2.2.0-win-x64.zip` and the checksum file from the same
    official release.
 2. Verify the checksum.
 3. Extract the entire ZIP into a writable directory.
@@ -43,10 +43,10 @@ runtime installation.
 
 ## macOS Intel and Apple Silicon
 
-1. Choose `OpenSorSe-v2.1.0-macos-x64.dmg` for Intel or
-   `OpenSorSe-v2.1.0-macos-arm64.dmg` for Apple Silicon.
+1. Choose `OpenSorSe-v2.2.0-macos-x64.dmg` for Intel or
+   `OpenSorSe-v2.2.0-macos-arm64.dmg` for Apple Silicon.
 2. Verify the checksum, open the DMG, and copy `OpenSorSe.app` to Applications.
-3. The v2.1.0 app is unsigned and unnotarized unless the release page explicitly
+3. The v2.2.0 app is unsigned and unnotarized unless the release page explicitly
    records otherwise. Gatekeeper may require an explicit reviewed override.
 
 The app bundle and native dependencies are built and smoke-tested on matching
@@ -57,14 +57,14 @@ guarantees.
 
 ## Verify SHA-256 checksums
 
-Download `OpenSorSe-v2.1.0-SHA256SUMS.txt` from the same release.
+Download `OpenSorSe-v2.2.0-SHA256SUMS.txt` from the same release.
 
 ```powershell
-(Get-FileHash .\OpenSorSe-v2.1.0-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+(Get-FileHash .\OpenSorSe-v2.2.0-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 
 ```bash
-shasum -a 256 OpenSorSe-v2.1.0-macos-arm64.dmg
+shasum -a 256 OpenSorSe-v2.2.0-macos-arm64.dmg
 ```
 
 Compare the complete value with the named line. A checksum detects changed
@@ -142,7 +142,22 @@ Tesseract is not bundled.
 3. Configure the executable and languages in Settings.
 
 Supported PDF/Open XML native-text extraction is built in. Tesseract is used
-only for enabled recognition of supported images and scanned PDF pages.
+only for enabled recognition of supported images, representative video frames,
+and scanned PDF pages.
+
+## Optional media tools
+
+OpenSorSe does not bundle `ffprobe` or `ffmpeg`. Install and manage compatible
+local executables separately, then configure their absolute paths in Settings
+or make them available on `PATH`. `ffprobe` supplies bounded audio/video
+metadata; `ffmpeg` supplies bounded representative video frames. Missing or
+invalid tools disable only those capabilities and do not disable ordinary
+Search.
+
+No concrete speech-transcription or visual-description provider ships in
+v2.2.0. OpenSorSe does not download a model, send media to cloud
+transcription, or send images/video frames to Ollama. The provider contracts
+remain available for a future explicitly configured local implementation.
 
 ## Optional local plugins
 
@@ -171,7 +186,8 @@ saved searches, extracted content, the compatible semantic index, the embedded
 SQLite durable Search index and managed backups, AI decisions, structure
 history, optional `knowledge-graph.db` derived projection,
 `knowledge-decisions.db` graph-native decisions/recovery points, Workflow
-Profiles, Sorting Recipes, Watched Folder
+Profiles, bounded media metadata/OCR evidence, application-owned thumbnail
+cache entries, Sorting Recipes, Watched Folder
 configuration/catalogues/activity, plugin state/packages, Change Plans, and the
 Operation Journal.
 
@@ -219,6 +235,11 @@ data is a separate explicit user decision.
   and the individual capability.
 - **OCR is unavailable:** verify the Tesseract executable and every configured
   language data file.
+- **Audio/video metadata is unavailable:** verify the configured `ffprobe`
+  executable. For representative video frames, also verify `ffmpeg`.
+- **Transcription or visual descriptions are unavailable:** v2.2.0 ships the
+  provider boundary but no concrete runtime/model; ordinary Search remains
+  available.
 - **Search is incomplete:** review Background indexing coverage, exclusions,
   dependencies, failures, quota, pause state, and index availability.
 - **Settings do not persist:** verify the current platform’s application-data

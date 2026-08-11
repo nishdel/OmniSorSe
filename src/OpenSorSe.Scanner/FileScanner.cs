@@ -182,10 +182,11 @@ public sealed class FileScanner : IFileScanner
         }
 
         var pendingDirectories = new Stack<string>();
+        var completedDirectories = 0;
         directories.Add(new DirectoryEntry(rootDirectory));
         diagnostic.RecordDirectory(rootDirectory);
-        ReportProgress(rootDirectory, progress, files.Count, directories.Count, issues.Count, stopwatch.Elapsed, ref lastProgressReport, options, false);
         pendingDirectories.Push(rootDirectory);
+        ReportProgress(rootDirectory, progress, files.Count, directories.Count, issues.Count, stopwatch.Elapsed, ref lastProgressReport, options, false, completedDirectories, pendingDirectories.Count, rootDirectory);
         while (pendingDirectories.Count > 0)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -214,7 +215,9 @@ public sealed class FileScanner : IFileScanner
                         progress,
                         ref lastProgressReport,
                         options,
-                        diagnostic);
+                        diagnostic,
+                        completedDirectories,
+                        rootDirectory);
 
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -230,6 +233,21 @@ public sealed class FileScanner : IFileScanner
             {
                 RecordIssue(currentDirectory, ScanIssueKind.DirectoryUnavailable, "The directory could not be enumerated.", issues, exception, diagnostic);
             }
+
+            completedDirectories++;
+            ReportProgress(
+                currentDirectory,
+                progress,
+                files.Count,
+                directories.Count,
+                issues.Count,
+                stopwatch.Elapsed,
+                ref lastProgressReport,
+                options,
+                false,
+                completedDirectories,
+                pendingDirectories.Count,
+                rootDirectory);
         }
     }
 
@@ -244,7 +262,9 @@ public sealed class FileScanner : IFileScanner
         IProgress<ScanProgress>? progress,
         ref TimeSpan lastProgressReport,
         ScanOptions options,
-        ScanDiagnosticPublisher diagnostic)
+        ScanDiagnosticPublisher diagnostic,
+        int completedDirectories,
+        string workloadKey)
     {
         if (!TryGetAttributes(entryPath, false, issues, diagnostic, out var attributes))
         {
@@ -295,7 +315,10 @@ public sealed class FileScanner : IFileScanner
             stopwatch.Elapsed,
             ref lastProgressReport,
             options,
-            false);
+            false,
+            completedDirectories,
+            pendingDirectories.Count + 1,
+            workloadKey);
     }
 
     private bool TryGetAttributes(
@@ -407,7 +430,10 @@ public sealed class FileScanner : IFileScanner
         TimeSpan elapsed,
         ref TimeSpan lastProgressReport,
         ScanOptions options,
-        bool force)
+        bool force,
+        long? workItemsCompleted = null,
+        long? workItemsRemaining = null,
+        string? workloadKey = null)
     {
         ReportProgress(
             currentPath,
@@ -416,7 +442,10 @@ public sealed class FileScanner : IFileScanner
             elapsed,
             ref lastProgressReport,
             options,
-            force);
+            force,
+            workItemsCompleted,
+            workItemsRemaining,
+            workloadKey);
     }
 
     private static void ReportProgress(
@@ -426,14 +455,23 @@ public sealed class FileScanner : IFileScanner
         TimeSpan elapsed,
         ref TimeSpan lastProgressReport,
         ScanOptions options,
-        bool force)
+        bool force,
+        long? workItemsCompleted = null,
+        long? workItemsRemaining = null,
+        string? workloadKey = null)
     {
         if (progress is null || (!force && elapsed - lastProgressReport < options.ProgressReportInterval))
         {
             return;
         }
 
-        progress.Report(new ScanProgress(currentPath, statistics, elapsed));
+        progress.Report(new ScanProgress(
+            currentPath,
+            statistics,
+            elapsed,
+            workItemsCompleted,
+            workItemsRemaining,
+            workloadKey));
         lastProgressReport = elapsed;
     }
 

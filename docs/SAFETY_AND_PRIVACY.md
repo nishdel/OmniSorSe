@@ -153,6 +153,29 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   watched/manual source ownership remains intact.
 - Clearing content, Search, or deep-index stores never changes source files.
 
+### Media Intelligence
+
+- v2.2 reads only explicitly indexed files and writes
+  bounded derived metadata, OCR, transcript, optional-description, and
+  thumbnail data only to OpenSorSe-owned storage.
+- Deterministic image parsing and thumbnail generation are local. Tesseract,
+  `ffprobe`, and `ffmpeg` are optional user-managed local processes. No
+  transcription or visual-description provider is bundled. A future
+  Ollama-compatible visual provider would remain separately enabled and would
+  inherit the existing local-versus-remote endpoint disclosure; no media is
+  silently uploaded.
+- GPS EXIF is retained as potentially sensitive structured local evidence but
+  is omitted from ordinary free-text Search projection and diagnostics. v2.2
+  introduces no geocoding, map service, or third-party location request.
+- Image OCR, transcription, frame analysis, and visual descriptions have
+  independent switches. Resource limits, cancellation, provider failures, and
+  unavailable tools cannot disable filename/document Search.
+- File/source forgetting and selective OCR/media-derived clearing include the
+  schema-4 media rows and cached thumbnails, without modifying the source.
+- Diagnostics record provider, status, bounded timings/counts/sizes, and cache
+  state, not transcript/OCR/description contents. No telemetry, cloud service,
+  facial recognition, or person identification is introduced.
+
 ## Relationships and virtual collections
 
 - Automatic relationships are produced only from retained bounded evidence;
@@ -187,7 +210,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
-| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Schema 3 embedded SQLite sources, runs, files, stage state, bounded shared text/OCR/summary/chunks/representations, failures, relationship features/evidence/edges, user corrections, virtual collections/membership, maintenance history, and per-file privacy rules. Schema 1/2 migrates transactionally with a recovery copy. Corrupt/newer storage is preserved only after explicit rebuild; no source-file copies; explicit quota and retention policy. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | v2.2 schema 4 adds content-hash-shared bounded media evidence and indexed media relationship features, with a transactional recovery-copy migration from v2.1 schema 3. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remains. |
 | Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
 | Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
@@ -200,7 +223,18 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
 | Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
 
-Content and Search stores can contain sensitive words extracted from selected documents. Relationship evidence and virtual membership can also reveal associations between selected files. They remain local but should be protected like other application data. Raw OCR/native text, Search representations, credentials, and detailed Advanced Diagnostics content are never written to ordinary logs. Search-ranking and relationship diagnostic events record duration, bounded counts, filters/coverage/ranking stages, algorithm version, and repair activity, but not the complete query, result snippets, extracted paragraphs, summaries, vectors, source-derived evidence text, or absolute paths. An export remains user-initiated and reviewable before sharing.
+Content and Search stores can contain sensitive words extracted from selected
+documents and media, transcripts, OCR, optional descriptions, camera/device
+metadata, and GPS. Relationship evidence and virtual membership can also reveal
+associations between selected files. They remain local but should be protected
+like other application data. Raw OCR/native text, media-derived text, Search
+representations, credentials, and detailed Advanced Diagnostics content are
+never written to ordinary logs. Search-ranking, relationship, and media
+diagnostic events record duration, bounded counts, filters/coverage/ranking
+stages, algorithm/provider version, and repair/cache activity, but not complete
+queries, result snippets, extracted paragraphs, transcripts, descriptions,
+vectors, precise GPS, source-derived evidence text, or absolute paths. An
+export remains user-initiated and reviewable before sharing.
 
 Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
 

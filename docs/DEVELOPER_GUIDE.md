@@ -277,6 +277,25 @@ storage, or dependency injection. External plugin code still runs in-process
 with the current user's permissions. See the [Extension SDK](EXTENSION_SDK_v1.4.md)
 and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
 
+## 13. Add a media provider
+
+1. Implement the narrow capability contract in `OpenSorSe.Application.Media`;
+   do not add SQL, traversal, ranking, or Desktop concerns to the provider.
+2. Return bounded structured evidence and explicit unavailable/failed/skipped
+   status. Provider/model/configuration version must participate in the
+   processing fingerprint.
+3. For processes, use `IExternalMediaProcessRunner` and argument lists; never
+   build a shell command from a path. Bound time, output, files, frames, and
+   temporary storage, and preserve caller cancellation.
+4. Register the provider only in the Desktop composition root. Missing optional
+   tools must retain filename/document Search and expose a truthful capability.
+5. Extend Search projection, privacy clearing, diagnostics, and tests only for
+   evidence the provider actually supplies. Do not make AI descriptions
+   authoritative metadata.
+6. Evaluate license, redistribution, package size, offline/network behavior,
+   and all runtime targets before adding a dependency. See
+   [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
+
 ## Common pitfalls
 
 - Treating a watcher notification as authoritative instead of reconciling.

@@ -21,10 +21,10 @@
 
             <Border Classes="card">
                 <StackPanel Spacing="4">
-                    <TextBlock Text="General settings" FontSize="18" FontWeight="SemiBold" />
-                    <CheckBox Content="Keep completed scan information locally"
+                    <TextBlock Text="Completed scan library" FontSize="18" FontWeight="SemiBold" />
+                    <CheckBox Content="Save completed scans in OpenSorSe's local library"
                               IsChecked="{Binding Draft.CatalogEnabled, Mode=TwoWay}" />
-                    <TextBlock Text="Off by default. Saved scans keep display-safe information and accepted tags in OpenSorSe application data; selected files are never changed."
+                    <TextBlock Text="Scanning is always local. This optional setting retains display-safe scan information and accepted tags in OpenSorSe application data so the scan can be reopened; selected files are never changed."
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -338,6 +338,109 @@
                                 Command="{Binding CancelContentCacheResetCommand}" />
                     </WrapPanel>
                     <views:StatusBanner DataContext="{Binding ContentStatus}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Media Intelligence" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Make supported images, audio, and video searchable through the same Search experience. Metadata extraction, EXIF parsing, thumbnails, configured local OCR, and ffprobe/ffmpeg processing happen on this computer. Transcription and visual descriptions remain independently optional."
+                               TextWrapping="Wrap" />
+                    <CheckBox Content="Enable Media Intelligence"
+                              IsChecked="{Binding Draft.MediaIntelligenceEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable Media Intelligence" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Images" FontWeight="SemiBold" />
+                            <CheckBox Content="Index image metadata"
+                                      IsChecked="{Binding Draft.ImageMetadataEnabled, Mode=TwoWay}" />
+                            <CheckBox Content="OCR text in images"
+                                      IsChecked="{Binding Draft.ImageOcrEnabled, Mode=TwoWay}" />
+                            <CheckBox Content="Generate visual descriptions"
+                                      IsChecked="{Binding Draft.VisualDescriptionsEnabled, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock Text="Audio" FontWeight="SemiBold" />
+                            <CheckBox Content="Index audio metadata"
+                                      IsChecked="{Binding Draft.AudioMetadataEnabled, Mode=TwoWay}" />
+                            <CheckBox Content="Transcribe speech"
+                                      IsChecked="{Binding Draft.AudioTranscriptionEnabled, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5">
+                            <TextBlock Text="Video" FontWeight="SemiBold" />
+                            <CheckBox Content="Index video metadata"
+                                      IsChecked="{Binding Draft.VideoMetadataEnabled, Mode=TwoWay}" />
+                            <CheckBox Content="Transcribe audio tracks"
+                                      IsChecked="{Binding Draft.VideoTranscriptionEnabled, Mode=TwoWay}" />
+                            <CheckBox Content="Analyze representative frames"
+                                      IsChecked="{Binding Draft.VideoFrameAnalysisEnabled, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="No media is silently uploaded. OCR and transcripts can reveal words that are not visible in filenames. GPS metadata stays in OpenSorSe's local index and is never reverse-geocoded or transmitted by Media Intelligence. Transcription and visual descriptions require separately configured local providers."
+                               TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Maximum media file (MiB)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumMediaFileSizeMiB, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum media file size" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum audio duration (minutes)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumAudioDurationMinutes, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Maximum video duration (minutes)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumVideoDurationMinutes, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
+                          ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Maximum sampled video frames" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumVideoFrames, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum OCR frames" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumVideoOcrFrames, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Spacing="3">
+                            <TextBlock Text="Maximum transcript characters" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumTranscriptCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum description characters" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumDescriptionCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Spacing="3">
+                            <TextBlock Text="ffprobe executable (optional)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.FfprobeExecutablePath, Mode=TwoWay}"
+                                     PlaceholderText="Leave blank to use ffprobe from PATH" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Spacing="3">
+                            <TextBlock Text="ffmpeg executable (optional)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.FfmpegExecutablePath, Mode=TwoWay}"
+                                     PlaceholderText="Leave blank to use ffmpeg from PATH" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="3" Spacing="3">
+                            <TextBlock Text="Thumbnail edge (pixels)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumThumbnailDimension, Mode=TwoWay}"
+                                     AutomationProperties.Name="Maximum media thumbnail edge" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="3" Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Provider timeout (seconds)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MediaProviderTimeoutSeconds, Mode=TwoWay}"
+                                     AutomationProperties.Name="Media provider timeout" />
+                        </StackPanel>
+                    </Grid>
+                    <Button Classes="secondary"
+                            HorizontalAlignment="Left"
+                            Content="Check media capabilities"
+                            Command="{Binding CheckMediaCapabilitiesCommand}"
+                            AutomationProperties.Name="Check Media Intelligence capabilities" />
+                    <TextBlock Text="{Binding MediaCapabilityStatusText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="Media Intelligence capability status"
+                               AutomationProperties.LiveSetting="Polite" />
                 </StackPanel>
             </Border>
 

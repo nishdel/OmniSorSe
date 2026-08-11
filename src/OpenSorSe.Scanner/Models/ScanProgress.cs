@@ -6,4 +6,7 @@ namespace OpenSorSe.Scanner.Models;
 public sealed record ScanProgress(
     string? CurrentPath,
     ScanStatistics Statistics,
-    TimeSpan Elapsed);
+    TimeSpan Elapsed,
+    long? WorkItemsCompleted = null,
+    long? WorkItemsRemaining = null,
+    string? WorkloadKey = null);

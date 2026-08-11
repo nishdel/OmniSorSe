@@ -40,7 +40,10 @@
             </WrapPanel>
         </Grid>
 
-        <Border Grid.Row="1" Classes="card">
+        <Border Grid.Row="1" Classes="card" MaxHeight="240">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto"
+                          AutomationProperties.Name="Scrollable Related Files status and controls">
             <StackPanel Spacing="8">
                 <TextBlock Text="{Binding Status.AccessibleText}"
                            TextWrapping="Wrap"
@@ -135,11 +138,14 @@
                                AutomationProperties.Name="Knowledge Graph wait or limit reason" />
                 </StackPanel>
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <TabControl Grid.Row="2"
                     IsVisible="{Binding ShowGraphWorkspace}"
                     SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch"
                     AutomationProperties.Name="Knowledge Graph sections">
             <TabItem Header="Overview">
                 <ScrollViewer Margin="0,10,0,0">

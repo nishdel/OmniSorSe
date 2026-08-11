@@ -154,6 +154,7 @@ public sealed partial class RepositoryDocumentationTests
             "RELEASE_READINESS_v2.0.md",
             "RELEASE_NOTES_v2.0.0.md",
             "RELEASE_NOTES_v2.1.0.md",
+            "RELEASE_NOTES_v2.2.0.md",
             "SEARCH_AND_AI_QUALITY_v2.1.md",
             "MANUAL_TESTING_v2.1.md",
             "RELEASE_PACKAGING_v2.0.md",

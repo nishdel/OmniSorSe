@@ -22,6 +22,8 @@ public enum IndexedDataKind
     Relationships = 1 << 5,
     /// <summary>Durable stage and failure history.</summary>
     ProcessingHistory = 1 << 6,
+    /// <summary>Structured media metadata, OCR, transcripts, and optional descriptions.</summary>
+    MediaDerived = 1 << 7,
     /// <summary>All content-derived and operational data while retaining source registration.</summary>
     AllDerived = ExtractedText |
         OcrText |
@@ -29,7 +31,8 @@ public enum IndexedDataKind
         SemanticData |
         Chunks |
         Relationships |
-        ProcessingHistory,
+        ProcessingHistory |
+        MediaDerived,
 }
 
 /// <summary>Identifies a targeted durable repair boundary.</summary>
@@ -109,6 +112,21 @@ public sealed record IndexPrivacyItem
 
     /// <summary>Gets retained durable stage count.</summary>
     public int StageHistoryCount { get; init; }
+
+    /// <summary>Gets whether structured image, audio, or video evidence is retained.</summary>
+    public bool HasMediaDerivedData { get; init; }
+
+    /// <summary>Gets the retained media family without exposing content.</summary>
+    public string? MediaKind { get; init; }
+
+    /// <summary>Gets whether a bounded local transcript is retained.</summary>
+    public bool HasMediaTranscript { get; init; }
+
+    /// <summary>Gets whether media-specific OCR text is retained.</summary>
+    public bool HasMediaOcr { get; init; }
+
+    /// <summary>Gets whether an optional derived visual description is retained.</summary>
+    public bool HasVisualDescription { get; init; }
 
     /// <summary>Gets whether all applicable stages completed.</summary>
     public bool IsFullyIndexed { get; init; }

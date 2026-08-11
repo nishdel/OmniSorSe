@@ -1,6 +1,7 @@
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
@@ -490,6 +491,44 @@ public sealed class SemanticSearchViewModelTests
             background.FileRepairs);
     }
 
+    /// <summary>Verifies media-derived clearing also removes application-owned preview cache data.</summary>
+    [Fact]
+    public async Task ClearMediaDataAlsoClearsThumbnailCacheWithoutChangingSource()
+    {
+        var hit = Hit("C:\\Docs\\photo.jpg", "media-file") with
+        {
+            MediaEvidence = new IndexedMediaEvidence
+            {
+                Kind = MediaKind.Image,
+                Metadata = new MediaMetadata { Kind = MediaKind.Image, Width = 100, Height = 50 },
+                MetadataProvider = "synthetic",
+                MetadataProviderVersion = "1",
+                ProcessingFingerprint = "synthetic",
+                Status = MediaExtractionStatus.Completed,
+            },
+        };
+        var background = new BackgroundIndexing { PrivacyItem = Privacy("media-file") };
+        var thumbnails = new ThumbnailProvider();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
+            new Launcher(),
+            background,
+            mediaThumbnailProvider: thumbnails);
+        viewModel.QueryText = "photo";
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        await viewModel.InspectIndexedDataCommand.ExecuteAsync(hit);
+
+        await viewModel.ClearMediaDataCommand.ExecuteAsync(null);
+
+        Assert.Equal(IndexedDataKind.MediaDerived, background.LastClearedData);
+        Assert.Equal(1, thumbnails.ClearCount);
+        Assert.Null(viewModel.SelectedMediaThumbnailPath);
+        Assert.Contains("original file was not changed", viewModel.Status.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Verifies incomplete coverage identifies exclusions, dependency waits, and failures.</summary>
     [Fact]
     public async Task CoverageExplainsSpecificIncompleteReasons()
@@ -756,6 +795,26 @@ public sealed class SemanticSearchViewModelTests
             }
 
             Text = text;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThumbnailProvider : IMediaThumbnailProvider
+    {
+        public int ClearCount { get; private set; }
+
+        public Task<MediaCapability> DetectCapabilityAsync(MediaKind kind, CancellationToken cancellationToken) =>
+            Task.FromResult(new MediaCapability(MediaCapabilityKind.Thumbnail, true, "synthetic", "1", "Available"));
+
+        public Task<string?> GetThumbnailAsync(
+            string fullPath,
+            IndexedMediaEvidence evidence,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<string?>("synthetic-thumbnail.png");
+
+        public Task ClearAsync(CancellationToken cancellationToken)
+        {
+            ClearCount++;
             return Task.CompletedTask;
         }
     }

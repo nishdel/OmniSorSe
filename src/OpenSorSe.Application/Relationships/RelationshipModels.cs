@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Media;
 
 namespace OpenSorSe.Application.Relationships;
 
@@ -97,6 +98,12 @@ public enum RelationshipEvidenceKind
     SemanticConcept,
     /// <summary>Workflow provenance matched.</summary>
     Workflow,
+    /// <summary>Deterministic camera, device, duration, or capture metadata corroborated the relationship.</summary>
+    MediaMetadata,
+    /// <summary>Bounded local transcript evidence matched.</summary>
+    MediaTranscript,
+    /// <summary>Bounded image or representative-frame OCR evidence matched.</summary>
+    MediaOcr,
     /// <summary>The user explicitly supplied the relationship.</summary>
     Manual,
 }
@@ -235,6 +242,9 @@ public sealed record RelationshipFileDocument
     /// <summary>Gets bounded OCR text.</summary>
     public string? OcrText { get; init; }
 
+    /// <summary>Gets structured bounded media evidence when retained.</summary>
+    public IndexedMediaEvidence? MediaEvidence { get; init; }
+
     /// <summary>Gets a bounded summary.</summary>
     public string? Summary { get; init; }
 
@@ -265,7 +275,20 @@ public sealed record RelationshipFeatureSet(
     string? OcrTextFingerprint,
     string? SummaryFingerprint,
     IReadOnlyList<string> KeywordKeys,
-    string FeatureVersion);
+    string FeatureVersion)
+{
+    /// <summary>Gets a fingerprint of bounded local transcript text.</summary>
+    public string? MediaTranscriptFingerprint { get; init; }
+
+    /// <summary>Gets a fingerprint of bounded image or representative-frame OCR.</summary>
+    public string? MediaOcrFingerprint { get; init; }
+
+    /// <summary>Gets a normalized camera or device key used only for bounded candidate selection.</summary>
+    public string? MediaDeviceKey { get; init; }
+
+    /// <summary>Gets the embedded capture-date bucket when a reliable offset was retained.</summary>
+    public long? CaptureDateBucket { get; init; }
+}
 
 /// <summary>Suggests an evidence-backed automatic collection for one relationship.</summary>
 public sealed record SmartCollectionSuggestion(

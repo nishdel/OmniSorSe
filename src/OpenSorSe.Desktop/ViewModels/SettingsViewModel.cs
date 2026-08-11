@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 
@@ -21,6 +22,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IDiagnosticsCollector? _diagnosticsCollector;
     private readonly IContentStore? _contentStore;
     private readonly IOcrService? _ocrService;
+    private readonly IMediaIntelligenceService? _mediaIntelligenceService;
     private readonly ObservableCollection<string> _availableAiModels = [];
     private readonly HashSet<string> _installedAiModelIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AiModelRuntimeState> _aiModelRuntimeStates = new(StringComparer.Ordinal);
@@ -40,6 +42,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private StatusPresentation _status = StatusPresentation.Information("Ready");
     private StatusPresentation _aiStatus = StatusPresentation.Information("AI assistance is disabled until enabled and configured.");
     private StatusPresentation _contentStatus = StatusPresentation.Information("OCR is disabled by default. Capability has not been checked.");
+    private string _mediaCapabilityStatusText = "Media capabilities have not been checked. Image metadata is built in; audio/video tools are optional.";
 
     /// <summary>
     /// Initializes a settings editor over the already initialized configuration service.
@@ -53,6 +56,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="diagnosticsCollector">The shared process-session advanced-diagnostics collector.</param>
     /// <param name="plugins">The optional local plugin-management presentation model.</param>
     /// <param name="platformDiagnostics">The optional platform capability and location presentation model.</param>
+    /// <param name="mediaIntelligenceService">The optional provider-neutral media capability service.</param>
     public SettingsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
@@ -62,7 +66,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IAiDiagnosticsCollector? aiDiagnosticsCollector = null,
         IDiagnosticsCollector? diagnosticsCollector = null,
         PluginsViewModel? plugins = null,
-        PlatformDiagnosticsViewModel? platformDiagnostics = null)
+        PlatformDiagnosticsViewModel? platformDiagnostics = null,
+        IMediaIntelligenceService? mediaIntelligenceService = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
@@ -71,6 +76,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _diagnosticsCollector = diagnosticsCollector;
         _contentStore = contentStore;
         _ocrService = ocrService;
+        _mediaIntelligenceService = mediaIntelligenceService;
         Plugins = plugins ?? new PluginsViewModel();
         PlatformDiagnostics = platformDiagnostics;
         ConfigureAdvancedDiagnostics(_configurationService.Current);
@@ -89,6 +95,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ConfirmPreferenceHistoryResetCommand = new AsyncRelayCommand(ConfirmPreferenceHistoryResetAsync, CanConfirmPreferenceHistoryReset);
         CancelPreferenceHistoryResetCommand = new RelayCommand(CancelPreferenceHistoryReset, () => IsPreferenceHistoryResetPending && !IsAiBusy);
         CheckOcrCapabilityCommand = new AsyncRelayCommand(CheckOcrCapabilityAsync, () => _ocrService is not null && !IsContentBusy);
+        CheckMediaCapabilitiesCommand = new AsyncRelayCommand(CheckMediaCapabilitiesAsync, () => _mediaIntelligenceService is not null && !IsContentBusy);
         RequestContentCacheResetCommand = new RelayCommand(RequestContentCacheReset, () => _contentStore is not null && !IsContentBusy && !IsContentCacheResetPending);
         ConfirmContentCacheResetCommand = new AsyncRelayCommand(ConfirmContentCacheResetAsync, () => _contentStore is not null && !IsContentBusy && IsContentCacheResetPending);
         CancelContentCacheResetCommand = new RelayCommand(CancelContentCacheReset, () => !IsContentBusy && IsContentCacheResetPending);
@@ -143,6 +150,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether advanced non-AI settings are visible in the editable hierarchy.</summary>
     public bool IsAdvancedSettingsVisible => Draft.ShowAdvancedFeatures;
+
+    /// <summary>Gets a plain-language capability snapshot without implying unavailable optional tools are failures.</summary>
+    public string MediaCapabilityStatusText
+    {
+        get => _mediaCapabilityStatusText;
+        private set => SetProperty(ref _mediaCapabilityStatusText, value);
+    }
 
     /// <summary>Gets the supported durable indexing levels.</summary>
     public IReadOnlyList<IndexingLevel> AvailableIndexingLevels { get; } = Enum.GetValues<IndexingLevel>();
@@ -409,6 +423,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the explicit local OCR capability check command.</summary>
     public IAsyncRelayCommand CheckOcrCapabilityCommand { get; }
 
+    /// <summary>Gets the explicit local media-capability check command.</summary>
+    public IAsyncRelayCommand CheckMediaCapabilitiesCommand { get; }
+
     /// <summary>Gets the command that requests confirmation before clearing extracted content.</summary>
     public IRelayCommand RequestContentCacheResetCommand { get; }
 
@@ -546,6 +563,45 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private async Task CheckMediaCapabilitiesAsync()
+    {
+        if (_mediaIntelligenceService is null)
+        {
+            return;
+        }
+
+        IsContentBusy = true;
+        try
+        {
+            var capabilities = await _mediaIntelligenceService.GetCapabilitiesAsync(CancellationToken.None);
+            MediaCapabilityStatusText = string.Join(
+                Environment.NewLine,
+                capabilities.Select(capability =>
+                    $"{CapabilityLabel(capability.Kind)} — {(capability.IsAvailable ? "Available" : "Not configured")}: {capability.Message}"));
+        }
+        catch (Exception)
+        {
+            MediaCapabilityStatusText = "Media capabilities could not be checked. Ordinary filename and document Search remains available.";
+        }
+        finally
+        {
+            IsContentBusy = false;
+        }
+    }
+
+    private static string CapabilityLabel(MediaCapabilityKind kind) => kind switch
+    {
+        MediaCapabilityKind.ImageMetadata => "Image metadata",
+        MediaCapabilityKind.ImageOcr => "Image OCR",
+        MediaCapabilityKind.AudioMetadata => "Audio metadata",
+        MediaCapabilityKind.Transcription => "Transcription",
+        MediaCapabilityKind.VideoMetadata => "Video metadata",
+        MediaCapabilityKind.VideoFrameSampling => "Video frame analysis",
+        MediaCapabilityKind.VisualDescription => "Visual descriptions",
+        MediaCapabilityKind.Thumbnail => "Thumbnails",
+        _ => kind.ToString(),
+    };
+
     private void RequestContentCacheReset()
     {
         IsContentCacheResetPending = true;
@@ -585,6 +641,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private void NotifyContentCommands()
     {
         CheckOcrCapabilityCommand.NotifyCanExecuteChanged();
+        CheckMediaCapabilitiesCommand.NotifyCanExecuteChanged();
         RequestContentCacheResetCommand.NotifyCanExecuteChanged();
         ConfirmContentCacheResetCommand.NotifyCanExecuteChanged();
         CancelContentCacheResetCommand.NotifyCanExecuteChanged();

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Relationships;
+using OpenSorSe.Application.Media;
 
 namespace OpenSorSe.Application.Tests;
 
@@ -129,6 +130,55 @@ public sealed class SearchPerformanceRegressionTests
 
         stopwatch.Stop();
         Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
+    }
+
+    /// <summary>Verifies mixed document/media ranking remains bounded without decoding media at query time.</summary>
+    [Fact]
+    [Trait("Category", "PerformanceRegression")]
+    public void MixedMediaSearchRemainsBoundedAndUsesRetainedEvidenceOnly()
+    {
+        const int documentCount = 5_000;
+        var embeddings = new FeatureHashingEmbeddingProvider();
+        var ranker = new HybridSearchRanker(embeddings, new SearchSnippetFactory());
+        var candidates = Enumerable.Range(0, documentCount)
+            .Select(index => new SearchCandidateDocument
+            {
+                FileId = index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                FullPath = $"/synthetic/media/item-{index:D6}.{(index % 3 == 0 ? "jpg" : index % 3 == 1 ? "m4a" : "mp4")}",
+                FileName = $"item-{index:D6}.{(index % 3 == 0 ? "jpg" : index % 3 == 1 ? "m4a" : "mp4")}",
+                RelativePath = $"media/item-{index:D6}",
+                FolderName = "media",
+                MediaEvidence = new IndexedMediaEvidence
+                {
+                    Kind = index % 3 == 0 ? MediaKind.Image : index % 3 == 1 ? MediaKind.Audio : MediaKind.Video,
+                    Metadata = new MediaMetadata
+                    {
+                        Kind = index % 3 == 0 ? MediaKind.Image : index % 3 == 1 ? MediaKind.Audio : MediaKind.Video,
+                        DeviceModel = index % 100 == 0 ? "Synthetic Camera" : "Other Device",
+                        Duration = index % 3 == 0 ? null : TimeSpan.FromSeconds(60),
+                    },
+                    Transcript = index % 100 == 1 ? "raspberry pi monitoring discussion" : null,
+                    OcrText = index % 100 == 2 ? "docker compose up" : null,
+                    MetadataProvider = "synthetic",
+                    MetadataProviderVersion = "1",
+                    ProcessingFingerprint = "synthetic",
+                    Status = MediaExtractionStatus.Completed,
+                },
+                IsFullyIndexed = true,
+            })
+            .ToArray();
+        var interpretation = new SearchInterpretation("raspberry pi", "raspberry pi", ["raspberry", "pi"], []);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var stopwatch = Stopwatch.StartNew();
+
+        var results = ranker.Rank(interpretation, candidates, 50, CancellationToken.None);
+
+        stopwatch.Stop();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Equal(50, results.Count);
+        Assert.All(results, result => Assert.Contains(result.Components, component => component.Kind == SearchRankingSignalKind.MediaTranscript));
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(10), $"Mixed-media ranking took {stopwatch.Elapsed}.");
+        Assert.True(allocated < 150_000_000, $"Mixed-media ranking allocated {allocated:N0} bytes.");
     }
 
     private static RelationshipFileDocument RelationshipDocument(string id, string fileName) => new()

@@ -165,6 +165,64 @@ public sealed class DuplicateReviewViewModelTests
         Assert.False(viewModel.RequestRemovalPlanCommand.CanExecute(null));
     }
 
+    /// <summary>Verifies selections persist across groups and produce one keeper-safe review plan.</summary>
+    [Fact]
+    public async Task RequestRemovalPlan_MultipleGroupsCombinesSelectionsAndPreservesEachKeeper()
+    {
+        var factory = new RecordingRemovalPlanFactory();
+        using var viewModel = new DuplicateReviewViewModel(null, factory);
+        viewModel.LoadSnapshot(CreateMultiGroupSnapshot());
+        ChangePlan? created = null;
+        viewModel.ChangePlanCreated += (_, plan) => created = plan;
+
+        viewModel.SelectedGroup = viewModel.VisibleGroups[0];
+        viewModel.MemberRows[0].IsSelected = true;
+        viewModel.SelectedGroup = viewModel.VisibleGroups[1];
+        viewModel.MemberRows[0].IsSelected = true;
+
+        Assert.Equal(2, viewModel.PendingRemovalCount);
+        Assert.Equal(2, viewModel.AffectedRemovalGroupCount);
+        Assert.True(viewModel.CanRequestRemovalPlan);
+
+        await viewModel.RequestRemovalPlanCommand.ExecuteAsync(null);
+
+        Assert.NotNull(created);
+        Assert.Equal(2, factory.Removed.Count);
+        Assert.Equal(2, factory.Kept.Count);
+        Assert.Equal(2, factory.Kept.Select(file => file.DuplicateGroupId).Distinct(StringComparer.Ordinal).Count());
+
+        viewModel.ApplyExecutedChangePlan(created!);
+        Assert.Empty(viewModel.VisibleGroups);
+    }
+
+    /// <summary>Verifies cancelling a combined request emits no plan and preserves the explicit selections for retry.</summary>
+    [Fact]
+    public async Task RequestRemovalPlan_MultipleGroupsCanBeCancelledWithoutLosingSelections()
+    {
+        var factory = new RecordingRemovalPlanFactory { Block = true };
+        using var viewModel = new DuplicateReviewViewModel(null, factory);
+        viewModel.LoadSnapshot(CreateMultiGroupSnapshot());
+        var plansCreated = 0;
+        viewModel.ChangePlanCreated += (_, _) => plansCreated++;
+
+        viewModel.SelectedGroup = viewModel.VisibleGroups[0];
+        viewModel.MemberRows[0].IsSelected = true;
+        viewModel.SelectedGroup = viewModel.VisibleGroups[1];
+        viewModel.MemberRows[0].IsSelected = true;
+
+        var running = viewModel.RequestRemovalPlanCommand.ExecuteAsync(null);
+        await factory.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        viewModel.CancelRemovalPlanCommand.Execute(null);
+        await running;
+
+        Assert.Equal(0, plansCreated);
+        Assert.Equal(2, viewModel.PendingRemovalCount);
+        Assert.Equal(2, viewModel.AffectedRemovalGroupCount);
+        Assert.Equal(StatusKind.Information, viewModel.Status.Kind);
+        Assert.Contains("cancelled", viewModel.Status.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, viewModel.VisibleGroups.Count);
+    }
+
     /// <summary>Verifies replacing Results context cancels launch work tied to the previous snapshot.</summary>
     [Fact]
     public async Task LoadSnapshot_NewIdentity_CancelsActiveLauncherLoop()
@@ -229,6 +287,33 @@ public sealed class DuplicateReviewViewModelTests
             true);
     }
 
+    private static ResultsSnapshot CreateMultiGroupSnapshot()
+    {
+        var files = new[]
+        {
+            CreateFile("one:a", "C:\\Duplicates\\one-a.txt", "group:one"),
+            CreateFile("one:b", "C:\\Duplicates\\one-b.txt", "group:one"),
+            CreateFile("two:a", "C:\\Duplicates\\two-a.txt", "group:two"),
+            CreateFile("two:b", "C:\\Duplicates\\two-b.txt", "group:two"),
+        };
+        var groups = new[]
+        {
+            new ResultDuplicateGroup("group:one", 1, ["one:a", "one:b"], 2, 10, 10),
+            new ResultDuplicateGroup("group:two", 2, ["two:a", "two:b"], 2, 10, 10),
+        };
+        return new ResultsSnapshot(
+            "session:multi",
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            files,
+            [new ResultDirectory("C:\\Duplicates", "Duplicates")],
+            groups,
+            [],
+            [],
+            new ResultsSnapshotStatistics(4, 1, 2, 4, 0, 0, 0),
+            true);
+    }
+
     private static ResultFile CreateFile(string id, string path, string groupId) => new(
         id,
         path,
@@ -277,8 +362,10 @@ public sealed class DuplicateReviewViewModelTests
     {
         public IReadOnlyList<ResultFile> Removed { get; private set; } = [];
         public IReadOnlyList<ResultFile> Kept { get; private set; } = [];
+        public bool Block { get; init; }
+        public TaskCompletionSource<bool> Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public Task<ChangePlan> CreateDuplicateRemovalPlanAsync(
+        public async Task<ChangePlan> CreateDuplicateRemovalPlanAsync(
             IReadOnlyList<ResultFile> filesToRemove,
             IReadOnlyList<ResultFile> filesToKeep,
             string? sourceScanId,
@@ -287,6 +374,12 @@ public sealed class DuplicateReviewViewModelTests
             cancellationToken.ThrowIfCancellationRequested();
             Removed = filesToRemove;
             Kept = filesToKeep;
+            Started.TrySetResult(true);
+            if (Block)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
             var actions = filesToRemove.Select((file, index) => new ProposedChangeAction(
                 $"action:{index}",
                 "plan:duplicate",
@@ -306,7 +399,7 @@ public sealed class DuplicateReviewViewModelTests
                 false,
                 null,
                 null)).ToArray();
-            return Task.FromResult(new ChangePlan(
+            return new ChangePlan(
                 ChangePlanSchema.CurrentVersion,
                 "plan:duplicate",
                 DateTimeOffset.UnixEpoch,
@@ -316,7 +409,7 @@ public sealed class DuplicateReviewViewModelTests
                 actions,
                 [],
                 DateTimeOffset.UnixEpoch,
-                false));
+                false);
         }
     }
 }

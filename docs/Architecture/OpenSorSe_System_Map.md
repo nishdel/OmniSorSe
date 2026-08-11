@@ -1,7 +1,6 @@
 # OpenSorSe system map
 
-These Mermaid diagrams model the unmerged v2.0 implementation candidate and
-its inherited v1.9 behavior. They emphasize
+These Mermaid diagrams model released v2.2 Media Intelligence. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
 
@@ -22,6 +21,7 @@ flowchart TB
     Paths["IApplicationPathProvider"] --> WindowsData["Existing LocalAppData layout"]
     Paths --> LinuxData["XDG config, data, state, cache"]
     Tool["IExternalToolLocator"] --> TesseractPath["Configured path or safe PATH discovery"]
+    Tool --> MediaTools["Explicit ffprobe or ffmpeg path, or safe process lookup"]
     DesktopContract["IDesktopIntegration"] --> WindowsDesktop["Windows desktop adapter"]
     DesktopContract --> LinuxDesktop["Linux graphical desktop adapter"]
     PackageBoundary["Build and packaging boundary"] --> WindowsManifest["Windows-conditioned manifest and icon"]
@@ -45,6 +45,7 @@ flowchart TB
         Watcher["Operating-system file watcher"]
         Ollama["Ollama or configured AI provider"]
         Tesseract["Tesseract OCR engine"]
+        MediaTools["Optional local ffprobe and ffmpeg"]
         Package["External local plugin ZIP"]
     end
 
@@ -81,6 +82,7 @@ flowchart TB
         RelationshipEngine["Deterministic evidence engine"]
         GraphCoordinator["Durable Knowledge Graph projection coordinator"]
         GraphServices["Provider-neutral graph query, decision, privacy, repair, and Search services"]
+        MediaCoordinator["Provider-neutral bounded media coordinator"]
     end
 
     subgraph Processing["Read-only processing and suggestion layer"]
@@ -88,6 +90,7 @@ flowchart TB
         Metadata["Metadata extraction"]
         Text["Document text extraction"]
         OCR["OCR coordination"]
+        MediaEvidence["Structured media metadata, transcripts, sampled-frame OCR, optional descriptions"]
         Classify["Classification"]
         Rules["Rules and deterministic planning"]
         Duplicates["Duplicate analysis"]
@@ -119,7 +122,7 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Embedded schema 3 durable Search and relationship index"]
+        DeepIndex["Released schema 4 Search, relationship, and media index"]
         GraphIndex["Schema 1 rebuildable Knowledge Graph projection"]
         GraphDecisions["Schema 1 graph-native decision and privacy authority"]
     end
@@ -154,6 +157,10 @@ flowchart TB
     Metadata --> Text
     Text --> OCR
     OCR -.->|local process| Tesseract
+    Metadata --> MediaCoordinator
+    MediaCoordinator -.->|argument-list process, bounded and cancellable| MediaTools
+    MediaCoordinator --> MediaEvidence
+    MediaEvidence --> OCR
     Metadata --> Classify
     Classify --> Rules
     Classify --> Duplicates
@@ -217,6 +224,8 @@ flowchart TB
     IndexCoordinator --> Enumerate
     IndexCoordinator --> Metadata
     IndexCoordinator --> Text
+    IndexCoordinator --> MediaCoordinator
+    MediaEvidence --> DeepIndex
     IndexCoordinator --> LocalIndexes
     IndexCoordinator --> DeepIndex
     Reconcile --> WatchedState

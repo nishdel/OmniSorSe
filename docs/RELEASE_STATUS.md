@@ -46,10 +46,11 @@ source history. The
 | v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md), and the [manual checklist](MANUAL_TESTING_v1.9.md) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
 | v2.0 Knowledge Graph | Integrated into `main` by explicit history-preserving release merge after complete local and exact-tip hosted validation; broad manual/community testing begins with publication | Non-incremental zero-warning Debug/Release builds and 1,486 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, indexing, relationship, migration/recovery, concurrency/cancellation, performance, policy, vulnerability, and four-runtime cross-target gates passed. Exact-tip Windows, Ubuntu, and macOS CI passed. The Windows portable ZIP and unsigned installer passed controlled package validation. See the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md). The [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
 | v2.1 Search & AI Quality | Released as v2.1.0 from `v2.1-search-ai-quality` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,531 tests passed in each configuration with zero failures/skips. Policy, vulnerability, four-runtime, exact-main hosted, native-package, and checksum gates are release records. Broad interactive validation across arbitrary hosts/models is not claimed. | Deterministic filename relevance and typo quality, optional bounded Ollama ordering of known results, model/failure clarity, truthful scan/index progress, result actions, safe duplicate recovery, dismissible notifications, privacy wording, Related Files guidance, and contextual Help. |
+| v2.2 Media Intelligence | Released as v2.2.0 from `v2.2-media-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,603 tests passed in each configuration with zero failures/skips before integration. Search/media/index/migration/duplicate/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows native-provider evidence includes real Tesseract OCR, ffprobe/ffmpeg media processing, and schema-3-to-4 migration; broad interactive and native Linux/macOS media validation is not claimed. | First-class bounded image/audio/video evidence, EXIF/GPS, OCR, lazy thumbnails, optional ffprobe metadata, optional capped ffmpeg frames, unified Search, conservative media relationships, scan ETA, batch duplicate review, clearer navigation/privacy, and schema 4. |
 
 ## Current product boundary
 
-OpenSorSe v2.1.0 is a safe, local-first desktop application for understanding,
+OpenSorSe v2.2.0 is a safe, local-first desktop application for understanding,
 monitoring, searching, and organizing explicitly selected folders. The v1.6
 production-hardening and cross-platform foundation remains intact; v1.7 adds
 durable progressive background indexing, and v1.8 adds bounded Search
@@ -85,7 +86,7 @@ Watcher APIs are treated as fallible hints. Enabled roots are reconciled on star
 
 Duplicate View may, only after an explicit user command, pass a validated current-scan path to the operating-system shell. Each action is capped at five targets, uses no constructed shell command, reports partial failures, and performs no OpenSorSe filesystem mutation.
 
-OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. The provider-isolated embedded SQLite schema-3 index additionally retains durable sources, runs, stages, bounded shared content, coverage, maintenance history, index-only privacy rules, relationship evidence, user corrections, and virtual collection membership. The v2.0 candidate adds schema-1 graph and graph-native decision sidecars without changing schema 3. Current persistence, mutation, plugin, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
+OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisions, optional catalog snapshots/tags, saved queries, extracted native/OCR text, deterministic search representations, structure history, plugin state/packages, Change Plans, and the Operation Journal under local application data. Released v2.2 uses the provider-isolated SQLite schema-4 index for content-hash-shared bounded media evidence and media relationship features plus schema-1 graph/decision sidecars. Current persistence, mutation, plugin, media, and network boundaries are detailed in [Safety and Privacy](SAFETY_AND_PRIVACY.md).
 
 ## v1.8 validation
 
@@ -160,24 +161,25 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe v2.1.0 is the current Search & AI Quality release. It preserves the
-v2.0 Knowledge Graph and complete v1.7-v2.0 history while improving local Search,
-optional Ollama behavior, progress, duplicate review, notifications, privacy
-wording, Related Files guidance, and Help. Native Windows/macOS artifacts,
-checksums, tagging, and publication are produced from exact integrated source by
-the established release workflow. Automated/native package evidence is not a
-claim of broad interactive validation on every host, model, OCR installation,
-filesystem, or accessibility technology. See the
-[v2.1 release notes](RELEASE_NOTES_v2.1.0.md),
-[Search and AI quality guide](SEARCH_AND_AI_QUALITY_v2.1.md), and fully unchecked
-[manual checklist](MANUAL_TESTING_v2.1.md). The v2.0 documentation, tag, release,
-and validation reports remain historical evidence.
+OpenSorSe v2.2.0 is the current Media Intelligence release. It preserves the
+v2.1 Search/AI quality architecture and extends the same local index and Search
+with bounded media metadata, OCR evidence, thumbnails, optional external-tool
+capabilities, privacy clearing, diagnostics, and conservative media
+relationships. Native Windows/macOS artifacts, checksums, tagging, and
+publication are produced from exact integrated source by the established
+release workflow. Automated/native package evidence is not a claim of broad
+interactive validation on every host, media codec, OCR installation,
+filesystem, display scaling, or accessibility technology. See the
+[v2.2 release notes](RELEASE_NOTES_v2.2.0.md),
+[implementation guide](MEDIA_INTELLIGENCE_v2.2.md), and
+[manual checklist](MANUAL_TESTING_v2.2.md). The v2.1 and v2.0 documents, tags,
+releases, and validation records remain historical evidence.
 
 ## Release identity
 
-- Version: `v2.1.0`
-- Release name: **Search & AI Quality**
-- Source branch: `v2.1-search-ai-quality`
+- Version: `v2.2.0`
+- Release name: **Media Intelligence**
+- Source branch: `v2.2-media-intelligence`
 - Status: integrated into `main` after final local and exact-tip hosted
   validation. Native packaging, tagging, and publication are release-workflow records;
   broad interactive validation is not claimed complete.

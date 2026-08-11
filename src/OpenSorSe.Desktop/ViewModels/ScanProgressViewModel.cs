@@ -8,6 +8,9 @@ namespace OpenSorSe.Desktop.ViewModels;
 public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan ElapsedRefreshInterval = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan MinimumEstimateObservation = TimeSpan.FromSeconds(2);
+    private const long MinimumCompletedEstimateItems = 5;
+    private const double EstimateSmoothingFactor = 0.25;
     private readonly SynchronizationContext? _synchronizationContext;
     private readonly TimeProvider _timeProvider;
     private string? _currentFolder;
@@ -18,6 +21,12 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
     private ScanProgressStage _stage = ScanProgressStage.Idle;
     private ITimer? _elapsedTimer;
     private long? _startedTimestamp;
+    private TimeSpan? _estimatedRemaining;
+    private long? _lastEstimateCompleted;
+    private TimeSpan? _lastEstimateElapsed;
+    private double? _smoothedItemsPerSecond;
+    private string? _estimateWorkloadKey;
+    private bool _hasEstimateEvidence;
     private bool _isDisposed;
 
     /// <summary>Initializes scan progress with the system monotonic clock.</summary>
@@ -65,6 +74,27 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
     /// <summary>Gets human-readable elapsed time without implying unsupported precision.</summary>
     public string ElapsedText => FormatDuration(Elapsed);
 
+    /// <summary>Gets the conservative smoothed remaining-time estimate, when enough comparable work exists.</summary>
+    public TimeSpan? EstimatedRemaining
+    {
+        get => _estimatedRemaining;
+        private set
+        {
+            if (SetProperty(ref _estimatedRemaining, value))
+            {
+                OnPropertyChanged(nameof(EstimatedRemainingText));
+                OnPropertyChanged(nameof(StatusText));
+            }
+        }
+    }
+
+    /// <summary>Gets a rounded estimate label without false second-level precision.</summary>
+    public string? EstimatedRemainingText => EstimatedRemaining is { } estimate
+        ? FormatEstimate(estimate)
+        : _hasEstimateEvidence && IsActive
+            ? "Estimating…"
+            : null;
+
     /// <summary>
     /// Gets the number of discovered files last reported by the scanner.
     /// </summary>
@@ -110,7 +140,9 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
     public string StatusText => Stage switch
     {
         ScanProgressStage.Idle => _stageText ?? "Ready",
-        ScanProgressStage.Scanning => $"{_stageText ?? "Scanning"} · {ElapsedText} elapsed",
+        ScanProgressStage.Scanning => string.IsNullOrWhiteSpace(EstimatedRemainingText)
+            ? $"{_stageText ?? "Scanning"} · {ElapsedText} elapsed"
+            : $"{_stageText ?? "Scanning"} · {ElapsedText} elapsed · {EstimatedRemainingText}",
         ScanProgressStage.Completed => _startedTimestamp is null ? "Scan completed." : $"Completed in {ElapsedText}",
         ScanProgressStage.Cancelled => _startedTimestamp is null ? "Scan cancelled." : $"Cancelled after {ElapsedText}",
         ScanProgressStage.Failed => _startedTimestamp is null
@@ -131,6 +163,7 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
         FilesFound = 0;
         FoldersScanned = 0;
         _stageText = null;
+        ResetEstimate();
         _startedTimestamp = _timeProvider.GetTimestamp();
         Stage = ScanProgressStage.Scanning;
         _elapsedTimer = _timeProvider.CreateTimer(
@@ -156,6 +189,7 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
         RefreshElapsed();
         FilesFound = progress.Statistics.FilesDiscovered;
         FoldersScanned = progress.Statistics.DirectoriesDiscovered;
+        UpdateEstimate(progress);
     }
 
     /// <summary>
@@ -180,6 +214,7 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
             Elapsed = TimeSpan.Zero;
         }
         _stageText = null;
+        ResetEstimate();
         Stage = status switch
         {
             ScanStatus.Completed => ScanProgressStage.Completed,
@@ -206,6 +241,7 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
             Elapsed = TimeSpan.Zero;
         }
         _stageText = message;
+        ResetEstimate();
         Stage = ScanProgressStage.Failed;
     }
 
@@ -227,6 +263,11 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
     public void SetStageText(string stageText)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(stageText);
+        if (!string.Equals(_stageText, stageText, StringComparison.Ordinal))
+        {
+            ResetEstimate();
+        }
+
         _stageText = stageText;
         OnPropertyChanged(nameof(StatusText));
     }
@@ -264,6 +305,78 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
         StopTimer();
     }
 
+    private void UpdateEstimate(ScanProgress progress)
+    {
+        var completed = progress.WorkItemsCompleted;
+        var remaining = progress.WorkItemsRemaining;
+        if (completed is null || remaining is null || remaining < 0 || string.IsNullOrWhiteSpace(progress.WorkloadKey))
+        {
+            ResetEstimate();
+            return;
+        }
+
+        if (!string.Equals(_estimateWorkloadKey, progress.WorkloadKey, StringComparison.Ordinal))
+        {
+            ResetEstimate();
+            _estimateWorkloadKey = progress.WorkloadKey;
+        }
+
+        _hasEstimateEvidence = remaining > 0;
+        if (remaining == 0)
+        {
+            EstimatedRemaining = null;
+            OnPropertyChanged(nameof(EstimatedRemainingText));
+            OnPropertyChanged(nameof(StatusText));
+            return;
+        }
+
+        if (_lastEstimateCompleted is { } priorCompleted &&
+            _lastEstimateElapsed is { } priorElapsed &&
+            completed > priorCompleted &&
+            progress.Elapsed > priorElapsed)
+        {
+            var seconds = (progress.Elapsed - priorElapsed).TotalSeconds;
+            var sampleRate = (completed.Value - priorCompleted) / seconds;
+            if (double.IsFinite(sampleRate) && sampleRate > 0)
+            {
+                _smoothedItemsPerSecond = _smoothedItemsPerSecond is { } existing
+                    ? (EstimateSmoothingFactor * sampleRate) + ((1 - EstimateSmoothingFactor) * existing)
+                    : sampleRate;
+            }
+        }
+
+        _lastEstimateCompleted = completed;
+        _lastEstimateElapsed = progress.Elapsed;
+        if (completed < MinimumCompletedEstimateItems ||
+            progress.Elapsed < MinimumEstimateObservation ||
+            _smoothedItemsPerSecond is not { } rate || rate <= 0)
+        {
+            EstimatedRemaining = null;
+            OnPropertyChanged(nameof(EstimatedRemainingText));
+            OnPropertyChanged(nameof(StatusText));
+            return;
+        }
+
+        var secondsRemaining = Math.Min(TimeSpan.MaxValue.TotalSeconds, remaining.Value / rate);
+        var candidate = TimeSpan.FromSeconds(Math.Max(0, secondsRemaining));
+        if (EstimatedRemaining is not { } current ||
+            Math.Abs((candidate - current).TotalSeconds) >= Math.Max(3, current.TotalSeconds * 0.15))
+        {
+            EstimatedRemaining = candidate;
+        }
+    }
+
+    private void ResetEstimate()
+    {
+        _estimateWorkloadKey = null;
+        _lastEstimateCompleted = null;
+        _lastEstimateElapsed = null;
+        _smoothedItemsPerSecond = null;
+        _hasEstimateEvidence = false;
+        EstimatedRemaining = null;
+        OnPropertyChanged(nameof(EstimatedRemainingText));
+    }
+
     private void StopTimer()
     {
         Interlocked.Exchange(ref _elapsedTimer, null)?.Dispose();
@@ -293,5 +406,22 @@ public sealed class ScanProgressViewModel : ViewModelBase, IDisposable
         return safe.TotalMinutes < 1
             ? $"{safe.TotalSeconds:0.0} s"
             : $"{(int)safe.TotalMinutes}:{safe.Seconds:00}";
+    }
+
+    private static string FormatEstimate(TimeSpan duration)
+    {
+        var safe = duration < TimeSpan.Zero ? TimeSpan.Zero : duration;
+        if (safe.TotalMinutes < 1)
+        {
+            var roundedSeconds = Math.Max(5, (int)(Math.Round(safe.TotalSeconds / 5, MidpointRounding.AwayFromZero) * 5));
+            return $"~{roundedSeconds} s remaining";
+        }
+
+        var rounded = TimeSpan.FromSeconds(Math.Round(safe.TotalSeconds / 15, MidpointRounding.AwayFromZero) * 15);
+        return rounded.Hours > 0
+            ? $"~{(int)rounded.TotalHours}h {rounded.Minutes}m remaining"
+            : rounded.Seconds == 0
+                ? $"~{rounded.Minutes}m remaining"
+                : $"~{rounded.Minutes}m {rounded.Seconds}s remaining";
     }
 }

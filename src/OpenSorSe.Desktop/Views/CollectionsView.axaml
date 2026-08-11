@@ -40,11 +40,12 @@
             <TabItem Header="Smart Collections">
                 <Grid Margin="0,10,0,0" ColumnDefinitions="300,*" ColumnSpacing="12">
                     <Border Classes="card">
-                        <StackPanel Spacing="8">
+                        <Grid RowDefinitions="Auto,*" RowSpacing="8">
                             <TextBlock Text="Virtual collections" FontSize="18" FontWeight="SemiBold" />
-                            <ListBox ItemsSource="{Binding Collections}"
+                            <ListBox Grid.Row="1"
+                                     ItemsSource="{Binding Collections}"
                                      SelectedItem="{Binding SelectedCollection, Mode=TwoWay}"
-                                     AutomationProperties.Name="Smart Collections">
+                                     AutomationProperties.Name="Scrollable Smart Collections">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="rel:SmartCollection">
                                         <StackPanel Margin="4" Spacing="2">
@@ -55,7 +56,7 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                        </StackPanel>
+                        </Grid>
                     </Border>
 
                     <ScrollViewer Grid.Column="1">
@@ -195,7 +196,8 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Related Files">
+            <!-- Compatibility bindings remain in CollectionsViewModel, but Related Files has one visible home in primary navigation. -->
+            <TabItem Header="Related Files" IsVisible="False">
                 <ScrollViewer Margin="0,10,0,0">
                     <StackPanel Spacing="12">
                         <Border Classes="card">

@@ -10,6 +10,7 @@ using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Features;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
@@ -43,19 +44,20 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     [
         new(NavigationDestination.Dashboard, "Home", FeatureRequirement.Regular, NavigationGroup.Primary, "⌂"),
         new(NavigationDestination.Scan, "Scan", FeatureRequirement.Regular, NavigationGroup.Primary, "⌕"),
+        new(NavigationDestination.SemanticSearch, "Search", FeatureRequirement.Regular, NavigationGroup.Primary, "⌕"),
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
-        new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
-        new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Primary, "C"),
         new(NavigationDestination.KnowledgeGraph, "Related Files", FeatureRequirement.Regular, NavigationGroup.Primary, "R"),
-        new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Primary, "▣"),
-        new(NavigationDestination.Settings, "Settings", FeatureRequirement.Regular, NavigationGroup.Primary, "⚙"),
+        new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
+        new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Secondary, "C"),
+        new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Secondary, "▣"),
+        new(NavigationDestination.WatchedFolders, "Watched Folders", FeatureRequirement.Regular, NavigationGroup.Secondary, "W"),
+        new(NavigationDestination.Workflows, "Workflows", FeatureRequirement.Regular, NavigationGroup.Secondary, "P"),
+        new(NavigationDestination.History, "Operation History", FeatureRequirement.Regular, NavigationGroup.Secondary, "↶"),
+        new(NavigationDestination.Settings, "Settings", FeatureRequirement.Regular, NavigationGroup.Secondary, "⚙"),
         new(NavigationDestination.StructureHistory, "Folder plans", FeatureRequirement.Advanced, NavigationGroup.Advanced, "⌘"),
         new(NavigationDestination.Rules, "Sorting rules", FeatureRequirement.Advanced, NavigationGroup.Advanced, "≡"),
         new(NavigationDestination.Diagnostics, "System check", FeatureRequirement.Advanced, NavigationGroup.Advanced, "✓"),
-        new(NavigationDestination.History, "Operation History", FeatureRequirement.Regular, NavigationGroup.Primary, "↶"),
-        new(NavigationDestination.WatchedFolders, "Watched Folders", FeatureRequirement.Regular, NavigationGroup.Primary, "W"),
-        new(NavigationDestination.Workflows, "Workflows", FeatureRequirement.Regular, NavigationGroup.Primary, "P"),
         new(NavigationDestination.Help, "Help", FeatureRequirement.Regular, NavigationGroup.Footer, "?"),
         new(NavigationDestination.About, "About", FeatureRequirement.Regular, NavigationGroup.Footer, "i"),
     ]);
@@ -72,6 +74,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
+    private readonly ObservableCollection<NavigationItem> _secondaryNavigationItems = [];
     private readonly ObservableCollection<NavigationItem> _advancedNavigationItems = [];
     private readonly ObservableCollection<NavigationItem> _footerNavigationItems = [];
     private NavigationDestination _selectedDestination = NavigationDestination.Dashboard;
@@ -286,7 +289,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
         IBackgroundIndexingService? backgroundIndexingService = null,
         IRelationshipService? relationshipService = null,
-        KnowledgeGraphViewModel? knowledgeGraphViewModel = null)
+        KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
+        IMediaIntelligenceService? mediaIntelligenceService = null,
+        IMediaThumbnailProvider? mediaThumbnailProvider = null)
         : this(
             configurationService,
             loggingService,
@@ -331,7 +336,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             applicationPathProvider,
             backgroundIndexingService,
             relationshipService,
-            knowledgeGraphViewModel)
+            knowledgeGraphViewModel,
+            mediaIntelligenceService,
+            mediaThumbnailProvider)
     {
     }
 
@@ -379,7 +386,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         OpenSorSe.Core.Platform.IApplicationPathProvider? applicationPathProvider = null,
         IBackgroundIndexingService? backgroundIndexingService = null,
         IRelationshipService? relationshipService = null,
-        KnowledgeGraphViewModel? knowledgeGraphViewModel = null)
+        KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
+        IMediaIntelligenceService? mediaIntelligenceService = null,
+        IMediaThumbnailProvider? mediaThumbnailProvider = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -426,7 +435,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             externalFileLauncher,
             backgroundIndexingService,
             advancedDiagnosticsWindowService,
-            clipboard: clipboardService);
+            clipboard: clipboardService,
+            mediaThumbnailProvider: mediaThumbnailProvider);
         Collections = new CollectionsViewModel(relationshipService);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
@@ -452,11 +462,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                     applicationPathProvider,
                     clipboardService,
                     externalFileLauncher)
-                : null);
+                : null,
+            mediaIntelligenceService);
         _enableAi = configurationService.Current.Ai.Enabled;
         _showAdvancedFeatures = configurationService.Current.Features.ShowAdvancedFeatures;
         NavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_navigationItems);
         PrimaryNavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_primaryNavigationItems);
+        SecondaryNavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_secondaryNavigationItems);
         AdvancedNavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_advancedNavigationItems);
         FooterNavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_footerNavigationItems);
         ShowSavedScanLibraryCommand = new RelayCommand(() => SelectedSavedScansSection = SavedScansSection.Library);
@@ -653,6 +665,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the six everyday destinations shown first.</summary>
     public ReadOnlyObservableCollection<NavigationItem> PrimaryNavigationItems { get; }
 
+    /// <summary>Gets library, automation, history, and configuration destinations.</summary>
+    public ReadOnlyObservableCollection<NavigationItem> SecondaryNavigationItems { get; }
+
     /// <summary>Gets specialist destinations shown only when enabled.</summary>
     public ReadOnlyObservableCollection<NavigationItem> AdvancedNavigationItems { get; }
 
@@ -661,6 +676,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the Advanced navigation section has visible entries.</summary>
     public bool HasAdvancedNavigationItems => AdvancedNavigationItems.Count > 0;
+
+    /// <summary>Gets whether secondary navigation is available.</summary>
+    public bool HasSecondaryNavigationItems => SecondaryNavigationItems.Count > 0;
 
     /// <summary>Gets or sets the active local section in Saved scans.</summary>
     public SavedScansSection SelectedSavedScansSection
@@ -786,6 +804,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
             var visibleItem = _navigationItems.FirstOrDefault(item => item.Destination == value);
             var isFilesMeaningMode = value == NavigationDestination.SemanticSearch &&
+                                     _navigationItems.All(item => item.Destination != NavigationDestination.SemanticSearch) &&
                                      FeatureAccess.IsEnabled(_configurationService.Current, FeatureRequirement.SemanticSearch);
             var isSavedScansChild = value is NavigationDestination.CatalogSearch or NavigationDestination.CatalogComparison &&
                                     (value != NavigationDestination.CatalogComparison || ShowAdvancedFeatures);
@@ -1455,6 +1474,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             .ToArray();
         _navigationItems.Clear();
         _primaryNavigationItems.Clear();
+        _secondaryNavigationItems.Clear();
         _advancedNavigationItems.Clear();
         _footerNavigationItems.Clear();
         foreach (var item in visibleItems)
@@ -1465,6 +1485,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 case NavigationGroup.Primary:
                     _primaryNavigationItems.Add(item);
                     break;
+                case NavigationGroup.Secondary:
+                    _secondaryNavigationItems.Add(item);
+                    break;
                 case NavigationGroup.Advanced:
                     _advancedNavigationItems.Add(item);
                     break;
@@ -1474,9 +1497,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             }
         }
 
-        var highlightedDestination = _selectedDestination == NavigationDestination.SemanticSearch
-            ? NavigationDestination.Results
-            : _selectedDestination is NavigationDestination.CatalogSearch or NavigationDestination.CatalogComparison
+        var highlightedDestination = _selectedDestination is NavigationDestination.CatalogSearch or NavigationDestination.CatalogComparison
                 ? NavigationDestination.Catalog
             : _selectedDestination;
         foreach (var item in _navigationItems)
@@ -1486,6 +1507,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         OnPropertyChanged(nameof(Destinations));
         OnPropertyChanged(nameof(HasAdvancedNavigationItems));
+        OnPropertyChanged(nameof(HasSecondaryNavigationItems));
         var validFilesMeaningMode = _selectedDestination == NavigationDestination.SemanticSearch &&
                                     FeatureAccess.IsEnabled(settings, FeatureRequirement.SemanticSearch);
         var validSavedScansChild = _selectedDestination is NavigationDestination.CatalogSearch or NavigationDestination.CatalogComparison &&

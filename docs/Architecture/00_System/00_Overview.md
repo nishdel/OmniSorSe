@@ -1,4 +1,4 @@
-# OpenSorSe v2.0 implementation-candidate System Overview
+# OpenSorSe current System Overview
 
 OpenSorSe is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
 
@@ -18,10 +18,15 @@ snippets, relevance measurement, and provider-neutral index privacy/repair
 operations. v1.9 adds deterministic evidence-backed relationships, virtual
 collections/context/timelines, persistent user corrections, contextual Search,
 and index-only relationship privacy/repair.
-The v2.0 candidate adds an informed-consent, disabled-by-default conservative
+v2.0 added an informed-consent, disabled-by-default conservative
 Knowledge Graph projection with durable recovery, bounded inspection, and
 optional Search context. It leaves the v1.9 schema-3 index authoritative and
 never reads or modifies source files.
+v2.1 improved Search and optional Ollama behavior without a schema
+change. v2.2 adds provider-neutral bounded media
+metadata, OCR/transcript/description evidence, lazy image thumbnails, optional
+`ffprobe` metadata, optional capped `ffmpeg` frames, Search integration, and
+conservative media relationships. It migrates only `deep-index.db` to schema 4.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 
@@ -72,7 +77,8 @@ watched configurations/catalogues/grouped activity, Change Plans, and the
 Operation Journal live in separate bounded OpenSorSe application-owned files.
 v1.6 serializes process-local transactions per normalized path and replaces an
 owned document only after a complete bounded sibling is durably flushed.
-The schema-3 `deep-index.db` remains unchanged. Optional schema-1
+v2.2 uses schema-4 `deep-index.db` after transactionally migrating schema 3
+for shared media evidence. Optional schema-1
 `knowledge-graph.db` contains rebuildable projection data, while schema-1
 `knowledge-decisions.db` contains graph-native decisions and privacy recovery
 state that must not be silently reset.
@@ -107,3 +113,4 @@ An online plugin marketplace/download/update service, out-of-process plugin sand
 - [v1.9 specification](../../Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md)
 - [v2.0 Knowledge Graph guide](../../KNOWLEDGE_GRAPH_v2.0.md)
 - [v2.0 Knowledge Graph stability design](../06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md)
+- [v2.2 Media Intelligence](../../MEDIA_INTELLIGENCE_v2.2.md)
