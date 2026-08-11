@@ -5,6 +5,7 @@ using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 
@@ -678,6 +679,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             MetadataText = document.MetadataText,
             ExtractedText = document.ExtractedText,
             OcrText = document.OcrText,
+            MediaEvidence = document.MediaEvidence,
             Summary = document.Summary,
             Keywords = document.Keywords,
             Chunks = document.SelectedChunks,
@@ -709,15 +711,18 @@ public sealed class SemanticSearchService : ISemanticSearchService
                         (component.MatchedText is null ||
                          tag.Contains(component.MatchedText, StringComparison.OrdinalIgnoreCase))))
                     .ToArray()),
-            components.Any(component => component.Kind == SearchRankingSignalKind.Metadata),
-            components.Any(component => component.Kind == SearchRankingSignalKind.ExtractedText),
-            components.Any(component => component.Kind == SearchRankingSignalKind.OcrText),
+            components.Any(component => component.Kind is SearchRankingSignalKind.Metadata or SearchRankingSignalKind.MediaMetadata),
+            components.Any(component => component.Kind is SearchRankingSignalKind.ExtractedText or SearchRankingSignalKind.MediaTranscript),
+            components.Any(component => component.Kind is SearchRankingSignalKind.OcrText or SearchRankingSignalKind.MediaOcr),
             candidate.Document.FileId,
             components,
             candidate.Snippet,
             candidate.Document.IsFullyIndexed,
             candidate.Document.IndexingLevel,
-            candidate.Document.SourceName);
+            candidate.Document.SourceName)
+        {
+            MediaEvidence = candidate.Document.MediaEvidence,
+        };
     }
 
     private static string CoverageMessage(SearchCoverage coverage, bool hasResults)

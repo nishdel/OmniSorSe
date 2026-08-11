@@ -1,5 +1,10 @@
 # Video Reader
 
+> **Status note:** this is an older broad design. The v2.2 release
+> uses optional `ffprobe`, a strictly capped `ffmpeg` representative-frame
+> sampler, shared OCR/transcription contracts, and no whole-video analysis.
+> See [Media Intelligence v2.2](../../MEDIA_INTELLIGENCE_v2.2.md).
+
 > This document defines the Video Reader component, which is responsible for extracting metadata and technical information from supported video file formats.
 
 ---

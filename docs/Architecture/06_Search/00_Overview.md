@@ -6,7 +6,7 @@
 
 ## Implementation Status
 
-OpenSorSe retains deterministic current-Results and catalog metadata search from v0.3-v0.9 and the compatible v1.0 `semantic-index.json`. In v1.7 the user-facing feature is named **Search** and can combine that bounded index with provider-neutral progressive documents from the durable background index. Filename, folder, tag, metadata, native text, OCR, summary, and related-concept fields remain distinguishable and matches are explained. Search stays usable while coverage is incomplete. A final learned ranker and server-backed provider remain future work.
+OpenSorSe retains deterministic current-Results and catalog metadata search from v0.3-v0.9 and the compatible v1.0 `semantic-index.json`. In v1.7 the user-facing feature became **Search** and combined that bounded index with provider-neutral progressive documents from the durable background index. v2.1 provides deterministic exact/literal-first hybrid ranking, bounded fuzzy handling, explanations, visible filters, and optional same-tier AI assistance over already known results. v2.2 adds typed media metadata, OCR, transcript-contract, and optional-description-contract evidence to the same pipeline. Search is one obvious primary-navigation destination and stays usable while coverage or optional media capabilities are incomplete.
 
 ---
 
@@ -24,7 +24,7 @@ The Search subsystem provides retrieval capabilities only. It does not create or
 
 The Search subsystem is responsible for:
 
-* Searching document content.
+* Searching document and available media-derived content.
 * Searching metadata.
 * Performing semantic search.
 * Filtering search results.
@@ -50,7 +50,7 @@ The Search subsystem is responsible for:
 
 The Search subsystem is **not** responsible for:
 
-* AI inference
+* AI inference or media extraction
 * Embedding generation
 * Metadata extraction
 * Database persistence
@@ -131,8 +131,11 @@ Individual search strategies may be combined depending on the query.
 
 The Search subsystem may retrieve information from:
 
-* Document metadata.
+* Document and media metadata.
 * Extracted document text.
+* Image and representative-frame OCR.
+* Bounded local-provider transcripts when a concrete provider is available.
+* Optional low-weight visual descriptions when a reviewed provider is available.
 * AI-generated summaries.
 * AI classifications.
 * Tags.
@@ -162,8 +165,8 @@ Search should focus on retrieving information rather than generating it.
 
 The architecture should support future enhancements, including:
 
-* Hybrid search strategies.
-* Natural language search.
+* Additional validated hybrid signals.
+* Broader deterministic natural-language interpretation.
 * Saved queries containing full filter combinations beyond v0.7's query-text-only presets.
 * Personalized ranking.
 * Federated search.

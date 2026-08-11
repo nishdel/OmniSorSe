@@ -26,6 +26,93 @@ public sealed class ScanProgressViewModelTests
         Assert.Equal(TimeSpan.FromSeconds(3), viewModel.Elapsed);
     }
 
+    /// <summary>Verifies ETA remains withheld until comparable work supplies enough deterministic samples.</summary>
+    [Fact]
+    public void Estimate_AppearsOnlyAfterSufficientComparableWork()
+    {
+        using var viewModel = new ScanProgressViewModel(new MutableTimeProvider());
+        viewModel.Start();
+
+        viewModel.ApplyProgress(new ScanProgress(
+            "C:\\Scan",
+            new ScanStatistics(1, 1, 0),
+            TimeSpan.Zero,
+            0,
+            12,
+            "root:one"));
+        Assert.Equal("Estimating…", viewModel.EstimatedRemainingText);
+
+        viewModel.ApplyProgress(new ScanProgress(
+            "C:\\Scan\\five",
+            new ScanStatistics(8, 8, 0),
+            TimeSpan.FromSeconds(4),
+            6,
+            6,
+            "root:one"));
+
+        Assert.NotNull(viewModel.EstimatedRemaining);
+        Assert.Contains("remaining", viewModel.EstimatedRemainingText, StringComparison.Ordinal);
+        Assert.Contains(viewModel.EstimatedRemainingText!, viewModel.StatusText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies changing workload class discards a stale rate instead of mixing heterogeneous work.</summary>
+    [Fact]
+    public void Estimate_WorkloadChangeResetsToEstimating()
+    {
+        using var viewModel = new ScanProgressViewModel(new MutableTimeProvider());
+        viewModel.Start();
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(0, 1, 0), TimeSpan.Zero, 0, 10, "root:one"));
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(6, 7, 0), TimeSpan.FromSeconds(3), 6, 4, "root:one"));
+        Assert.NotNull(viewModel.EstimatedRemaining);
+
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(6, 8, 0), TimeSpan.FromSeconds(4), 0, 20, "root:two"));
+
+        Assert.Null(viewModel.EstimatedRemaining);
+        Assert.Equal("Estimating…", viewModel.EstimatedRemainingText);
+    }
+
+    /// <summary>Verifies indeterminate scans and terminal states never retain a manufactured ETA.</summary>
+    [Fact]
+    public void Estimate_IndeterminateAndTerminalStatesDoNotDisplayRemainingTime()
+    {
+        using var viewModel = new ScanProgressViewModel(new MutableTimeProvider());
+        viewModel.Start();
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(2, 1, 0), TimeSpan.FromSeconds(3)));
+        Assert.Null(viewModel.EstimatedRemainingText);
+
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(8, 8, 0), TimeSpan.FromSeconds(6), 8, 4, "root"));
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(12, 12, 0), TimeSpan.FromSeconds(8), 12, 0, "root"));
+        viewModel.Complete(ScanStatus.Completed);
+
+        Assert.Null(viewModel.EstimatedRemaining);
+        Assert.DoesNotContain("remaining", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies cancellation and failure both clear a previously established estimate.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Estimate_CancellationAndFailureClearRemainingTime(bool cancel)
+    {
+        using var viewModel = new ScanProgressViewModel(new MutableTimeProvider());
+        viewModel.Start();
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(0, 1, 0), TimeSpan.Zero, 0, 12, "root"));
+        viewModel.ApplyProgress(new ScanProgress(null, new ScanStatistics(8, 8, 0), TimeSpan.FromSeconds(4), 8, 4, "root"));
+        Assert.NotNull(viewModel.EstimatedRemaining);
+
+        if (cancel)
+        {
+            viewModel.Complete(ScanStatus.Cancelled);
+        }
+        else
+        {
+            viewModel.Fail("Reader failed.");
+        }
+
+        Assert.Null(viewModel.EstimatedRemaining);
+        Assert.DoesNotContain("remaining", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Verifies elapsed time continues through processing stages after scanner snapshots stop.</summary>
     [Fact]
     public void Elapsed_UsesMonotonicOperationLifetimeAndFreezesAtCompletion()

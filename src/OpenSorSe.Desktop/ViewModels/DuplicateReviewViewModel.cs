@@ -32,6 +32,7 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
     private CancellationTokenSource? _openCancellation;
     private CancellationTokenSource? _removalCancellation;
     private readonly HashSet<string> _removedMemberIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _pendingRemovalIds = new(StringComparer.Ordinal);
 
     /// <summary>Initializes a preview instance without operating-system launch support.</summary>
     public DuplicateReviewViewModel()
@@ -203,14 +204,23 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets selection guidance for bounded open and safe-removal operations.</summary>
     public string SelectedMemberCountText =>
-        $"{SelectedMemberCount} selected (maximum {MaximumOpenCount}); at least one copy must remain";
+        $"{SelectedMemberCount} selected in this group (maximum {MaximumOpenCount}); {PendingRemovalCount} selected across {AffectedRemovalGroupCount} group(s); every group must retain a copy";
+
+    /// <summary>Gets the number of copies selected for the combined review plan.</summary>
+    public int PendingRemovalCount => _pendingRemovalIds.Count;
+
+    /// <summary>Gets the number of exact-copy groups represented by the combined selection.</summary>
+    public int AffectedRemovalGroupCount => _snapshot?.Files
+        .Where(file => _pendingRemovalIds.Contains(file.Id) && !string.IsNullOrWhiteSpace(file.DuplicateGroupId))
+        .Select(file => file.DuplicateGroupId)
+        .Distinct(StringComparer.Ordinal)
+        .Count() ?? 0;
 
     /// <summary>Gets whether selected unwanted copies can become a reviewable safe-removal plan.</summary>
     public bool CanRequestRemovalPlan =>
         _removalPlanFactory is not null &&
-        SelectedGroup is not null &&
-        SelectedMemberCount is > 0 and <= MaximumOpenCount &&
-        SelectedMemberCount < _memberRows.Count &&
+        PendingRemovalCount > 0 &&
+        HasKeeperForEveryAffectedGroup() &&
         !IsOpening &&
         !IsCreatingRemovalPlan;
 
@@ -299,6 +309,7 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
             CancelOpen();
             CancelRemovalPlan();
             _removedMemberIds.Clear();
+            _pendingRemovalIds.Clear();
         }
 
         _snapshot = snapshot;
@@ -343,6 +354,7 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
         foreach (var id in removedIds)
         {
             _removedMemberIds.Add(id);
+            _pendingRemovalIds.Remove(id);
         }
 
         SelectedGroup = null;
@@ -494,6 +506,7 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
 
                 _selectedMembers.Add(member);
                 var row = new DuplicateFileRow(member);
+                row.IsSelected = _pendingRemovalIds.Contains(member.Id);
                 row.PropertyChanged += OnMemberRowPropertyChanged;
                 _memberRows.Add(row);
             }
@@ -531,6 +544,18 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        if (sender is DuplicateFileRow changedRow)
+        {
+            if (changedRow.IsSelected)
+            {
+                _pendingRemovalIds.Add(changedRow.FileId);
+            }
+            else
+            {
+                _pendingRemovalIds.Remove(changedRow.FileId);
+            }
+        }
+
         NotifySelectionStateChanged();
     }
 
@@ -545,6 +570,8 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(SelectedGroupPotentialReclaimableText));
         OnPropertyChanged(nameof(SelectedMemberCount));
         OnPropertyChanged(nameof(SelectedMemberCountText));
+        OnPropertyChanged(nameof(PendingRemovalCount));
+        OnPropertyChanged(nameof(AffectedRemovalGroupCount));
         OnPropertyChanged(nameof(CanOpenBothFiles));
         OnPropertyChanged(nameof(CanOpenSelectedFiles));
         OnPropertyChanged(nameof(CanOpenSelectedFolders));
@@ -598,19 +625,50 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
         !IsOpening &&
         _memberRows.Contains(row);
 
+    private bool HasKeeperForEveryAffectedGroup()
+    {
+        if (_snapshot is null || _pendingRemovalIds.Count == 0)
+        {
+            return false;
+        }
+
+        var activeFiles = _snapshot.Files.Where(file => !_removedMemberIds.Contains(file.Id)).ToArray();
+        return activeFiles
+            .Where(file => _pendingRemovalIds.Contains(file.Id))
+            .Select(file => file.DuplicateGroupId)
+            .Where(groupId => !string.IsNullOrWhiteSpace(groupId))
+            .Distinct(StringComparer.Ordinal)
+            .All(groupId => activeFiles.Any(file =>
+                string.Equals(file.DuplicateGroupId, groupId, StringComparison.Ordinal) &&
+                !_pendingRemovalIds.Contains(file.Id)));
+    }
+
     private async Task RequestRemovalPlanAsync()
     {
-        if (_removalPlanFactory is null || SelectedGroup is null)
+        if (_removalPlanFactory is null || _snapshot is null)
         {
             Status = StatusPresentation.Warning("Safe duplicate removal is unavailable in this application context.");
             return;
         }
 
-        var filesToRemove = _memberRows.Where(row => row.IsSelected).Select(row => row.File).ToArray();
-        var filesToKeep = _memberRows.Where(row => !row.IsSelected).Select(row => row.File).ToArray();
-        if (filesToRemove.Length == 0 || filesToKeep.Length == 0)
+        var activeFiles = _snapshot.Files.Where(file => !_removedMemberIds.Contains(file.Id)).ToArray();
+        var filesToRemove = activeFiles.Where(file => _pendingRemovalIds.Contains(file.Id)).ToArray();
+        var affectedGroups = filesToRemove
+            .Select(file => file.DuplicateGroupId)
+            .Where(groupId => !string.IsNullOrWhiteSpace(groupId))
+            .ToHashSet(StringComparer.Ordinal);
+        var filesToKeep = activeFiles
+            .Where(file => file.DuplicateGroupId is not null &&
+                           affectedGroups.Contains(file.DuplicateGroupId) &&
+                           !_pendingRemovalIds.Contains(file.Id))
+            .ToArray();
+        var offendingGroup = affectedGroups.FirstOrDefault(groupId => filesToKeep.All(file =>
+            !string.Equals(file.DuplicateGroupId, groupId, StringComparison.Ordinal)));
+        if (filesToRemove.Length == 0 || offendingGroup is not null)
         {
-            Status = StatusPresentation.Warning("Select unwanted copies while leaving at least one known copy unselected.");
+            Status = StatusPresentation.Warning(offendingGroup is null
+                ? "Select at least one unwanted duplicate copy."
+                : $"Duplicate group '{offendingGroup}' would lose every known copy. Leave at least one keeper in that group.");
             return;
         }
 
@@ -618,7 +676,8 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
         var cancellation = new CancellationTokenSource();
         _removalCancellation = cancellation;
         IsCreatingRemovalPlan = true;
-        Status = StatusPresentation.Progress("Preparing a safe duplicate-removal Change Plan...");
+        Status = StatusPresentation.Progress(
+            $"Preparing one safe Change Plan for {filesToRemove.Length} copy or copies across {affectedGroups.Count} group(s)...");
         try
         {
             var plan = await _removalPlanFactory.CreateDuplicateRemovalPlanAsync(

@@ -1,5 +1,6 @@
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Media;
 using System.Text.Json;
 
 namespace OpenSorSe.Application.Tests;
@@ -84,6 +85,37 @@ public sealed class RelationshipEngineTests
         var engine = CreateEngine();
         var first = Document("a", "alpha.txt", semantic: [1f, 0f]);
         var second = Document("b", "omega.txt", semantic: [1f, 0f]);
+
+        Assert.Empty(engine.Discover(first, [second], 10));
+    }
+
+    /// <summary>Verifies identical bounded transcripts provide strong explainable media evidence.</summary>
+    [Fact]
+    public void Discover_MatchingMediaTranscript_ProducesExplainableTopicRelationship()
+    {
+        var engine = CreateEngine();
+        var first = Document("a", "voice-note.m4a") with
+        {
+            MediaEvidence = MediaEvidence(MediaKind.Audio, transcript: "raspberry pi monitoring deployment notes"),
+        };
+        var second = Document("b", "meeting-recording.mp3") with
+        {
+            MediaEvidence = MediaEvidence(MediaKind.Audio, transcript: "raspberry pi monitoring deployment notes"),
+        };
+
+        var relationship = Assert.Single(engine.Discover(first, [second], 10)).Relationship;
+
+        Assert.Contains(relationship.Evidence, item => item.Kind == RelationshipEvidenceKind.MediaTranscript);
+        Assert.Contains("transcript", relationship.Explanation, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies a shared device alone is intentionally too weak to relate unrelated photographs.</summary>
+    [Fact]
+    public void Discover_SameCameraOnly_SuppressesWeakRelationship()
+    {
+        var engine = CreateEngine();
+        var first = Document("a", "IMG_0001.jpg") with { MediaEvidence = MediaEvidence(MediaKind.Image, device: "Camera A") };
+        var second = Document("b", "IMG_9000.jpg") with { MediaEvidence = MediaEvidence(MediaKind.Image, device: "Camera A") };
 
         Assert.Empty(engine.Discover(first, [second], 10));
     }
@@ -240,6 +272,22 @@ public sealed class RelationshipEngineTests
         Extension = Path.GetExtension(name),
         FileType = "document",
         IsFullyIndexed = true,
+    };
+
+    private static IndexedMediaEvidence MediaEvidence(MediaKind kind, string? transcript = null, string? device = null) => new()
+    {
+        Kind = kind,
+        Metadata = new MediaMetadata
+        {
+            Kind = kind,
+            Container = "synthetic",
+            DeviceModel = device,
+        },
+        Transcript = transcript,
+        MetadataProvider = "synthetic",
+        MetadataProviderVersion = "1",
+        ProcessingFingerprint = "synthetic",
+        Status = MediaExtractionStatus.Completed,
     };
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

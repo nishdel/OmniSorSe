@@ -39,7 +39,7 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
     public string Algorithm => "deterministic-evidence";
 
     /// <inheritdoc />
-    public string Version => "1.0.0";
+    public string Version => "2.2.0";
 
     /// <inheritdoc />
     public RelationshipFeatureSet CreateFeatures(RelationshipFileDocument document)
@@ -48,8 +48,10 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         ValidateDocument(document);
         var stem = SearchTextNormalizer.Normalize(Path.GetFileNameWithoutExtension(document.FileName));
         var folder = SearchTextNormalizer.Normalize(document.FolderName);
-        var date = ValidTimestamp(document.ModifiedTimeUtc) ?? ValidTimestamp(document.CreationTimeUtc);
-        return new RelationshipFeatureSet(
+        var date = ValidTimestamp(document.MediaEvidence?.Metadata.CapturedAtUtc) ??
+            ValidTimestamp(document.ModifiedTimeUtc) ??
+            ValidTimestamp(document.CreationTimeUtc);
+        var features = new RelationshipFeatureSet(
             document.FileId,
             Bound(stem, 256),
             Bound(folder, 512),
@@ -66,7 +68,14 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
                 .OrderBy(term => term, StringComparer.Ordinal)
                 .Take(32)
                 .ToArray(),
-            Version);
+            Version)
+        {
+            MediaTranscriptFingerprint = Fingerprint(document.MediaEvidence?.Transcript),
+            MediaOcrFingerprint = Fingerprint(document.MediaEvidence?.OcrText),
+            MediaDeviceKey = DeviceKey(document.MediaEvidence),
+            CaptureDateBucket = ValidTimestamp(document.MediaEvidence?.Metadata.CapturedAtUtc)?.UtcDateTime.Date.Ticks,
+        };
+        return features;
     }
 
     /// <inheritdoc />
@@ -188,6 +197,26 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             strongContext ??= $"summary:{targetFeatures.SummaryFingerprint}";
         }
 
+        if (EqualNonEmpty(targetFeatures.MediaTranscriptFingerprint, candidateFeatures.MediaTranscriptFingerprint))
+        {
+            evidence.Add(Evidence(RelationshipEvidenceKind.MediaTranscript, targetFeatures.MediaTranscriptFingerprint!, "Matching bounded local transcript fingerprint"));
+            score += 5;
+            strongContext ??= $"transcript:{targetFeatures.MediaTranscriptFingerprint}";
+        }
+
+        if (EqualNonEmpty(targetFeatures.MediaOcrFingerprint, candidateFeatures.MediaOcrFingerprint))
+        {
+            evidence.Add(Evidence(RelationshipEvidenceKind.MediaOcr, targetFeatures.MediaOcrFingerprint!, "Matching image or video-frame OCR fingerprint"));
+            score += 5;
+            strongContext ??= $"media-ocr:{targetFeatures.MediaOcrFingerprint}";
+        }
+
+        if (EqualNonEmpty(targetFeatures.MediaDeviceKey, candidateFeatures.MediaDeviceKey))
+        {
+            evidence.Add(Evidence(RelationshipEvidenceKind.MediaMetadata, HashKey(targetFeatures.MediaDeviceKey!), "Same embedded camera or device metadata"));
+            score += 1;
+        }
+
         var sharedTags = SharedValues(target.Tags, candidate.Tags);
         if (sharedTags.Count > 0)
         {
@@ -231,7 +260,10 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             .Take(RelationshipLimits.MaximumEvidencePerRelationship)
             .ToList();
         var hasStrongSingleEvidence = exactContent || evidence.Any(item => item.Kind is
-            RelationshipEvidenceKind.ExtractedText or RelationshipEvidenceKind.OcrText);
+            RelationshipEvidenceKind.ExtractedText or
+            RelationshipEvidenceKind.OcrText or
+            RelationshipEvidenceKind.MediaTranscript or
+            RelationshipEvidenceKind.MediaOcr);
         if (score < 4 || evidence.Count < 2 && !hasStrongSingleEvidence)
         {
             return null;
@@ -424,8 +456,8 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
 
     private static bool CloseInTime(RelationshipFileDocument first, RelationshipFileDocument second, TimeSpan maximum)
     {
-        var firstTime = ValidTimestamp(first.ModifiedTimeUtc) ?? ValidTimestamp(first.CreationTimeUtc);
-        var secondTime = ValidTimestamp(second.ModifiedTimeUtc) ?? ValidTimestamp(second.CreationTimeUtc);
+        var firstTime = ValidTimestamp(first.MediaEvidence?.Metadata.CapturedAtUtc) ?? ValidTimestamp(first.ModifiedTimeUtc) ?? ValidTimestamp(first.CreationTimeUtc);
+        var secondTime = ValidTimestamp(second.MediaEvidence?.Metadata.CapturedAtUtc) ?? ValidTimestamp(second.ModifiedTimeUtc) ?? ValidTimestamp(second.CreationTimeUtc);
         return firstTime.HasValue && secondTime.HasValue && (firstTime.Value - secondTime.Value).Duration() <= maximum;
     }
 
@@ -441,6 +473,12 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         }
 
         return HashKey(Bound(normalized, 32_768));
+    }
+
+    private static string? DeviceKey(OpenSorSe.Application.Media.IndexedMediaEvidence? evidence)
+    {
+        var value = SearchTextNormalizer.Normalize(string.Join(' ', evidence?.Metadata.DeviceMake, evidence?.Metadata.DeviceModel));
+        return value.Length is >= 3 and <= 256 ? value : null;
     }
 
     private static RelationshipEvidence Evidence(RelationshipEvidenceKind kind, string key, string explanation) =>

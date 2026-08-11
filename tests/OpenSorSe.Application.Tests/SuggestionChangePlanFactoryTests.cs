@@ -152,6 +152,63 @@ public sealed class SuggestionChangePlanFactoryTests
         Assert.True(File.Exists(unwanted.FullPath));
     }
 
+    /// <summary>Verifies one review plan may cover several independently keeper-safe exact-copy groups.</summary>
+    [Fact]
+    public async Task CreateDuplicateRemovalPlanAsync_MultipleGroupsPreservesKeeperPerGroup()
+    {
+        using var directory = new TemporaryDirectory();
+        var firstFolder = Directory.CreateDirectory(directory.PathOf("first")).FullName;
+        var secondFolder = Directory.CreateDirectory(directory.PathOf("second")).FullName;
+        var paths = new[]
+        {
+            Path.Combine(firstFolder, "remove.txt"),
+            Path.Combine(firstFolder, "keep.txt"),
+            Path.Combine(secondFolder, "remove.txt"),
+            Path.Combine(secondFolder, "keep.txt"),
+        };
+        foreach (var path in paths)
+        {
+            File.WriteAllText(path, "same");
+        }
+        var firstRemove = Result("first:remove", paths[0], "group:first");
+        var firstKeep = Result("first:keep", paths[1], "group:first");
+        var secondRemove = Result("second:remove", paths[2], "group:second");
+        var secondKeep = Result("second:keep", paths[3], "group:second");
+
+        var plan = await CreateService().CreateDuplicateRemovalPlanAsync(
+            [firstRemove, secondRemove],
+            [firstKeep, secondKeep],
+            "scan:multi",
+            CancellationToken.None);
+
+        Assert.Equal(2, plan.Actions.Count(action => action.ActionType == ChangeActionType.MoveFile));
+        Assert.Contains(plan.Warnings, warning => warning.Contains("2 affected duplicate group", StringComparison.Ordinal));
+        Assert.All(
+            plan.Actions.Where(action => action.ActionType == ChangeActionType.MoveFile),
+            action => Assert.Contains("duplicate-recovery", action.DestinationPath, StringComparison.Ordinal));
+        Assert.True(File.Exists(firstKeep.FullPath));
+        Assert.True(File.Exists(secondKeep.FullPath));
+    }
+
+    /// <summary>Verifies one unsafe group rejects the entire combined plan.</summary>
+    [Fact]
+    public async Task CreateDuplicateRemovalPlanAsync_MultipleGroupsRejectsAnyGroupWithoutKeeper()
+    {
+        using var directory = new TemporaryDirectory();
+        var removeOne = Result("one", directory.File("one.txt", "same"), "group:unsafe");
+        var removeTwo = Result("two", directory.File("two.txt", "same"), "group:unsafe");
+        var otherKeeper = Result("keeper", directory.File("keeper.txt", "same"), "group:other");
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            CreateService().CreateDuplicateRemovalPlanAsync(
+                [removeOne, removeTwo],
+                [otherKeeper],
+                "scan:multi",
+                CancellationToken.None));
+
+        Assert.Contains("group:unsafe", exception.Message, StringComparison.Ordinal);
+    }
+
     private static SuggestionChangePlanFactory CreateService()
     {
         var fileSystem = new PhysicalFileSystemGateway();

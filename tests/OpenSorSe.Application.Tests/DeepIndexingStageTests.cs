@@ -1,6 +1,7 @@
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Scanner;
@@ -40,6 +41,126 @@ public sealed class DeepIndexingStageTests
 
         Assert.Equal(IndexingStageStatus.Complete, output.Status);
         Assert.Equal("abc123", output.ContentHash);
+    }
+
+    /// <summary>Verifies Basic indexing persists deterministic media metadata with the content fingerprint.</summary>
+    [Fact]
+    public async Task FingerprintStageAddsMediaMetadataWithoutRequiringDeepProcessing()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Image);
+        var processor = CreateProcessor(hasher: new FakeHasher(hash: "image-hash"), media: media);
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.ContentFingerprinted, Path.Combine(Path.GetTempPath(), "photo.jpg")),
+            new DeepIndexingSettings());
+
+        Assert.Equal(MediaKind.Image, output.MediaEvidence?.Kind);
+        Assert.Equal(1, media.MetadataCallCount);
+        Assert.Equal(0, media.FullCallCount);
+    }
+
+    /// <summary>Verifies missing media metadata tooling preserves the hash and waits durably for recovery.</summary>
+    [Fact]
+    public async Task FingerprintStageWaitsForUnavailableMediaMetadataProvider()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Audio) { Status = MediaExtractionStatus.Unavailable };
+        var processor = CreateProcessor(hasher: new FakeHasher(hash: "audio-hash"), media: media);
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.ContentFingerprinted, Path.Combine(Path.GetTempPath(), "recording.mp3")),
+            new DeepIndexingSettings());
+
+        Assert.Equal(IndexingStageStatus.WaitingForDependency, output.Status);
+        Assert.Equal("audio-hash", output.ContentHash);
+        Assert.True(output.IsRetryable);
+        Assert.Equal("media-metadata-provider-unavailable", output.ErrorCode);
+    }
+
+    /// <summary>Verifies a metadata provider crash preserves the completed hash and retries the isolated file.</summary>
+    [Fact]
+    public async Task FingerprintStageRetriesFailedMediaMetadataProvider()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Video) { Status = MediaExtractionStatus.Failed };
+        var processor = CreateProcessor(hasher: new FakeHasher(hash: "video-hash"), media: media);
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.ContentFingerprinted, Path.Combine(Path.GetTempPath(), "clip.mp4")),
+            new DeepIndexingSettings());
+
+        Assert.Equal(IndexingStageStatus.Failed, output.Status);
+        Assert.Equal("video-hash", output.ContentHash);
+        Assert.True(output.IsRetryable);
+        Assert.Equal("media-metadata-provider-failed", output.ErrorCode);
+    }
+
+    /// <summary>Verifies the OCR stage projects bounded image OCR from the shared media coordinator.</summary>
+    [Fact]
+    public async Task OcrStageUsesSharedMediaEvidenceInsteadOfGenericDocumentOcr()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Image, "docker compose up -d");
+        var processor = CreateProcessor(media: media);
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.OcrProcessed, Path.Combine(Path.GetTempPath(), "terminal.png")),
+            new DeepIndexingSettings { OcrProcessingEnabled = true });
+
+        Assert.Equal("docker compose up -d", output.OcrText);
+        Assert.Equal(0, media.MetadataCallCount);
+        Assert.Equal(1, media.FullCallCount);
+    }
+
+    /// <summary>Verifies Standard text indexing keeps expensive media processing for the Deep OCR stage.</summary>
+    [Fact]
+    public async Task TextStageUsesMetadataOnlyMediaPass()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Video, "frame OCR should not run yet");
+        var processor = CreateProcessor(media: media);
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.TextExtracted, Path.Combine(Path.GetTempPath(), "clip.mp4")),
+            new DeepIndexingSettings { OcrProcessingEnabled = true });
+
+        Assert.Equal(IndexingStageStatus.Complete, output.Status);
+        Assert.Equal(1, media.MetadataCallCount);
+        Assert.Equal(0, media.FullCallCount);
+        Assert.Null(output.MediaEvidence?.OcrText);
+    }
+
+    /// <summary>Verifies a requested unavailable media dependency remains retryable instead of becoming stale completion.</summary>
+    [Fact]
+    public async Task OcrStageWaitsWhenRequestedMediaProviderIsUnavailable()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Image) { Status = MediaExtractionStatus.Unavailable };
+        var processor = CreateProcessor(
+            media: media,
+            mediaSettings: new MediaIntelligenceSettings { ImageOcrEnabled = true });
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.OcrProcessed, Path.Combine(Path.GetTempPath(), "photo.jpg")),
+            new DeepIndexingSettings { OcrProcessingEnabled = true });
+
+        Assert.Equal(IndexingStageStatus.WaitingForDependency, output.Status);
+        Assert.True(output.IsRetryable);
+        Assert.Equal(IndexingFailureCategory.DependencyUnavailable, output.FailureCategory);
+    }
+
+    /// <summary>Verifies a crashed optional media provider is durably retryable rather than recorded as success.</summary>
+    [Fact]
+    public async Task OcrStageRetriesRequestedMediaProviderFailure()
+    {
+        var media = new FakeMediaIntelligence(MediaKind.Video) { Status = MediaExtractionStatus.Failed };
+        var processor = CreateProcessor(
+            media: media,
+            mediaSettings: new MediaIntelligenceSettings { VideoFrameAnalysisEnabled = true });
+
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.OcrProcessed, Path.Combine(Path.GetTempPath(), "clip.mp4")),
+            new DeepIndexingSettings { OcrProcessingEnabled = true });
+
+        Assert.Equal(IndexingStageStatus.Failed, output.Status);
+        Assert.True(output.IsRetryable);
+        Assert.Equal(IndexingFailureCategory.TransientIo, output.FailureCategory);
+        Assert.Equal("media-provider-failed", output.ErrorCode);
     }
 
     /// <summary>Verifies file hashing issues map to durable privacy-safe categories.</summary>
@@ -313,16 +434,19 @@ public sealed class DeepIndexingStageTests
         IFileHasher? hasher = null,
         FakeContentStore? contentStore = null,
         IIndexingEnrichmentProvider? enrichment = null,
-        bool ocrEnabled = false)
+        bool ocrEnabled = false,
+        IMediaIntelligenceService? media = null,
+        MediaIntelligenceSettings? mediaSettings = null)
     {
         var store = contentStore ?? new FakeContentStore(Record());
         return new DefaultIndexingStageProcessor(
-            new FakeConfiguration(ocrEnabled),
+            new FakeConfiguration(ocrEnabled, mediaSettings),
             hasher ?? new FakeHasher(hash: "hash"),
             new FakeContentIndexer(),
             store,
             new FakeEmbedding(),
-            enrichment);
+            enrichment,
+            mediaIntelligenceService: media);
     }
 
     private static IndexingWorkItem Work(IndexingStage stage, string? path = null)
@@ -388,11 +512,12 @@ public sealed class DeepIndexingStageTests
 
     private sealed class FakeConfiguration : IConfigurationService
     {
-        public FakeConfiguration(bool ocrEnabled)
+        public FakeConfiguration(bool ocrEnabled, MediaIntelligenceSettings? mediaSettings = null)
         {
             Current = new ApplicationSettings
             {
                 Content = new ContentSettings { OcrEnabled = ocrEnabled },
+                MediaIntelligence = mediaSettings ?? new MediaIntelligenceSettings(),
             };
         }
 
@@ -436,6 +561,54 @@ public sealed class DeepIndexingStageTests
                 [output],
                 new FileHashStatistics(1, _hash is null ? 0 : 1, 0, issues.Length),
                 issues));
+        }
+    }
+
+    private sealed class FakeMediaIntelligence(MediaKind kind, string? ocrText = null) : IMediaIntelligenceService
+    {
+        public MediaExtractionStatus Status { get; init; } = MediaExtractionStatus.Completed;
+
+        public int MetadataCallCount { get; private set; }
+
+        public int FullCallCount { get; private set; }
+
+        public MediaKind Classify(string fullPath) => kind;
+
+        public Task<IReadOnlyList<MediaCapability>> GetCapabilitiesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<MediaCapability>>([]);
+
+        public Task<MediaIntelligenceResult> ExtractMetadataAsync(
+            FileEntry file,
+            IndexedMediaEvidence? existing,
+            CancellationToken cancellationToken)
+        {
+            MetadataCallCount++;
+            return Task.FromResult(Result(includeOcr: false));
+        }
+
+        public Task<MediaIntelligenceResult> ExtractAsync(
+            FileEntry file,
+            IndexedMediaEvidence? existing,
+            bool allowOcr,
+            CancellationToken cancellationToken)
+        {
+            FullCallCount++;
+            return Task.FromResult(Result());
+        }
+
+        private MediaIntelligenceResult Result(bool includeOcr = true)
+        {
+            var evidence = new IndexedMediaEvidence
+            {
+                Kind = kind,
+                Metadata = new MediaMetadata { Kind = kind, Width = 100, Height = 50 },
+                OcrText = includeOcr ? ocrText : null,
+                MetadataProvider = "synthetic",
+                MetadataProviderVersion = "1",
+                ProcessingFingerprint = "synthetic-media",
+                Status = Status,
+            };
+            return new MediaIntelligenceResult(Status, evidence, [], Status == MediaExtractionStatus.Unavailable ? "Unavailable" : "Available");
         }
     }
 

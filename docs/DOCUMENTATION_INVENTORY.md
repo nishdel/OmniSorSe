@@ -58,6 +58,14 @@ security notes, Version Notes, implementation/validation records, and an RC
 plan. Historical release, implementation, validation, version,
 troubleshooting, user, migration, and manual-testing records remain present.
 
+The v2.2 release additionally adds
+`docs/MEDIA_INTELLIGENCE_v2.2.md` as its authoritative implementation/design
+boundary and `docs/MANUAL_TESTING_v2.2.md` as a mixed evidence tracker. It marks
+only completed controlled Windows provider/OCR/migration checks and leaves
+interactive, transcription, and native Linux/macOS scenarios unchecked. It
+also adds `docs/RELEASE_NOTES_v2.2.0.md`. These records extend this inventory
+without rewriting historical release records.
+
 ## Authority model
 
 ### Living and authoritative

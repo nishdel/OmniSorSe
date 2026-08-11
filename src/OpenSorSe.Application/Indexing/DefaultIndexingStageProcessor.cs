@@ -2,6 +2,7 @@ using System.Text;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Relationships;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Scanner;
 using OpenSorSe.Scanner.Models;
@@ -22,6 +23,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
     private readonly IFileHasher _fileHasher;
     private readonly IIndexingEnrichmentProvider? _enrichmentProvider;
     private readonly IRelationshipService? _relationshipService;
+    private readonly IMediaIntelligenceService? _mediaIntelligenceService;
 
     /// <summary>Initializes the provider-independent application stage processor.</summary>
     public DefaultIndexingStageProcessor(
@@ -31,7 +33,8 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         IContentStore contentStore,
         IEmbeddingProvider embeddingProvider,
         IIndexingEnrichmentProvider? enrichmentProvider = null,
-        IRelationshipService? relationshipService = null)
+        IRelationshipService? relationshipService = null,
+        IMediaIntelligenceService? mediaIntelligenceService = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _fileHasher = fileHasher ?? throw new ArgumentNullException(nameof(fileHasher));
@@ -40,6 +43,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         _embeddingProvider = embeddingProvider ?? throw new ArgumentNullException(nameof(embeddingProvider));
         _enrichmentProvider = enrichmentProvider;
         _relationshipService = relationshipService;
+        _mediaIntelligenceService = mediaIntelligenceService;
     }
 
     /// <inheritdoc />
@@ -99,6 +103,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
     {
         ArgumentNullException.ThrowIfNull(settings);
         var content = _configurationService.Current.Content;
+        var media = _configurationService.Current.MediaIntelligence;
         var value = string.Join(
             "|",
             DeepIndexingVersion.ProcessorVersion,
@@ -121,6 +126,22 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             content.MaximumFileSizeMiB,
             content.OcrLanguage,
             content.PdfRasterizationDpi,
+            media.Enabled,
+            media.ImageMetadataEnabled,
+            media.ImageOcrEnabled,
+            media.AudioMetadataEnabled,
+            media.AudioTranscriptionEnabled,
+            media.VideoMetadataEnabled,
+            media.VideoTranscriptionEnabled,
+            media.VideoFrameAnalysisEnabled,
+            media.VisualDescriptionsEnabled,
+            media.MaximumMediaFileSizeMiB,
+            media.MaximumAudioDurationMinutes,
+            media.MaximumVideoDurationMinutes,
+            media.MaximumVideoFrames,
+            media.MaximumVideoOcrFrames,
+            media.MaximumTranscriptCharacters,
+            media.MaximumDescriptionCharacters,
             _embeddingProvider.Dimensions,
             _enrichmentProvider?.Version ?? "none");
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(value)))
@@ -166,10 +187,45 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         var hash = result.Files.Single().Hash?.Value;
         if (!string.IsNullOrWhiteSpace(hash))
         {
+            var fileEntry = CreateFileEntry(workItem);
+            var media = _mediaIntelligenceService is null ||
+                _mediaIntelligenceService.Classify(workItem.FullPath) == MediaKind.None
+                ? null
+                : await _mediaIntelligenceService
+                    .ExtractMetadataAsync(fileEntry, workItem.MediaEvidence, cancellationToken)
+                    .ConfigureAwait(false);
+            if (media?.Status == MediaExtractionStatus.Unavailable)
+            {
+                return new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.WaitingForDependency,
+                    ContentHash = hash,
+                    WaitingDependency = "media metadata provider",
+                    FailureCategory = IndexingFailureCategory.DependencyUnavailable,
+                    ErrorCode = "media-metadata-provider-unavailable",
+                    IsRetryable = true,
+                    MediaEvidence = media.Evidence,
+                };
+            }
+
+            if (media?.Status == MediaExtractionStatus.Failed)
+            {
+                return new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Failed,
+                    ContentHash = hash,
+                    FailureCategory = IndexingFailureCategory.TransientIo,
+                    ErrorCode = "media-metadata-provider-failed",
+                    IsRetryable = true,
+                    MediaEvidence = media.Evidence,
+                };
+            }
+
             return new IndexingStageOutput
             {
                 Status = IndexingStageStatus.Complete,
                 ContentHash = hash,
+                MediaEvidence = media?.Evidence,
             };
         }
 
@@ -202,12 +258,29 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         CancellationToken cancellationToken)
     {
         var content = _configurationService.Current.Content;
+        var fileEntry = CreateFileEntry(workItem);
+        var mediaKind = _mediaIntelligenceService?.Classify(workItem.FullPath) ?? MediaKind.None;
+        MediaIntelligenceResult? mediaResult = null;
+        if (mediaKind != MediaKind.None && _mediaIntelligenceService is not null)
+        {
+            mediaResult = ocr
+                ? await _mediaIntelligenceService.ExtractAsync(
+                    fileEntry,
+                    workItem.MediaEvidence,
+                    allowOcr: settings.OcrProcessingEnabled,
+                    cancellationToken).ConfigureAwait(false)
+                : await _mediaIntelligenceService.ExtractMetadataAsync(
+                    fileEntry,
+                    workItem.MediaEvidence,
+                    cancellationToken).ConfigureAwait(false);
+        }
+
         await _contentIndexingService.IndexAsync(
-            [CreateFileEntry(workItem)],
+            [fileEntry],
             new ContentIndexingOptions(
                 MetadataEnabled: true,
                 TextEnabled: true,
-                OcrEnabled: ocr && settings.OcrProcessingEnabled,
+                OcrEnabled: mediaKind == MediaKind.None && ocr && settings.OcrProcessingEnabled,
                 OcrOnlyWhenTextUnavailable: content.OcrOnlyWhenNativeTextUnavailable,
                 OcrLanguage: content.OcrLanguage,
                 MaximumPagesPerDocument: content.MaximumPagesPerDocument,
@@ -225,6 +298,44 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             {
                 Status = IndexingStageStatus.Complete,
                 ExtractedText = Bound(record.NativeText, settings.MaximumExtractedTextCharacters),
+                MediaEvidence = mediaResult?.Evidence,
+            };
+        }
+
+        if (mediaKind != MediaKind.None)
+        {
+            var mediaEvidence = mediaResult?.Evidence ?? workItem.MediaEvidence;
+            if (mediaResult?.Status == MediaExtractionStatus.Unavailable &&
+                RequiresOptionalMediaDependency(mediaKind, _configurationService.Current.MediaIntelligence))
+            {
+                return new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.WaitingForDependency,
+                    WaitingDependency = mediaKind == MediaKind.Image ? "OCR" : "media provider",
+                    FailureCategory = IndexingFailureCategory.DependencyUnavailable,
+                    ErrorCode = "media-provider-unavailable",
+                    IsRetryable = true,
+                    MediaEvidence = mediaEvidence,
+                };
+            }
+
+            if (mediaResult?.Status == MediaExtractionStatus.Failed)
+            {
+                return new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Failed,
+                    FailureCategory = IndexingFailureCategory.TransientIo,
+                    ErrorCode = "media-provider-failed",
+                    IsRetryable = true,
+                    MediaEvidence = mediaEvidence,
+                };
+            }
+
+            return new IndexingStageOutput
+            {
+                Status = mediaEvidence is null ? IndexingStageStatus.Skipped : IndexingStageStatus.Complete,
+                OcrText = Bound(mediaEvidence?.OcrText, settings.MaximumOcrTextCharacters),
+                MediaEvidence = mediaEvidence,
             };
         }
 
@@ -259,7 +370,15 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         CancellationToken cancellationToken)
     {
         var text = Bound(
-            string.Join(' ', new[] { workItem.ExtractedText, workItem.OcrText }.Where(value => !string.IsNullOrWhiteSpace(value))),
+            string.Join(' ', new[]
+            {
+                workItem.ExtractedText,
+                workItem.OcrText,
+                workItem.MediaEvidence?.Transcript,
+                workItem.MediaEvidence?.OcrText,
+                workItem.MediaEvidence?.VisualDescription,
+                MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence),
+            }.Where(value => !string.IsNullOrWhiteSpace(value))),
             settings.MaximumExtractedTextCharacters + settings.MaximumOcrTextCharacters) ?? string.Empty;
         var summaryEnabled = settings.SummaryProcessingEnabled && !workItem.SuppressSummary;
         var semanticEnabled = settings.SemanticProcessingEnabled && !workItem.SuppressSemantic;
@@ -327,7 +446,11 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             Path.GetFileName(workItem.FullPath),
             Path.GetFileName(Path.GetDirectoryName(workItem.FullPath)),
             workItem.ExtractedText,
-            workItem.OcrText);
+            workItem.OcrText,
+            workItem.MediaEvidence?.Transcript,
+            workItem.MediaEvidence?.OcrText,
+            workItem.MediaEvidence?.VisualDescription,
+            MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence));
         return new IndexingStageOutput
         {
             Status = IndexingStageStatus.Complete,
@@ -366,6 +489,14 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
                 workItem.Observation.LastWriteTimeUtc,
                 null,
                 workItem.Observation.Attributes));
+
+    private static bool RequiresOptionalMediaDependency(MediaKind kind, MediaIntelligenceSettings settings) => kind switch
+    {
+        MediaKind.Image => settings.ImageOcrEnabled || settings.VisualDescriptionsEnabled,
+        MediaKind.Audio => settings.AudioTranscriptionEnabled,
+        MediaKind.Video => settings.VideoTranscriptionEnabled || settings.VideoFrameAnalysisEnabled || settings.VisualDescriptionsEnabled,
+        _ => false,
+    };
 
     private static IReadOnlyList<string> CreateKeywords(string fileName, string text)
     {

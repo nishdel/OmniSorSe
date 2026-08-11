@@ -82,6 +82,27 @@ public sealed class SettingsDraft : ViewModelBase
     private int _maximumRelationshipCandidates = 256;
     private int _maximumRelationshipsPerFile = 64;
     private int _maximumSmartCollectionMembers = 1000;
+    private bool _mediaIntelligenceEnabled = true;
+    private bool _imageMetadataEnabled = true;
+    private bool _imageOcrEnabled;
+    private bool _visualDescriptionsEnabled;
+    private bool _audioMetadataEnabled = true;
+    private bool _audioTranscriptionEnabled;
+    private bool _videoMetadataEnabled = true;
+    private bool _videoTranscriptionEnabled;
+    private bool _videoFrameAnalysisEnabled;
+    private int _maximumMediaFileSizeMiB = 512;
+    private int _maximumAudioDurationMinutes = 120;
+    private int _maximumVideoDurationMinutes = 240;
+    private int _maximumVideoFrames = 8;
+    private int _maximumVideoOcrFrames = 4;
+    private int _maximumTranscriptCharacters = 65_536;
+    private int _maximumDescriptionCharacters = 1_024;
+    private int _maximumThumbnailDimension = 320;
+    private long _maximumThumbnailSourcePixels = 100_000_000;
+    private int _mediaProviderTimeoutSeconds = 30;
+    private string? _ffprobeExecutablePath;
+    private string? _ffmpegExecutablePath;
 
     /// <summary>Gets or sets whether specialist and troubleshooting interface features are shown.</summary>
     public bool ShowAdvancedFeatures
@@ -89,6 +110,49 @@ public sealed class SettingsDraft : ViewModelBase
         get => _showAdvancedFeatures;
         set => SetProperty(ref _showAdvancedFeatures, value);
     }
+
+    /// <summary>Gets or sets whether media-specific local indexing may run.</summary>
+    public bool MediaIntelligenceEnabled { get => _mediaIntelligenceEnabled; set => SetProperty(ref _mediaIntelligenceEnabled, value); }
+    /// <summary>Gets or sets deterministic image metadata extraction.</summary>
+    public bool ImageMetadataEnabled { get => _imageMetadataEnabled; set => SetProperty(ref _imageMetadataEnabled, value); }
+    /// <summary>Gets or sets local OCR for supported images.</summary>
+    public bool ImageOcrEnabled { get => _imageOcrEnabled; set => SetProperty(ref _imageOcrEnabled, value); }
+    /// <summary>Gets or sets optional local-provider visual descriptions.</summary>
+    public bool VisualDescriptionsEnabled { get => _visualDescriptionsEnabled; set => SetProperty(ref _visualDescriptionsEnabled, value); }
+    /// <summary>Gets or sets local audio metadata extraction.</summary>
+    public bool AudioMetadataEnabled { get => _audioMetadataEnabled; set => SetProperty(ref _audioMetadataEnabled, value); }
+    /// <summary>Gets or sets optional local audio transcription.</summary>
+    public bool AudioTranscriptionEnabled { get => _audioTranscriptionEnabled; set => SetProperty(ref _audioTranscriptionEnabled, value); }
+    /// <summary>Gets or sets local video metadata extraction.</summary>
+    public bool VideoMetadataEnabled { get => _videoMetadataEnabled; set => SetProperty(ref _videoMetadataEnabled, value); }
+    /// <summary>Gets or sets optional local video-audio transcription.</summary>
+    public bool VideoTranscriptionEnabled { get => _videoTranscriptionEnabled; set => SetProperty(ref _videoTranscriptionEnabled, value); }
+    /// <summary>Gets or sets bounded representative-frame analysis.</summary>
+    public bool VideoFrameAnalysisEnabled { get => _videoFrameAnalysisEnabled; set => SetProperty(ref _videoFrameAnalysisEnabled, value); }
+    /// <summary>Gets or sets maximum provider input size.</summary>
+    public int MaximumMediaFileSizeMiB { get => _maximumMediaFileSizeMiB; set => SetProperty(ref _maximumMediaFileSizeMiB, value); }
+    /// <summary>Gets or sets maximum transcribed audio duration.</summary>
+    public int MaximumAudioDurationMinutes { get => _maximumAudioDurationMinutes; set => SetProperty(ref _maximumAudioDurationMinutes, value); }
+    /// <summary>Gets or sets maximum analyzed video duration.</summary>
+    public int MaximumVideoDurationMinutes { get => _maximumVideoDurationMinutes; set => SetProperty(ref _maximumVideoDurationMinutes, value); }
+    /// <summary>Gets or sets maximum representative frames.</summary>
+    public int MaximumVideoFrames { get => _maximumVideoFrames; set => SetProperty(ref _maximumVideoFrames, value); }
+    /// <summary>Gets or sets maximum representative frames sent to OCR.</summary>
+    public int MaximumVideoOcrFrames { get => _maximumVideoOcrFrames; set => SetProperty(ref _maximumVideoOcrFrames, value); }
+    /// <summary>Gets or sets the transcript character bound.</summary>
+    public int MaximumTranscriptCharacters { get => _maximumTranscriptCharacters; set => SetProperty(ref _maximumTranscriptCharacters, value); }
+    /// <summary>Gets or sets the optional description character bound.</summary>
+    public int MaximumDescriptionCharacters { get => _maximumDescriptionCharacters; set => SetProperty(ref _maximumDescriptionCharacters, value); }
+    /// <summary>Gets or sets the maximum cached thumbnail edge.</summary>
+    public int MaximumThumbnailDimension { get => _maximumThumbnailDimension; set => SetProperty(ref _maximumThumbnailDimension, value); }
+    /// <summary>Gets or sets the maximum decoded source pixel count accepted for thumbnails.</summary>
+    public long MaximumThumbnailSourcePixels { get => _maximumThumbnailSourcePixels; set => SetProperty(ref _maximumThumbnailSourcePixels, value); }
+    /// <summary>Gets or sets the finite external media-provider timeout.</summary>
+    public int MediaProviderTimeoutSeconds { get => _mediaProviderTimeoutSeconds; set => SetProperty(ref _mediaProviderTimeoutSeconds, value); }
+    /// <summary>Gets or sets an optional absolute ffprobe path.</summary>
+    public string? FfprobeExecutablePath { get => _ffprobeExecutablePath; set => SetProperty(ref _ffprobeExecutablePath, value); }
+    /// <summary>Gets or sets an optional absolute ffmpeg path.</summary>
+    public string? FfmpegExecutablePath { get => _ffmpegExecutablePath; set => SetProperty(ref _ffmpegExecutablePath, value); }
 
     /// <summary>Gets or sets the master detailed-diagnostics switch.</summary>
     public bool DiagnosticsEnabled
@@ -727,6 +791,27 @@ public sealed class SettingsDraft : ViewModelBase
             MaximumRelationshipCandidates = settings.DeepIndexing.MaximumRelationshipCandidates,
             MaximumRelationshipsPerFile = settings.DeepIndexing.MaximumRelationshipsPerFile,
             MaximumSmartCollectionMembers = settings.DeepIndexing.MaximumSmartCollectionMembers,
+            MediaIntelligenceEnabled = settings.MediaIntelligence.Enabled,
+            ImageMetadataEnabled = settings.MediaIntelligence.ImageMetadataEnabled,
+            ImageOcrEnabled = settings.MediaIntelligence.ImageOcrEnabled,
+            VisualDescriptionsEnabled = settings.MediaIntelligence.VisualDescriptionsEnabled,
+            AudioMetadataEnabled = settings.MediaIntelligence.AudioMetadataEnabled,
+            AudioTranscriptionEnabled = settings.MediaIntelligence.AudioTranscriptionEnabled,
+            VideoMetadataEnabled = settings.MediaIntelligence.VideoMetadataEnabled,
+            VideoTranscriptionEnabled = settings.MediaIntelligence.VideoTranscriptionEnabled,
+            VideoFrameAnalysisEnabled = settings.MediaIntelligence.VideoFrameAnalysisEnabled,
+            MaximumMediaFileSizeMiB = settings.MediaIntelligence.MaximumMediaFileSizeMiB,
+            MaximumAudioDurationMinutes = settings.MediaIntelligence.MaximumAudioDurationMinutes,
+            MaximumVideoDurationMinutes = settings.MediaIntelligence.MaximumVideoDurationMinutes,
+            MaximumVideoFrames = settings.MediaIntelligence.MaximumVideoFrames,
+            MaximumVideoOcrFrames = settings.MediaIntelligence.MaximumVideoOcrFrames,
+            MaximumTranscriptCharacters = settings.MediaIntelligence.MaximumTranscriptCharacters,
+            MaximumDescriptionCharacters = settings.MediaIntelligence.MaximumDescriptionCharacters,
+            MaximumThumbnailDimension = settings.MediaIntelligence.MaximumThumbnailDimension,
+            MaximumThumbnailSourcePixels = settings.MediaIntelligence.MaximumThumbnailSourcePixels,
+            MediaProviderTimeoutSeconds = settings.MediaIntelligence.ProviderTimeoutSeconds,
+            FfprobeExecutablePath = settings.MediaIntelligence.FfprobeExecutablePath,
+            FfmpegExecutablePath = settings.MediaIntelligence.FfmpegExecutablePath,
         };
     }
 
@@ -803,6 +888,30 @@ public sealed class SettingsDraft : ViewModelBase
                 ? null
                 : TesseractExecutablePath.Trim(),
                 BackgroundProcessingEnabled = BackgroundContentProcessingEnabled,
+            },
+            MediaIntelligence = new MediaIntelligenceSettings
+            {
+                Enabled = MediaIntelligenceEnabled,
+                ImageMetadataEnabled = ImageMetadataEnabled,
+                ImageOcrEnabled = ImageOcrEnabled,
+                VisualDescriptionsEnabled = VisualDescriptionsEnabled,
+                AudioMetadataEnabled = AudioMetadataEnabled,
+                AudioTranscriptionEnabled = AudioTranscriptionEnabled,
+                VideoMetadataEnabled = VideoMetadataEnabled,
+                VideoTranscriptionEnabled = VideoTranscriptionEnabled,
+                VideoFrameAnalysisEnabled = VideoFrameAnalysisEnabled,
+                MaximumMediaFileSizeMiB = MaximumMediaFileSizeMiB,
+                MaximumAudioDurationMinutes = MaximumAudioDurationMinutes,
+                MaximumVideoDurationMinutes = MaximumVideoDurationMinutes,
+                MaximumVideoFrames = MaximumVideoFrames,
+                MaximumVideoOcrFrames = MaximumVideoOcrFrames,
+                MaximumTranscriptCharacters = MaximumTranscriptCharacters,
+                MaximumDescriptionCharacters = MaximumDescriptionCharacters,
+                MaximumThumbnailDimension = MaximumThumbnailDimension,
+                MaximumThumbnailSourcePixels = MaximumThumbnailSourcePixels,
+                ProviderTimeoutSeconds = MediaProviderTimeoutSeconds,
+                FfprobeExecutablePath = string.IsNullOrWhiteSpace(FfprobeExecutablePath) ? null : FfprobeExecutablePath.Trim(),
+                FfmpegExecutablePath = string.IsNullOrWhiteSpace(FfmpegExecutablePath) ? null : FfmpegExecutablePath.Trim(),
             },
             SemanticSearch = new SemanticSearchSettings
             {

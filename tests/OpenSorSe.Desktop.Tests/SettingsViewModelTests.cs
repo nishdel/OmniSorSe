@@ -76,6 +76,40 @@ public sealed class SettingsViewModelTests
         Assert.True(viewModel.RestartRequired);
     }
 
+    /// <summary>Verifies every bounded media setting survives the editable draft round trip.</summary>
+    [Fact]
+    public void MediaSettings_RoundTripWithoutResettingHiddenResourceLimits()
+    {
+        var expected = new MediaIntelligenceSettings
+        {
+            ImageOcrEnabled = true,
+            AudioTranscriptionEnabled = true,
+            VideoFrameAnalysisEnabled = true,
+            MaximumMediaFileSizeMiB = 321,
+            MaximumAudioDurationMinutes = 61,
+            MaximumVideoDurationMinutes = 122,
+            MaximumVideoFrames = 7,
+            MaximumVideoOcrFrames = 3,
+            MaximumTranscriptCharacters = 12_345,
+            MaximumDescriptionCharacters = 777,
+            MaximumThumbnailDimension = 256,
+            MaximumThumbnailSourcePixels = 50_000_000,
+            ProviderTimeoutSeconds = 45,
+        };
+        var draft = SettingsDraft.FromSettings(new ApplicationSettings { MediaIntelligence = expected });
+
+        var actual = draft.ToSettings().MediaIntelligence;
+
+        Assert.Equal(expected.MaximumThumbnailDimension, actual.MaximumThumbnailDimension);
+        Assert.Equal(expected.MaximumThumbnailSourcePixels, actual.MaximumThumbnailSourcePixels);
+        Assert.Equal(expected.ProviderTimeoutSeconds, actual.ProviderTimeoutSeconds);
+        Assert.Equal(expected.MaximumVideoFrames, actual.MaximumVideoFrames);
+        Assert.Equal(expected.MaximumTranscriptCharacters, actual.MaximumTranscriptCharacters);
+        Assert.True(actual.ImageOcrEnabled);
+        Assert.True(actual.AudioTranscriptionEnabled);
+        Assert.True(actual.VideoFrameAnalysisEnabled);
+    }
+
     /// <summary>
     /// Verifies invalid input is retained for correction and is not persisted.
     /// </summary>

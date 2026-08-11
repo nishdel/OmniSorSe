@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Media;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -61,6 +62,23 @@ public sealed record SemanticSearchHit(
     public string CoverageIndicator => IsFullyIndexed
         ? "Fully indexed"
         : "Partially indexed";
+
+    /// <summary>Gets structured media details retained by local indexing.</summary>
+    public IndexedMediaEvidence? MediaEvidence { get; init; }
+
+    /// <summary>Gets a compact media-detail line for accessible result presentation.</summary>
+    public string? MediaSummary => MediaEvidence is null
+        ? null
+        : string.Join(" · ", new[]
+        {
+            MediaEvidence.Kind.ToString(),
+            MediaEvidence.Metadata.Width.HasValue && MediaEvidence.Metadata.Height.HasValue
+                ? $"{MediaEvidence.Metadata.Width} × {MediaEvidence.Metadata.Height}"
+                : null,
+            MediaEvidence.Metadata.Duration?.ToString(
+                MediaEvidence.Metadata.Duration.Value.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss"),
+            MediaEvidence.Metadata.DeviceModel,
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
 }
 
 /// <summary>Contains one controlled semantic operation outcome.</summary>

@@ -41,7 +41,7 @@ public sealed class MainViewModelTests
         Assert.Contains(NavigationDestination.Duplicates, viewModel.Destinations);
         Assert.Contains(NavigationDestination.KnowledgeGraph, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.CatalogSearch, viewModel.Destinations);
-        Assert.DoesNotContain(NavigationDestination.SemanticSearch, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.SemanticSearch, viewModel.Destinations);
     }
 
     /// <summary>Verifies Help is regular, immediately precedes About, and contextual Back restores its origin.</summary>
@@ -80,6 +80,9 @@ public sealed class MainViewModelTests
         Assert.Equal(HelpTopicId.Workflows, viewModel.Help.SelectedTopic.Id);
         Assert.Contains(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.Privacy);
         Assert.Contains(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.Troubleshooting);
+        var media = Assert.Single(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.MediaIntelligence);
+        Assert.Contains("images, audio, and video", media.Purpose, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("facial recognition", media.SafetyNotes, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Verifies the shell retains one Settings instance across navigation and Help round-trips.</summary>
@@ -157,12 +160,19 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
         Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
         Assert.Equal(
-            ["Home", "Scan", "Files", "Review Changes", "Duplicates", "Collections", "Related Files", "Saved scans", "Settings", "Operation History", "Watched Folders", "Workflows"],
+            ["Home", "Scan", "Search", "Files", "Duplicates", "Related Files", "Review Changes"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
+        Assert.Equal(
+            ["Collections", "Saved scans", "Watched Folders", "Workflows", "Operation History", "Settings"],
+            viewModel.SecondaryNavigationItems.Select(item => item.Label));
         Assert.Contains(
             viewModel.NavigationItems,
             item => item.Destination == NavigationDestination.History && item.Label == "Operation History");
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Label == nameof(NavigationDestination.CatalogComparison));
+
+        viewModel.Navigate(NavigationDestination.SemanticSearch);
+        Assert.Equal(NavigationDestination.SemanticSearch, viewModel.SelectedNavigationItem.Destination);
+        Assert.Equal("Search", viewModel.SelectedNavigationItem.Label);
 
         viewModel.Navigate(NavigationDestination.CatalogSearch);
 
@@ -202,7 +212,7 @@ public sealed class MainViewModelTests
         Assert.NotNull(viewModel.CatalogComparison);
     }
 
-    /// <summary>Verifies Semantic Search Beta is independently gated and does not require AI or advanced mode.</summary>
+    /// <summary>Verifies Search is a first-class destination and does not require AI or advanced mode.</summary>
     [Fact]
     public void Constructor_SemanticSearchEnabled_ExposesMeaningSearchFromFiles()
     {
@@ -210,14 +220,14 @@ public sealed class MainViewModelTests
             new TestConfigurationService(semanticSearchEnabled: true),
             new TestLoggingService());
 
-        Assert.DoesNotContain(NavigationDestination.SemanticSearch, viewModel.Destinations);
+        Assert.Contains(NavigationDestination.SemanticSearch, viewModel.Destinations);
         Assert.True(viewModel.Results.IsMeaningSearchEnabled);
         Assert.False(viewModel.EnableAi);
         Assert.False(viewModel.ShowAdvancedFeatures);
         viewModel.Results.OpenMeaningSearchCommand.Execute(null);
         Assert.True(viewModel.IsSemanticSearchSelected);
         Assert.Equal("Search", viewModel.CurrentPageTitle);
-        Assert.Equal(NavigationDestination.Results, viewModel.SelectedNavigationItem.Destination);
+        Assert.Equal(NavigationDestination.SemanticSearch, viewModel.SelectedNavigationItem.Destination);
     }
 
     /// <summary>Verifies sidebar-style navigation awaits the destination refresh instead of abandoning background work.</summary>

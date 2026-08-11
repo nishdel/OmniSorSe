@@ -1,5 +1,10 @@
 # Audio Reader
 
+> **Status note:** this is an older broad design. The v2.2 release
+> uses optional `ffprobe` for bounded metadata and provides a transcription
+> contract only; it does not bundle a transcription runtime. See
+> [Media Intelligence v2.2](../../MEDIA_INTELLIGENCE_v2.2.md).
+
 > This document defines the Audio Reader component, which is responsible for extracting metadata and technical information from supported audio file formats.
 
 ---

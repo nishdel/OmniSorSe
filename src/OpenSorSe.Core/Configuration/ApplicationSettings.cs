@@ -34,6 +34,9 @@ public sealed class ApplicationSettings
     /// <summary>Gets or initializes bounded local content-extraction settings.</summary>
     public ContentSettings Content { get; init; } = new();
 
+    /// <summary>Gets or initializes bounded local media-analysis settings.</summary>
+    public MediaIntelligenceSettings MediaIntelligence { get; init; } = new();
+
     /// <summary>Gets or initializes local Search settings.</summary>
     public SemanticSearchSettings SemanticSearch { get; init; } = new();
 
@@ -69,6 +72,7 @@ public sealed class ApplicationSettings
         },
         Catalog = Catalog,
         Content = Content,
+        MediaIntelligence = MediaIntelligence,
         SemanticSearch = SemanticSearch,
         DeepIndexing = DeepIndexing,
     };
@@ -90,6 +94,7 @@ public sealed class ApplicationSettings
         Ai = Ai,
         Catalog = Catalog,
         Content = Content,
+        MediaIntelligence = MediaIntelligence,
         SemanticSearch = SemanticSearch,
         DeepIndexing = DeepIndexing,
     };
@@ -143,6 +148,13 @@ public sealed class ApplicationSettings
         }
 
         Content.Validate();
+
+        if (MediaIntelligence is null)
+        {
+            throw new ConfigurationValidationException("Media Intelligence settings are required.");
+        }
+
+        MediaIntelligence.Validate();
 
         if (SemanticSearch is null)
         {
@@ -455,6 +467,98 @@ public sealed class ContentSettings
             throw new ConfigurationValidationException("Content extraction settings are invalid.");
         }
     }
+}
+
+/// <summary>Defines conservative local-first controls for bounded media extraction.</summary>
+public sealed class MediaIntelligenceSettings
+{
+    /// <summary>Gets or initializes whether any media-specific processing may run.</summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether deterministic image metadata is indexed.</summary>
+    public bool ImageMetadataEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether enabled OCR may recognize supported images.</summary>
+    public bool ImageOcrEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether an explicitly configured local provider may create image descriptions.</summary>
+    public bool VisualDescriptionsEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether audio metadata is indexed through an available local provider.</summary>
+    public bool AudioMetadataEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether an explicitly configured local provider may transcribe audio.</summary>
+    public bool AudioTranscriptionEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether video metadata is indexed through an available local provider.</summary>
+    public bool VideoMetadataEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether an explicitly configured local provider may transcribe video audio.</summary>
+    public bool VideoTranscriptionEnabled { get; init; }
+
+    /// <summary>Gets or initializes whether representative video frames may be sampled locally.</summary>
+    public bool VideoFrameAnalysisEnabled { get; init; }
+
+    /// <summary>Gets or initializes the maximum media input size accepted for provider processing.</summary>
+    public int MaximumMediaFileSizeMiB { get; init; } = 512;
+
+    /// <summary>Gets or initializes the maximum audio duration accepted for transcription.</summary>
+    public int MaximumAudioDurationMinutes { get; init; } = 120;
+
+    /// <summary>Gets or initializes the maximum video duration accepted for frame or transcript processing.</summary>
+    public int MaximumVideoDurationMinutes { get; init; } = 240;
+
+    /// <summary>Gets or initializes the maximum representative frames sampled from one video.</summary>
+    public int MaximumVideoFrames { get; init; } = 8;
+
+    /// <summary>Gets or initializes the maximum sampled frames supplied to OCR.</summary>
+    public int MaximumVideoOcrFrames { get; init; } = 4;
+
+    /// <summary>Gets or initializes the maximum transcript characters retained for one media file.</summary>
+    public int MaximumTranscriptCharacters { get; init; } = 65_536;
+
+    /// <summary>Gets or initializes the maximum optional description characters retained per media file.</summary>
+    public int MaximumDescriptionCharacters { get; init; } = 1_024;
+
+    /// <summary>Gets or initializes the maximum width or height of a generated thumbnail.</summary>
+    public int MaximumThumbnailDimension { get; init; } = 320;
+
+    /// <summary>Gets or initializes the maximum decoded source pixel count accepted for thumbnails.</summary>
+    public long MaximumThumbnailSourcePixels { get; init; } = 100_000_000;
+
+    /// <summary>Gets or initializes the finite timeout for metadata and frame-provider processes.</summary>
+    public int ProviderTimeoutSeconds { get; init; } = 30;
+
+    /// <summary>Gets or initializes an optional absolute ffprobe executable path; null uses PATH.</summary>
+    public string? FfprobeExecutablePath { get; init; }
+
+    /// <summary>Gets or initializes an optional absolute ffmpeg executable path; null uses PATH.</summary>
+    public string? FfmpegExecutablePath { get; init; }
+
+    /// <summary>Validates all media resource and executable-path bounds.</summary>
+    public void Validate()
+    {
+        if (MaximumMediaFileSizeMiB is < 1 or > 16_384 ||
+            MaximumAudioDurationMinutes is < 1 or > 1_440 ||
+            MaximumVideoDurationMinutes is < 1 or > 1_440 ||
+            MaximumVideoFrames is < 1 or > 64 ||
+            MaximumVideoOcrFrames is < 0 or > 32 ||
+            MaximumVideoOcrFrames > MaximumVideoFrames ||
+            MaximumTranscriptCharacters is < 4_096 or > 1_048_576 ||
+            MaximumDescriptionCharacters is < 128 or > 8_192 ||
+            MaximumThumbnailDimension is < 64 or > 1_024 ||
+            MaximumThumbnailSourcePixels is < 1_000_000 or > 400_000_000 ||
+            ProviderTimeoutSeconds is < 5 or > 300 ||
+            !ValidOptionalExecutablePath(FfprobeExecutablePath) ||
+            !ValidOptionalExecutablePath(FfmpegExecutablePath))
+        {
+            throw new ConfigurationValidationException("Media Intelligence settings are invalid.");
+        }
+    }
+
+    private static bool ValidOptionalExecutablePath(string? path) =>
+        path is null ||
+        !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path) && path.Length <= 1_024;
 }
 
 /// <summary>

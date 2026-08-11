@@ -525,7 +525,7 @@
                                       HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel Spacing="9">
-                                <TextBlock Text="Choose unwanted copies, then review a Change Plan before anything moves. OpenSorSe never removes every known copy."
+                                <TextBlock Text="Choose unwanted copies in this group, then choose other groups if needed. Review selected duplicates creates one Change Plan and never removes every known copy from any group."
                                            TextWrapping="Wrap" />
                                 <TextBlock Text="{Binding SelectedGroupPotentialReclaimableText, StringFormat=Space you could save: {0}}"
                                            TextWrapping="Wrap" />
@@ -572,10 +572,10 @@
                                 <WrapPanel>
                                     <Button Margin="0,0,8,8"
                                             Classes="primary"
-                                            Content="Request safe removal"
+                                            Content="Review selected duplicates"
                                             Command="{Binding RequestRemovalPlanCommand}"
-                                            AutomationProperties.Name="Request safe removal Change Plan"
-                                            ToolTip.Tip="Leave at least one copy unselected. You will review the plan before files move." />
+                                            AutomationProperties.Name="Review selected duplicate removals in a Change Plan"
+                                            ToolTip.Tip="Selections remain while you inspect other groups. Leave at least one copy in every affected group." />
                                     <Button IsVisible="{Binding IsCreatingRemovalPlan}"
                                             Margin="0,0,8,8"
                                             Classes="secondary"

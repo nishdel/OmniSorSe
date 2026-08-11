@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
@@ -106,8 +107,10 @@ public sealed partial class SqliteDeepIndexStore
                     INSERT INTO index_relationship_features(
                         file_id, normalized_stem, folder_key, content_hash, date_bucket,
                         extracted_text_fingerprint, ocr_text_fingerprint, summary_fingerprint,
-                        keyword_keys_json, feature_version, updated_utc_ticks)
-                    VALUES($file, $stem, $folder, $hash, $date, $text, $ocr, $summary, $keywords, $version, $now)
+                        keyword_keys_json, feature_version, updated_utc_ticks,
+                        media_transcript_fingerprint, media_ocr_fingerprint, media_device_key, capture_date_bucket)
+                    VALUES($file, $stem, $folder, $hash, $date, $text, $ocr, $summary, $keywords, $version, $now,
+                           $mediaTranscript, $mediaOcr, $device, $captureDate)
                     ON CONFLICT(file_id) DO UPDATE SET
                         normalized_stem = excluded.normalized_stem,
                         folder_key = excluded.folder_key,
@@ -118,6 +121,10 @@ public sealed partial class SqliteDeepIndexStore
                         summary_fingerprint = excluded.summary_fingerprint,
                         keyword_keys_json = excluded.keyword_keys_json,
                         feature_version = excluded.feature_version,
+                        media_transcript_fingerprint = excluded.media_transcript_fingerprint,
+                        media_ocr_fingerprint = excluded.media_ocr_fingerprint,
+                        media_device_key = excluded.media_device_key,
+                        capture_date_bucket = excluded.capture_date_bucket,
                         updated_utc_ticks = excluded.updated_utc_ticks;
                     """,
                     ("$file", features.FileId),
@@ -130,6 +137,10 @@ public sealed partial class SqliteDeepIndexStore
                     ("$summary", BoundOrNull(features.SummaryFingerprint, 128)),
                     ("$keywords", JsonSerializer.Serialize(features.KeywordKeys.Take(64))),
                     ("$version", features.FeatureVersion),
+                    ("$mediaTranscript", BoundOrNull(features.MediaTranscriptFingerprint, 128)),
+                    ("$mediaOcr", BoundOrNull(features.MediaOcrFingerprint, 128)),
+                    ("$device", BoundOrNull(features.MediaDeviceKey, 256)),
+                    ("$captureDate", features.CaptureDateBucket),
                     ("$now", changedAtUtc.UtcTicks));
                 return 0;
             },
@@ -165,6 +176,11 @@ public sealed partial class SqliteDeepIndexStore
                         OR ($text IS NOT NULL AND rf.extracted_text_fingerprint = $text)
                         OR ($ocr IS NOT NULL AND rf.ocr_text_fingerprint = $ocr)
                         OR ($summary IS NOT NULL AND rf.summary_fingerprint = $summary)
+                        OR ($mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript)
+                        OR ($mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr)
+                        OR ($device IS NOT NULL AND rf.media_device_key = $device
+                            AND $captureDate IS NOT NULL
+                            AND rf.capture_date_bucket BETWEEN $captureDate - $day AND $captureDate + $day)
                         OR ($folder <> '' AND rf.folder_key = $folder)
                         OR ($stem <> '' AND rf.normalized_stem = $stem)
                         OR ($date IS NOT NULL AND rf.date_bucket BETWEEN $date - $day AND $date + $day)
@@ -174,9 +190,11 @@ public sealed partial class SqliteDeepIndexStore
                              WHEN $text IS NOT NULL AND rf.extracted_text_fingerprint = $text THEN 1
                              WHEN $ocr IS NOT NULL AND rf.ocr_text_fingerprint = $ocr THEN 2
                              WHEN $summary IS NOT NULL AND rf.summary_fingerprint = $summary THEN 3
-                             WHEN $stem <> '' AND rf.normalized_stem = $stem THEN 4
-                             WHEN $folder <> '' AND rf.folder_key = $folder THEN 5
-                             ELSE 6 END,
+                             WHEN $mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript THEN 4
+                             WHEN $mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr THEN 5
+                             WHEN $stem <> '' AND rf.normalized_stem = $stem THEN 6
+                             WHEN $folder <> '' AND rf.folder_key = $folder THEN 7
+                             ELSE 8 END,
                         rf.file_id
                     LIMIT $maximum;
                     """;
@@ -187,6 +205,10 @@ public sealed partial class SqliteDeepIndexStore
                     ("$text", target.ExtractedTextFingerprint),
                     ("$ocr", target.OcrTextFingerprint),
                     ("$summary", target.SummaryFingerprint),
+                    ("$mediaTranscript", target.MediaTranscriptFingerprint),
+                    ("$mediaOcr", target.MediaOcrFingerprint),
+                    ("$device", target.MediaDeviceKey),
+                    ("$captureDate", target.CaptureDateBucket),
                     ("$folder", target.FolderKey),
                     ("$stem", target.NormalizedStem),
                     ("$date", target.DateBucket),
@@ -475,10 +497,11 @@ public sealed partial class SqliteDeepIndexStore
                    c.keywords_json, c.semantic_json, f.fully_indexed,
                    COALESCE(p.suppress_relationships, 0), f.indexing_level,
                    COALESCE(p.suppress_ocr, 0), COALESCE(p.suppress_summary, 0),
-                   COALESCE(p.suppress_semantic, 0)
+                   COALESCE(p.suppress_semantic, 0), m.evidence_json
             FROM index_files f
             JOIN index_sources s ON s.id = f.source_id
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
+            LEFT JOIN index_media_content m ON m.content_hash = f.content_hash
             LEFT JOIN index_privacy_rules p
               ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
             WHERE f.id = $file AND f.deleted_utc_ticks IS NULL
@@ -501,6 +524,7 @@ public sealed partial class SqliteDeepIndexStore
         var semantic = basic || reader.GetBoolean(19) || reader.IsDBNull(13)
             ? null
             : TryDeserializeFloats(reader.GetString(13), out semanticValid);
+        var media = reader.IsDBNull(20) ? null : TryDeserializeMediaEvidence(reader.GetString(20));
         return new RelationshipFileDocument
         {
             FileId = reader.GetString(0),
@@ -514,9 +538,10 @@ public sealed partial class SqliteDeepIndexStore
             ContentHash = reader.IsDBNull(5) ? null : reader.GetString(5),
             CreationTimeUtc = ReadOptionalTimestamp(reader, 6),
             ModifiedTimeUtc = ReadOptionalTimestamp(reader, 7),
-            MetadataText = reader.GetString(8),
+            MetadataText = string.Join(' ', reader.GetString(8), MediaEvidenceText.CreateMetadataText(media)),
             ExtractedText = basic || reader.IsDBNull(9) ? null : reader.GetString(9),
             OcrText = basic || reader.GetBoolean(17) || reader.IsDBNull(10) ? null : reader.GetString(10),
+            MediaEvidence = media,
             Summary = basic || reader.GetBoolean(18) || reader.IsDBNull(11) ? null : reader.GetString(11),
             Keywords = keywords,
             SemanticRepresentation = semanticValid ? semantic : null,

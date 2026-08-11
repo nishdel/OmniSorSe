@@ -7,6 +7,52 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v2.2.0 — Media Intelligence
+
+Release branch: `v2.2-media-intelligence`. Published as the Media Intelligence
+release after local, exact-main hosted, and native packaging gates.
+
+### Added
+
+- Provider-neutral bounded media metadata, transcription,
+  representative-frame, visual-description, and thumbnail contracts integrated
+  with the durable indexing pipeline.
+- Deterministic JPEG/PNG/WebP/BMP/TIFF header metadata, bounded EXIF
+  make/model/orientation/capture/GPS parsing, and lazy cached still-image
+  thumbnails.
+- Optional safely invoked `ffprobe` audio/video metadata and optional capped
+  `ffmpeg` representative frames, with explicit capability/unavailable states.
+- Schema-4 shared media evidence, typed Search signals/snippets/explanations,
+  media privacy inspection/clearing, aggregate diagnostics, storage accounting,
+  and conservative transcript/OCR/device/capture relationship signals.
+- Media Intelligence Settings and Help covering independent capabilities,
+  conservative size/duration/frame/text limits, optional dependencies, and
+  privacy.
+- Truthful smoothed scan ETA after sufficient comparable work; combined
+  duplicate-recovery plans across multiple groups with an independent keeper
+  invariant; and a clearer primary/secondary navigation hierarchy with Search
+  and Related Files as unique primary destinations.
+- Scroll-bounded Virtual Collections and Related Files layouts, clearer
+  local-indexing versus optional remote-endpoint wording, and EXIF-oriented
+  still-image previews.
+- External media-tool deadlines are classified as isolated provider timeouts,
+  while caller cancellation remains cooperative cancellation; both paths
+  terminate the process tree and remove owned temporary work.
+
+### Safety and limitations
+
+- No transcription or visual-description implementation, model, codec pack, or
+  external executable is bundled. The contracts report unavailable cleanly.
+- Exact filename/literal Search remains authoritative; weak optional
+  descriptions cannot identify new files or create relationships alone.
+- No source file is changed, no media is silently uploaded, and no telemetry,
+  facial recognition, person identification, geocoding, or cloud service is
+  introduced.
+- Controlled Windows ffprobe/ffmpeg, image/preview, real Tesseract OCR/Search,
+  cancellation/timeout, and published-v2.1 schema-3 migration checks are
+  recorded separately from still-unperformed interactive and native
+  Linux/macOS checks.
+
 ## v2.1.0
 
 Release branch: `v2.1-search-ai-quality`. Published as the Search & AI Quality

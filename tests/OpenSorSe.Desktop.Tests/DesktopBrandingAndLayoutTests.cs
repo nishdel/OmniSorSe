@@ -125,6 +125,22 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("AutomationProperties.HelpText", source, StringComparison.Ordinal);
     }
 
+    /// <summary>Verifies collection and Related Files layouts retain bounded keyboard-scroll regions.</summary>
+    [Fact]
+    public void RelationshipViews_UseOneVisibleDestinationAndBoundedScrollableContent()
+    {
+        var views = Path.Combine(FindRepositoryRoot(), "src", "OpenSorSe.Desktop", "Views");
+        var collections = File.ReadAllText(Path.Combine(views, "CollectionsView.axaml"));
+        var related = File.ReadAllText(Path.Combine(views, "KnowledgeGraphView.axaml"));
+
+        Assert.Contains("RowDefinitions=\"Auto,*\"", collections, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Scrollable Smart Collections\"", collections, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Related Files\" IsVisible=\"False\"", collections, StringComparison.Ordinal);
+        Assert.Contains("VerticalContentAlignment=\"Stretch\"", related, StringComparison.Ordinal);
+        Assert.Contains("<ScrollViewer Grid.Column=\"1\">", related, StringComparison.Ordinal);
+        Assert.Contains("<VirtualizingStackPanel", related, StringComparison.Ordinal);
+    }
+
     /// <summary>Verifies Search naming and help remain plain-language and available beyond pointer hover.</summary>
     [Fact]
     public void SearchView_UsesAccessiblePlainLanguageHelpAndNoLegacyMeaningLabel()
@@ -152,7 +168,8 @@ public sealed class DesktopBrandingAndLayoutTests
                 attribute.Name.LocalName == "AutomationProperties.HelpText").Value,
             StringComparison.Ordinal);
         Assert.NotNull(help.Attribute("Command"));
-        Assert.Contains("Text=\"Search\"", source, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Search your files\"", source, StringComparison.Ordinal);
+        Assert.Contains("Search filenames, contents, images, audio and video", source, StringComparison.Ordinal);
         Assert.Contains("Include broader Related Files context in Search", source, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding SearchModeText}\"", source, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"{Binding IncludeGraphContext, Mode=TwoWay}\"", source, StringComparison.Ordinal);

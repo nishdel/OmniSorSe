@@ -21,11 +21,37 @@ the frozen v1.0 package retains its own historical notices.
 | --- | --- | --- | --- |
 | PDFtoImage 5.2.1 | Managed renderer wrapper | MIT | Mandatory NuGet dependency. |
 | PDFium native packages | Transitive rendering runtime | Apache-2.0 package metadata; upstream permissive notices retained | Bundled transitively by NuGet for supported desktop runtimes. |
-| SkiaSharp | Transitive image surface/encoding | MIT | Already present through Avalonia; version unified by restore. |
+| SkiaSharp | Managed image surface/encoding | MIT | Existing resolved dependency is now referenced directly by Application for bounded lazy media thumbnails; no additional resolved package or native family was introduced. |
 | Tesseract | External OCR executable | Apache-2.0 | Optional and never downloaded or bundled by OpenSorSe. |
 | Tesseract language data | External runtime data | Apache-2.0 project distributions; individual sources must be reviewed by distributors | Optional and user installed. |
 
 Poppler and Ghostscript are not selected or bundled. A broken Poppler command shim in one development environment is not considered a runtime capability.
+
+## Optional v2.2 media tools
+
+v2.2 can invoke user-managed `ffprobe` for audio/video
+metadata and `ffmpeg` for bounded representative frames. Neither executable,
+codec, model, nor media runtime is downloaded or bundled by OpenSorSe. FFmpeg
+build licensing varies with the distributor's configuration (commonly LGPL or
+GPL); users and distributors are responsible for choosing and licensing their
+external build. Absence, timeout, cancellation, malformed output, or unsupported
+codecs leave ordinary Search and deterministic image metadata usable.
+
+No Whisper-compatible transcription engine or visual-description model is
+selected, downloaded, or bundled. v2.2 provides provider contracts and explicit
+unavailable capability states only. Any future concrete provider requires a
+separate dependency, license, size, platform, security, and redistribution
+review under this policy.
+
+The final v2.2 review considered MIT-licensed `whisper.cpp` 1.8.1,
+MIT-licensed Whisper.net 1.9.1, and the MIT OpenAI Whisper Python reference.
+`whisper.cpp` is the preferred future process-isolated direction but still
+needs a versioned CLI/timestamp adapter, user-supplied model validation, safe
+audio conversion, and native testing on every target. Whisper.net would add
+per-RID native runtime assets and material package/native-validation scope.
+The Python reference would make Python/PyTorch a large mandatory or
+externally-managed runtime. None is added in v2.2, and no model is silently
+downloaded.
 
 ## Embedded SQLite components
 

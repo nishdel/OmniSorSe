@@ -1,6 +1,7 @@
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Semantic;
@@ -159,6 +160,14 @@ public enum SearchRankingSignalKind
     GraphContext,
     /// <summary>Optional local AI changed order only among equally strong deterministic tiers.</summary>
     AiAssistedOrder,
+    /// <summary>Deterministic embedded image, audio, or video metadata matched.</summary>
+    MediaMetadata,
+    /// <summary>A locally produced bounded audio or video transcript matched.</summary>
+    MediaTranscript,
+    /// <summary>Local OCR over an image or representative video frame matched.</summary>
+    MediaOcr,
+    /// <summary>An optional, visibly derived visual description matched.</summary>
+    MediaVisualDescription,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -190,6 +199,14 @@ public enum SearchSnippetSource
     TagOrKeyword,
     /// <summary>A selected bounded chunk supplied the snippet.</summary>
     Chunk,
+    /// <summary>Structured media metadata supplied the snippet.</summary>
+    MediaMetadata,
+    /// <summary>A bounded local transcript supplied the snippet.</summary>
+    MediaTranscript,
+    /// <summary>Image or representative-frame OCR supplied the snippet.</summary>
+    MediaOcr,
+    /// <summary>An optional derived visual description supplied the snippet.</summary>
+    MediaVisualDescription,
 }
 
 /// <summary>Identifies one accessible highlighted range within a bounded snippet.</summary>
@@ -284,6 +301,9 @@ public sealed record SearchCandidateDocument
 
     /// <summary>Gets bounded OCR text.</summary>
     public string? OcrText { get; init; }
+
+    /// <summary>Gets structured provider-neutral media evidence.</summary>
+    public IndexedMediaEvidence? MediaEvidence { get; init; }
 
     /// <summary>Gets a bounded generated summary.</summary>
     public string? Summary { get; init; }

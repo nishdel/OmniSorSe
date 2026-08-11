@@ -198,7 +198,7 @@
     },
     {
       "name": "SkiaSharp",
-      "purpose": "Cross-platform graphics and PNG encoding used by Avalonia and PDF rendering.",
+      "purpose": "Cross-platform graphics and PNG encoding used by Avalonia, PDF rendering, and bounded lazy v2.2 media thumbnails.",
       "upstream": "https://github.com/mono/SkiaSharp",
       "license": "MIT",
       "licenseEvidence": "NuGet package license expressions.",

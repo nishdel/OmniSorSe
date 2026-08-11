@@ -4,8 +4,8 @@ namespace OpenSorSe.Core;
 public static class ApplicationVersionInfo
 {
     /// <summary>Gets the current semantic product version.</summary>
-    public const string Current = "2.1.0";
+    public const string Current = "2.2.0";
 
     /// <summary>Gets the concise version displayed in the desktop application.</summary>
-    public const string Display = "2.1";
+    public const string Display = "2.2";
 }

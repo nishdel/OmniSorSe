@@ -1,5 +1,6 @@
 using System.Globalization;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Application.Media;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -286,6 +287,42 @@ public sealed class HybridSearchRanker : ISearchRanker
                     90,
                     ref rankClass);
                 literalScore += AddFieldMatch(
+                    fields.MediaMetadata,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.MediaMetadata,
+                    "media metadata",
+                    "image, audio, or video metadata",
+                    100,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
+                    fields.MediaTranscript,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.MediaTranscript,
+                    "media transcript",
+                    "audio or video transcript",
+                    105,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
+                    fields.MediaOcr,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.MediaOcr,
+                    "media OCR",
+                    "image or video-frame OCR",
+                    95,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
+                    fields.MediaVisualDescription,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.MediaVisualDescription,
+                    "visual description",
+                    "optional visual description",
+                    50,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
                     fields.ExtractedText,
                     tokens,
                     components,
@@ -416,9 +453,9 @@ public sealed class HybridSearchRanker : ISearchRanker
                 SearchFilterKind.Extension =>
                     EqualsNormalized(candidate.Extension.TrimStart('.'), filter.Value.TrimStart('.')),
                 SearchFilterKind.CreatedOnOrAfter =>
-                    CompareDate(candidate.CreationTimeUtc, filter.Value, onOrAfter: true),
+                    CompareDate(candidate.MediaEvidence?.Metadata.CapturedAtUtc ?? candidate.CreationTimeUtc, filter.Value, onOrAfter: true),
                 SearchFilterKind.CreatedBefore =>
-                    CompareDate(candidate.CreationTimeUtc, filter.Value, onOrAfter: false),
+                    CompareDate(candidate.MediaEvidence?.Metadata.CapturedAtUtc ?? candidate.CreationTimeUtc, filter.Value, onOrAfter: false),
                 SearchFilterKind.ModifiedOnOrAfter =>
                     CompareDate(candidate.ModifiedTimeUtc, filter.Value, onOrAfter: true),
                 SearchFilterKind.ModifiedBefore =>
@@ -442,7 +479,10 @@ public sealed class HybridSearchRanker : ISearchRanker
                 SearchFilterKind.IndexingCompletion =>
                     filter.Value.Equals(candidate.IsFullyIndexed ? "full" : "partial", StringComparison.OrdinalIgnoreCase),
                 SearchFilterKind.OcrAvailability =>
-                    CompareBoolean(!string.IsNullOrWhiteSpace(candidate.OcrText), filter.Value),
+                    CompareBoolean(
+                        !string.IsNullOrWhiteSpace(candidate.OcrText) ||
+                        !string.IsNullOrWhiteSpace(candidate.MediaEvidence?.OcrText),
+                        filter.Value),
                 SearchFilterKind.SemanticAvailability =>
                     CompareBoolean(candidate.SemanticRepresentation is { Count: > 0 }, filter.Value),
                 SearchFilterKind.FailureState =>
@@ -514,6 +554,26 @@ public sealed class HybridSearchRanker : ISearchRanker
         if (fields.OcrText.Contains(phrase, StringComparison.Ordinal))
         {
             return ("OCR text", "OCR text");
+        }
+
+        if (fields.MediaTranscript.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("media transcript", "an audio or video transcript");
+        }
+
+        if (fields.MediaOcr.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("media OCR", "image or video-frame OCR");
+        }
+
+        if (fields.MediaMetadata.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("media metadata", "image, audio, or video metadata");
+        }
+
+        if (fields.MediaVisualDescription.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("visual description", "an optional visual description");
         }
 
         if (fields.Summary.Contains(phrase, StringComparison.Ordinal))
@@ -750,6 +810,10 @@ public sealed class HybridSearchRanker : ISearchRanker
         string Tags,
         string Keywords,
         string Metadata,
+        string MediaMetadata,
+        string MediaTranscript,
+        string MediaOcr,
+        string MediaVisualDescription,
         string ExtractedText,
         string OcrText,
         string Summary,
@@ -766,6 +830,10 @@ public sealed class HybridSearchRanker : ISearchRanker
             SearchTextNormalizer.Normalize(string.Join(' ', candidate.Tags)),
             SearchTextNormalizer.Normalize(string.Join(' ', candidate.Keywords)),
             SearchTextNormalizer.Normalize(candidate.MetadataText),
+            SearchTextNormalizer.Normalize(MediaEvidenceText.CreateMetadataText(candidate.MediaEvidence)),
+            SearchTextNormalizer.Normalize(candidate.MediaEvidence?.Transcript),
+            SearchTextNormalizer.Normalize(candidate.MediaEvidence?.OcrText),
+            SearchTextNormalizer.Normalize(string.Join(' ', candidate.MediaEvidence?.VisualDescription, string.Join(' ', candidate.MediaEvidence?.VisualTags ?? []))),
             SearchTextNormalizer.Normalize(candidate.ExtractedText),
             SearchTextNormalizer.Normalize(candidate.OcrText),
             SearchTextNormalizer.Normalize(candidate.Summary),
@@ -794,6 +862,10 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
         var component = components.FirstOrDefault(item => item.Kind is
             SearchRankingSignalKind.ExtractedText or
             SearchRankingSignalKind.OcrText or
+            SearchRankingSignalKind.MediaMetadata or
+            SearchRankingSignalKind.MediaTranscript or
+            SearchRankingSignalKind.MediaOcr or
+            SearchRankingSignalKind.MediaVisualDescription or
             SearchRankingSignalKind.Summary or
             SearchRankingSignalKind.Chunk or
             SearchRankingSignalKind.Metadata or
@@ -817,6 +889,14 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
                 (SearchSnippetSource.ExtractedText, "Document text", candidate.ExtractedText),
             SearchRankingSignalKind.OcrText =>
                 (SearchSnippetSource.OcrText, "OCR text", candidate.OcrText),
+            SearchRankingSignalKind.MediaMetadata =>
+                (SearchSnippetSource.MediaMetadata, "Media metadata", MediaEvidenceText.CreateMetadataText(candidate.MediaEvidence)),
+            SearchRankingSignalKind.MediaTranscript =>
+                (SearchSnippetSource.MediaTranscript, "Audio or video transcript", candidate.MediaEvidence?.Transcript),
+            SearchRankingSignalKind.MediaOcr =>
+                (SearchSnippetSource.MediaOcr, "Image or video OCR", candidate.MediaEvidence?.OcrText),
+            SearchRankingSignalKind.MediaVisualDescription =>
+                (SearchSnippetSource.MediaVisualDescription, "Optional visual description", candidate.MediaEvidence?.VisualDescription),
             SearchRankingSignalKind.Summary =>
                 (SearchSnippetSource.Summary, "Summary", candidate.Summary),
             SearchRankingSignalKind.Chunk =>

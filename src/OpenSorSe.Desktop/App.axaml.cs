@@ -22,6 +22,7 @@ using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Structure;
@@ -175,6 +176,22 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ITesseractProcessRunner, TesseractProcessRunner>();
         services.AddSingleton<IOcrEngine, TesseractCliOcrEngine>();
         services.AddSingleton<IOcrService, OcrService>();
+        services.AddSingleton<IMediaProcessRunner, ExternalMediaProcessRunner>();
+        services.AddSingleton<IMediaMetadataProvider, ImageMediaMetadataProvider>();
+        services.AddSingleton<IMediaMetadataProvider, FfprobeMediaMetadataProvider>();
+        services.AddSingleton<IMediaTranscriptionProvider, UnavailableMediaTranscriptionProvider>();
+        services.AddSingleton<IMediaVisualDescriptionProvider, UnavailableMediaVisualDescriptionProvider>();
+        services.AddSingleton<IVideoFrameSampler>(serviceProvider =>
+            new FfmpegVideoFrameSampler(
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>(),
+                serviceProvider.GetRequiredService<IExternalToolLocator>(),
+                serviceProvider.GetRequiredService<IMediaProcessRunner>(),
+                Path.Combine(paths.CacheDirectory, "media-temporary")));
+        services.AddSingleton<IMediaIntelligenceService, MediaIntelligenceService>();
+        services.AddSingleton<IMediaThumbnailProvider>(serviceProvider =>
+            new SkiaMediaThumbnailProvider(
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>(),
+                Path.Combine(paths.CacheDirectory, "media-thumbnails")));
         services.AddSingleton<IContentStore>(serviceProvider =>
         {
             return new JsonContentStore(

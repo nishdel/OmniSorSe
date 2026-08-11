@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Relationships;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Indexing.Sqlite;
@@ -25,6 +26,197 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
         Assert.Equal("wal", ReadScalar(fixture.DatabasePath, "PRAGMA journal_mode;"));
         Assert.Equal("ok", ReadScalar(fixture.DatabasePath, "PRAGMA quick_check;"));
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'index_media_content';"));
+    }
+
+    /// <summary>Verifies the exact production v2.1 schema migrates transactionally and preserves searchable data.</summary>
+    [Fact]
+    public async Task VersionThreeMigratesToMediaSchemaWithRecoveryBackup()
+    {
+        using var fixture = new IndexFixture();
+        CreateDatabase(
+            fixture.DatabasePath,
+            SqliteDeepIndexSchema.CreateVersionOne +
+            SqliteDeepIndexSchema.CreateVersionTwo +
+            SqliteDeepIndexSchema.CreateVersionThree +
+            """
+            INSERT INTO index_meta(key, value) VALUES ('schema_version', '3');
+            INSERT INTO index_sources(
+                id, root_path, root_path_key, display_name, indexing_level,
+                include_subfolders, enabled, priority, exclusions_json,
+                managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+            VALUES ('source:v21', 'C:\v21', 'c:\v21', 'v2.1 fixture', 1, 1, 1, 0, '[]', 0, 0, 0);
+            INSERT INTO index_content(
+                content_hash, extracted_text, ocr_text, summary, keywords_json,
+                semantic_json, coverage_level, processor_fingerprint, updated_utc_ticks)
+            VALUES ('hash:v21', 'preserved Raspberry Pi monitoring text', NULL, NULL, '[]', NULL, 1, 'v2.1', 0);
+            INSERT INTO index_files(
+                id, source_id, full_path, path_key, relative_path, relative_path_key,
+                stable_identity, file_system_id, length, creation_utc_ticks,
+                modified_utc_ticks, attributes, metadata_fingerprint, content_hash,
+                processor_fingerprint, indexing_level, fully_indexed, deleted_utc_ticks,
+                last_seen_run_id, updated_utc_ticks)
+            VALUES (
+                'file:v21', 'source:v21', 'C:\v21\notes.txt', 'c:\v21\notes.txt',
+                'notes.txt', 'notes.txt', NULL, NULL, 42, 0, 0, 0, 'metadata:v21',
+                'hash:v21', 'processor:v21', 1, 1, NULL, NULL, 0);
+            PRAGMA user_version = 3;
+            """);
+        await using var migrated = fixture.CreateStore();
+
+        await migrated.InitializeAsync();
+
+        Assert.Equal(4, ReadUserVersion(fixture.DatabasePath));
+        var preserved = Assert.Single(await migrated.GetSearchDocumentsAsync(10));
+        Assert.Equal("notes.txt", preserved.FileName);
+        Assert.Contains("Raspberry Pi", preserved.ExtractedText, StringComparison.Ordinal);
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'index_media_content';"));
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+
+        await using var reopened = fixture.CreateStore();
+        await reopened.InitializeAsync();
+        Assert.Single(await reopened.GetSearchDocumentsAsync(10));
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+    }
+
+    /// <summary>Verifies structured media evidence round-trips without being flattened into generic metadata.</summary>
+    [Fact]
+    public async Task MediaEvidenceRoundTripsThroughSearchAndPrivacyInspection()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(), [fixture.Observation("recording.m4a")]);
+        await SaveCompleteAsync(store, Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10))), IndexingStage.MetadataIndexed);
+        await SaveCompleteAsync(store, Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10))), IndexingStage.ContentFingerprinted);
+        var fingerprint = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10)));
+        var evidence = new IndexedMediaEvidence
+        {
+            Kind = MediaKind.Audio,
+            Metadata = new MediaMetadata
+            {
+                Kind = MediaKind.Audio,
+                Container = "m4a",
+                Duration = TimeSpan.FromSeconds(65),
+                DeviceModel = "Synthetic Recorder",
+            },
+            Transcript = "Raspberry Pi monitoring deployment",
+            TranscriptSegments = [new MediaTranscriptSegment(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(8), "Raspberry Pi monitoring deployment")],
+            MetadataProvider = "synthetic",
+            MetadataProviderVersion = "1",
+            TranscriptionProvider = "synthetic-transcriber",
+            ProcessingFingerprint = "media-fingerprint",
+            Status = MediaExtractionStatus.Completed,
+        };
+        await store.SaveStageOutputAsync(
+            fingerprint,
+            new IndexingStageOutput
+            {
+                Status = IndexingStageStatus.Complete,
+                ContentHash = "media-hash",
+                MediaEvidence = evidence,
+            },
+            IndexingStage.SearchIndexUpdated,
+            Epoch.AddDays(10),
+            TimeSpan.FromMilliseconds(1),
+            null);
+        await CompleteBasicRunAsync(store, "unused");
+
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+        var privacy = Assert.IsType<IndexPrivacyItem>(await store.InspectFileAsync(document.FileId));
+
+        Assert.Equal("Raspberry Pi monitoring deployment", document.MediaEvidence?.Transcript);
+        Assert.DoesNotContain("Raspberry", document.MetadataText, StringComparison.OrdinalIgnoreCase);
+        Assert.True(privacy.HasMediaDerivedData);
+        Assert.True(privacy.HasMediaTranscript);
+        Assert.Equal("Audio", privacy.MediaKind);
+    }
+
+    /// <summary>Verifies media-only clearing removes derived evidence while preserving the source record.</summary>
+    [Fact]
+    public async Task ClearMediaDerivedDataPreservesIndexedFileAndOriginalSourceRegistration()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(), [fixture.Observation("photo.jpg")]);
+        await SaveCompleteAsync(store, Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10))), IndexingStage.MetadataIndexed);
+        await SaveCompleteAsync(store, Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10))), IndexingStage.ContentFingerprinted);
+        var fingerprint = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10)));
+        await store.SaveStageOutputAsync(
+            fingerprint,
+            new IndexingStageOutput
+            {
+                Status = IndexingStageStatus.Complete,
+                ContentHash = "photo-hash",
+                MediaEvidence = new IndexedMediaEvidence
+                {
+                    Kind = MediaKind.Image,
+                    Metadata = new MediaMetadata { Kind = MediaKind.Image, Width = 100, Height = 50 },
+                    OcrText = "private screenshot command",
+                    MetadataProvider = "synthetic",
+                    MetadataProviderVersion = "1",
+                    ProcessingFingerprint = "photo-fingerprint",
+                    Status = MediaExtractionStatus.Completed,
+                },
+            },
+            IndexingStage.SearchIndexUpdated,
+            Epoch.AddDays(10),
+            TimeSpan.Zero,
+            null);
+        await CompleteBasicRunAsync(store, "unused");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        var cleared = await store.ClearFileDataAsync(document.FileId, IndexedDataKind.MediaDerived, Epoch.AddDays(11));
+        var after = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.True(cleared.Applied);
+        Assert.Null(after.MediaEvidence);
+        Assert.Single(await store.GetSourcesAsync());
+    }
+
+    /// <summary>Verifies malformed retained media JSON is excluded and surfaced as an indexing failure.</summary>
+    [Fact]
+    public async Task CorruptMediaEvidenceFailsClosedWithoutCorruptResultObject()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(), [fixture.Observation("photo.jpg")]);
+        await SaveCompleteAsync(store, Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10))), IndexingStage.MetadataIndexed);
+        await SaveCompleteAsync(store, Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10))), IndexingStage.ContentFingerprinted);
+        var fingerprint = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(10)));
+        await store.SaveStageOutputAsync(
+            fingerprint,
+            new IndexingStageOutput
+            {
+                Status = IndexingStageStatus.Complete,
+                ContentHash = "corrupt-media-hash",
+                MediaEvidence = new IndexedMediaEvidence
+                {
+                    Kind = MediaKind.Image,
+                    Metadata = new MediaMetadata { Kind = MediaKind.Image, Width = 100, Height = 50 },
+                    MetadataProvider = "synthetic",
+                    MetadataProviderVersion = "1",
+                    ProcessingFingerprint = "synthetic",
+                    Status = MediaExtractionStatus.Completed,
+                },
+            },
+            IndexingStage.SearchIndexUpdated,
+            Epoch.AddDays(10),
+            TimeSpan.Zero,
+            null);
+        CreateDatabase(fixture.DatabasePath, "UPDATE index_media_content SET evidence_json = '{not-json';");
+
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.Null(document.MediaEvidence);
+        Assert.True(document.HasIndexingFailure);
     }
 
     /// <summary>Verifies a newer schema fails closed without mutation.</summary>

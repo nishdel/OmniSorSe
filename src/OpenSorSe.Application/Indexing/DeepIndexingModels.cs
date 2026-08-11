@@ -1,4 +1,5 @@
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Application.Media;
 
 namespace OpenSorSe.Application.Indexing;
 
@@ -6,10 +7,10 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 3;
+    public const int SchemaVersion = 4;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
-    public const string ProcessorVersion = "1.9.0";
+    public const string ProcessorVersion = "2.2.0";
 }
 
 /// <summary>Identifies a durable stage in the background-indexing pipeline.</summary>
@@ -242,6 +243,9 @@ public sealed record IndexingWorkItem
     /// <summary>Gets bounded OCR text needed by a later stage.</summary>
     public string? OcrText { get; init; }
 
+    /// <summary>Gets durable structured media evidence needed by later indexing stages.</summary>
+    public IndexedMediaEvidence? MediaEvidence { get; init; }
+
     /// <summary>Gets whether per-file policy disables OCR processing.</summary>
     public bool SuppressOcr { get; init; }
 
@@ -272,6 +276,9 @@ public sealed record IndexingStageOutput
 
     /// <summary>Gets bounded OCR text.</summary>
     public string? OcrText { get; init; }
+
+    /// <summary>Gets bounded provider-neutral media evidence produced or reused by this stage.</summary>
+    public IndexedMediaEvidence? MediaEvidence { get; init; }
 
     /// <summary>Gets a bounded non-sensitive summary when one was produced.</summary>
     public string? Summary { get; init; }
@@ -344,6 +351,9 @@ public sealed record IndexStorageBreakdown(
 {
     /// <summary>Gets the total physical provider size including managed sidecar files.</summary>
     public long TotalBytes => DatabaseBytes;
+
+    /// <summary>Gets the logical bytes retained for structured media evidence.</summary>
+    public long MediaDerivedDataBytes { get; init; }
 }
 
 /// <summary>Describes current persistent progress suitable for UI binding.</summary>
@@ -458,6 +468,9 @@ public sealed record ProgressiveSearchDocument
 
     /// <summary>Gets bounded OCR text.</summary>
     public string? OcrText { get; init; }
+
+    /// <summary>Gets structured image, audio, or video evidence retained by the provider.</summary>
+    public IndexedMediaEvidence? MediaEvidence { get; init; }
 
     /// <summary>Gets bounded tags or generated keywords.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];

@@ -257,3 +257,22 @@ Never commit:
 - OCR temporary pages or test workspaces;
 - credentials, tokens, private endpoints, machine-specific paths, or user file
   samples.
+
+## v2.2 media maintenance
+
+- Treat [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md) as the exact
+  candidate boundary. Check an item in [its manual checklist](MANUAL_TESTING_v2.2.md)
+  only after recording the exact native or interactive observation; keep
+  automated-only, unavailable-dependency, and untested-platform claims clearly
+  distinguishable.
+- Validate deterministic image parsing without installed tools, then validate
+  `ffprobe`, `ffmpeg`, Tesseract, and any future transcription/visual provider
+  separately on each actual host where a runtime claim is made.
+- Confirm schema-3-to-4 migration, corruption/newer-schema rejection, cache
+  reuse/invalidation, derived-data clearing, quota cleanup, cancellation, and
+  retry after a provider becomes available.
+- Inspect optional executable paths and arguments in diagnostics without
+  exporting private media evidence. Never package a user-managed media tool or
+  codec accidentally.
+- Cross-target compilation is not native codec/extraction evidence. Record the
+  exact executable build, platform, formats, and operations tested.

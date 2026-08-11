@@ -5,6 +5,7 @@
   <ItemGroup>
     <PackageReference Include="PDFtoImage" Version="5.2.1" />
     <PackageReference Include="PdfPig" Version="0.1.15" />
+    <PackageReference Include="SkiaSharp" Version="3.119.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenSorSe.Extensions.Abstractions\OpenSorSe.Extensions.Abstractions.csproj" />

@@ -312,4 +312,31 @@ internal static class SqliteDeepIndexSchema
 
         INSERT OR IGNORE INTO relationship_diagnostics(id) VALUES (1);
         """;
+
+    public const string CreateVersionFour = """
+        CREATE TABLE IF NOT EXISTS index_media_content (
+            content_hash TEXT PRIMARY KEY,
+            media_kind INTEGER NOT NULL,
+            evidence_json TEXT NOT NULL,
+            processing_fingerprint TEXT NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            FOREIGN KEY(content_hash) REFERENCES index_content(content_hash) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_index_media_kind
+            ON index_media_content(media_kind, updated_utc_ticks);
+
+        """;
+
+    public const string CreateVersionFourIndexes = """
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_media_transcript
+            ON index_relationship_features(media_transcript_fingerprint)
+            WHERE media_transcript_fingerprint IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_media_ocr
+            ON index_relationship_features(media_ocr_fingerprint)
+            WHERE media_ocr_fingerprint IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS ix_relationship_features_media_device
+            ON index_relationship_features(media_device_key, capture_date_bucket)
+            WHERE media_device_key IS NOT NULL;
+        """;
 }

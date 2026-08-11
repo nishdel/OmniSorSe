@@ -34,6 +34,13 @@ PdfPig 0.1.15 is Apache-2.0 licensed and is used for read-only, page-aware nativ
 
 Tesseract is Apache-2.0 licensed. It is an optional, externally managed executable: OpenSorSe neither downloads nor bundles Tesseract or its language data. Users or distributors who install or package Tesseract are responsible for retaining its license and reviewing the source/license of the chosen trained-data files. See the [Tesseract repository](https://github.com/tesseract-ocr/tesseract).
 
+## Optional external media tools
+
+The v2.2 source can use separately installed `ffprobe` and `ffmpeg` executables.
+They are not downloaded or redistributed by OpenSorSe. FFmpeg build licensing
+depends on how that external build was configured; users and downstream
+distributors must review the license and codec terms of the build they choose.
+
 ## Other MIT components
 
 CommunityToolkit.Mvvm, Newtonsoft.Json, PDFtoImage, Tmds.DBus.Protocol, HarfBuzzSharp, MicroCom.Runtime, SkiaSharp, and coverlet packages in the inventory are MIT licensed. Retain each package's copyright and permission notice when its files are redistributed.

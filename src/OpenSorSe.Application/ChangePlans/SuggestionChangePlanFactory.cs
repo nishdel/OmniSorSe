@@ -36,7 +36,8 @@ public interface IDuplicateRemovalPlanFactory
 {
     /// <summary>
     /// Creates a Change Plan that preserves at least one known member and moves selected copies into the
-    /// scan root's application-owned recovery area. The method never executes filesystem changes.
+    /// affected scan roots' application-owned recovery areas. Every affected exact-copy group must
+    /// retain a known member. The method never executes filesystem changes.
     /// </summary>
     Task<ChangePlan> CreateDuplicateRemovalPlanAsync(
         IReadOnlyList<ResultFile> filesToRemove,
@@ -202,24 +203,50 @@ public sealed class SuggestionChangePlanFactory : ISuggestionChangePlanFactory, 
             throw new ArgumentException("Duplicate removal requires distinct known files from one result group.");
         }
 
-        var groupIds = allFiles.Select(file => file.DuplicateGroupId).Distinct(StringComparer.Ordinal).ToArray();
-        if (groupIds.Length != 1 || string.IsNullOrWhiteSpace(groupIds[0]))
+        if (allFiles.Any(file => string.IsNullOrWhiteSpace(file.DuplicateGroupId)))
         {
-            throw new ArgumentException("Duplicate removal is limited to one verified exact-copy group.");
+            throw new ArgumentException("Duplicate removal requires verified exact-copy groups.");
+        }
+
+        var removalsByGroup = filesToRemove
+            .GroupBy(file => file.DuplicateGroupId!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        var keepersByGroup = filesToKeep
+            .GroupBy(file => file.DuplicateGroupId!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        foreach (var groupId in removalsByGroup.Keys)
+        {
+            if (!keepersByGroup.TryGetValue(groupId, out var keepers) || keepers.Length == 0)
+            {
+                throw new ArgumentException(
+                    $"Duplicate group '{groupId}' must retain at least one known copy.",
+                    nameof(filesToKeep));
+            }
+        }
+
+        if (keepersByGroup.Keys.Any(groupId => !removalsByGroup.ContainsKey(groupId)))
+        {
+            throw new ArgumentException("Keeper files must belong only to affected duplicate groups.", nameof(filesToKeep));
         }
 
         var root = CommonRoot(allFiles.Select(file => file.FullPath));
-        var recoveryRoot = Path.Combine(root, ".opensorse", "duplicate-recovery", SafePathSegment(groupIds[0]!));
-        var actions = filesToRemove.Select((file, index) => new ChangeActionProposal(
-            ChangeActionType.MoveFile,
-            file.FullPath,
-            Path.Combine(recoveryRoot, SafePathSegment(file.Id), file.DisplayFileName),
-            ChangeSuggestionSource.DuplicateAnalysis,
-            $"The user selected this exact copy for safe removal; {filesToKeep.Count} known identical copy or copies will remain.",
-            index + 1,
-            file.Id,
-            file.SizeInBytes,
-            file.LastWriteTimeUtc)).ToArray();
+        var actions = filesToRemove.Select((file, index) =>
+        {
+            var groupId = file.DuplicateGroupId!;
+            var groupFiles = removalsByGroup[groupId].Concat(keepersByGroup[groupId]).ToArray();
+            var groupRoot = CommonRoot(groupFiles.Select(member => member.FullPath));
+            var recoveryRoot = Path.Combine(groupRoot, ".opensorse", "duplicate-recovery", SafePathSegment(groupId));
+            return new ChangeActionProposal(
+                ChangeActionType.MoveFile,
+                file.FullPath,
+                Path.Combine(recoveryRoot, SafePathSegment(file.Id), file.DisplayFileName),
+                ChangeSuggestionSource.DuplicateAnalysis,
+                $"The user selected this exact copy for safe removal; {keepersByGroup[groupId].Length} known identical copy or copies will remain in this group.",
+                index + 1,
+                file.Id,
+                file.SizeInBytes,
+                file.LastWriteTimeUtc);
+        }).ToArray();
         return _factory.CreateAsync(
             new ChangePlanCreationRequest(
                 root,
@@ -227,6 +254,7 @@ public sealed class SuggestionChangePlanFactory : ISuggestionChangePlanFactory, 
                 actions,
                 [
                     "Duplicate removal moves selected copies into the hidden .opensorse/duplicate-recovery area; it does not permanently delete them or immediately reclaim disk space.",
+                    $"Each of the {removalsByGroup.Count} affected duplicate group(s) retains at least one known copy.",
                     "Successful moves are recorded in the Operation Journal and can be undone while normal conflict checks still pass.",
                 ]),
             cancellationToken);

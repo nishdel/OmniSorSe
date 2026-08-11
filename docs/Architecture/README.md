@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the current
-integrated v2.0 implementation plus inherited v1.9 system and take
+released v2.2 implementation and take
 precedence when an older document uses future-oriented
 language.
 
@@ -29,13 +29,16 @@ compatibility, and recovery.
 - `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: implemented-candidate
   graph/decision isolation, conservative identity, deterministic projection,
   concurrency, bounds, privacy, and mandatory RC contract.
-- `06_Search/12_v2.1_Search_AI_Quality.md`: current development boundary for
+- `06_Search/12_v2.1_Search_AI_Quality.md`: released boundary for
   filename tiers, bounded optional Ollama reranking, model runtime discovery,
   fallback, indexing clarity, result commands, and compatibility.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
 - `03_Readers/10_v1_OCR_and_Metadata.md`: implemented extraction/OCR boundary.
+- `../MEDIA_INTELLIGENCE_v2.2.md`: authoritative released v2.2 provider,
+  evidence, schema-4, bounds, optional-tool, Search, relationship, privacy, and
+  diagnostics boundary.
 - `04_AI/11_Small_Model_Prompt_Contracts.md`: implemented provider contract and
   validation shape.
 - `05_Database/09_v1_Local_Content_Stores_and_Migrations.md`: implemented local
@@ -56,9 +59,9 @@ compatibility, and recovery.
 ## v2.0 implemented architecture
 
 - `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: accepted isolated,
-  deterministic, bounded Knowledge Graph design implemented by the unmerged
-  candidate. Source and tests define exact behavior; validation and RC gates
-  remain open.
+  deterministic, bounded Knowledge Graph design released in v2.0. Source and
+  tests define exact behavior; its historical validation records remain
+  available.
 
 The practical current guide is
 [Knowledge Graph v2.0](../KNOWLEDGE_GRAPH_v2.0.md).
@@ -71,7 +74,8 @@ release plans are indexed in the
 
 The remaining detailed documents in `01_Core` through `10_Plugins`, plus the
 older system flows, record the original design vocabulary and future ideas.
-Some describe SQLite, generic service registries, broad media readers,
+Some describe SQLite, generic service registries, media capabilities broader
+than the bounded v2.2 release,
 reporting, online plugin services, or security models that are not implemented.
 They are retained because they provide design history and candidate boundaries,
 but they are not a statement of current product behavior.

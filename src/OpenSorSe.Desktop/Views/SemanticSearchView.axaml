@@ -9,14 +9,14 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <StackPanel Spacing="3">
-                <TextBlock Classes="page-title" Text="Search" />
+                <TextBlock Classes="page-title" Text="Search your files" />
                 <TextBlock Classes="page-subtitle"
                            Text="Find files using names, metadata, document text, tags, and related concepts." />
                 <TextBlock Text="{Binding SearchModeText}"
                            FontWeight="SemiBold"
                            AutomationProperties.Name="Current Search mode" />
                 <TextBlock Classes="page-subtitle"
-                           Text="Hybrid Search combines filenames, paths, metadata, and indexed content locally. Optional AI can refine known results but does not perform the underlying file search."
+                           Text="Searches filenames, paths, and indexed contents locally. Media metadata, OCR, and transcripts are included when available. Optional AI can refine known results but does not perform the underlying file search."
                            TextWrapping="Wrap" />
             </StackPanel>
             <Button Grid.Column="1"
@@ -33,7 +33,7 @@
             <StackPanel Spacing="9">
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <TextBox Text="{Binding QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             PlaceholderText="Try: tax documents from 2023"
+                             PlaceholderText="Search filenames, contents, images, audio and video…"
                              AutomationProperties.Name="Search query" />
                     <Button Grid.Column="1"
                             Classes="primary"
@@ -297,6 +297,16 @@
                           Header="Indexed data inspection"
                           AutomationProperties.Name="Indexed data inspection and privacy actions">
                     <StackPanel Spacing="8">
+                        <Border IsVisible="{Binding HasSelectedMediaThumbnail}"
+                                HorizontalAlignment="Left"
+                                CornerRadius="6"
+                                ClipToBounds="True">
+                            <Image Source="{Binding SelectedMediaThumbnailPath}"
+                                   MaxWidth="320"
+                                   MaxHeight="320"
+                                   Stretch="Uniform"
+                                   AutomationProperties.Name="Bounded local preview of the selected indexed image" />
+                        </Border>
                         <TextBlock Text="{Binding PrivacyText}"
                                    TextWrapping="Wrap"
                                    AutomationProperties.LiveSetting="Polite" />
@@ -317,6 +327,11 @@
                                     Classes="secondary"
                                     Content="Clear OCR data"
                                     Command="{Binding ClearOcrDataCommand}" />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
+                                    Content="Clear media-derived data"
+                                    Command="{Binding ClearMediaDataCommand}"
+                                    AutomationProperties.HelpText="Clears OpenSorSe's stored media metadata, transcript, media OCR, and optional description for the selected file. The original media file remains untouched." />
                             <Button Margin="0,0,8,8"
                                     Classes="secondary"
                                     Content="Clear related-concept data"
@@ -417,6 +432,11 @@
                                         <TextBlock Text="{Binding CoverageIndicator, StringFormat='Coverage: {0}'}"
                                                    Classes="page-subtitle"
                                                    AutomationProperties.Name="{Binding CoverageIndicator, StringFormat='Search coverage {0}'}" />
+                                        <TextBlock Text="{Binding MediaSummary}"
+                                                   IsVisible="{Binding MediaSummary}"
+                                                   Classes="page-subtitle"
+                                                   TextWrapping="Wrap"
+                                                   AutomationProperties.Name="{Binding MediaSummary, StringFormat='Media details: {0}'}" />
                                         <StackPanel IsVisible="{Binding Snippet}">
                                             <TextBlock Text="{Binding Snippet.SourceLabel}"
                                                        Classes="page-subtitle"

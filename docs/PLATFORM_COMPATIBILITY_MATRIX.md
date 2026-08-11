@@ -2,9 +2,9 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** OpenSorSe v2.1.0 release source
+**Current source:** OpenSorSe v2.2.0 Media Intelligence release source
 
-**Last reviewed:** 2026-08-10
+**Last reviewed:** 2026-08-11
 
 OpenSorSe is a Windows-first desktop application with a conservative Linux x64
 source-build preview. v2.0.0 added native Intel/Apple Silicon macOS packages and
@@ -71,10 +71,12 @@ file mutation are separate claims.
 | Managed plugins | Supported | Preview | Unverified | External plugins are in-process. Native plugins require an exact supported runtime identifier. |
 | Native plugin dependencies | Supported with limitations | Preview / package-specific | Unavailable | Native content requires explicit compatible RIDs. Binary portability is never inferred. |
 | OCR through external Tesseract | Supported with limitations | Unverified runtime | Unverified runtime | Configured path/PATH discovery checks the external tool before bounded invocation. Engine/language packages are user managed. |
+| v2.2 deterministic image metadata/thumbnails | Supported with bounded automated and controlled Windows evidence | Build/test only | Build/test and native package smoke only | In-process header/EXIF parsing and Skia encoding are bounded. Windows validation exercised generated JPEG/PNG, orientation-aware cache reuse, and real Tesseract OCR/Search; broad interactive testing remains incomplete. |
+| v2.2 audio/video metadata and frames | Supported with controlled user-managed FFmpeg/ffprobe 9.0 evidence against generated MP3, WAV, FLAC, M4A, and MP4 plus bounded frame extraction/cancellation | Unverified native runtime | Unverified native runtime | User-managed `ffprobe`/`ffmpeg` are capability-detected and are not bundled. Cross-target compilation and macOS package smoke do not prove codecs or executable availability. No transcription or visual-description implementation is bundled. |
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.1.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs through the established release workflow. Linux remains source build only. |
+| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.2.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs through the established release workflow. Linux remains source build only. |
 
 ## Filesystem limitations
 

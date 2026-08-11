@@ -1,7 +1,7 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for OpenSorSe v2.0 and its
-inherited v1.7-v1.9 source lineage. The
+This is the authoritative top-level architecture for OpenSorSe v2.2.0 Media
+Intelligence. The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -37,6 +37,7 @@ internal services.
 | Basic analysis | `FileMetadataReader`, `FileHasher`, `FileClassifier`, and `DuplicateDetector`. |
 | Text and OCR | `ContentIndexingService` → `MetadataExtractionPipeline`; `OcrService`, `PdfPageRasterizer`, and `TesseractCliOcrEngine` supply bounded local OCR where enabled and needed. |
 | Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
+| Media Intelligence candidate | `IMediaIntelligenceService` coordinates capability-based metadata, transcription, representative-frame, OCR, visual-description, and thumbnail providers. Structured evidence enters the existing durable stage/store/Search contracts; providers never own traversal, ranking, or source-file mutation. |
 | Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
 | Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
 | Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
@@ -136,6 +137,22 @@ discard installed models. Search, result explanations/actions, and indexing
 coverage remain usable without AI. v2.1 changes no SQLite or JSON schema. See
 [v2.1 Search and AI Quality](Architecture/06_Search/12_v2.1_Search_AI_Quality.md).
 
+## v2.2 Media Intelligence boundary
+
+The v2.2 release classifies a conservative media extension set and
+produces bounded `IndexedMediaEvidence`. Deterministic image-header/EXIF
+parsing and lazy still-image thumbnails are in process. Existing OCR can
+recognize enabled image or sampled-frame content. Optional `ffprobe` supplies
+audio/video stream metadata, and optional `ffmpeg` produces at most the
+configured number of evenly distributed interior frames. Both are invoked
+without a shell and with time, output, size, duration, and cancellation bounds.
+
+Transcription and visual descriptions are provider-neutral optional contracts;
+the release bundles no implementation and records their absence explicitly.
+Media evidence is versioned and content-hash shared in schema 4, while the
+existing file, job, stage, privacy, quota, recovery, and Search architecture is
+retained. See [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
+
 ## v1.9 relationships and context boundary
 
 `IRelationshipEngine` compares only bounded retained index projections and
@@ -165,7 +182,8 @@ user decisions. Merely similar text or semantic data cannot merge identities.
 
 `knowledge-graph.db` schema 1 is rebuildable derived state;
 `knowledge-decisions.db` schema 1 is non-rebuildable graph-native decision and
-privacy authority. `deep-index.db` remains schema 3 and authoritative for v1.9
+privacy authority. v2.2 uses `deep-index.db` schema 4 after a transactional
+migration from schema 3 while retaining its authority for v1.9
 relationships, Collections, decisions, and privacy. Completed source manifests
 carry a canonical count and hash, and projection keeps source, decision, and
 privacy ingestion watermarks separate from applied watermarks.
@@ -301,7 +319,7 @@ them.
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
 | Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
 | Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
-| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | Schema v3; v1/v2 migrate transactionally with a recovery copy; transactional stages, privacy rules, relationship evidence/corrections/virtual collections, targeted repair, integrity checks, backups, interruption recovery, shared bounded content, retention, quota maintenance, and rebuildable derived data. |
+| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | v2.2 schema v4 uses a transactional recovery-copy migration from v2.1 schema v3 and content-hash-shared bounded media evidence. Existing stages, privacy rules, relationships/collections, repair, integrity, recovery, retention, quotas, and rebuildability remain. |
 | Knowledge Graph projection | `SqliteGraphStore` | `index/knowledge-graph.db` | Schema v1; rebuildable completed-manifest projection, jobs, generations, nodes/edges/evidence, applied/ingested watermarks, repair, and bounded diagnostics. |
 | Knowledge Graph decisions | `SqliteGraphDecisionStore` | `index/knowledge-decisions.db` | Schema v1; append-only graph-native decisions, checkpoints, exclusions, privacy floor, and verified recovery points; never silently reset. |
 | AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
@@ -332,6 +350,9 @@ never be committed.
   their controls never modify original files.
 - Knowledge Graph data is optional application-owned projection/decision data;
   graph privacy, repair, and browsing never open or modify original files.
+- Media metadata, OCR, transcripts, descriptions, thumbnails, and relationships
+  are application-owned derived data and never authorize or perform source-file
+  changes.
 - Workflow Profiles configure processing; they do not approve actions.
 - Sorting Recipes generate sanitized names and destinations; they do not apply
   them.

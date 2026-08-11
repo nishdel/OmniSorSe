@@ -134,6 +134,14 @@ public sealed class FileScannerTests
 
         Assert.NotEmpty(reports);
         Assert.Contains(reports, report => report.CurrentPath is not null);
+        var boundedWork = reports.Where(report => report.WorkloadKey is not null).ToArray();
+        Assert.NotEmpty(boundedWork);
+        Assert.Contains(boundedWork, report => report.WorkItemsRemaining == 0);
+        Assert.All(boundedWork, report =>
+        {
+            Assert.True(report.WorkItemsCompleted >= 0);
+            Assert.True(report.WorkItemsRemaining >= 0);
+        });
         var finalReport = reports[^1];
         Assert.Equal(result.Statistics, finalReport.Statistics);
         Assert.Null(finalReport.CurrentPath);

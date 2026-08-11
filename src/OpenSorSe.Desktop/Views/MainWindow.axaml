@@ -72,6 +72,31 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
+                        <StackPanel IsVisible="{Binding HasSecondaryNavigationItems}" Spacing="4">
+                            <TextBlock Text="LIBRARY &amp; AUTOMATION"
+                                       Margin="10,8,0,2"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <ItemsControl ItemsSource="{Binding SecondaryNavigationItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:NavigationItem">
+                                        <Button Classes="nav-item"
+                                                Classes.active="{Binding IsSelected}"
+                                                AutomationProperties.Name="{Binding Label}"
+                                                Click="OnNavigationButtonClick">
+                                            <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                                <TextBlock Text="{Binding Icon}"
+                                                           Foreground="{DynamicResource AccentOrganizationBrush}"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Label}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
                         <StackPanel IsVisible="{Binding HasAdvancedNavigationItems}" Spacing="4">
                             <TextBlock Text="ADVANCED"
                                        Margin="10,8,0,2"
@@ -184,13 +209,8 @@
                         </Grid>
                     </Grid>
                 </Grid>
-                <Grid IsVisible="{Binding IsSemanticSearchSelected}" RowDefinitions="Auto,*" RowSpacing="10">
-                    <Button Classes="secondary"
-                            Content="Back to Files"
-                            AutomationProperties.Name="Back to Files"
-                            HorizontalAlignment="Left"
-                            Command="{Binding BackToFilesCommand}" />
-                    <views:SemanticSearchView Grid.Row="1" DataContext="{Binding SemanticSearch}" />
+                <Grid IsVisible="{Binding IsSemanticSearchSelected}">
+                    <views:SemanticSearchView DataContext="{Binding SemanticSearch}" />
                 </Grid>
                 <Grid IsVisible="{Binding IsCollectionsSelected}">
                     <views:CollectionsView DataContext="{Binding Collections}" />

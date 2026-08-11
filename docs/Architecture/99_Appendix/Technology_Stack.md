@@ -2,8 +2,7 @@
 
 **Document type:** Living technology inventory
 
-**Scope:** Current unmerged v2.0 implementation candidate and inherited v1.9
-source; a technology in a roadmap or historical
+**Scope:** Released v2.2 source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack
@@ -19,7 +18,10 @@ architecture document is not a current dependency
 | Composition | Microsoft.Extensions.DependencyInjection 8.x | Desktop composition root and service registration. |
 | Logging | Microsoft.Extensions.Logging 8.x plus OpenSorSe-owned bounded logging | Structured application logging without source content. |
 | JSON persistence | `System.Text.Json` plus shared bounded atomic replacement | Settings, catalogs, workflows, watched state, plans, journals, compatible content/Search stores, and other application-owned data. |
-| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Embedded schema-versioned providers behind Application contracts: schema-3 deep index plus isolated schema-1 graph/decision sidecars; no database server is required. |
+| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Released schema-4 deep index with shared media evidence; isolated schema-1 graph/decision sidecars remain. |
+| Media image parsing/thumbnails | Bounded managed parsers plus existing SkiaSharp 3.119.2 reference | Deterministic JPEG/PNG/WebP/BMP/TIFF headers/EXIF and lazy capped still-image PNG thumbnails; no network or source mutation. |
+| Optional media metadata/frames | User-managed `ffprobe` and `ffmpeg` | Capability-detected argument-list processes with output/time/duration/frame bounds; not downloaded or bundled. |
+| Media transcription/visual descriptions | Provider-neutral Application contracts | No concrete provider, runtime, model, or dependency is selected or bundled by v2.2. |
 | Native PDF text | PdfPig 0.1.15 | Bounded read-only PDF page text and metadata. |
 | PDF page rendering | PDFtoImage 5.2.1 with PDFium native packages | Bounded rendering of PDF pages that need enabled OCR. |
 | OCR | External Tesseract 5 CLI | Optional local image/scanned-page recognition; executable and language data are not bundled. |
@@ -54,6 +56,7 @@ See [Product Vision](../../../PRODUCT_VISION.md) and
 ## Optional components
 
 - Tesseract and language data are installed and managed externally.
+- `ffprobe` and `ffmpeg`, when used, are installed and managed externally.
 - Ollama-compatible providers are installed and managed externally.
 - External plugins are user-selected local packages and run in-process with the
   current user’s permissions.

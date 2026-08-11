@@ -1,5 +1,10 @@
 # Image Reader
 
+> **Status note:** this is an older broad design. The exact released v2.2
+> implementation, formats, EXIF fields, OCR reuse, thumbnail bounds, optional
+> visual-provider boundary, and limitations are defined in
+> [Media Intelligence v2.2](../../MEDIA_INTELLIGENCE_v2.2.md).
+
 > This document defines the Image Reader component, which is responsible for extracting metadata and structural information from supported image formats.
 
 ---

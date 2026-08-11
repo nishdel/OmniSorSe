@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the OpenSorSe 1.8 solution as it exists in source. It describes
+This guide maps the released v2.2 solution as its projects exist in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -140,7 +140,8 @@ reference cycles.
   history, provider-neutral AI policy, watched-folder coordination, workflows,
   plugin host/lifecycle/packages, relationship/context contracts and engine,
   provider-neutral Knowledge Graph projection/query/decision/privacy/repair
-  contracts, and suggestion-to-Change-Plan adapters.
+  contracts, provider-neutral bounded media extraction/evidence/thumbnails,
+  and suggestion-to-Change-Plan adapters.
 - **Must not own:** Avalonia views, shell navigation, Ollama HTTP details, or
   direct approved user-file mutation.
 - **Principal entry points:** `IApplicationController`,
@@ -162,6 +163,9 @@ reference cycles.
   - `KnowledgeGraph`: conservative identity/projection, completed-manifest
     lifecycle, four-axis state, bounded query/Search, graph-native decisions,
     privacy, repair, suggestions, and diagnostics contracts/services.
+  - `Media`: format classification, deterministic image metadata/EXIF,
+    optional external-process metadata/frame providers, coordinator, bounded
+    evidence projection, transcription/visual contracts, and lazy thumbnails.
   - `Semantic`: deterministic local index and explained search.
   - `Structure`: snapshots, preview plans, history, and comparisons.
   - `Tags`: provenance-aware generated tag candidates.
@@ -191,13 +195,14 @@ reference cycles.
   background-index store.
 - **Owns:** SQLite schema/versioning, migrations/backups, transactions,
   integrity checks, durable sources/runs/jobs/stages, shared bounded content,
-  coverage/search projections, relationship evidence/edges/corrections,
+  coverage/search projections, schema-4 shared media evidence and media
+  relationship features, relationship evidence/edges/corrections,
   virtual collections/membership, isolated Knowledge Graph/decision sidecars,
   retention, quota maintenance, and compaction.
 - **Must not own:** Views, ViewModels, Search ranking, discovery/processing
   policy, source-file mutation, PostgreSQL clients, or server configuration.
 - **Principal entry points:** `SqliteDeepIndexStore`, `SqliteGraphStore`,
-  `SqliteGraphDecisionStore`, and the schema-3 graph projection adapter.
+  `SqliteGraphDecisionStore`, and the deep-index graph projection adapter.
 - **Dependencies:** Application and Core.
 - **Reference rule:** Desktop composes this provider behind `IDeepIndexStore`,
   `IIndexPrivacyStore`, `IRelationshipStore`, and provider-neutral graph

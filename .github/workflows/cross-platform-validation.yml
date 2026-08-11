@@ -10,6 +10,7 @@ on:
       - v2.0-knowledge-graph-design
       - v2.0-knowledge-graph
       - v2.1-search-ai-quality
+      - v2.2-media-intelligence
   pull_request:
 
 permissions:

@@ -144,6 +144,10 @@ public sealed class AdvancedDiagnosticsViewModelTests
         Assert.Contains("IsEnabled=\"{Binding Draft.DiagnosticsEnabled}\"", settingsXaml, StringComparison.Ordinal);
         Assert.Contains("not yet instrumented", settingsXaml, StringComparison.Ordinal);
         Assert.Contains("authorization headers are always removed", settingsXaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Keep completed scan information locally", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("Scanning is always local", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("No media is silently uploaded", settingsXaml, StringComparison.Ordinal);
+        Assert.Contains("Transcription and visual descriptions require separately configured local providers", settingsXaml, StringComparison.Ordinal);
         foreach (var tab in new[]
                  {
                      "Overview", "Timeline", "Inputs", "Intermediate results", "Outputs",

@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
@@ -21,6 +22,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly IClipboardService? _clipboard;
     private readonly IIndexPrivacyService? _privacyService;
     private readonly IAdvancedDiagnosticsWindowService? _advancedDiagnosticsWindowService;
+    private readonly IMediaThumbnailProvider? _mediaThumbnailProvider;
     private readonly ObservableCollection<SemanticSearchHit> _hits = [];
     private readonly ObservableCollection<SearchFilter> _activeFilters = [];
     private readonly ObservableCollection<IndexingSource> _sources = [];
@@ -40,6 +42,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private string _topicText = string.Empty;
     private bool _areFiltersVisible;
     private SemanticSearchHit? _selectedHit;
+    private string? _selectedMediaThumbnailPath;
     private IndexPrivacyItem? _privacyItem;
     private string _privacyText = "Select Inspect indexed data on a Search result to review retained categories.";
     private bool _isForgetFilePending;
@@ -68,7 +71,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         IBackgroundIndexingService? backgroundIndexingService = null,
         IAdvancedDiagnosticsWindowService? advancedDiagnosticsWindowService = null,
         IIndexPrivacyService? privacyService = null,
-        IClipboardService? clipboard = null)
+        IClipboardService? clipboard = null,
+        IMediaThumbnailProvider? mediaThumbnailProvider = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _indexer = indexer;
@@ -79,6 +83,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _backgroundIndexingService = backgroundIndexingService;
         _privacyService = privacyService ?? backgroundIndexingService as IIndexPrivacyService;
         _advancedDiagnosticsWindowService = advancedDiagnosticsWindowService;
+        _mediaThumbnailProvider = mediaThumbnailProvider;
         Hits = new ReadOnlyObservableCollection<SemanticSearchHit>(_hits);
         ActiveFilters = new ReadOnlyObservableCollection<SearchFilter>(_activeFilters);
         Sources = new ReadOnlyObservableCollection<IndexingSource>(_sources);
@@ -125,6 +130,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             () => _privacyService is not null && SelectedSource is not null && !IsBusy);
         ClearOcrDataCommand = new AsyncRelayCommand(
             () => ClearSelectedDataAsync(IndexedDataKind.OcrText),
+            CanRepairFile);
+        ClearMediaDataCommand = new AsyncRelayCommand(
+            () => ClearSelectedDataAsync(IndexedDataKind.MediaDerived),
             CanRepairFile);
         ClearSemanticDataCommand = new AsyncRelayCommand(
             () => ClearSelectedDataAsync(IndexedDataKind.SemanticData | IndexedDataKind.Chunks),
@@ -259,10 +267,31 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _selectedHit, value))
             {
+                if (value is null)
+                {
+                    SelectedMediaThumbnailPath = null;
+                }
+
                 NotifyPrivacyCommands();
             }
         }
     }
+
+    /// <summary>Gets the lazily generated application-owned still-image preview for the inspected result.</summary>
+    public string? SelectedMediaThumbnailPath
+    {
+        get => _selectedMediaThumbnailPath;
+        private set
+        {
+            if (SetProperty(ref _selectedMediaThumbnailPath, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedMediaThumbnail));
+            }
+        }
+    }
+
+    /// <summary>Gets whether a bounded cached preview is available for the inspected result.</summary>
+    public bool HasSelectedMediaThumbnail => !string.IsNullOrWhiteSpace(SelectedMediaThumbnailPath);
 
     /// <summary>Gets the provider-neutral indexed-data inspection record.</summary>
     public IndexPrivacyItem? PrivacyItem
@@ -588,6 +617,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the index-only OCR-data clear command.</summary>
     public IAsyncRelayCommand ClearOcrDataCommand { get; }
 
+    /// <summary>Gets the index-only structured media-data clear command.</summary>
+    public IAsyncRelayCommand ClearMediaDataCommand { get; }
+
     /// <summary>Gets the index-only related-concept data clear command.</summary>
     public IAsyncRelayCommand ClearSemanticDataCommand { get; }
 
@@ -834,6 +866,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         try
         {
             await _indexStore.ClearAsync(operation.Token);
+            if (_mediaThumbnailProvider is not null)
+            {
+                await _mediaThumbnailProvider.ClearAsync(operation.Token);
+            }
+
             if (_privacyService is not null && _backgroundIndexingService is not null)
             {
                 var sources = await _backgroundIndexingService.GetSourcesAsync(operation.Token);
@@ -955,6 +992,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         try
         {
             SelectedHit = hit;
+            SelectedMediaThumbnailPath = hit.MediaEvidence is null || _mediaThumbnailProvider is null
+                ? null
+                : await _mediaThumbnailProvider
+                    .GetThumbnailAsync(hit.FullPath, hit.MediaEvidence, operation.Token)
+                    .ConfigureAwait(false);
             PrivacyItem = await _privacyService
                 .InspectFileAsync(hit.FileId, operation.Token);
             IsForgetFilePending = false;
@@ -984,6 +1026,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             var fileId = PrivacyItem.FileId;
             var result = await _privacyService.ForgetFileAsync(fileId, operation.Token);
+            if (result.Applied && _mediaThumbnailProvider is not null)
+            {
+                await _mediaThumbnailProvider.ClearAsync(operation.Token);
+            }
+
             if (result.Applied && SelectedHit is not null)
             {
                 _hits.Remove(SelectedHit);
@@ -1017,6 +1064,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             var result = await _privacyService
                 .ForgetSourceAsync(SelectedSource.Id, operation.Token);
+            if (result.Applied && _mediaThumbnailProvider is not null)
+            {
+                await _mediaThumbnailProvider.ClearAsync(operation.Token);
+            }
+
             _hits.Clear();
             OnPropertyChanged(nameof(HasHits));
             SelectedHit = null;
@@ -1093,6 +1145,12 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             var result = await _privacyService
                 .ClearFileDataAsync(PrivacyItem.FileId, data, operation.Token);
+            if (result.Applied && data.HasFlag(IndexedDataKind.MediaDerived) && _mediaThumbnailProvider is not null)
+            {
+                await _mediaThumbnailProvider.ClearAsync(operation.Token);
+                SelectedMediaThumbnailPath = null;
+            }
+
             PrivacyItem = await _privacyService
                 .InspectFileAsync(PrivacyItem.FileId, operation.Token);
             PrivacyText = PrivacyItem is null ? result.Message : FormatPrivacyItem(PrivacyItem);
@@ -1141,6 +1199,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         $"OCR text {item.OcrTextCharacters:N0} characters; summary {(item.HasSummary ? "stored" : "not stored")}; " +
         $"keywords {item.KeywordCount:N0}; related-concept data {(item.HasSemanticData ? "stored" : "not stored")}; " +
         $"selected chunks {item.ChunkCount:N0}; identical-content references {item.SharedContentReferenceCount:N0}; " +
+        $"media evidence {(item.HasMediaDerivedData ? $"stored ({item.MediaKind}; transcript {(item.HasMediaTranscript ? "yes" : "no")}; media OCR {(item.HasMediaOcr ? "yes" : "no")}; visual description {(item.HasVisualDescription ? "yes" : "no")})" : "not stored")}; " +
         $"relationships {item.RelationshipCount:N0}; collection memberships {item.CollectionCount:N0}; " +
         $"failures {item.FailureCount:N0}; stage-history records {item.StageHistoryCount:N0}; " +
         $"policy: {(item.IsExcluded ? "excluded" : "included")}, OCR {(item.OcrSuppressed ? "off" : "allowed")}, " +
@@ -1207,6 +1266,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         RegenerateSemanticCommand.NotifyCanExecuteChanged();
         RebuildSelectedSourceCommand.NotifyCanExecuteChanged();
         ClearOcrDataCommand.NotifyCanExecuteChanged();
+        ClearMediaDataCommand.NotifyCanExecuteChanged();
         ClearSemanticDataCommand.NotifyCanExecuteChanged();
         UseMetadataOnlyCommand.NotifyCanExecuteChanged();
         ExcludeFileCommand.NotifyCanExecuteChanged();
@@ -1265,7 +1325,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(HasIndexingFailures));
                 OnPropertyChanged(nameof(FailureSummaryText));
                 StorageBreakdownText =
-                    $"Storage breakdown: metadata {FormatBytes(storage.MetadataBytes)}, document text {FormatBytes(storage.ExtractedTextBytes)}, OCR text {FormatBytes(storage.OcrTextBytes)}, summaries and keywords {FormatBytes(storage.SummariesAndKeywordsBytes)}, related-concept data {FormatBytes(storage.SemanticDataBytes)}, relationships {FormatBytes(storage.RelationshipDataBytes)}, job history {FormatBytes(storage.JobHistoryBytes)}, diagnostics {FormatBytes(storage.DiagnosticsBytes)}.";
+                    $"Storage breakdown: metadata {FormatBytes(storage.MetadataBytes)}, document text {FormatBytes(storage.ExtractedTextBytes)}, OCR text {FormatBytes(storage.OcrTextBytes)}, media evidence {FormatBytes(storage.MediaDerivedDataBytes)}, summaries and keywords {FormatBytes(storage.SummariesAndKeywordsBytes)}, related-concept data {FormatBytes(storage.SemanticDataBytes)}, relationships {FormatBytes(storage.RelationshipDataBytes)}, job history {FormatBytes(storage.JobHistoryBytes)}, diagnostics {FormatBytes(storage.DiagnosticsBytes)}.";
             });
         }
         catch (Exception)
