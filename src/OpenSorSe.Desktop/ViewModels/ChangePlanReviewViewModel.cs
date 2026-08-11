@@ -447,40 +447,63 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
         IsApplyConfirmationPending = false;
         IsBusy = true;
         _operationCancellation = new CancellationTokenSource();
+        // Progress<T> may dispatch a queued callback after the producer has
+        // returned. Serialize callbacks with the terminal transition so stale
+        // progress can never replace the verified final operation state.
+        var progressGate = new object();
+        var progressFinished = false;
         var progress = new Progress<ChangeExecutionProgress>(value =>
         {
-            if (LastExecution is not null)
+            lock (progressGate)
             {
-                return;
-            }
+                if (progressFinished)
+                {
+                    return;
+                }
 
-            ProgressText = value.Message;
-            StatusText = $"{value.AttemptedActions}/{value.TotalActions} action(s) attempted.";
+                ProgressText = value.Message;
+                StatusText = $"{value.AttemptedActions}/{value.TotalActions} action(s) attempted.";
+            }
         });
         try
         {
-            LastExecution = await _executionService.ExecuteAsync(
+            var execution = await _executionService.ExecuteAsync(
                 CurrentPlan,
                 "Review Changes",
                 progress,
                 _operationCancellation.Token);
-            StatusText = LastExecution.Summary;
-            ProgressText = LastExecution.Operation.Status.ToString();
+            lock (progressGate)
+            {
+                progressFinished = true;
+                LastExecution = execution;
+                StatusText = execution.Summary;
+                ProgressText = execution.Operation.Status.ToString();
+            }
+
             CurrentPlan = CurrentPlan with
             {
-                Status = LastExecution.Succeeded
+                Status = execution.Succeeded
                     ? ChangePlanStatus.Applied
-                    : LastExecution.Operation.Status == OperationStatus.RollbackPartiallyFailed
+                    : execution.Operation.Status == OperationStatus.RollbackPartiallyFailed
                         ? ChangePlanStatus.PartiallyApplied
                         : ChangePlanStatus.Failed,
             };
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Cancellation was requested. Review Operation Details for the verified final state.";
+            lock (progressGate)
+            {
+                progressFinished = true;
+                StatusText = "Cancellation was requested. Review Operation Details for the verified final state.";
+            }
         }
         finally
         {
+            lock (progressGate)
+            {
+                progressFinished = true;
+            }
+
             _operationCancellation.Dispose();
             _operationCancellation = null;
             IsBusy = false;
