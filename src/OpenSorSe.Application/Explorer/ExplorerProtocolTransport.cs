@@ -321,7 +321,10 @@ public sealed class NamedPipeExplorerProtocolHost : IExplorerProtocolHost
         _reads = new ExplorerReadService(source, paths);
         _diagnostics = DiagnosticsIsolation.Protect(diagnostics);
         _dispatcher = new ExplorerProtocolDispatcher(_sessions, _reads, _diagnostics);
-        _pipeName = "omnisorse-explorer-v1-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+        // On Unix, .NET maps named pipes to a socket below a platform temp path.
+        // Keep the endpoint compact enough for macOS's 104-byte socket-path limit
+        // while retaining a full 128 bits of randomness.
+        _pipeName = "ose-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
     }
 
     /// <inheritdoc />

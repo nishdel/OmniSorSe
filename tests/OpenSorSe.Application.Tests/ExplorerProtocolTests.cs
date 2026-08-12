@@ -564,6 +564,8 @@ public sealed class ExplorerProtocolTests
         Assert.Equal("OmniSorSe", info!.ApplicationName);
         Assert.True(info.IsReadOnly);
         Assert.Equal("named-pipe", grant.Transport);
+        Assert.StartsWith("ose-", grant.Endpoint, StringComparison.Ordinal);
+        Assert.Equal(36, grant.Endpoint.Length);
     }
 
     /// <summary>Verifies the native transport rejects an invalid secret without returning scoped data.</summary>

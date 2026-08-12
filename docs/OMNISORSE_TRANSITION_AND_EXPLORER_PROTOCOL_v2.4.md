@@ -147,6 +147,9 @@ implementation is Unix-domain-socket-backed. On Windows the server requests
 material is required, and no TCP socket, loopback HTTP server, LAN listener,
 discovery service, internet endpoint, or cloud relay is created.
 
+The endpoint carries 128 bits of randomness in a compact 36-character name so
+the complete Unix-domain socket path remains within the macOS platform limit.
+
 Alternatives were rejected for v1:
 
 - loopback HTTP still exposes a network listener and needs additional binding,

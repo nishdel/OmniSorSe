@@ -166,6 +166,9 @@ this checklist.
   instance limit and fault host disposal. Creation is now guarded with bounded
   retry/backoff and native saturation completes with deterministic busy
   responses.
+- The original 54-character random pipe name exceeded macOS's 104-character
+  full Unix-domain socket path limit after .NET added the host temp-directory
+  prefix. The compact endpoint retains 128 bits of randomness in 36 characters.
 - Inno Setup reused the v2.3 Start Menu group name during an AppId-compatible
   upgrade. `UsePreviousGroup=no` now preserves the installer identity while
   replacing the old group with a single visible OmniSorSe group.
