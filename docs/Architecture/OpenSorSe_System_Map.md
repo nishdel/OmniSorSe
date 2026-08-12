@@ -1,6 +1,6 @@
 # OpenSorSe system map
 
-These Mermaid diagrams model released v2.2 Media Intelligence. They emphasize
+These Mermaid diagrams model released v2.3 Content Intelligence. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
 
@@ -122,7 +122,7 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Released schema 4 Search, relationship, and media index"]
+        DeepIndex["Released schema 4 + candidate schema 5 Search, relationship, media, and Content Intelligence index"]
         GraphIndex["Schema 1 rebuildable Knowledge Graph projection"]
         GraphDecisions["Schema 1 graph-native decision and privacy authority"]
     end

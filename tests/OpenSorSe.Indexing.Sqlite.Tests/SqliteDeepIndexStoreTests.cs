@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Indexing.Sqlite;
@@ -70,7 +71,7 @@ public sealed class SqliteDeepIndexStoreTests
 
         await migrated.InitializeAsync();
 
-        Assert.Equal(4, ReadUserVersion(fixture.DatabasePath));
+        Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
         var preserved = Assert.Single(await migrated.GetSearchDocumentsAsync(10));
         Assert.Equal("notes.txt", preserved.FileName);
         Assert.Contains("Raspberry Pi", preserved.ExtractedText, StringComparison.Ordinal);
@@ -84,6 +85,72 @@ public sealed class SqliteDeepIndexStoreTests
         await using var reopened = fixture.CreateStore();
         await reopened.InitializeAsync();
         Assert.Single(await reopened.GetSearchDocumentsAsync(10));
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+    }
+
+    /// <summary>Verifies the exact v2.2 schema gains one nullable content-intelligence field without altering existing records.</summary>
+    [Fact]
+    public async Task VersionFourMigratesToContentIntelligenceSchemaAndPreservesSearch()
+    {
+        using var fixture = new IndexFixture();
+        CreateDatabase(
+            fixture.DatabasePath,
+            SqliteDeepIndexSchema.CreateVersionOne +
+            SqliteDeepIndexSchema.CreateVersionTwo +
+            SqliteDeepIndexSchema.CreateVersionThree +
+            SqliteDeepIndexSchema.CreateVersionFour +
+            """
+            ALTER TABLE index_relationship_features ADD COLUMN media_transcript_fingerprint TEXT;
+            ALTER TABLE index_relationship_features ADD COLUMN media_ocr_fingerprint TEXT;
+            ALTER TABLE index_relationship_features ADD COLUMN media_device_key TEXT;
+            ALTER TABLE index_relationship_features ADD COLUMN capture_date_bucket INTEGER;
+            INSERT INTO index_meta(key, value) VALUES ('schema_version', '4');
+            INSERT INTO index_sources(
+                id, root_path, root_path_key, display_name, indexing_level,
+                include_subfolders, enabled, priority, exclusions_json,
+                managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+            VALUES ('source:v22', 'C:/v22', 'c:/v22', 'v2.2 fixture', 1, 1, 1, 0, '[]', 0, 0, 0);
+            INSERT INTO index_content(
+                content_hash, extracted_text, ocr_text, summary, keywords_json,
+                semantic_json, coverage_level, processor_fingerprint, updated_utc_ticks)
+            VALUES ('hash:v22', 'preserved Docker monitoring text', NULL, NULL, '[]', NULL, 1, 'v2.2', 0);
+            INSERT INTO index_files(
+                id, source_id, full_path, path_key, relative_path, relative_path_key,
+                stable_identity, file_system_id, length, creation_utc_ticks,
+                modified_utc_ticks, attributes, metadata_fingerprint, content_hash,
+                processor_fingerprint, indexing_level, fully_indexed, deleted_utc_ticks,
+                last_seen_run_id, updated_utc_ticks)
+            VALUES (
+                'file:v22', 'source:v22', 'C:/v22/monitoring.txt', 'c:/v22/monitoring.txt',
+                'monitoring.txt', 'monitoring.txt', NULL, NULL, 42, 0, 0, 0, 'metadata:v22',
+                'hash:v22', 'processor:v22', 1, 1, NULL, NULL, 0);
+            PRAGMA user_version = 4;
+            """);
+        await using var migrated = fixture.CreateStore();
+
+        await migrated.InitializeAsync();
+
+        Assert.Equal(5, ReadUserVersion(fixture.DatabasePath));
+        var preserved = Assert.Single(await migrated.GetSearchDocumentsAsync(10));
+        Assert.Contains("Docker monitoring", preserved.ExtractedText, StringComparison.Ordinal);
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM pragma_table_info('index_content') WHERE name = 'content_intelligence_json';"));
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'index_relationship_feature_terms';"));
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'ix_relationship_feature_terms_term';"));
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+
+        await migrated.InitializeAsync();
         Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
     }
 
@@ -181,6 +248,31 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.Single(await store.GetSourcesAsync());
     }
 
+    /// <summary>Verifies structured Content Intelligence round-trips and its explicit privacy category clears only derived index data.</summary>
+    [Fact]
+    public async Task ContentIntelligenceRoundTripsAndClearsWithoutChangingSourceRegistration()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("concepts.txt")]);
+        await CompleteStandardRunAsync(store, "concept-hash");
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.Equal("Raspberry Pi monitoring", Assert.Single(document.ContentIntelligence!.Topics).DisplayName);
+        var privacy = Assert.IsType<IndexPrivacyItem>(await store.InspectFileAsync(document.FileId));
+        Assert.True(privacy.HasContentIntelligence);
+
+        var result = await store.ClearFileDataAsync(
+            document.FileId,
+            IndexedDataKind.ContentIntelligence,
+            Epoch.AddDays(11));
+        var cleared = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.True(result.Applied);
+        Assert.Null(cleared.ContentIntelligence);
+        Assert.Single(await store.GetSourcesAsync());
+    }
+
     /// <summary>Verifies malformed retained media JSON is excluded and surfaced as an indexing failure.</summary>
     [Fact]
     public async Task CorruptMediaEvidenceFailsClosedWithoutCorruptResultObject()
@@ -217,6 +309,45 @@ public sealed class SqliteDeepIndexStoreTests
 
         Assert.Null(document.MediaEvidence);
         Assert.True(document.HasIndexingFailure);
+    }
+
+    /// <summary>Verifies malformed retained Content Intelligence is omitted and made visible as an indexing failure.</summary>
+    [Fact]
+    public async Task CorruptContentIntelligenceFailsClosedWithoutCorruptResultObject()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("concepts.txt")]);
+        await CompleteStandardRunAsync(store, "concept-hash");
+        CreateDatabase(fixture.DatabasePath, "UPDATE index_content SET content_intelligence_json = '{not-json';");
+
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.Null(document.ContentIntelligence);
+        Assert.True(document.HasIndexingFailure);
+        Assert.Equal("concepts.txt", document.FileName);
+    }
+
+    /// <summary>Verifies syntactically valid hostile JSON cannot null required derived collections.</summary>
+    [Fact]
+    public async Task NullContentIntelligenceCollectionsFailClosedWithoutCorruptSearchObject()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("null-concepts.txt")]);
+        await CompleteStandardRunAsync(store, "null-concepts-hash");
+        CreateDatabase(
+            fixture.DatabasePath,
+            """
+            UPDATE index_content
+            SET content_intelligence_json = '{"Topics":null,"Entities":[],"Keywords":[],"Provider":"hostile","ProviderVersion":"1","ProcessingFingerprint":"hostile"}';
+            """);
+
+        var document = Assert.Single(await store.GetSearchDocumentsAsync(10), item => !item.IsExcluded);
+
+        Assert.Null(document.ContentIntelligence);
+        Assert.True(document.HasIndexingFailure);
+        Assert.Equal("null-concepts.txt", document.FileName);
     }
 
     /// <summary>Verifies a newer schema fails closed without mutation.</summary>
@@ -974,6 +1105,16 @@ public sealed class SqliteDeepIndexStoreTests
         var document = Assert.Single(await store.GetSearchDocumentsAsync(10));
         Assert.Null(document.ExtractedText);
         Assert.False(document.IsFullyIndexed);
+        Assert.Equal(
+            "4",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM pragma_table_info('index_relationship_features') WHERE name IN ('media_transcript_fingerprint', 'media_ocr_fingerprint', 'media_device_key', 'capture_date_bucket');"));
+        Assert.Equal(
+            "1",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'index_relationship_feature_terms';"));
     }
 
     /// <summary>Verifies the v1.7 schema migrates transactionally to privacy-aware schema v2.</summary>
@@ -1022,6 +1163,8 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.True(privacy.HasSummary);
         Assert.True(privacy.KeywordCount > 0);
         Assert.True(privacy.HasSemanticData);
+        Assert.True(privacy.HasContentIntelligence);
+        Assert.Equal(1, privacy.ContentTopicCount);
         Assert.True(privacy.ChunkCount > 0);
         Assert.DoesNotContain("bounded document text", privacy.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("0.5", privacy.ToString(), StringComparison.Ordinal);
@@ -1431,6 +1574,27 @@ public sealed class SqliteDeepIndexStoreTests
                     Status = IndexingStageStatus.Complete,
                     Summary = "bounded summary",
                     Keywords = ["bounded", "document"],
+                    ContentIntelligence = new IndexedContentIntelligence
+                    {
+                        Topics =
+                        [
+                            new ContentConcept
+                            {
+                                Kind = ContentConceptKind.Topic,
+                                DisplayName = "Raspberry Pi monitoring",
+                                NormalizedValue = "raspberry pi monitoring",
+                                Confidence = ContentIntelligenceConfidence.Strong,
+                                Provider = "test-deterministic",
+                                ProviderVersion = "1",
+                                Origin = ContentIntelligenceOrigin.Deterministic,
+                            },
+                        ],
+                        Entities = [],
+                        Keywords = ["raspberry pi monitoring"],
+                        Provider = "test-deterministic",
+                        ProviderVersion = "1",
+                        ProcessingFingerprint = "content-intelligence-test",
+                    },
                     SelectedChunks = ["bounded document text"],
                 },
                 IndexingStage.SemanticRepresentationGenerated => new IndexingStageOutput

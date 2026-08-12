@@ -1,5 +1,6 @@
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 
 namespace OpenSorSe.Application.Relationships;
 
@@ -104,6 +105,10 @@ public enum RelationshipEvidenceKind
     MediaTranscript,
     /// <summary>Bounded image or representative-frame OCR evidence matched.</summary>
     MediaOcr,
+    /// <summary>The files share a non-generic bounded topic.</summary>
+    ContentTopic,
+    /// <summary>The files share a bounded textual entity.</summary>
+    ContentEntity,
     /// <summary>The user explicitly supplied the relationship.</summary>
     Manual,
 }
@@ -244,6 +249,9 @@ public sealed record RelationshipFileDocument
 
     /// <summary>Gets structured bounded media evidence when retained.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
+
+    /// <summary>Gets bounded content-intelligence evidence retained by the index.</summary>
+    public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
     /// <summary>Gets a bounded summary.</summary>
     public string? Summary { get; init; }

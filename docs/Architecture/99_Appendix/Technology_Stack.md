@@ -2,7 +2,7 @@
 
 **Document type:** Living technology inventory
 
-**Scope:** Released v2.2 source; a technology in a roadmap or historical
+**Scope:** Released v2.3 source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack
@@ -21,7 +21,9 @@ architecture document is not a current dependency
 | Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Released schema-4 deep index with shared media evidence; isolated schema-1 graph/decision sidecars remain. |
 | Media image parsing/thumbnails | Bounded managed parsers plus existing SkiaSharp 3.119.2 reference | Deterministic JPEG/PNG/WebP/BMP/TIFF headers/EXIF and lazy capped still-image PNG thumbnails; no network or source mutation. |
 | Optional media metadata/frames | User-managed `ffprobe` and `ffmpeg` | Capability-detected argument-list processes with output/time/duration/frame bounds; not downloaded or bundled. |
-| Media transcription/visual descriptions | Provider-neutral Application contracts | No concrete provider, runtime, model, or dependency is selected or bundled by v2.2. |
+| Media transcription | Provider-neutral Application contract plus optional user-managed whisper.cpp CLI adapter in v2.3.0 | No runtime/model is bundled or downloaded; missing configuration degrades to an unavailable capability. |
+| Visual descriptions | Provider-neutral Application contract | No concrete provider, runtime, model, or dependency is selected or bundled. |
+| Topics/entities/summaries | Managed deterministic Application provider | No external dependency or network; bounded extraction from already indexed evidence. |
 | Native PDF text | PdfPig 0.1.15 | Bounded read-only PDF page text and metadata. |
 | PDF page rendering | PDFtoImage 5.2.1 with PDFium native packages | Bounded rendering of PDF pages that need enabled OCR. |
 | OCR | External Tesseract 5 CLI | Optional local image/scanned-page recognition; executable and language data are not bundled. |

@@ -81,6 +81,9 @@ public sealed class MainViewModelTests
         Assert.Contains(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.Privacy);
         Assert.Contains(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.Troubleshooting);
         var media = Assert.Single(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.MediaIntelligence);
+        var content = Assert.Single(HelpCatalog.Topics, topic => topic.Id == HelpTopicId.ContentIntelligence);
+        Assert.Contains("topics", content.Purpose, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(content.Workflow, step => step.Contains("whisper.cpp", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("images, audio, and video", media.Purpose, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("facial recognition", media.SafetyNotes, StringComparison.OrdinalIgnoreCase);
     }

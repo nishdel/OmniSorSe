@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the current
-released v2.2 implementation and take
+released v2.3 implementation and take
 precedence when an older document uses future-oriented
 language.
 

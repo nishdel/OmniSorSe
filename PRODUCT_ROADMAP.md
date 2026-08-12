@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-08-11
+**Last repository review:** 2026-08-12
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -29,7 +29,7 @@ For concise dates, test totals, and links to historical evidence, see
 
 ## Completed
 
-`main` currently contains the implementation lineage through v2.0.
+`main` currently contains the released implementation lineage through v2.3.0.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -356,31 +356,45 @@ See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
 
 ## Current release
 
-### v2.2 — Media Intelligence
+### v2.3 — Content Intelligence & Local Understanding
+
+**Branch:** `v2.3-content-intelligence`, created from released v2.2.0 commit
+`68e12fe2735fe903a905a3bfc5ed1f6ff3c6228b`.
+
+**Merged status:** Released as v2.3.0 from a history-preserving merge into
+`main`; the v2.2.0, v2.1.0, and v2.0.0 tags/releases remain historical records.
+
+v2.3 extends the existing indexing, Search, Media Intelligence, and Related
+Files architecture with bounded deterministic topics, textual entities,
+source-grounded extractive summaries, provenance, schema-5 persistence, and an
+optional user-managed whisper.cpp CLI/model adapter for local speech
+transcripts. Exact/literal Search remains authoritative and derived evidence
+cannot add invented files.
+
+No visual-description provider, learned embedding model, vector database,
+cloud transcription, telemetry, or biometric identity feature is introduced.
+Optional runtime/model absence never disables ordinary Search.
+
+See [Content Intelligence v2.3](docs/CONTENT_INTELLIGENCE_v2.3.md),
+[v2.3.0 release notes](docs/RELEASE_NOTES_v2.3.0.md), and the
+[v2.3 manual checklist](docs/MANUAL_TESTING_v2.3.md).
+
+## Previous release
+
+### v2.2 — Media Intelligence (released history)
 
 **Branch:** `v2.2-media-intelligence`.
 
-**Merged status:** Released as v2.2.0 from a history-preserving merge into
-`main`; the v2.1.0 and v2.0.0 tags/releases remain historical records.
+**Merged status:** Released as v2.2.0 through a history-preserving merge into
+`main`.
 
-v2.2 extends the provider-neutral durable index and unified Search with bounded
-image, audio, and video evidence. It provides deterministic image metadata,
-EXIF/GPS, optional local OCR, lazy thumbnails, optional user-managed `ffprobe`
-metadata, and optional user-managed `ffmpeg` representative frames. Schema 4
-shares bounded media evidence by content hash and preserves transactional
-migration from the v2.1 schema-3 index.
+v2.2 made image, audio, and video evidence first-class through bounded metadata,
+EXIF/GPS, OCR, thumbnails, and optional ffprobe/ffmpeg processing. It also
+delivered scan ETA, multi-group duplicate recovery, corrected scrolling,
+primary Search navigation, and clearer privacy wording.
 
-The final quality pass adds truthful smoothed scan ETA, reviewable multi-group
-duplicate recovery, corrected Collections/Related Files scrolling, one visible
-Related Files destination, primary Search navigation, and clearer local file
-analysis versus optional remote-AI endpoint wording.
-
-Deterministic Search remains authoritative and usable without optional media
-tools or AI. No transcription runtime/model or visual-description provider is
-bundled, no media is silently uploaded, and no facial recognition is present.
-See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md),
-[release notes](docs/RELEASE_NOTES_v2.2.0.md), and
-[manual checklist](docs/MANUAL_TESTING_v2.2.md).
+See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
+[v2.2.0 release notes](docs/RELEASE_NOTES_v2.2.0.md).
 
 ## Planned
 
@@ -389,11 +403,11 @@ The repository contains no corresponding implementation branches, commits,
 tags, or release promises. Titles, order, and scope may change after research
 and review.
 
-### v2.3 — Conversational Assistant
+### Future conversational exploration
 
-**Branch:** None; no branch exists.
+**Branch:** None; no implementation is assigned.
 
-**Merged status:** Not applicable; planned concept only.
+**Merged status:** Not applicable; unversioned planned concept only.
 
 The concept is an evidence-grounded conversation over user-selected indexed
 material. It would answer and navigate; it would not become an autonomous

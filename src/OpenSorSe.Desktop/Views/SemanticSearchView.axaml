@@ -334,6 +334,11 @@
                                     AutomationProperties.HelpText="Clears OpenSorSe's stored media metadata, transcript, media OCR, and optional description for the selected file. The original media file remains untouched." />
                             <Button Margin="0,0,8,8"
                                     Classes="secondary"
+                                    Content="Clear Content Intelligence"
+                                    Command="{Binding ClearContentIntelligenceCommand}"
+                                    AutomationProperties.HelpText="Clears topics, textual entities, keywords, and generated summaries for the selected file. The original source file remains untouched." />
+                            <Button Margin="0,0,8,8"
+                                    Classes="secondary"
                                     Content="Clear related-concept data"
                                     Command="{Binding ClearSemanticDataCommand}" />
                             <Button Margin="0,0,8,8"
@@ -437,6 +442,13 @@
                                                    Classes="page-subtitle"
                                                    TextWrapping="Wrap"
                                                    AutomationProperties.Name="{Binding MediaSummary, StringFormat='Media details: {0}'}" />
+                                        <TextBlock Text="{Binding ContentIntelligenceSummary}"
+                                                   IsVisible="{Binding ContentIntelligenceSummary}"
+                                                   Classes="page-subtitle"
+                                                   MaxLines="3"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   TextWrapping="Wrap"
+                                                   AutomationProperties.Name="{Binding ContentIntelligenceSummary, StringFormat='Content Intelligence: {0}'}" />
                                         <StackPanel IsVisible="{Binding Snippet}">
                                             <TextBlock Text="{Binding Snippet.SourceLabel}"
                                                        Classes="page-subtitle"

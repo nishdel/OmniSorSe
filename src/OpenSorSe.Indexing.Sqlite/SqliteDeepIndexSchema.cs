@@ -339,4 +339,16 @@ internal static class SqliteDeepIndexSchema
             ON index_relationship_features(media_device_key, capture_date_bucket)
             WHERE media_device_key IS NOT NULL;
         """;
+
+    public const string CreateVersionFive = """
+        CREATE TABLE IF NOT EXISTS index_relationship_feature_terms (
+            file_id TEXT NOT NULL,
+            term TEXT NOT NULL,
+            PRIMARY KEY(file_id, term),
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE
+        ) WITHOUT ROWID;
+
+        CREATE INDEX IF NOT EXISTS ix_relationship_feature_terms_term
+            ON index_relationship_feature_terms(term, file_id);
+        """;
 }

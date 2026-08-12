@@ -1,5 +1,6 @@
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -66,6 +67,9 @@ public sealed record SemanticSearchHit(
     /// <summary>Gets structured media details retained by local indexing.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
 
+    /// <summary>Gets bounded derived topics, textual entities, and summary provenance.</summary>
+    public IndexedContentIntelligence? ContentIntelligence { get; init; }
+
     /// <summary>Gets a compact media-detail line for accessible result presentation.</summary>
     public string? MediaSummary => MediaEvidence is null
         ? null
@@ -78,6 +82,20 @@ public sealed record SemanticSearchHit(
             MediaEvidence.Metadata.Duration?.ToString(
                 MediaEvidence.Metadata.Duration.Value.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss"),
             MediaEvidence.Metadata.DeviceModel,
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    /// <summary>Gets a compact bounded content-intelligence line for progressive disclosure.</summary>
+    public string? ContentIntelligenceSummary => ContentIntelligence is null
+        ? null
+        : string.Join(" · ", new[]
+        {
+            ContentIntelligence.Summary?.Text,
+            ContentIntelligence.Topics.Count > 0
+                ? $"Topics: {string.Join(", ", ContentIntelligence.Topics.Take(4).Select(item => item.DisplayName))}"
+                : null,
+            ContentIntelligence.Entities.Count > 0
+                ? $"Entities: {string.Join(", ", ContentIntelligence.Entities.Take(4).Select(item => item.DisplayName))}"
+                : null,
         }.Where(value => !string.IsNullOrWhiteSpace(value)));
 }
 

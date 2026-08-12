@@ -2,7 +2,7 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** OpenSorSe v2.2.0 Media Intelligence release source
+**Current source:** OpenSorSe v2.3.0 Content Intelligence release source
 
 **Last reviewed:** 2026-08-11
 
@@ -76,7 +76,7 @@ file mutation are separate claims.
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.2.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs through the established release workflow. Linux remains source build only. |
+| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.3.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs through the established release workflow. Linux remains source build only. |
 
 ## Filesystem limitations
 

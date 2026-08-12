@@ -7,6 +7,38 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v2.3.0 — Content Intelligence & Local Understanding
+
+Release branch: `v2.3-content-intelligence`. Published after local,
+exact-main hosted, and native packaging gates.
+
+### Added
+
+- Provider-neutral bounded topics, textual entities, keywords, extractive
+  summaries, provenance, and processing fingerprints over already indexed
+  document/media evidence.
+- Optional process-isolated adapter for a user-managed whisper.cpp CLI and
+  local GGML model, including bounded timestamp segments, cancellation,
+  timeout, safe temporary audio, and cache invalidation.
+- Schema-5 nullable Content Intelligence persistence with transactional
+  migration from v2.2 schema 4, malformed-record fallback, privacy inspection,
+  clearing, and byte reporting.
+- Explicit topic, textual-entity, and source-grounded-summary Search signals,
+  explanations, and snippets plus corroborated cross-media Related Files
+  evidence.
+- Content Intelligence settings, indexed-data controls, built-in Help, design
+  guide, and evidence-separated manual checklist.
+
+### Safety and limitations
+
+- Exact filename and literal Search tiers remain authoritative. Optional AI and
+  derived evidence cannot invent file membership.
+- No whisper.cpp runtime/model, ffmpeg, Tesseract, visual model, learned
+  embedding model, or vector database is bundled or downloaded.
+- No concrete visual-description provider, cloud transcription, telemetry,
+  facial recognition, person identification, or autonomous organization is
+  added.
+
 ## v2.2.0 — Media Intelligence
 
 Release branch: `v2.2-media-intelligence`. Published as the Media Intelligence

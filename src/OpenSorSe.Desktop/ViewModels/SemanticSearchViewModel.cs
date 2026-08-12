@@ -134,6 +134,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         ClearMediaDataCommand = new AsyncRelayCommand(
             () => ClearSelectedDataAsync(IndexedDataKind.MediaDerived),
             CanRepairFile);
+        ClearContentIntelligenceCommand = new AsyncRelayCommand(
+            () => ClearSelectedDataAsync(IndexedDataKind.ContentIntelligence | IndexedDataKind.SummaryAndKeywords),
+            CanRepairFile);
         ClearSemanticDataCommand = new AsyncRelayCommand(
             () => ClearSelectedDataAsync(IndexedDataKind.SemanticData | IndexedDataKind.Chunks),
             CanRepairFile);
@@ -619,6 +622,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the index-only structured media-data clear command.</summary>
     public IAsyncRelayCommand ClearMediaDataCommand { get; }
+
+    /// <summary>Gets the command that clears topics, entities, and generated summaries without touching the source file.</summary>
+    public IAsyncRelayCommand ClearContentIntelligenceCommand { get; }
 
     /// <summary>Gets the index-only related-concept data clear command.</summary>
     public IAsyncRelayCommand ClearSemanticDataCommand { get; }
@@ -1200,6 +1206,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         $"keywords {item.KeywordCount:N0}; related-concept data {(item.HasSemanticData ? "stored" : "not stored")}; " +
         $"selected chunks {item.ChunkCount:N0}; identical-content references {item.SharedContentReferenceCount:N0}; " +
         $"media evidence {(item.HasMediaDerivedData ? $"stored ({item.MediaKind}; transcript {(item.HasMediaTranscript ? "yes" : "no")}; media OCR {(item.HasMediaOcr ? "yes" : "no")}; visual description {(item.HasVisualDescription ? "yes" : "no")})" : "not stored")}; " +
+        $"Content Intelligence {(item.HasContentIntelligence ? $"stored ({item.ContentTopicCount:N0} topics; {item.ContentEntityCount:N0} textual entities)" : "not stored")}; " +
         $"relationships {item.RelationshipCount:N0}; collection memberships {item.CollectionCount:N0}; " +
         $"failures {item.FailureCount:N0}; stage-history records {item.StageHistoryCount:N0}; " +
         $"policy: {(item.IsExcluded ? "excluded" : "included")}, OCR {(item.OcrSuppressed ? "off" : "allowed")}, " +
@@ -1267,6 +1274,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         RebuildSelectedSourceCommand.NotifyCanExecuteChanged();
         ClearOcrDataCommand.NotifyCanExecuteChanged();
         ClearMediaDataCommand.NotifyCanExecuteChanged();
+        ClearContentIntelligenceCommand.NotifyCanExecuteChanged();
         ClearSemanticDataCommand.NotifyCanExecuteChanged();
         UseMetadataOnlyCommand.NotifyCanExecuteChanged();
         ExcludeFileCommand.NotifyCanExecuteChanged();
@@ -1325,7 +1333,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(HasIndexingFailures));
                 OnPropertyChanged(nameof(FailureSummaryText));
                 StorageBreakdownText =
-                    $"Storage breakdown: metadata {FormatBytes(storage.MetadataBytes)}, document text {FormatBytes(storage.ExtractedTextBytes)}, OCR text {FormatBytes(storage.OcrTextBytes)}, media evidence {FormatBytes(storage.MediaDerivedDataBytes)}, summaries and keywords {FormatBytes(storage.SummariesAndKeywordsBytes)}, related-concept data {FormatBytes(storage.SemanticDataBytes)}, relationships {FormatBytes(storage.RelationshipDataBytes)}, job history {FormatBytes(storage.JobHistoryBytes)}, diagnostics {FormatBytes(storage.DiagnosticsBytes)}.";
+                    $"Storage breakdown: metadata {FormatBytes(storage.MetadataBytes)}, document text {FormatBytes(storage.ExtractedTextBytes)}, OCR text {FormatBytes(storage.OcrTextBytes)}, media evidence {FormatBytes(storage.MediaDerivedDataBytes)}, Content Intelligence {FormatBytes(storage.ContentIntelligenceBytes)}, summaries and keywords {FormatBytes(storage.SummariesAndKeywordsBytes)}, related-concept data {FormatBytes(storage.SemanticDataBytes)}, relationships {FormatBytes(storage.RelationshipDataBytes)}, job history {FormatBytes(storage.JobHistoryBytes)}, diagnostics {FormatBytes(storage.DiagnosticsBytes)}.";
             });
         }
         catch (Exception)

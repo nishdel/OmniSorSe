@@ -159,8 +159,10 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   bounded derived metadata, OCR, transcript, optional-description, and
   thumbnail data only to OpenSorSe-owned storage.
 - Deterministic image parsing and thumbnail generation are local. Tesseract,
-  `ffprobe`, and `ffmpeg` are optional user-managed local processes. No
-  transcription or visual-description provider is bundled. A future
+  `ffprobe`, and `ffmpeg` are optional user-managed local processes. The
+  released v2.3 adapter can invoke an explicitly configured user-managed
+  whisper.cpp CLI and local model for bounded speech transcription; neither is
+  bundled or downloaded. No visual-description provider is bundled. A future
   Ollama-compatible visual provider would remain separately enabled and would
   inherit the existing local-versus-remote endpoint disclosure; no media is
   silently uploaded.
@@ -175,6 +177,32 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Diagnostics record provider, status, bounded timings/counts/sizes, and cache
   state, not transcript/OCR/description contents. No telemetry, cloud service,
   facial recognition, or person identification is introduced.
+
+### Content Intelligence candidate
+
+- The v2.3 deterministic provider consumes only already bounded indexed
+  metadata, document text, OCR, transcript, media OCR, and optional
+  description fields. It opens no source file, invokes no model, and performs
+  no network request. Per-file filename/path signals remain outside the
+  content-hash-owned intelligence record so differently named duplicate files
+  cannot inherit one another's names.
+- Topics, textual entities, keywords, and the extractive summary retain
+  provider/version, deterministic-versus-AI origin, and bounded source
+  provenance. They are clues, not verified facts. Person names are textual
+  entities only and never come from face or biometric processing.
+- Defaults cap combined input at 16,384 characters, topics/entities at 16 each,
+  keywords at 32, the summary at 512 characters, and evidence excerpts at 160
+  characters. Provider and settings fingerprints prevent needless unchanged
+  recomputation.
+- Search explanations identify topic, textual-entity, or source-grounded
+  summary evidence. Exact filename/literal tiers remain stronger, and neither
+  optional AI nor derived evidence may invent file membership.
+- File/source forget, clear-index, and the explicit Content Intelligence clear
+  operation remove applicable local derived records without modifying original
+  files or user-managed runtime/model files. Related Files has separate existing
+  forget/rebuild controls for its derived projections.
+- Ordinary diagnostics retain operational state and bounded counts/sizes, not
+  full text, OCR, transcript, summaries, prompts, or evidence excerpts.
 
 ## Relationships and virtual collections
 
@@ -210,7 +238,7 @@ By default, runtime files are below `Environment.SpecialFolder.LocalApplicationD
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
-| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | v2.2 schema 4 adds content-hash-shared bounded media evidence and indexed media relationship features, with a transactional recovery-copy migration from v2.1 schema 3. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remains. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 adds one nullable bounded content-intelligence JSON field and an indexed, at-most-64-term-per-file relationship-candidate projection as schema 5 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |
 | Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
 | Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |

@@ -2,6 +2,7 @@ using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Semantic;
@@ -168,6 +169,12 @@ public enum SearchRankingSignalKind
     MediaOcr,
     /// <summary>An optional, visibly derived visual description matched.</summary>
     MediaVisualDescription,
+    /// <summary>A bounded topic derived from retained indexed evidence matched.</summary>
+    ContentTopic,
+    /// <summary>A bounded textual entity derived from retained indexed evidence matched.</summary>
+    ContentEntity,
+    /// <summary>A source-grounded bounded content-intelligence summary matched.</summary>
+    ContentIntelligenceSummary,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -207,6 +214,12 @@ public enum SearchSnippetSource
     MediaOcr,
     /// <summary>An optional derived visual description supplied the snippet.</summary>
     MediaVisualDescription,
+    /// <summary>A bounded derived topic supplied the snippet.</summary>
+    ContentTopic,
+    /// <summary>A bounded textual entity supplied the snippet.</summary>
+    ContentEntity,
+    /// <summary>A source-grounded content-intelligence summary supplied the snippet.</summary>
+    ContentIntelligenceSummary,
 }
 
 /// <summary>Identifies one accessible highlighted range within a bounded snippet.</summary>
@@ -304,6 +317,9 @@ public sealed record SearchCandidateDocument
 
     /// <summary>Gets structured provider-neutral media evidence.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
+
+    /// <summary>Gets bounded topics, textual entities, and grounded summary evidence.</summary>
+    public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
     /// <summary>Gets a bounded generated summary.</summary>
     public string? Summary { get; init; }

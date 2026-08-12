@@ -284,7 +284,7 @@ and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
 2. Return bounded structured evidence and explicit unavailable/failed/skipped
    status. Provider/model/configuration version must participate in the
    processing fingerprint.
-3. For processes, use `IExternalMediaProcessRunner` and argument lists; never
+3. For processes, use `IMediaProcessRunner` and argument lists; never
    build a shell command from a path. Bound time, output, files, frames, and
    temporary storage, and preserve caller cancellation.
 4. Register the provider only in the Desktop composition root. Missing optional
@@ -295,6 +295,26 @@ and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
 6. Evaluate license, redistribution, package size, offline/network behavior,
    and all runtime targets before adding a dependency. See
    [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
+
+## 14. Add a Content Intelligence provider
+
+1. Implement the capability-oriented contract in
+   `OpenSorSe.Application.ContentIntelligence`; providers receive only bounded
+   retained evidence and must not own traversal, SQL, ranking, or UI state.
+2. Return bounded normalized concepts/summaries with provider/version,
+   deterministic-versus-AI origin, evidence-strength level, and source
+   provenance. Treat every provider value as untrusted derived evidence.
+3. Include input/settings/provider/model or runtime version in the processing
+   fingerprint. Do not invalidate expensive work for unrelated settings.
+4. Preserve exact filename/literal Search tiers and unknown-ID rejection. Add
+   explicit explanation/snippet labels only for evidence actually used.
+5. Extend schema/migration, malformed-data handling, privacy inspection,
+   clear/forget, relationships, diagnostics, performance bounds, and tests as a
+   single coherent change.
+6. For an external runtime, use safe argument lists, owned temporary storage,
+   finite output/time/concurrency, cancellation, and capability detection. Do
+   not download a model silently. See
+   [Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md).
 
 ## Common pitfalls
 

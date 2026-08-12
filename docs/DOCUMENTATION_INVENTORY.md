@@ -66,6 +66,11 @@ interactive, transcription, and native Linux/macOS scenarios unchecked. It
 also adds `docs/RELEASE_NOTES_v2.2.0.md`. These records extend this inventory
 without rewriting historical release records.
 
+The v2.3 release adds
+`docs/CONTENT_INTELLIGENCE_v2.3.md` as its authoritative design/implementation
+boundary, `docs/MANUAL_TESTING_v2.3.md` as its evidence-separated validation
+tracker, and `docs/RELEASE_NOTES_v2.3.0.md` as the published release summary.
+
 ## Authority model
 
 ### Living and authoritative
@@ -92,6 +97,8 @@ These files describe current product/project policy or the current source tree:
 - `docs/PLATFORM_COMPATIBILITY_MATRIX.md`
 - `docs/LINUX_BUILD_AND_LAUNCH.md`
 - `docs/FOSS_DEPENDENCY_POLICY.md`
+- `docs/CONTENT_INTELLIGENCE_v2.3.md`
+- `docs/MANUAL_TESTING_v2.3.md`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`
