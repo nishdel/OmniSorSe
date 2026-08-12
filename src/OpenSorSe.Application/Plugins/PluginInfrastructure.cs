@@ -65,7 +65,7 @@ public sealed class PluginDiagnostics : IPluginDiagnostics
     public string Export()
     {
         var builder = new StringBuilder();
-        builder.AppendLine("OpenSorSe v1.4 plugin diagnostics");
+        builder.AppendLine("OmniSorSe v1.4 plugin diagnostics");
         builder.AppendLine("Plugin file contents, extracted text, credentials, tokens, and secrets are excluded.");
         foreach (var entry in List())
         {
@@ -444,7 +444,7 @@ public sealed class PluginDiscoveryService : IPluginDiscoveryService
                 "built-in",
                 new PluginProvenance(
                     PluginOriginKind.BuiltIn,
-                    "OpenSorSe application assembly",
+                    "OmniSorSe application assembly",
                     _timeProvider.GetUtcNow().ToUniversalTime()),
                 PluginLifecycleState.Ready,
                 Compatibility(validation.Manifest!),

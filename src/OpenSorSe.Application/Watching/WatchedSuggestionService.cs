@@ -82,7 +82,7 @@ public sealed class WatchedSuggestionService : IWatchedSuggestionService
                 Array.Empty<ChangePlan>(),
                 false,
                 false,
-                ["Suggestions were suppressed because this batch reconciled an approved OpenSorSe operation."]);
+                ["Suggestions were suppressed because this batch reconciled an approved OmniSorSe operation."]);
         }
 
         var plans = new List<ChangePlan>();

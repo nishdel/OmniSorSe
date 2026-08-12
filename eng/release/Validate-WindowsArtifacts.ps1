@@ -16,8 +16,8 @@ if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
 }
 
 $artifactRoot = [IO.Path]::GetFullPath($ArtifactDirectory)
-$portableArchive = Join-Path $artifactRoot "OpenSorSe-v$Version-win-x64.zip"
-$installer = Join-Path $artifactRoot "OpenSorSe-v$Version-win-x64-setup.exe"
+$portableArchive = Join-Path $artifactRoot "OmniSorSe-v$Version-win-x64.zip"
+$installer = Join-Path $artifactRoot "OmniSorSe-v$Version-win-x64-setup.exe"
 foreach ($artifact in @($portableArchive, $installer)) {
     if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
         throw "Required Windows artifact is missing: $artifact"
@@ -30,11 +30,11 @@ foreach ($artifact in @($portableArchive, $installer)) {
 $existingInstallation = Get-ChildItem -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
     Where-Object {
         $properties = Get-ItemProperty -LiteralPath $_.PSPath
-        $properties.DisplayName -like 'OpenSorSe*'
+        $properties.DisplayName -like 'OpenSorSe*' -or $properties.DisplayName -like 'OmniSorSe*'
     } |
     Select-Object -First 1
 if ($null -ne $existingInstallation) {
-    throw 'Windows package validation will not replace or uninstall an existing OpenSorSe installation.'
+    throw 'Windows package validation will not replace or uninstall an existing OpenSorSe or OmniSorSe installation.'
 }
 
 $validationRoot = [IO.Path]::GetFullPath((Join-Path $artifactRoot 'validation\windows'))
@@ -49,13 +49,13 @@ New-Item -ItemType Directory -Path $validationRoot -Force | Out-Null
 
 $portableRoot = Join-Path $validationRoot 'portable'
 Expand-Archive -LiteralPath $portableArchive -DestinationPath $portableRoot
-$portableExecutable = Join-Path $portableRoot 'OpenSorSe.exe'
+$portableExecutable = Join-Path $portableRoot 'OmniSorSe.exe'
 if (-not (Test-Path -LiteralPath $portableExecutable -PathType Leaf)) {
-    throw 'The Windows portable archive does not contain OpenSorSe.exe at its root.'
+    throw 'The Windows portable archive does not contain OmniSorSe.exe at its root.'
 }
 $versionInfo = (Get-Item -LiteralPath $portableExecutable).VersionInfo
 if ($versionInfo.FileVersion -ne "$Version.0" -or $versionInfo.ProductVersion -notlike "$Version*") {
-    throw "OpenSorSe.exe version metadata is inconsistent: file '$($versionInfo.FileVersion)', product '$($versionInfo.ProductVersion)'."
+    throw "OmniSorSe.exe version metadata is inconsistent: file '$($versionInfo.FileVersion)', product '$($versionInfo.ProductVersion)'."
 }
 
 $forbidden = Get-ChildItem -LiteralPath $portableRoot -Recurse -Force -File | Where-Object {
@@ -79,22 +79,22 @@ if ($install.ExitCode -ne 0) {
     throw "The Windows installer failed with exit code $($install.ExitCode)."
 }
 
-$installedExecutable = Join-Path $installRoot 'OpenSorSe.exe'
+$installedExecutable = Join-Path $installRoot 'OmniSorSe.exe'
 if (-not (Test-Path -LiteralPath $installedExecutable -PathType Leaf)) {
-    throw 'The installed application does not contain OpenSorSe.exe.'
+    throw 'The installed application does not contain OmniSorSe.exe.'
 }
 $uninstaller = Get-ChildItem -LiteralPath $installRoot -Filter 'unins*.exe' -File | Select-Object -First 1
 if ($null -eq $uninstaller) {
     throw 'The installed application has no registered Inno Setup uninstaller.'
 }
-$startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'OpenSorSe\OpenSorSe.lnk'
+$startMenuShortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'OmniSorSe\OmniSorSe.lnk'
 if (-not (Test-Path -LiteralPath $startMenuShortcut -PathType Leaf)) {
     throw 'The Windows installer did not create the expected Start Menu shortcut.'
 }
 $uninstallRegistryPath = Get-ChildItem -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
     Where-Object {
         $properties = Get-ItemProperty -LiteralPath $_.PSPath
-        $properties.DisplayName -eq "OpenSorSe $Version" -and
+        $properties.DisplayName -eq "OmniSorSe $Version" -and
         $properties.DisplayVersion -eq $Version -and
         -not [string]::IsNullOrWhiteSpace($properties.InstallLocation) -and
         [IO.Path]::GetFullPath($properties.InstallLocation).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) -eq
@@ -126,7 +126,7 @@ if (-not (Test-Path -LiteralPath $smokeDataRoot -PathType Container)) {
     throw 'The package smoke test did not use its isolated application-data root.'
 }
 $userDataMarker = Join-Path $smokeDataRoot 'preserve-on-uninstall.marker'
-Set-Content -LiteralPath $userDataMarker -Value 'OpenSorSe user data is preserved by uninstall.' -Encoding UTF8
+Set-Content -LiteralPath $userDataMarker -Value 'OmniSorSe user data is preserved by uninstall.' -Encoding UTF8
 
 $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList @(
     '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'

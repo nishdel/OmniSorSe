@@ -19,7 +19,7 @@ namespace OpenSorSe.Desktop;
 /// </summary>
 /// <remarks>
 /// Release scripts must pass a dedicated absolute application-data directory.
-/// The probe never reads or writes the user's ordinary OpenSorSe data. It proves
+/// The probe never reads or writes the user's ordinary OmniSorSe data. It proves
 /// the packaged executable and native dependencies can start and stop; it is not
 /// a substitute for interactive UI validation.
 /// </remarks>
@@ -127,7 +127,7 @@ internal static class PackageSmokeTest
 
     private static void TraceFailure(string operation, Exception exception) =>
         System.Diagnostics.Trace.TraceError(
-            "OpenSorSe package smoke test failed during {0} ({1}).",
+            "OmniSorSe package smoke test failed during {0} ({1}).",
             operation,
             exception.GetType().Name);
 }

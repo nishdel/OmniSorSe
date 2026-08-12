@@ -1,7 +1,7 @@
 namespace OpenSorSe.Core.Configuration;
 
 /// <summary>
-/// Defines fixed bounds for OpenSorSe-owned configuration persistence.
+/// Defines fixed bounds for OmniSorSe-owned configuration persistence.
 /// </summary>
 public static class ConfigurationLimits
 {

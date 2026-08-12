@@ -1595,7 +1595,7 @@ public sealed class SqliteGraphDecisionStore : IGraphDecisionStore
         {
             throw new SqliteKnowledgeStoreException(
                 SqliteKnowledgeFailureKind.UnsupportedSchema,
-                "The selected recovery point was created by a newer OpenSorSe decision schema.");
+                "The selected recovery point was created by a newer OmniSorSe decision schema.");
         }
 
         if (!string.Equals(selected.StatusCode, "verified", StringComparison.Ordinal) || selected.Manifest is null)

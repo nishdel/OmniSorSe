@@ -33,7 +33,7 @@ public static class ServiceCollectionExtensions
 
         if (services.Any(descriptor => descriptor.ServiceType == typeof(IApplicationHost)))
         {
-            throw new InvalidOperationException("OpenSorSe Core services have already been registered.");
+            throw new InvalidOperationException("OmniSorSe Core services have already been registered.");
         }
 
         services.AddSingleton(options);

@@ -1,4 +1,4 @@
-# OpenSorSe product roadmap
+# OmniSorSe product roadmap
 
 **Document type:** Living roadmap
 
@@ -29,7 +29,7 @@ For concise dates, test totals, and links to historical evidence, see
 
 ## Completed
 
-`main` currently contains the released implementation lineage through v2.3.0.
+`main` currently contains the released implementation lineage through v2.4.0.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -356,6 +356,29 @@ See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
 
 ## Current release
 
+### v2.4 — OmniSorSe Transition & Explorer Foundation
+
+**Branch:** `v2.4-omnisorse-transition`, created from released v2.3.0 commit
+`abe43e171bdcefa48cc55a6af6e560e2c8c8ce94`.
+
+**Merged status:** Released as v2.4.0 from a history-preserving merge into
+`main`; the OpenSorSe v2.3.0, v2.2.0, v2.1.0, and v2.0.0 tags/releases remain
+historical records.
+
+v2.4 changes active product/executable/package identity to OmniSorSe while
+keeping schema 5 and all established OpenSorSe profile locations/identities in
+place. It also introduces Explorer Protocol v1, a dormant, authenticated,
+source-scoped, bounded, read-only local Structure/Search/Context interface for
+the future separate OmniExplorer application. OmniExplorer itself, rendering,
+voice, standalone scanning, remote access, and protocol writes are outside this
+release.
+
+See [v2.4 transition/protocol design](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
+and [v2.4 manual testing](docs/MANUAL_TESTING_v2.4.md), plus the
+[v2.4.0 release notes](docs/RELEASE_NOTES_v2.4.0.md).
+
+## Previous release
+
 ### v2.3 — Content Intelligence & Local Understanding
 
 **Branch:** `v2.3-content-intelligence`, created from released v2.2.0 commit
@@ -379,7 +402,7 @@ See [Content Intelligence v2.3](docs/CONTENT_INTELLIGENCE_v2.3.md),
 [v2.3.0 release notes](docs/RELEASE_NOTES_v2.3.0.md), and the
 [v2.3 manual checklist](docs/MANUAL_TESTING_v2.3.md).
 
-## Previous release
+## Earlier release
 
 ### v2.2 — Media Intelligence (released history)
 
@@ -420,7 +443,7 @@ integration; proposal-only actions.
 **Conceptual dependencies:** mature Search/graph evidence, prompt-injection and
 data-disclosure design, provider policy, and strict Change Plan separation.
 
-### v2.4 — Cloud and NAS
+### Future Cloud and NAS
 
 **Branch:** None; no branch exists.
 
@@ -450,7 +473,7 @@ services. It would not make PostgreSQL or another server a desktop requirement.
 indexing/storage; provider-neutral desktop client; deployment, backup,
 migration, quotas, and observability.
 
-**Conceptual dependencies:** v2.4 provider boundaries, a formal security model,
+**Conceptual dependencies:** mature provider boundaries, a formal security model,
 operational ownership, protocol versioning, and compatibility tests.
 
 ### v2.6 — Collaboration

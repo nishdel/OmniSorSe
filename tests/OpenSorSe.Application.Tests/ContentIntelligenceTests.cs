@@ -30,7 +30,7 @@ public sealed class ContentIntelligenceTests
             new ContentIntelligenceRequest(
                 [new ContentIntelligenceSourceText(
                     ContentEvidenceSourceKind.ExtractedText,
-                    "Docker Compose deploys Prometheus and Grafana on a Raspberry Pi. The monitoring dashboard is maintained by OpenSorSe GmbH in Stuttgart.")]),
+                    "Docker Compose deploys Prometheus and Grafana on a Raspberry Pi. The monitoring dashboard is maintained by OmniSorSe GmbH in Stuttgart.")]),
             settings,
             CancellationToken.None);
 
@@ -52,13 +52,13 @@ public sealed class ContentIntelligenceTests
     {
         var result = await new DeterministicContentIntelligenceProvider().AnalyzeAsync(
             new ContentIntelligenceRequest(
-                [new(ContentEvidenceSourceKind.ExtractedText, "Monitoring runs on Raspberry Pi. OpenSorSe maintains Grafana in Stuttgart.")]),
+                [new(ContentEvidenceSourceKind.ExtractedText, "Monitoring runs on Raspberry Pi. OmniSorSe maintains Grafana in Stuttgart.")]),
             new ContentIntelligenceSettings { MaximumEntities = 16 },
             CancellationToken.None);
 
         var intelligence = Assert.IsType<IndexedContentIntelligence>(result.Intelligence);
         Assert.Contains(intelligence.Entities, item => item.DisplayName == "Raspberry Pi");
-        Assert.Contains(intelligence.Entities, item => item.DisplayName == "OpenSorSe");
+        Assert.Contains(intelligence.Entities, item => item.DisplayName == "OmniSorSe");
         Assert.DoesNotContain(intelligence.Entities, item => item.DisplayName.Contains(". ", StringComparison.Ordinal));
     }
 
@@ -155,7 +155,7 @@ public sealed class ContentIntelligenceTests
         var text = string.Join(
             ' ',
             Enumerable.Repeat(
-                "Docker Compose deploys Prometheus Grafana monitoring on Raspberry Pi for OpenSorSe GmbH in Stuttgart.",
+                "Docker Compose deploys Prometheus Grafana monitoring on Raspberry Pi for OmniSorSe GmbH in Stuttgart.",
                 1_000));
         var request = new ContentIntelligenceRequest(
             [new(ContentEvidenceSourceKind.ExtractedText, text)]);

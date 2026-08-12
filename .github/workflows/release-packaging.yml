@@ -10,7 +10,7 @@ on:
       version:
         description: Three-part product version
         required: true
-        default: 2.3.0
+        default: 2.4.0
 
 permissions:
   contents: read
@@ -66,8 +66,8 @@ jobs:
         with:
           name: windows-release
           path: |
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64.zip
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64-setup.exe
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64.zip
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -109,7 +109,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: macos-${{ matrix.suffix }}-release
-          path: .artifacts/release/OpenSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}.dmg
+          path: .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}.dmg
           if-no-files-found: error
           retention-days: 14
 
@@ -139,12 +139,12 @@ jobs:
       - name: Upload complete verified release bundle
         uses: actions/upload-artifact@v7
         with:
-          name: OpenSorSe-v${{ inputs.version }}-release-bundle
+          name: OmniSorSe-v${{ inputs.version }}-release-bundle
           path: |
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64.zip
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-win-x64-setup.exe
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-macos-x64.dmg
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-macos-arm64.dmg
-            .artifacts/release/OpenSorSe-v${{ inputs.version }}-SHA256SUMS.txt
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64.zip
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-x64.dmg
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-arm64.dmg
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14

@@ -949,7 +949,7 @@ public sealed class BackgroundIndexingServiceTests
         {
             var root = Path.Combine(
                 Path.GetTempPath(),
-                "OpenSorSe-background-index-tests",
+                "OmniSorSe-background-index-tests",
                 Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
             return root;

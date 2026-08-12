@@ -119,7 +119,7 @@ public sealed class AiDiagnosticsViewModel : ViewModelBase
     {
         if (SelectedSession is null) return "No AI diagnostic request is selected.";
         var builder = new StringBuilder();
-        builder.AppendLine("OpenSorSe AI Request Diagnostic");
+        builder.AppendLine("OmniSorSe AI Request Diagnostic");
         builder.AppendLine($"Request ID: {RequestId}");
         builder.AppendLine($"Operation: {OperationType}");
         builder.AppendLine($"Model: {Model}");

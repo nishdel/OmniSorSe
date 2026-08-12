@@ -12,7 +12,7 @@ case "$rid" in
 esac
 
 artifact_root="$(cd "$artifact_directory" && pwd)"
-dmg="$artifact_root/OpenSorSe-v$version-macos-$suffix.dmg"
+dmg="$artifact_root/OmniSorSe-v$version-macos-$suffix.dmg"
 test -s "$dmg"
 mount_point="$artifact_root/validation/macos-$suffix/mount"
 smoke_root="$artifact_root/validation/macos-$suffix/user-data"
@@ -24,8 +24,8 @@ cleanup() {
 }
 trap cleanup EXIT
 hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount_point" >/dev/null
-app="$mount_point/OpenSorSe.app"
-executable="$app/Contents/MacOS/OpenSorSe"
+app="$mount_point/OmniSorSe.app"
+executable="$app/Contents/MacOS/OmniSorSe"
 test -x "$executable"
 plutil -lint "$app/Contents/Info.plist"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = 'io.github.nishdel.OpenSorSe'

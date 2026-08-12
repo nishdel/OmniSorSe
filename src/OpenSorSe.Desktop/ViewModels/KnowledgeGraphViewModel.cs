@@ -1757,7 +1757,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
             PendingDecisionAction.RemoveAlias,
             SelectedNode.Id,
             SelectedAlias,
-            $"Remove the alias '{SelectedAlias}' from '{SelectedNode.Title}'? Only OpenSorSe-owned graph decisions change; original files remain unchanged.");
+            $"Remove the alias '{SelectedAlias}' from '{SelectedNode.Title}'? Only OmniSorSe-owned graph decisions change; original files remain unchanged.");
         return Task.CompletedTask;
     }
 
@@ -1787,7 +1787,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
             PendingDecisionAction.Split,
             SelectedNode.Id,
             SelectedNeighbor.NodeId,
-            $"Split '{SelectedNeighbor.Title}' from '{SelectedNode.Title}'? Only OpenSorSe-owned graph decisions change; original files remain unchanged.");
+            $"Split '{SelectedNeighbor.Title}' from '{SelectedNode.Title}'? Only OmniSorSe-owned graph decisions change; original files remain unchanged.");
         return Task.CompletedTask;
     }
 

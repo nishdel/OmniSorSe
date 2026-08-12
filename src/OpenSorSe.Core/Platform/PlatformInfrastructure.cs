@@ -401,7 +401,7 @@ public sealed class PlatformCapabilityProvider : IPlatformCapabilityProvider
     {
         var paths = _pathProvider.Paths;
         var output = new StringBuilder();
-        output.AppendLine("OpenSorSe platform diagnostics");
+        output.AppendLine("OmniSorSe platform diagnostics");
         output.AppendLine($"Platform: {Platform}");
         output.AppendLine($"Operating system: {OperatingSystemDescription}");
         output.AppendLine($"Process architecture: {ProcessArchitecture}");

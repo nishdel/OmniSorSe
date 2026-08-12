@@ -56,7 +56,7 @@ public sealed class SearchServiceResilienceTests
     [Fact]
     public async Task DurableExclusionPathSuppressesLegacySearchEntry()
     {
-        var path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", "forgotten.pdf"));
+        var path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OmniSorSe-synthetic", "forgotten.pdf"));
         var service = new SemanticSearchService(
             new Configuration(),
             Embeddings,
@@ -220,7 +220,7 @@ public sealed class SearchServiceResilienceTests
     }
 
     private static SemanticIndexEntry Legacy(string fileName, string? fullPath = null) => new(
-        fullPath ?? Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", fileName)),
+        fullPath ?? Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OmniSorSe-synthetic", fileName)),
         "source",
         "index",
         fileName,
@@ -237,10 +237,10 @@ public sealed class SearchServiceResilienceTests
         string? fullPath = null) => new()
         {
             FileId = id,
-            FullPath = fullPath ?? Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", fileName)),
+            FullPath = fullPath ?? Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OmniSorSe-synthetic", fileName)),
             FileName = fileName,
             RelativePath = fileName,
-            FolderName = "OpenSorSe-synthetic",
+            FolderName = "OmniSorSe-synthetic",
         };
 
     private sealed class Configuration : IConfigurationService

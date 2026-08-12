@@ -7,7 +7,7 @@
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <StackPanel Spacing="3">
                 <TextBlock Text="Help" FontSize="24" FontWeight="SemiBold" />
-                <TextBlock Text="Local guidance for OpenSorSe pages, workflows, empty states, errors, and safety boundaries."
+                <TextBlock Text="Local guidance for OmniSorSe pages, workflows, empty states, errors, and safety boundaries."
                            TextWrapping="Wrap" />
             </StackPanel>
             <Button Grid.Column="1"

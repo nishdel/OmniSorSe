@@ -308,7 +308,7 @@ public sealed class WatchedFolderManager : IWatchedFolderManager
         if (conflict is not null)
         {
             throw new InvalidOperationException(
-                $"The watched root overlaps \"{conflict.DisplayName}\". OpenSorSe rejects overlapping roots to prevent duplicate processing.");
+                $"The watched root overlaps \"{conflict.DisplayName}\". OmniSorSe rejects overlapping roots to prevent duplicate processing.");
         }
     }
 

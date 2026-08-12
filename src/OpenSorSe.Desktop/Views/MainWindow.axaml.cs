@@ -4,7 +4,7 @@ using OpenSorSe.Desktop.ViewModels;
 namespace OpenSorSe.Desktop.Views;
 
 /// <summary>
-/// Hosts the initial OpenSorSe desktop application shell.
+/// Hosts the initial OmniSorSe desktop application shell.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         {
             viewModel.Notifications.Publish(new NotificationRequest(
                 NotificationSeverity.Warning,
-                "Application-owned catalog data could not be initialized. OpenSorSe remains available for read-only scans."));
+                "Application-owned catalog data could not be initialized. OmniSorSe remains available for read-only scans."));
         }
     }
 

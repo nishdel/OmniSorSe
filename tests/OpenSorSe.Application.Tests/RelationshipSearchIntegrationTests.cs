@@ -92,10 +92,10 @@ public sealed class RelationshipSearchIntegrationTests
     private static ProgressiveSearchDocument Document(string id, string name, string metadata) => new()
     {
         FileId = id,
-        FullPath = Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", name),
+        FullPath = Path.Combine(Path.GetTempPath(), "OmniSorSe-synthetic", name),
         FileName = name,
         RelativePath = name,
-        FolderName = "OpenSorSe-synthetic",
+        FolderName = "OmniSorSe-synthetic",
         MetadataText = metadata,
         IsFullyIndexed = true,
     };

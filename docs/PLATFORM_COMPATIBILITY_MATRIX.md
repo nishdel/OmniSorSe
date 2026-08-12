@@ -2,11 +2,11 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** OpenSorSe v2.3.0 Content Intelligence release source
+**Current source:** released OmniSorSe v2.4.0 Transition & Explorer Foundation
 
 **Last reviewed:** 2026-08-11
 
-OpenSorSe is a Windows-first desktop application with a conservative Linux x64
+OmniSorSe is a Windows-first desktop application with a conservative Linux x64
 source-build preview. v2.0.0 added native Intel/Apple Silicon macOS packages and
 package startup/shutdown probes while retaining conservative, fail-closed
 mutation limits. Native packaging is not evidence of broad interactive or
@@ -64,7 +64,7 @@ file mutation are separate claims.
 | Knowledge Graph/decision sidecars | Supported, default off | Preview, default off | Preview, default off | Provider-neutral schema-1 SQLite sidecars, recovery, and regressions run natively; interactive quality/accessibility evidence remains pending. |
 | Search over available indexed data | Supported | Preview | Preview | Deterministic ranking and provider regressions run natively. Compatible filename/metadata Search degrades independently from optional deeper data. |
 | Change Plan rename/move/create | Supported | Preview / manual verification pending | Unavailable | Linux operations require current-platform link, root, identity, permission, and same-filesystem checks. macOS mutation remains disabled. |
-| Cross-filesystem move | Unavailable | Unavailable | Unavailable | OpenSorSe does not silently implement move as copy/delete. |
+| Cross-filesystem move | Unavailable | Unavailable | Unavailable | OmniSorSe does not silently implement move as copy/delete. |
 | Operation Journal, rollback, recovery, Undo | Supported | Preview / manual verification pending | Unavailable | Transaction-like compensating operations are not universal filesystem transactions. Unsafe inverse work blocks. |
 | Watched Folders | Supported with documented limits | Preview / manual verification pending | Unverified | Notifications are hints; reconciliation is authoritative. Linux depends on inotify resources and filesystem behavior. |
 | Workflows and recipes | Supported | Preview | Build/test only | Declarative data is portable only within its recorded filename/platform policy and available dependencies. |
@@ -76,7 +76,8 @@ file mutation are separate claims.
 | Ollama-compatible AI | Supported with limitations | Unverified runtime | Unverified runtime | Uses a configured HTTP endpoint and is not auto-launched. A custom endpoint may be remote. |
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
-| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | v2.3.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs through the established release workflow. Linux remains source build only. |
+| Explorer Protocol v1 | Native Windows named-pipe round trip validated | Cross-target compilation only | Cross-target compilation only | On-demand current-user local transport with no TCP listener. Native Linux/macOS protocol execution is not claimed. |
+| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | OmniSorSe v2.4.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs while retaining installer/bundle/profile compatibility. Linux remains source build only. |
 
 ## Filesystem limitations
 
@@ -87,7 +88,7 @@ file mutation are separate claims.
   copy-on-write systems may provide weaker identity, locking, timestamp,
   watcher, free-space, transaction, or durability behavior.
 - Linux permissions can include ACL, capability, namespace, and mount rules not
-  described by Unix mode bits. OpenSorSe never elevates, runs `sudo`, changes
+  described by Unix mode bits. OmniSorSe never elevates, runs `sudo`, changes
   ownership, or broadly changes permissions.
 - Symbolic links, Windows reparse points, junctions, and detected mount escapes
   are not followed through scanning, reconciliation, package traversal, or

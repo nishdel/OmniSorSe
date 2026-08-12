@@ -48,10 +48,12 @@ source history. The
 | v2.1 Search & AI Quality | Released as v2.1.0 from `v2.1-search-ai-quality` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,531 tests passed in each configuration with zero failures/skips. Policy, vulnerability, four-runtime, exact-main hosted, native-package, and checksum gates are release records. Broad interactive validation across arbitrary hosts/models is not claimed. | Deterministic filename relevance and typo quality, optional bounded Ollama ordering of known results, model/failure clarity, truthful scan/index progress, result actions, safe duplicate recovery, dismissible notifications, privacy wording, Related Files guidance, and contextual Help. |
 | v2.2 Media Intelligence | Released as v2.2.0 from `v2.2-media-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,603 tests passed in each configuration with zero failures/skips before integration. Search/media/index/migration/duplicate/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows native-provider evidence includes real Tesseract OCR, ffprobe/ffmpeg media processing, and schema-3-to-4 migration; broad interactive and native Linux/macOS media validation is not claimed. | First-class bounded image/audio/video evidence, EXIF/GPS, OCR, lazy thumbnails, optional ffprobe metadata, optional capped ffmpeg frames, unified Search, conservative media relationships, scan ETA, batch duplicate review, clearer navigation/privacy, and schema 4. |
 | v2.3 Content Intelligence & Local Understanding | Released as v2.3.0 from `v2.3-content-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,637 tests passed in each configuration with zero failures/skips. Search/Content Intelligence/transcription/media/index/migration/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows-native evidence includes official whisper.cpp 1.9.2 audio/video transcription, Transcript-to-Search, cancellation, ffprobe/ffmpeg, and a genuine schema-4-to-5 migration; native Tesseract was not repeated and broad interactive/native Linux/macOS validation is not claimed. | Bounded deterministic topics/textual entities/extractive summaries with provenance, schema 5, grounded Search and cross-media Related Files signals, generic-topic suppression, and an optional user-managed whisper.cpp CLI/model process adapter. No bundled model/runtime or visual-description provider. |
+| v2.4 OmniSorSe Transition & Explorer Foundation | Released as v2.4.0 from `v2.4-omnisorse-transition` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,671 tests passed in each configuration with zero failures/skips. Genuine Windows published-v2.3 profile reuse and installer transition, external two-process protocol lifecycle/security, four-runtime compile, exact-main, and native packaging gates passed. Broad interactive accessibility and native Linux/macOS protocol execution are not claimed. | Active OmniSorSe branding with compatibility-in-place legacy profiles/schema 5 and a dormant authenticated/source-scoped/bounded/read-only Explorer Protocol v1 for the future optional OmniExplorer. |
 
 ## Current product boundary
 
-OpenSorSe v2.3.0 is a safe, local-first desktop application for understanding,
+OmniSorSe v2.4.0 is the current release, based on the safe, local-first
+OpenSorSe v2.3.0 release. It continues understanding,
 monitoring, searching, and organizing explicitly selected folders. The v1.6
 production-hardening and cross-platform foundation remains intact; v1.7 adds
 durable progressive background indexing, and v1.8 adds bounded Search
@@ -65,6 +67,12 @@ projection over those retained facts. It is disabled by default, does not open
 source files, and keeps v1.9 schema-3 data authoritative. Its isolated schema-1
 graph and decision sidecars, UI, and Search context remain derived,
 privacy-bounded behavior rather than source-file authority.
+
+v2.4 changes active identity while deliberately retaining schema 5, established
+OpenSorSe profile paths, internal namespaces, installer AppId/install directory,
+and macOS bundle identifier. Its optional Explorer Protocol is dormant until an
+explicit session is requested, exposes no writes or arbitrary paths, creates no
+network listener, and does not mean OmniExplorer is implemented or released.
 
 The current Desktop workflow does not:
 
@@ -162,25 +170,24 @@ The architecture directory contains both current implementation documentation an
 
 ## Current release
 
-OpenSorSe v2.3.0 is the current Content Intelligence & Local Understanding
-release. It preserves v2.2 Media Intelligence and extends the same local index,
-Search, and Related Files surfaces with bounded topics, textual entities,
-extractive summaries, provenance, and optional user-managed local whisper.cpp
-transcription. Native Windows/macOS artifacts, checksums, tagging, and
-publication are produced from exact integrated source by the established
-release workflow. Automated/native package evidence is not a claim of broad
-interactive validation on every host, media codec, OCR installation,
+OmniSorSe v2.4.0 is the current Transition & Explorer Foundation release. It
+changes the active product/executable/package identity while continuing to use
+the established OpenSorSe profile, schema 5, and compatibility identities. Its
+dormant Explorer Protocol v1 provides an authenticated, source-scoped, bounded,
+read-only local interface for a future separate OmniExplorer without adding a
+renderer, network listener, or direct database access. Automated/native package
+evidence is not a claim of broad interactive validation on every host,
 filesystem, display scaling, or accessibility technology. See the
-[v2.3 release notes](RELEASE_NOTES_v2.3.0.md),
-[implementation guide](CONTENT_INTELLIGENCE_v2.3.md), and
-[manual checklist](MANUAL_TESTING_v2.3.md). The v2.2, v2.1, and v2.0 documents, tags,
-releases, and validation records remain historical evidence.
+[v2.4 release notes](RELEASE_NOTES_v2.4.0.md),
+[transition/protocol guide](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md),
+and [manual checklist](MANUAL_TESTING_v2.4.md). OpenSorSe v2.3.0 and earlier
+documents, tags, releases, and validation records remain historical evidence.
 
 ## Release identity
 
-- Version: `v2.3.0`
-- Release name: **Content Intelligence & Local Understanding**
-- Source branch: `v2.3-content-intelligence`
+- Version: `v2.4.0`
+- Release name: **Transition & Explorer Foundation**
+- Source branch: `v2.4-omnisorse-transition`
 - Status: integrated into `main` after final local and exact-tip hosted
   validation. Native packaging, tagging, and publication are release-workflow records;
   broad interactive validation is not claimed complete.

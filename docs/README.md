@@ -1,4 +1,4 @@
-# OpenSorSe documentation index
+# OmniSorSe documentation index
 
 This is the authoritative navigation page for repository documentation. It
 explains what each important document contains, when to read it, and whether it
@@ -26,7 +26,7 @@ When documents overlap, use this order:
 
 | Time | Read | What it answers | Status |
 | ---: | --- | --- | --- |
-| 5 min | [Repository README](../README.md) | What OpenSorSe is, what exists now, and the current branch/package boundary. | Living |
+| 5 min | [Repository README](../README.md) | What OmniSorSe is, what exists now, and the current branch/package boundary. | Living |
 | 10 min | [Product Vision](../PRODUCT_VISION.md) | Why the project exists; AI, privacy, Search, review, Undo, SQLite, and provider principles. | Living |
 | 10 min | [Product Roadmap](../PRODUCT_ROADMAP.md) | What is completed, in progress, planned, research, or backlog. | Living |
 | 15 min | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | How components, storage, Search, plugins, and the mutation boundary fit together. | Living |
@@ -43,7 +43,10 @@ When documents overlap, use this order:
 | [Engineering Principles](../ENGINEERING_PRINCIPLES.md) | Reasoning for architecture, MVVM, stores/providers, testing, releases, CI, performance, safety, compatibility, and recovery. | Before a cross-cutting change or review. | Living and authoritative for cross-cutting engineering policy |
 | [Release History](../RELEASE_HISTORY.md) | Concise branch/date/test/merge history with links to detailed records. | When tracing how the product evolved. | Living historical index |
 | [Release Status](RELEASE_STATUS.md) | Exact current branch, integration, automated/manual validation, package, tag, and publication facts. | Before making a readiness or release claim. | Living and authoritative for current readiness |
-| [v2.3.0 Release Notes](RELEASE_NOTES_v2.3.0.md) | Downloads, Content Intelligence/local-transcription changes, trust status, checksums, limitations, and validation boundary. | Before installing or publishing v2.3.0. | Current release snapshot |
+| [v2.4 OmniSorSe transition and Explorer Protocol](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md) | Rename compatibility, executable/package decisions, protocol contracts/transport/security/limits, and future companion boundary. | Before changing branding, profile paths, packaging identity, or Explorer integration. | Current released design and implementation record |
+| [v2.4 Manual Testing](MANUAL_TESTING_v2.4.md) | Separates genuine Windows profile/installer and external two-process protocol evidence from unchecked accessibility and native-platform scenarios. | During v2.4 review and maintenance. | Current release evidence tracker |
+| [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | Downloads, transition/protocol changes, compatibility, trust status, limitations, and validation boundary. | Before installing or publishing v2.4.0. | Current release snapshot |
+| [v2.3.0 Release Notes](RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence/local-transcription release snapshot. | When reviewing v2.3.0. | Historical release snapshot |
 | [v2.2.0 Release Notes](RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence/UX changes and validation boundary. | When reviewing the v2.2 milestone. | Historical release snapshot |
 | [v2.1.0 Release Notes](RELEASE_NOTES_v2.1.0.md) | Historical Search/AI downloads, changes, and validation boundary. | When reviewing the v2.1 milestone. | Historical release snapshot |
 | [v2.0.0 Release Notes](RELEASE_NOTES_v2.0.0.md) | Historical v2.0 downloads, changes, and integration boundary. | When reviewing the v2.0 milestone. | Historical release snapshot |
@@ -69,7 +72,7 @@ Roadmap.
 
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
-| [Installation](INSTALLATION.md) | Current source-build instructions, historical package boundary, optional dependencies, update/uninstall, and application data. | Before installing, building, updating, or removing OpenSorSe. | Living |
+| [Installation](INSTALLATION.md) | Current source-build instructions, historical package boundary, optional dependencies, rename compatibility, update/uninstall, and application data. | Before installing, building, updating, or removing OmniSorSe. | Living |
 | [OpenSorSe 1.9 User Guide](USER_GUIDE_v1.9.md) | Inherited v1.9 relationships, Smart Collections, Search context, privacy, and repair. | When using inherited v1.9 workflows. | Current inherited guidance |
 | [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence/confidence, virtual collections, user control, Search context, privacy, and limits. | Before relying on or changing relationship behavior. | Current feature guide |
 | [OpenSorSe 2.0 Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) | Graph scope, consent, storage, lifecycle, browsing/Search, privacy, repair, limits, and deferred work. | When using, testing, or changing Knowledge Graph. | Current feature guide |

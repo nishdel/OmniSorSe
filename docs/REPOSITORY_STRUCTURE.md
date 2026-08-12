@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the released v2.3 solution as its projects exist in source. It describes
+This guide maps the released v2.4 solution as its projects exist in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -17,6 +17,7 @@ flowchart TB
     Scanner["OpenSorSe.Scanner"]
     Core["OpenSorSe.Core"]
     Sdk["OpenSorSe.Extensions.Abstractions"]
+    Protocol["OmniSorSe.ExplorerProtocol"]
 
     Desktop --> Ai
     Desktop --> Application
@@ -33,6 +34,7 @@ flowchart TB
     Application --> Scanner
     Application --> Core
     Application --> Sdk
+    Application --> Protocol
     Indexing --> Application
     Indexing --> Core
     Executor --> Rules
@@ -46,6 +48,19 @@ The arrows are actual `ProjectReference` entries. There are no production
 reference cycles.
 
 ## Production projects
+
+### `OmniSorSe.ExplorerProtocol`
+
+- **Purpose:** Stable versioned read-only DTO/capability/error contract for the
+  future separate OmniExplorer client.
+- **Owns:** Protocol 1.0 version, operations, capabilities, nodes, edges,
+  requests/results, limits, and stable error envelopes.
+- **Must not own:** SQLite, provider implementations, Search/indexing logic,
+  filesystem access/mutation, dependency injection, UI, rendering, or transport
+  hosting.
+- **Dependencies:** None.
+- **Reference rule:** Application implements it. No production project may add
+  a reverse dependency from the contract into an internal OpenSorSe project.
 
 ### `OpenSorSe.Extensions.Abstractions`
 

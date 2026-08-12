@@ -1,7 +1,7 @@
 # Maintainer guide
 
 This guide records the cross-cutting responsibilities required to keep an
-OpenSorSe release compatible, safe, and understandable.
+OmniSorSe release compatible, safe, and understandable.
 
 Use [Engineering Principles](../ENGINEERING_PRINCIPLES.md) for the reasoning
 behind these operational requirements and
@@ -252,7 +252,8 @@ Never commit:
 
 - `bin`, `obj`, `.artifacts`, `TestResults`, or IDE state;
 - new release binaries, ZIPs, checksums, or packages outside an approved release;
-- `%LOCALAPPDATA%\OpenSorSe` settings, indexes, histories, plugins, or logs;
+- `%LOCALAPPDATA%\OpenSorSe` settings, indexes, histories, plugins, or logs
+  (the legacy name is intentionally retained by OmniSorSe v2.4);
 - diagnostic exports without explicit review and redaction;
 - OCR temporary pages or test workspaces;
 - credentials, tokens, private endpoints, machine-specific paths, or user file

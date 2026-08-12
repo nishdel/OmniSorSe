@@ -155,6 +155,11 @@ public sealed partial class RepositoryDocumentationTests
             "RELEASE_NOTES_v2.0.0.md",
             "RELEASE_NOTES_v2.1.0.md",
             "RELEASE_NOTES_v2.2.0.md",
+            "CONTENT_INTELLIGENCE_v2.3.md",
+            "MANUAL_TESTING_v2.3.md",
+            "RELEASE_NOTES_v2.3.0.md",
+            "OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md",
+            "MANUAL_TESTING_v2.4.md",
             "SEARCH_AND_AI_QUALITY_v2.1.md",
             "MANUAL_TESTING_v2.1.md",
             "RELEASE_PACKAGING_v2.0.md",
@@ -211,11 +216,11 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("macos-15-intel", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("osx-x64", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("osx-arm64", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Contains("OpenSorSe-v${{ inputs.version }}-win-x64.zip", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Contains("OpenSorSe-v${{ inputs.version }}-win-x64-setup.exe", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Contains("OpenSorSe-v${{ inputs.version }}-macos-x64.dmg", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Contains("OpenSorSe-v${{ inputs.version }}-macos-arm64.dmg", releaseWorkflow, StringComparison.Ordinal);
-        Assert.Contains("OpenSorSe-v${{ inputs.version }}-SHA256SUMS.txt", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-win-x64.zip", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-macos-x64.dmg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-macos-arm64.dmg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-SHA256SUMS.txt", releaseWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain(".deb", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".rpm", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("AppImage", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
@@ -245,9 +250,23 @@ public sealed partial class RepositoryDocumentationTests
             "eng",
             "release",
             "Build-MacArtifacts.sh"));
+        var installer = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "eng",
+            "release",
+            "OpenSorSe.iss"));
         Assert.Contains("RELEASE_NOTES_v$Version.md", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("RELEASE_NOTES_v$version.md", macPackaging, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe.exe", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe.app", macPackaging, StringComparison.Ordinal);
+        Assert.Contains("io.github.nishdel.OpenSorSe", macPackaging, StringComparison.Ordinal);
+        Assert.Contains("AppId={{3F3BCA7E-38A1-45D3-B068-B22D25BCECF4}", installer, StringComparison.Ordinal);
+        Assert.Contains("DefaultDirName={localappdata}\\Programs\\OpenSorSe", installer, StringComparison.Ordinal);
+        Assert.Contains("AppName=OmniSorSe", installer, StringComparison.Ordinal);
+        Assert.Contains("DefaultGroupName=OmniSorSe", installer, StringComparison.Ordinal);
+        Assert.Contains("UsePreviousGroup=no", installer, StringComparison.Ordinal);
+        Assert.Contains("{app}\\OpenSorSe.exe", installer, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", macPackaging, StringComparison.Ordinal);
     }
 
@@ -257,13 +276,14 @@ public sealed partial class RepositoryDocumentationTests
     {
         var expected = new Dictionary<string, IReadOnlySet<string>>(StringComparer.Ordinal)
         {
+            ["OmniSorSe.ExplorerProtocol"] = new HashSet<string>(StringComparer.Ordinal),
             ["OpenSorSe.Extensions.Abstractions"] = new HashSet<string>(StringComparer.Ordinal),
             ["OpenSorSe.Core"] = new HashSet<string>(StringComparer.Ordinal),
             ["OpenSorSe.Scanner"] = new HashSet<string>(["OpenSorSe.Core"], StringComparer.Ordinal),
             ["OpenSorSe.Rules"] = new HashSet<string>(["OpenSorSe.Core", "OpenSorSe.Scanner"], StringComparer.Ordinal),
             ["OpenSorSe.Executor"] = new HashSet<string>(["OpenSorSe.Core", "OpenSorSe.Rules"], StringComparer.Ordinal),
             ["OpenSorSe.Application"] = new HashSet<string>(
-                ["OpenSorSe.Extensions.Abstractions", "OpenSorSe.Core", "OpenSorSe.Executor", "OpenSorSe.Scanner", "OpenSorSe.Rules"],
+                ["OmniSorSe.ExplorerProtocol", "OpenSorSe.Extensions.Abstractions", "OpenSorSe.Core", "OpenSorSe.Executor", "OpenSorSe.Scanner", "OpenSorSe.Rules"],
                 StringComparer.Ordinal),
             ["OpenSorSe.AI"] = new HashSet<string>(["OpenSorSe.Application", "OpenSorSe.Core"], StringComparer.Ordinal),
             ["OpenSorSe.Indexing.Sqlite"] = new HashSet<string>(
@@ -420,7 +440,7 @@ public sealed partial class RepositoryDocumentationTests
             directory = directory.Parent;
         }
 
-        throw new InvalidOperationException("The OpenSorSe repository root could not be located.");
+        throw new InvalidOperationException("The OmniSorSe repository root could not be located.");
     }
 
     [GeneratedRegex(@"<!--.*?-->", RegexOptions.Singleline)]

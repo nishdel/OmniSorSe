@@ -9,7 +9,7 @@ using OpenSorSe.Core.Persistence;
 namespace OpenSorSe.Application.Catalog;
 
 /// <summary>
-/// Stores bounded, display-safe completed result snapshots in a versioned JSON file owned by OpenSorSe.
+/// Stores bounded, display-safe completed result snapshots in a versioned JSON file owned by OmniSorSe.
 /// </summary>
 public sealed class JsonResultsCatalogStore : IResultsCatalogStore
 {

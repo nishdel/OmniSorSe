@@ -1,8 +1,9 @@
 # Architecture documentation
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
-[OpenSorSe System Map](OpenSorSe_System_Map.md). They describe the current
-released v2.3 implementation and take
+[OmniSorSe System Map](OpenSorSe_System_Map.md). They describe the current
+released OmniSorSe v2.4 implementation over the historical OpenSorSe v2.3
+baseline and take
 precedence when an older document uses future-oriented
 language.
 
@@ -32,6 +33,9 @@ compatibility, and recovery.
 - `06_Search/12_v2.1_Search_AI_Quality.md`: released boundary for
   filename tiers, bounded optional Ollama reranking, model runtime discovery,
   fallback, indexing clarity, result commands, and compatibility.
+- `../OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`: current rename,
+  compatibility-in-place, public protocol, transport, authorization, scope,
+  threat-model, and future companion boundary.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.

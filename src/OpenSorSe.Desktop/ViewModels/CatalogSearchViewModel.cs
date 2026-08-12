@@ -599,7 +599,7 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
     private void RequestResetSavedSearches()
     {
         IsSavedSearchResetPending = true;
-        SavedSearchStatusText = "Reset requested. Confirm separately to remove only OpenSorSe saved query text, including malformed saved-search data.";
+        SavedSearchStatusText = "Reset requested. Confirm separately to remove only OmniSorSe saved query text, including malformed saved-search data.";
     }
 
     private void CancelResetSavedSearches()
@@ -627,7 +627,7 @@ public sealed class CatalogSearchViewModel : ViewModelBase, IDisposable
 
             PublishSavedSearches([], null);
             IsSavedSearchResetPending = false;
-            SavedSearchStatusText = "All saved query text was removed from OpenSorSe application data. Catalog snapshots and scanned files were not changed.";
+            SavedSearchStatusText = "All saved query text was removed from OmniSorSe application data. Catalog snapshots and scanned files were not changed.";
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {

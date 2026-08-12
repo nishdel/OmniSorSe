@@ -7,6 +7,35 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v2.4.0 â€” OmniSorSe Transition & Explorer Foundation
+
+Release branch: `v2.4-omnisorse-transition`. Published after genuine Windows
+profile/installer transition, external two-process protocol, full automated,
+cross-target, exact-main, and native packaging validation.
+
+### Added and changed
+
+- Active product, desktop assembly/apphost, visible package, installer, macOS
+  application, and future artifact identity change to OmniSorSe.
+- Established OpenSorSe profile paths, schema 5, installer AppId/install
+  directory, macOS bundle identifier, repository URL, and internal namespaces
+  remain compatibility identities so the rename does not fork user state.
+- Dependency-free Explorer Protocol 1.0 contracts plus an on-demand,
+  current-user local named-pipe host expose authenticated, source-scoped,
+  bounded, read-only Structure, unified Search, Related/context, and safe detail
+  projections for a future separately distributed OmniExplorer.
+- Protocol limits, stable errors, cancellation, backpressure, session expiry,
+  opaque node identity, strict serialization, diagnostic redaction, security
+  tests, architecture guidance, and an evidence-separated manual checklist.
+
+### Safety and limitations
+
+- OmniExplorer is not implemented or released. No graph renderer, layout/GPU
+  dependency, voice surface, standalone scanner, external listener, cloud
+  relay, or protocol mutation operation is included.
+- The host is dormant until an explicit authorized session is requested;
+  normal OmniSorSe startup and Search do not depend on a companion.
+
 ## v2.3.0 — Content Intelligence & Local Understanding
 
 Release branch: `v2.3-content-intelligence`. Published after local,

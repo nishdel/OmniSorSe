@@ -591,7 +591,7 @@ public sealed class AiSuggestionService : IAiSuggestionService
         };
         if (capability is null)
         {
-            return new AiDecisionResult(AiAvailabilityState.InvalidContext, "That AI decision type is not supported by this OpenSorSe version.");
+            return new AiDecisionResult(AiAvailabilityState.InvalidContext, "That AI decision type is not supported by this OmniSorSe version.");
         }
 
         if (!TryValidateEnabled(settings, capability.Value, out var state, out var message))
@@ -635,7 +635,7 @@ public sealed class AiSuggestionService : IAiSuggestionService
         try
         {
             await _decisionHistoryStore.ClearAsync(cancellationToken).ConfigureAwait(false);
-            return new AiDecisionResult(AiAvailabilityState.ModelSelected, "Local AI review history was reset. No scanned file or other OpenSorSe store changed.");
+            return new AiDecisionResult(AiAvailabilityState.ModelSelected, "Local AI review history was reset. No scanned file or other OmniSorSe store changed.");
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

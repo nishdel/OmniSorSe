@@ -1322,7 +1322,7 @@ public sealed partial class SqliteGraphStore : IGraphStore
         {
             throw new SqliteKnowledgeStoreException(
                 SqliteKnowledgeFailureKind.Busy,
-                "Another OpenSorSe process owns the knowledge-graph coordinator lease.");
+                "Another OmniSorSe process owns the knowledge-graph coordinator lease.");
         }
 
         var epoch = existingOwner is null || string.Equals(existingOwner, ownerInstanceId, StringComparison.Ordinal)

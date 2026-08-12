@@ -2,17 +2,17 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <AssemblyName>OpenSorSe</AssemblyName>
-    <Version>2.3.0</Version>
+    <AssemblyName>OmniSorSe</AssemblyName>
+    <Version>2.4.0</Version>
     <Nullable>enable</Nullable>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">Assets\opensorse-app-icon.ico</ApplicationIcon>
-    <Title>OpenSorSe</Title>
-    <Product>OpenSorSe</Product>
+    <Title>OmniSorSe</Title>
+    <Product>OmniSorSe</Product>
     <Description>Local-first file organization, search, duplicate review, OCR, and optional AI-assisted suggestions.</Description>
-    <Authors>OpenSorSe contributors</Authors>
-    <Company>OpenSorSe contributors</Company>
-    <Copyright>Copyright © OpenSorSe contributors</Copyright>
+    <Authors>OmniSorSe contributors</Authors>
+    <Company>OmniSorSe contributors</Company>
+    <Copyright>Copyright © OmniSorSe contributors</Copyright>
     <RepositoryUrl>https://github.com/nishdel/OpenSorSe</RepositoryUrl>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>

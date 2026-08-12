@@ -1,10 +1,10 @@
 # Linux Build and Launch
 
-OpenSorSe provides a framework-dependent Linux x64 source-build preview. The
-current v1.9 source extends the embedded SQLite provider for relationships and
-selects a Linux native SQLite library when cross-targeted, but interactive Linux
-v1.9 validation is not
-recorded. No Linux package or installer is published by this repository.
+OmniSorSe provides a framework-dependent Linux x64 source-build preview. The
+v2.4 source selects Linux native SQLite/Skia assets when
+cross-targeted and compiles the Unix-domain-backed named-pipe Explorer Protocol
+transport, but native Linux protocol/UI execution is not recorded. No Linux
+package or installer is published by this repository.
 
 Read the living [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md)
 before making a broader support claim.
@@ -18,7 +18,7 @@ before making a broader support claim.
 - optional externally running Ollama-compatible HTTP service.
 
 Distribution package names vary. Install prerequisites through the
-distribution; OpenSorSe never runs `sudo`.
+distribution; OmniSorSe never runs `sudo`.
 
 ## Validate source
 
@@ -50,8 +50,8 @@ dotnet publish src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj \
   --runtime linux-x64 \
   --self-contained false \
   --output /tmp/opensorse-linux-x64
-chmod u+x /tmp/opensorse-linux-x64/OpenSorSe
-/tmp/opensorse-linux-x64/OpenSorSe
+chmod u+x /tmp/opensorse-linux-x64/OmniSorSe
+/tmp/opensorse-linux-x64/OmniSorSe
 ```
 
 A self-contained publish can use `--self-contained true`, but it is only build
@@ -63,7 +63,9 @@ behavior must be checked on the target distribution.
 
 Repository CI is configured for `windows-latest`, `ubuntu-latest`, and
 `macos-latest`; it does not publish artifacts. The immutable v1.6 report proves
-a successful three-host run, while the current v1.9 source report records local
-Windows execution and cross-target compilation only. Use the relevant current
-[manual checklist](MANUAL_TESTING_v1.9.md) before making a broader support
+a successful three-host run, while the current v2.4 implementation task records
+Windows execution and cross-target compilation only. Linux continues using the
+legacy-compatible `opensorse` XDG subdirectories so the product rename cannot
+orphan a prior profile. Use the current
+[v2.4 manual checklist](MANUAL_TESTING_v2.4.md) before making a broader support
 statement.

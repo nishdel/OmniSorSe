@@ -10,7 +10,7 @@ public sealed class AboutViewModel : ViewModelBase
     /// <summary>
     /// Gets the application name.
     /// </summary>
-    public string ApplicationName => "OpenSorSe";
+    public string ApplicationName => "OmniSorSe";
 
     /// <summary>
     /// Gets the declared application version.

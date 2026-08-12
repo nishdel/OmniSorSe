@@ -218,7 +218,7 @@ public sealed class SettingsViewModelTests
         var viewModel = new SettingsViewModel(new TestConfigurationService());
 
         Assert.Equal("Daily diagnostic log files to retain", viewModel.DailyLogRetentionLabel);
-        Assert.Contains("OpenSorSe application diagnostic log files", viewModel.DailyLogRetentionDescription, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe application diagnostic log files", viewModel.DailyLogRetentionDescription, StringComparison.Ordinal);
         Assert.Contains("does not affect scanned user files", viewModel.DailyLogRetentionDescription, StringComparison.OrdinalIgnoreCase);
         Assert.Equal("Enter a whole number of at least 1.", viewModel.DailyLogRetentionValidation);
     }

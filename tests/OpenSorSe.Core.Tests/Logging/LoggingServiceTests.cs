@@ -27,7 +27,7 @@ public sealed class LoggingServiceTests
 
         var filePath = Assert.Single(Directory.GetFiles(directory.Path, "opensorse-owned-*.log"));
         var output = File.ReadAllText(filePath);
-        Assert.StartsWith("# OpenSorSe owned log v1", output, StringComparison.Ordinal);
+        Assert.StartsWith("# OmniSorSe owned log v1", output, StringComparison.Ordinal);
         Assert.Contains("[Information] [CoreTests] information message", output, StringComparison.Ordinal);
         Assert.Contains("[Warning] [CoreTests] warning message", output, StringComparison.Ordinal);
         Assert.Contains("[Error] [CoreTests] error message", output, StringComparison.Ordinal);
@@ -83,7 +83,7 @@ public sealed class LoggingServiceTests
         {
             File.WriteAllText(
                 Path.Combine(directory.Path, $"opensorse-owned-2024-01-{day:00}.log"),
-                "# OpenSorSe owned log v1\nold");
+                "# OmniSorSe owned log v1\nold");
         }
 
         var unrelatedPath = Path.Combine(directory.Path, "unrelated.log");
@@ -122,7 +122,7 @@ public sealed class LoggingServiceTests
     {
         using var directory = new TemporaryDirectory();
         var activePath = Path.Combine(directory.Path, $"opensorse-owned-{DateTimeOffset.UtcNow:yyyy-MM-dd}.log");
-        File.WriteAllText(activePath, "# OpenSorSe owned log v1\n");
+        File.WriteAllText(activePath, "# OmniSorSe owned log v1\n");
         using (var stream = new FileStream(activePath, FileMode.Open, FileAccess.Write, FileShare.None))
         {
             stream.SetLength(LoggingLimits.MaximumDailyFileBytes);

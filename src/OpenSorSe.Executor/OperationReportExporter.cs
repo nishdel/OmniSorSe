@@ -11,7 +11,7 @@ public sealed class OperationReportExporter : IOperationReportExporter
     {
         ArgumentNullException.ThrowIfNull(operation);
         var builder = new StringBuilder();
-        builder.AppendLine("OpenSorSe Operation Report");
+        builder.AppendLine("OmniSorSe Operation Report");
         builder.AppendLine($"Operation: {operation.OperationId}");
         builder.AppendLine($"Change Plan: {operation.SourcePlanId}");
         builder.AppendLine($"Version: {operation.OpenSorSeVersion}");
@@ -47,4 +47,3 @@ public sealed class OperationReportExporter : IOperationReportExporter
         return builder.ToString();
     }
 }
-

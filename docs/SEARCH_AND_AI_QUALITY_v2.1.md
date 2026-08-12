@@ -2,6 +2,11 @@
 
 **Status:** OpenSorSe v2.1.0 release behavior.
 
+**v2.4 name note:** This historical feature release keeps its OpenSorSe name.
+The same deterministic-first unified Search is exposed under current OmniSorSe
+branding and through the bounded read-only Explorer Protocol; ranking authority
+and optional-AI privacy behavior are unchanged.
+
 OpenSorSe Search remains a local, deterministic indexed-search feature. v2.1
 improves how filename matches are ordered, makes optional Ollama behavior more
 truthful, and adds an explicit local-AI ordering option. Ollama supplements

@@ -44,9 +44,17 @@ dotnet run --project .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj
 ```
 
 Windows stores user-local state below `%LOCALAPPDATA%\OpenSorSe`. Linux follows
-XDG configuration/data/state/cache locations. Settings → Platform diagnostics
-shows exact owned paths. Use disposable scan roots for development. Do not test
-Change Plan Apply against important files.
+XDG configuration/data/state/cache locations using the retained `opensorse`
+subdirectory, and macOS retains its `OpenSorSe` Application Support/Caches/Logs
+names. These are deliberate v2.4 compatibility identities; do not derive
+storage paths from the visible OmniSorSe product name. Settings → Platform
+diagnostics shows exact owned paths. Use disposable scan roots for development.
+Do not test Change Plan Apply against important files.
+
+`src/OmniSorSe.ExplorerProtocol` is the only new public-name project. Keep it a
+small dependency-free DTO/version contract. Protocol implementation belongs in
+Application behind provider-neutral services; SQLite, Desktop, file operations,
+and renderer dependencies must never flow into the contract project.
 
 ## 4. Run validation
 

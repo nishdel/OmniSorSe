@@ -1,6 +1,6 @@
-# Contributing to OpenSorSe
+# Contributing to OmniSorSe
 
-Thank you for improving OpenSorSe. Changes should remain local-first,
+Thank you for improving OmniSorSe. Changes should remain local-first,
 reviewable, bounded, and explicit about their safety and privacy effects.
 
 Before a cross-cutting change, read the

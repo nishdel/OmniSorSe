@@ -193,7 +193,7 @@ public sealed class UndoEngineTests
     }
 
     private static UndoEngine Create() => new(new Log(), new Errors());
-    private static string Rooted(string name) => Path.Combine(Path.GetTempPath(), "OpenSorSe-Undo-Validation", name);
+    private static string Rooted(string name) => Path.Combine(Path.GetTempPath(), "OmniSorSe-Undo-Validation", name);
     private static UndoRecord Record(string id, UndoOperationKind kind, string original, string result) => new(id, "operation", kind, original, result, DateTimeOffset.UtcNow);
     private sealed class Temp : IDisposable { public Temp() { Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"OpenSorSe.Undo.{Guid.NewGuid():N}"); Directory.CreateDirectory(Path); } public string Path { get; } public string File(string name, string text) { var path = System.IO.Path.Combine(Path, name); System.IO.File.WriteAllText(path, text); return path; } public void Dispose() => Directory.Delete(Path, true); }
     private sealed class Log : ILoggingService { public ILogger CreateLogger(string categoryName) => NullLogger.Instance; public void Dispose() { } public void Initialize(LogLevel minimumLevel) { } }

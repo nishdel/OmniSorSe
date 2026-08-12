@@ -1,17 +1,17 @@
-# OpenSorSe Safety and Privacy
+# OmniSorSe Safety and Privacy
 
 **Document type:** Living current safety and privacy contract
 
-OpenSorSe is local-first and non-destructive by default. Scanning,
+OmniSorSe is local-first and non-destructive by default. Scanning,
 watched-folder detection and reconciliation, duplicate review, metadata
 extraction, OCR, tagging, Search/background indexing, relationship analysis,
 virtual Smart Collections, Knowledge Graph projection/query/repair, structure
 previews/diagrams, catalog comparison, and AI suggestions do not modify
 selected files.
 
-> OpenSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
+> OmniSorSe does not apply AI-generated or bulk file changes without a user-reviewed Change Plan. Supported file operations are recorded in the Operation Journal and are reversible unless later external changes make automatic restoration unsafe.
 
-OpenSorSe continues to authorize only rename file, move file, and create
+OmniSorSe continues to authorize only rename file, move file, and create
 directory through the v1.1 Change Plan execution boundary. Workflow and plugin
 features can contribute configuration, analysis, and proposals; they do not
 receive mutation authority.
@@ -34,7 +34,7 @@ following them outside an approved root. Plan validation remains lexical and
 fail-closed, and execution rechecks links and state immediately before mutation.
 A move requires a verified same filesystem and an unoccupied destination.
 Permission inspection is advisory; an actual operation failure is authoritative.
-OpenSorSe never elevates, runs `sudo`, changes ownership, broadly changes mode
+OmniSorSe never elevates, runs `sudo`, changes ownership, broadly changes mode
 bits, or silently falls back to a less safe operation.
 
 Native volume/file-index and device/inode identities are bounded evidence, not
@@ -70,7 +70,7 @@ The mutation workflow requires:
 
 The service rejects out-of-root or linked destinations, unknown/missing/renamed/changed/locked sources, invalid filenames, duplicate sources or destinations, execution-order conflicts, stale scans, occupied destinations, and unsupported action types. It never overwrites or deletes a file. Case-only renames use a verified temporary sibling. Cancellation is observed at safe action boundaries. On a blocking failure, completed reversible actions are rolled back in reverse order; rollback failure remains explicit.
 
-Filesystem operations are transaction-like, not perfectly transactional. Power loss, storage failure, permission changes, or another process can prevent complete rollback. OpenSorSe never claims success, rollback, or Undo without verifying the corresponding paths and identities.
+Filesystem operations are transaction-like, not perfectly transactional. Power loss, storage failure, permission changes, or another process can prevent complete rollback. OmniSorSe never claims success, rollback, or Undo without verifying the corresponding paths and identities.
 
 ## Watched-folder boundary
 
@@ -78,11 +78,11 @@ Filesystem operations are transaction-like, not perfectly transactional. Power l
 
 Watched roots are explicit opt-in configurations. Operating-system watcher events are untrusted hints: they are bounded, debounced, root-checked, grouped, and verified against the real filesystem before an application-owned catalogue changes. Unknown or directory hints, queue pressure, watcher errors, startup, resume, reconnect, and the daily interval conservatively request reconciliation.
 
-Canonical ignore rules exclude configured paths/patterns, temporary and incomplete-download names, hidden or oversized files when configured, OpenSorSe internal data, and reparse points. Overlapping roots are rejected. New or content-changing files must be readable and stable across observations before content extraction, OCR cache checks, hashing, classification, rules, or AI. Deferred files retain an unresolved state and are retried by later reconciliation.
+Canonical ignore rules exclude configured paths/patterns, temporary and incomplete-download names, hidden or oversized files when configured, OmniSorSe internal data, and reparse points. Overlapping roots are rejected. New or content-changing files must be readable and stable across observations before content extraction, OCR cache checks, hashing, classification, rules, or AI. Deferred files retain an unresolved state and are retried by later reconciliation.
 
 Pause, disconnection, access failure, and removal from the watch list never delete user files, the dedicated watched catalogue, or grouped activity. Watched updates do not consume or evict entries from the separate opt-in Saved scans catalogue. A missing root remains unavailable until the exact path returns. v1.3 does not search other drives or guess that a root moved.
 
-Deterministic and optional AI suggestions become ordinary reviewable Change Plans. The watched-folder coordinator never invokes the execution service. Verified Operation Journal results correlate expected OpenSorSe-generated watcher events and suppress recursive suggestions without suspending observation for an arbitrary time.
+Deterministic and optional AI suggestions become ordinary reviewable Change Plans. The watched-folder coordinator never invokes the execution service. Verified Operation Journal results correlate expected OmniSorSe-generated watcher events and suppress recursive suggestions without suspending observation for an arbitrary time.
 
 ## AI boundary
 
@@ -106,7 +106,7 @@ discloses that the bounded query/candidate text then leaves the device.
 
 Document-text interpretation has its own default-off switch. It requires global AI, the capability, a valid endpoint/model, one explicitly selected known content record, and a direct **Generate** command. Its prompt contains bounded normalized extracted text with page/native/OCR provenance, never file bytes or an absolute path. A custom endpoint may be remote, so Settings warns before this switch is enabled. The prompt forbids exact/legal/financial transcription claims and any filesystem action.
 
-AI output is untrusted strict JSON. Rename models return only an extension-free stem; OpenSorSe preserves and appends the known extension. Folder models receive only opaque request-local IDs and prevalidated folder-name choices. Whole-response validation independently checks exact schema/casing, evidence grounding, identities, counts, assignments, filenames, path components, confidence, parent relationships, cycles, and hierarchy safety. Any safety or identity failure rejects the complete suggestion. Accepted valid rename/folder output is converted into a non-mutating Change Plan. The approved persisted plan—not a later model response—is the only possible execution input.
+AI output is untrusted strict JSON. Rename models return only an extension-free stem; OmniSorSe preserves and appends the known extension. Folder models receive only opaque request-local IDs and prevalidated folder-name choices. Whole-response validation independently checks exact schema/casing, evidence grounding, identities, counts, assignments, filenames, path components, confidence, parent relationships, cycles, and hierarchy safety. Any safety or identity failure rejects the complete suggestion. Accepted valid rename/folder output is converted into a non-mutating Change Plan. The approved persisted plan—not a later model response—is the only possible execution input.
 
 At most one structured-output repair request may follow malformed JSON or a schema-shape failure. It uses the same task/schema, the bounded prior response, and one concise validation error. Timeouts, cancellations, unsafe or unknown identities, path/traversal attempts, hard bounds, provider failures, and model misuse are never retried. Original and repair attempts remain separate related in-memory diagnostics sessions. AI requests and retries remain read-only. The normal Operation Journal stores model/request correlation metadata where relevant, not prompt text or file contents.
 
@@ -118,7 +118,7 @@ Advanced Diagnostics is independent of ordinary logging and disabled by default.
 
 Redacted mode is the default. The separate unredacted opt-in may retain filenames, complete paths, document/OCR text, metadata, tags, search terms, prompts, and responses in process memory. Secrets, credentials, authorization headers, passwords, and API keys are removed in every mode. Detailed diagnostic content is never written to normal logs.
 
-The common store retains at most 50 sessions overall, 20 per category, 750 events per session, 100 OCR page records, 500 scan-entry records, 1,048,576 characters per field/event field set, approximately 8 MiB per session, and approximately 32 MiB total. Rendered OCR images are not retained. History is cleared when diagnostics are disabled and saved, when unredacted retention is turned back off, when explicitly cleared, or when OpenSorSe exits. Data leaves memory only through an explicit JSON or text export chosen by the user.
+The common store retains at most 50 sessions overall, 20 per category, 750 events per session, 100 OCR page records, 500 scan-entry records, 1,048,576 characters per field/event field set, approximately 8 MiB per session, and approximately 32 MiB total. Rendered OCR images are not retained. History is cleared when diagnostics are disabled and saved, when unredacted retention is turned back off, when explicitly cleared, or when OmniSorSe exits. Data leaves memory only through an explicit JSON or text export chosen by the user.
 
 ## OCR, metadata, tags, and Search
 
@@ -126,7 +126,7 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - OCR Beta is separately enabled and capability-detected. PdfPig reads native PDF pages; the built-in PDFtoImage/PDFium renderer creates bounded page images only where native text is insufficient; the optional external Tesseract CLI recognizes those images.
 - Reliable native page text skips rasterization/OCR by default. Mixed PDFs preserve native/OCR provenance per page.
 - Tesseract version and configured `eng`/`deu` language data are detected before recognition. Process output, page count, duration, image dimensions, retained text, and temporary storage are bounded.
-- Temporary page images live only in validated OpenSorSe-owned `job-*` directories and are deleted per page and again on success, error, timeout, or cancellation.
+- Temporary page images live only in validated OmniSorSe-owned `job-*` directories and are deleted per page and again on success, error, timeout, or cancellation.
 - OCR and extraction failures are isolated per file and cannot stop normal scanning/search/catalog workflows.
 - Provenance tags distinguish confirmed system/user evidence from unverified generated candidates.
 - Search is separately enabled, local, bounded, incremental, cancellable, and rebuildable.
@@ -157,7 +157,7 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 
 - v2.2 reads only explicitly indexed files and writes
   bounded derived metadata, OCR, transcript, optional-description, and
-  thumbnail data only to OpenSorSe-owned storage.
+  thumbnail data only to OmniSorSe-owned storage.
 - Deterministic image parsing and thumbnail generation are local. Tesseract,
   `ffprobe`, and `ffmpeg` are optional user-managed local processes. The
   released v2.3 adapter can invoke an explicitly configured user-managed
@@ -204,6 +204,37 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Ordinary diagnostics retain operational state and bounded counts/sizes, not
   full text, OCR, transcript, summaries, prompts, or evidence excerpts.
 
+### Explorer Protocol v1
+
+- The v2.4 protocol is an on-demand local named pipe (Unix-domain-backed on
+  Unix hosts), not an HTTP/TCP/LAN/internet listener or cloud relay.
+- A future explicit launch flow must authorize currently configured indexed
+  source IDs. Raw paths are omitted unless that session separately authorizes
+  path projection. Clients cannot submit paths for reading or enumerate system
+  filesystem roots.
+- Sessions use random short-lived bearer secrets. OmniSorSe retains only a
+  token hash, compares it in fixed time, never persists/logs it, and zeroes
+  token/node secrets on revoke, expiry, or shutdown. Opaque node IDs are
+  session-bound HMAC values.
+- The surface is read-only: roots, bounded children/neighborhood, grounded
+  unified Search, Related/context, and safe details. It exposes no file,
+  Change Plan, source, settings, or index mutation and no arbitrary content or
+  command execution.
+- Full documents, full OCR/transcripts, precise GPS, binary media, prompts,
+  private diagnostics, stack traces, SQL/schema internals, and secrets are not
+  returned by default.
+- Strict serialization, request/response/count/depth/string bounds, a bounded
+  queue/concurrency gate, timeout, cancellation, disconnect handling, and
+  source filtering isolate hostile or animation-heavy local clients.
+- Advanced Diagnostics may retain operation, protocol, lifecycle, timing,
+  count/truncation, and failure-category facts. It does not retain protocol
+  tokens, queries, paths, snippets, content, OCR, transcripts, or payloads.
+- OmniExplorer is not shipped in v2.4. Absence of the companion leaves the host
+  dormant and does not affect normal OmniSorSe Search/indexing behavior.
+
+See [v2.4 transition and protocol design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
+for the complete threat model and fixed limits.
+
 ## Relationships and virtual collections
 
 - Automatic relationships are produced only from retained bounded evidence;
@@ -225,9 +256,12 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   direct non-recursive queries, caps candidates/edges/evidence/membership, and
   repairs orphan or corrupt derived rows to resist hostile graph expansion.
 
-## OpenSorSe-owned storage
+## OmniSorSe-owned storage
 
-By default, runtime files are below `Environment.SpecialFolder.LocalApplicationData/OpenSorSe`.
+By default on Windows, runtime files remain below
+`Environment.SpecialFolder.LocalApplicationData/OpenSorSe`. The v2.4 product
+rename deliberately reuses that established profile; OmniSorSe does not create
+a competing profile merely because its visible name changed.
 
 | Data | File/location | Bound and behavior |
 | --- | --- | --- |
@@ -329,7 +363,7 @@ installed-content hashes reduce accidental and operational risk. Missing,
 changed, incompatible, conflicting, or quarantined capabilities fail closed.
 
 These controls do not make third-party code safe. Plugins execute in the
-OpenSorSe process with the current user's operating-system permissions. A
+OmniSorSe process with the current user's operating-system permissions. A
 collectible assembly load context is dependency/unload isolation, not an OS
 sandbox. SHA-256 detects content change but does not authenticate a publisher.
 v1.4 has no signature authority, marketplace, download/automatic update,
@@ -344,7 +378,7 @@ verification, recovery, rollback, history, and conflict-aware Undo path.
 
 ## Undo
 
-Successful rename/move actions record the original/result paths and pre/post identities. Created directories are undoable only when OpenSorSe created them and they remain empty. Before an inverse action, OpenSorSe checks that the result still exists and is the same file, has not been materially modified, the original is unoccupied, and no later successful OpenSorSe operation depends on the path.
+Successful rename/move actions record the original/result paths and pre/post identities. Created directories are undoable only when OmniSorSe created them and they remain empty. Before an inverse action, OmniSorSe checks that the result still exists and is the same file, has not been materially modified, the original is unoccupied, and no later successful OmniSorSe operation depends on the path.
 
 Unsafe actions are marked blocked; they do not overwrite or destroy newer data. Other requested inverse actions may continue, but the operation is explicitly **Undo partially completed**. Whole-operation and selected-action Undo use the same validation and durable journal updates.
 
@@ -354,4 +388,4 @@ Malformed or invalid settings are preserved while safe defaults are loaded. Exis
 
 At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 
-Deleting or clearing OpenSorSe-owned indexes/cache/history is not an undo operation and cannot restore source files. Use disposable data for manual restructuring verification and complete the documented checklist before release integration.
+Deleting or clearing OmniSorSe-owned indexes/cache/history is not an undo operation and cannot restore source files. Use disposable data for manual restructuring verification and complete the documented checklist before release integration.

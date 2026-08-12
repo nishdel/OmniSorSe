@@ -564,7 +564,7 @@ public sealed class SqliteRelationshipStoreTests
         {
             _managedByWatchedFolders = managedByWatchedFolders;
             _fileCount = fileCount;
-            Root = Path.Combine(Path.GetTempPath(), "OpenSorSe-relationship-tests", Guid.NewGuid().ToString("N"));
+            Root = Path.Combine(Path.GetTempPath(), "OmniSorSe-relationship-tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Root);
             DatabasePath = Path.Combine(Root, "deep-index.db");
         }

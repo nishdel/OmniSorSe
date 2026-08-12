@@ -310,7 +310,7 @@
                         <TextBlock Text="{Binding PrivacyText}"
                                    TextWrapping="Wrap"
                                    AutomationProperties.LiveSetting="Polite" />
-                        <TextBlock Text="Every action below changes only OpenSorSe's generated index. The original source file is never deleted or modified."
+                        <TextBlock Text="Every action below changes only OmniSorSe's generated index. The original source file is never deleted or modified."
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap" />
                         <WrapPanel>
@@ -331,7 +331,7 @@
                                     Classes="secondary"
                                     Content="Clear media-derived data"
                                     Command="{Binding ClearMediaDataCommand}"
-                                    AutomationProperties.HelpText="Clears OpenSorSe's stored media metadata, transcript, media OCR, and optional description for the selected file. The original media file remains untouched." />
+                                    AutomationProperties.HelpText="Clears OmniSorSe's stored media metadata, transcript, media OCR, and optional description for the selected file. The original media file remains untouched." />
                             <Button Margin="0,0,8,8"
                                     Classes="secondary"
                                     Content="Clear Content Intelligence"

@@ -64,7 +64,7 @@ public sealed class UnavailableDesktopIntegration : IDesktopIntegration
     public PlatformSupportState SupportState => PlatformSupportState.Unavailable;
 
     /// <inheritdoc />
-    public string Explanation => "OpenSorSe has no verified desktop integration for this platform.";
+    public string Explanation => "OmniSorSe has no verified desktop integration for this platform.";
 
     /// <inheritdoc />
     public ExternalLaunchResult OpenPath(string normalizedPath, string successMessage) =>

@@ -22,7 +22,7 @@ public sealed class LogViewerViewModelTests
 
         Assert.Equal(21L, viewModel.RecordedEventCount);
         Assert.Equal(7L, viewModel.Statistics.FileWriteFailures);
-        Assert.Equal("Attention needed: OpenSorSe could not write one or more diagnostic log entries.", viewModel.LoggingStatus);
+        Assert.Equal("Attention needed: OmniSorSe could not write one or more diagnostic log entries.", viewModel.LoggingStatus);
         Assert.Equal("No diagnostic events have been recorded in this application session.", viewModel.StatusText);
         Assert.Equal(1, logging.StatisticsRequestCount);
     }

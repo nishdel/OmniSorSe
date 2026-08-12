@@ -169,10 +169,10 @@ public sealed class KnowledgeGraphSearchIntegrationTests
     private static ProgressiveSearchDocument Document(string id, string fileName) => new()
     {
         FileId = id,
-        FullPath = Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", fileName),
+        FullPath = Path.Combine(Path.GetTempPath(), "OmniSorSe-synthetic", fileName),
         FileName = fileName,
         RelativePath = fileName,
-        FolderName = "OpenSorSe-synthetic",
+        FolderName = "OmniSorSe-synthetic",
         IsFullyIndexed = true,
     };
 

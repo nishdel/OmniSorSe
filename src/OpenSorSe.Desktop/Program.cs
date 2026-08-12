@@ -4,7 +4,7 @@ using System;
 namespace OpenSorSe.Desktop;
 
 /// <summary>
-/// Starts the OpenSorSe desktop application.
+/// Starts the OmniSorSe desktop application.
 /// </summary>
 sealed class Program
 {

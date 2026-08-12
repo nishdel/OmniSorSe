@@ -7,7 +7,7 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
 {
     private const string FilePrefix = "opensorse-owned-";
     private const string FileExtension = ".log";
-    private const string OwnershipMarker = "# OpenSorSe owned log v1";
+    private const string OwnershipMarker = "# OmniSorSe owned log v1";
     private readonly LoggingOptions _options;
     private readonly LoggingStatisticsCounter _statistics;
     private readonly DiagnosticEventBuffer _eventBuffer;
@@ -64,7 +64,7 @@ internal sealed class LocalFileLoggerProvider : ILoggerProvider
                 var isNewFile = !File.Exists(filePath);
                 if (!isNewFile && !IsOwnedLogFile(filePath))
                 {
-                    throw new IOException("The daily log path is occupied by a file not owned by OpenSorSe.");
+                    throw new IOException("The daily log path is occupied by a file not owned by OmniSorSe.");
                 }
 
                 var entry = $"{timestamp:O} [{logLevel}] [{categoryName}] {message}{Environment.NewLine}";

@@ -692,7 +692,7 @@ public enum AiCapability
 public sealed class CatalogSettings
 {
     /// <summary>
-    /// Gets or initializes whether completed display-safe scan snapshots may be stored in OpenSorSe application data.
+    /// Gets or initializes whether completed display-safe scan snapshots may be stored in OmniSorSe application data.
     /// </summary>
     public bool Enabled { get; init; }
 

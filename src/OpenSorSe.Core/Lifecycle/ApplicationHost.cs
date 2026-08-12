@@ -47,7 +47,7 @@ public sealed class ApplicationHost : IApplicationHost
                 loggingSettings.FileLoggingEnabled,
                 loggingSettings.LogDirectoryPath,
                 loggingSettings.RetainedFileCount));
-            _loggingService.CreateLogger(nameof(ApplicationHost)).LogInformation("OpenSorSe Core is initializing.");
+            _loggingService.CreateLogger(nameof(ApplicationHost)).LogInformation("OmniSorSe Core is initializing.");
 
             if (!_applicationState.TryTransitionTo(ApplicationLifecycleState.Running))
             {
@@ -75,7 +75,7 @@ public sealed class ApplicationHost : IApplicationHost
             throw new InvalidOperationException("The application cannot be shut down from its current lifecycle state.");
         }
 
-        _loggingService.CreateLogger(nameof(ApplicationHost)).LogInformation("OpenSorSe Core is shutting down.");
+        _loggingService.CreateLogger(nameof(ApplicationHost)).LogInformation("OmniSorSe Core is shutting down.");
         _applicationState.TryTransitionTo(ApplicationLifecycleState.Stopped);
         _loggingService.Dispose();
         return Task.CompletedTask;

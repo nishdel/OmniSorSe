@@ -772,7 +772,7 @@ public sealed class DiagnosticsExportService : IDiagnosticsExportService
 
     private static void AppendSession(StringBuilder output, DiagnosticSession session)
     {
-        output.AppendLine("OpenSorSe Advanced Diagnostic");
+        output.AppendLine("OmniSorSe Advanced Diagnostic");
         output.AppendLine($"Session ID: {session.SessionId}");
         output.AppendLine($"Category: {DiagnosticCategoryRegistry.Get(session.Category).DisplayName}");
         output.AppendLine($"Operation: {session.Operation}");

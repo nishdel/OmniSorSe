@@ -40,7 +40,7 @@ internal static class LifecycleOperationGuard
             catch (Exception reportingException)
             {
                 System.Diagnostics.Trace.TraceError(
-                    "OpenSorSe could not record lifecycle failure {0} ({1}); reporter failed ({2}).",
+                    "OmniSorSe could not record lifecycle failure {0} ({1}); reporter failed ({2}).",
                     operation,
                     exception.GetType().Name,
                     reportingException.GetType().Name);

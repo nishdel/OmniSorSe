@@ -14,7 +14,7 @@
                         Classes="help"
                         Content="?"
                         Command="{Binding HelpCommand}"
-                        ToolTip.Tip="Learn what Home shows and how OpenSorSe keeps source files safe."
+                        ToolTip.Tip="Learn what Home shows and how OmniSorSe keeps source files safe."
                         AutomationProperties.Name="Help for Home" />
             </Grid>
 
@@ -101,7 +101,7 @@
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                     <StackPanel Spacing="3">
                         <TextBlock Text="What would you like to do?" FontSize="17" FontWeight="SemiBold" />
-                        <TextBlock Text="Start a new scan or adjust how OpenSorSe works."
+                        <TextBlock Text="Start a new scan or adjust how OmniSorSe works."
                                    Classes="page-subtitle" />
                     </StackPanel>
                     <WrapPanel Grid.Column="1" VerticalAlignment="Center">

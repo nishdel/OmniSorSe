@@ -27,7 +27,7 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
     /// <summary>
     /// Initializes local decision-history persistence at an explicit application-data path.
     /// </summary>
-    /// <param name="historyFilePath">The rooted JSON history path owned by OpenSorSe.</param>
+    /// <param name="historyFilePath">The rooted JSON history path owned by OmniSorSe.</param>
     /// <param name="loggingService">The central redacted diagnostic logging service.</param>
     public JsonDecisionHistoryStore(string historyFilePath, ILoggingService loggingService)
     {

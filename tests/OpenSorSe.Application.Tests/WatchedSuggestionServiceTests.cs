@@ -167,7 +167,7 @@ public sealed class WatchedSuggestionServiceTests
         Assert.Equal(0, factory.RuleCalls);
         Assert.Equal(0, ai.FolderCalls);
         Assert.Contains(result.Warnings, warning =>
-            warning.Contains("approved OpenSorSe operation", StringComparison.Ordinal));
+            warning.Contains("approved OmniSorSe operation", StringComparison.Ordinal));
     }
 
     [Fact]

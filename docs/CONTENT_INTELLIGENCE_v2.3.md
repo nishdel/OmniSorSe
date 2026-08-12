@@ -3,6 +3,11 @@
 **Status:** released as OpenSorSe v2.3.0 from `v2.3-content-intelligence`
 through a history-preserving merge into `main`.
 
+**v2.4 name note:** The historical release name remains accurate. OmniSorSe
+uses this same schema-5 data in place and may project bounded topics, textual
+entities, summary, and evidence presence through Explorer Protocol v1. Full
+OCR/transcripts and private diagnostic content are not protocol detail output.
+
 This document is the authoritative v2.3 design and implementation boundary.
 The source and automated tests remain authoritative if they disagree with this
 guide.

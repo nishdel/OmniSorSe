@@ -377,7 +377,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets the user-facing explanation for the daily diagnostic-log retention setting.
     /// </summary>
-    public string DailyLogRetentionDescription => "Controls how many OpenSorSe application diagnostic log files are kept. It does not affect scanned user files.";
+    public string DailyLogRetentionDescription => "Controls how many OmniSorSe application diagnostic log files are kept. It does not affect scanned user files.";
 
     /// <summary>
     /// Gets the validation guidance for daily diagnostic-log retention.
@@ -470,7 +470,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                 LoggingChanged(previous.Logging, settings.Logging) ||
                 ActiveIndexingWorkersChanged(previous.DeepIndexing, settings.DeepIndexing);
             StatusText = RestartRequired
-                ? "Settings saved and feature visibility updated. Restart OpenSorSe to apply active logging or background-worker changes."
+                ? "Settings saved and feature visibility updated. Restart OmniSorSe to apply active logging or background-worker changes."
                 : "Settings saved and feature visibility updated.";
             Status = StatusPresentation.Success(StatusText);
             SettingsSaved?.Invoke(this, settings);
@@ -810,7 +810,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private void RequestPreferenceHistoryReset()
     {
         IsPreferenceHistoryResetPending = true;
-        StatusText = "Confirm reset to delete only OpenSorSe local AI decision history. Scanned files and other application data will not change.";
+        StatusText = "Confirm reset to delete only OmniSorSe local AI decision history. Scanned files and other application data will not change.";
     }
 
     private void CancelPreferenceHistoryReset()

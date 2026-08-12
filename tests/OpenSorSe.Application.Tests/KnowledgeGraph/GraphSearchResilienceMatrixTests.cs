@@ -196,10 +196,10 @@ public sealed class GraphSearchResilienceMatrixTests
             new ProgressiveSearchDocument
             {
                 FileId = "invoice",
-                FullPath = Path.Combine(Path.GetTempPath(), "OpenSorSe-synthetic", "mercedes-invoice.pdf"),
+                FullPath = Path.Combine(Path.GetTempPath(), "OmniSorSe-synthetic", "mercedes-invoice.pdf"),
                 FileName = "mercedes-invoice.pdf",
                 RelativePath = "mercedes-invoice.pdf",
-                FolderName = "OpenSorSe-synthetic",
+                FolderName = "OmniSorSe-synthetic",
                 IsFullyIndexed = true,
             },
         ]);

@@ -3,6 +3,11 @@
 **Status:** released as OpenSorSe v2.2.0 from `v2.2-media-intelligence` through
 the repository's history-preserving release process.
 
+**v2.4 name note:** The historical release name remains accurate. OmniSorSe
+retains the same schema-5/profile evidence and may project bounded safe media
+facts through Explorer Protocol v1; the protocol never returns binary media,
+complete OCR/transcripts, or precise GPS by default.
+
 This document is the authoritative design and implementation guide for the
 v2.2 release. Source and automated tests remain authoritative if this guide
 and code ever disagree.

@@ -1,4 +1,4 @@
-# OpenSorSe engineering principles
+# OmniSorSe engineering principles
 
 **Document type:** Living engineering policy
 
@@ -9,13 +9,13 @@ review, validation, releases, and maintenance
 [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md), and
 [Repository Structure](docs/REPOSITORY_STRUCTURE.md)
 
-These principles explain why OpenSorSe is engineered the way it is. Detailed
+These principles explain why OmniSorSe is engineered the way it is. Detailed
 subsystem contracts remain in the architecture and implementation
 documentation.
 
 ## Architecture philosophy
 
-OpenSorSe favors explicit boundaries over clever coupling. Most code reads,
+OmniSorSe favors explicit boundaries over clever coupling. Most code reads,
 derives, stores, presents, or proposes. Only one supported production path
 mutates user files. This asymmetry is intentional: analysis can usually fail
 independently, while mutation requires authorization, durable evidence,
@@ -62,7 +62,7 @@ recovery can no longer reliably cover.
 
 ## Repository pattern and persistence ownership
 
-OpenSorSe uses store/repository-style contracts where durable state has a clear
+OmniSorSe uses store/repository-style contracts where durable state has a clear
 owner. A store owns:
 
 - schema identity and compatible reading;
@@ -181,7 +181,7 @@ state, upload user data, or turn ordinary pull requests into releases.
 
 ## Performance philosophy
 
-OpenSorSe is interactive desktop software, so long work must be asynchronous,
+OmniSorSe is interactive desktop software, so long work must be asynchronous,
 cancellable, bounded, and visible. Prefer paging, streaming, incremental
 invalidation, bounded channels, short transactions, and reuse of compatible
 work.
@@ -207,7 +207,7 @@ Treat every external boundary as untrusted:
 
 Use parameterized storage operations, root confinement, explicit capabilities,
 least privilege, strict parsing, output validation, timeouts, and failure
-containment. OpenSorSe does not elevate privileges or silently relax a safety
+containment. OmniSorSe does not elevate privileges or silently relax a safety
 check.
 
 In-process plugin load contexts are not an operating-system sandbox. SHA-256
@@ -219,7 +219,7 @@ distinctions.
 Local-first design minimizes unnecessary disclosure, but locally retained
 indexes and extracted text are still sensitive. Store only bounded data a
 feature needs, keep ordinary logs content-free, make AI/diagnostics/export
-boundaries explicit, and provide inspection and deletion for OpenSorSe-owned
+boundaries explicit, and provide inspection and deletion for OmniSorSe-owned
 derived data.
 
 If a custom provider endpoint may be remote, say so before data is sent.
