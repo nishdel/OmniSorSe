@@ -277,7 +277,7 @@ public sealed class AdvancedDiagnosticsTests
         Assert.Contains("\"ContentRetentionMode\": \"UnredactedSecretsRemoved\"", exporter.ExportJson(session), StringComparison.Ordinal);
         Assert.Contains("Unredacted content retained by explicit opt-in", exporter.ExportText(session), StringComparison.Ordinal);
         Assert.Contains(id, exporter.ExportAllJson([session]), StringComparison.Ordinal);
-        Assert.Contains("OpenSorSe Advanced Diagnostic", exporter.ExportAllText([session]), StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe Advanced Diagnostic", exporter.ExportAllText([session]), StringComparison.Ordinal);
     }
 
     /// <summary>Verifies a context-only truncation is explicitly visible on the retained session.</summary>

@@ -245,7 +245,7 @@ public sealed class CatalogViewModel : ViewModelBase, IDisposable
                 _entries.Remove(selected);
                 SelectedEntry = null;
                 NotifyEntryStateChanged();
-                StatusText = "The selected saved snapshot was removed from OpenSorSe local catalog data.";
+                StatusText = "The selected saved snapshot was removed from OmniSorSe local catalog data.";
                 CatalogChanged?.Invoke(this, EventArgs.Empty);
             }
             else
@@ -306,8 +306,8 @@ public sealed class CatalogViewModel : ViewModelBase, IDisposable
             DisplayNameInput = updated.DisplayName;
             NotifyEntryStateChanged();
             StatusText = normalized is null
-                ? "The snapshot name was cleared from OpenSorSe catalog data. The snapshot and scanned files were not changed."
-                : "The snapshot name was saved in OpenSorSe catalog data. The snapshot and scanned files were not changed.";
+                ? "The snapshot name was cleared from OmniSorSe catalog data. The snapshot and scanned files were not changed."
+                : "The snapshot name was saved in OmniSorSe catalog data. The snapshot and scanned files were not changed.";
             CatalogChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -332,7 +332,7 @@ public sealed class CatalogViewModel : ViewModelBase, IDisposable
         }
 
         IsClearConfirmationPending = true;
-        StatusText = "Confirm clear all to remove only OpenSorSe local catalog data. This will not change scanned folders or files.";
+        StatusText = "Confirm clear all to remove only OmniSorSe local catalog data. This will not change scanned folders or files.";
     }
 
     private void CancelClearAll()
@@ -357,7 +357,7 @@ public sealed class CatalogViewModel : ViewModelBase, IDisposable
             SelectedEntry = null;
             IsClearConfirmationPending = false;
             NotifyEntryStateChanged();
-            StatusText = "OpenSorSe local catalog data was cleared. No selected user file was changed.";
+            StatusText = "OmniSorSe local catalog data was cleared. No selected user file was changed.";
             CatalogChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -366,7 +366,7 @@ public sealed class CatalogViewModel : ViewModelBase, IDisposable
         }
         catch (Exception)
         {
-            StatusText = "OpenSorSe local catalog data could not be cleared. No selected user file was changed.";
+            StatusText = "OmniSorSe local catalog data could not be cleared. No selected user file was changed.";
         }
         finally
         {

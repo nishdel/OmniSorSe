@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:-2.3.0}"
+version="${1:-2.4.0}"
 rid="${2:?A macOS runtime identifier is required.}"
 output_directory="${3:?A release output directory is required.}"
 
@@ -32,13 +32,13 @@ dotnet publish "$repository_root/src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj"
   -p:DebugSymbols=false \
   -p:PublishSingleFile=false
 
-app_bundle="$staging_root/OpenSorSe.app"
+app_bundle="$staging_root/OmniSorSe.app"
 contents="$app_bundle/Contents"
 macos_directory="$contents/MacOS"
 resources_directory="$contents/Resources"
 mkdir -p "$macos_directory" "$resources_directory"
 cp -R "$staging_root/publish/." "$macos_directory/"
-chmod +x "$macos_directory/OpenSorSe"
+chmod +x "$macos_directory/OmniSorSe"
 cp "$repository_root/LICENSE" "$resources_directory/LICENSE"
 cp "$repository_root/THIRD_PARTY_NOTICES.md" "$resources_directory/THIRD_PARTY_NOTICES.md"
 cp "$repository_root/docs/dependency-licenses.json" "$resources_directory/dependency-licenses.json"
@@ -52,14 +52,14 @@ cp "$release_notes" "$resources_directory/RELEASE_NOTES.md"
 find "$macos_directory" -type f -name '*.pdb' -delete
 
 icon_source="$repository_root/src/OpenSorSe.Desktop/Assets/opensorse-app-icon.png"
-iconset="$staging_root/OpenSorSe.iconset"
+iconset="$staging_root/OmniSorSe.iconset"
 mkdir -p "$iconset"
 for size in 16 32 128 256 512; do
   double_size=$((size * 2))
   sips -z "$size" "$size" "$icon_source" --out "$iconset/icon_${size}x${size}.png" >/dev/null
   sips -z "$double_size" "$double_size" "$icon_source" --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
 done
-iconutil -c icns "$iconset" -o "$resources_directory/OpenSorSe.icns"
+iconutil -c icns "$iconset" -o "$resources_directory/OmniSorSe.icns"
 
 cat > "$contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -67,12 +67,12 @@ cat > "$contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>en</string>
-  <key>CFBundleDisplayName</key><string>OpenSorSe</string>
-  <key>CFBundleExecutable</key><string>OpenSorSe</string>
-  <key>CFBundleIconFile</key><string>OpenSorSe</string>
+  <key>CFBundleDisplayName</key><string>OmniSorSe</string>
+  <key>CFBundleExecutable</key><string>OmniSorSe</string>
+  <key>CFBundleIconFile</key><string>OmniSorSe</string>
   <key>CFBundleIdentifier</key><string>io.github.nishdel.OpenSorSe</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-  <key>CFBundleName</key><string>OpenSorSe</string>
+  <key>CFBundleName</key><string>OmniSorSe</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$version</string>
   <key>CFBundleVersion</key><string>$version</string>
@@ -88,9 +88,9 @@ if find "$app_bundle" -type f \( -name '*.pdb' -o -name '*.trx' -o -name '*.db' 
   echo 'The macOS app bundle contains a forbidden development or local-data artifact.' >&2
   exit 1
 fi
-if ! file "$macos_directory/OpenSorSe" | grep -q "$architecture"; then
+if ! file "$macos_directory/OmniSorSe" | grep -q "$architecture"; then
   echo "The packaged executable is not $architecture." >&2
-  file "$macos_directory/OpenSorSe" >&2
+  file "$macos_directory/OmniSorSe" >&2
   exit 1
 fi
 if ! find "$macos_directory" -type f -name 'libe_sqlite3.dylib' | grep -q .; then
@@ -100,10 +100,10 @@ fi
 
 dmg_root="$staging_root/dmg-root"
 mkdir -p "$dmg_root"
-cp -R "$app_bundle" "$dmg_root/OpenSorSe.app"
+cp -R "$app_bundle" "$dmg_root/OmniSorSe.app"
 ln -s /Applications "$dmg_root/Applications"
 suffix="${rid#osx-}"
-dmg="$output_root/OpenSorSe-v$version-macos-$suffix.dmg"
+dmg="$output_root/OmniSorSe-v$version-macos-$suffix.dmg"
 rm -f "$dmg"
-hdiutil create -volname "OpenSorSe $version" -srcfolder "$dmg_root" -ov -format UDZO "$dmg"
+hdiutil create -volname "OmniSorSe $version" -srcfolder "$dmg_root" -ov -format UDZO "$dmg"
 printf '%s\n' "$dmg"

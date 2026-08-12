@@ -129,6 +129,6 @@ public sealed class DependencyLicenseTests
         }
 
         return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the OpenSorSe repository root.");
+            ?? throw new InvalidOperationException("Could not locate the OmniSorSe repository root.");
     }
 }

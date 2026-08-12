@@ -13,10 +13,10 @@ $ErrorActionPreference = 'Stop'
 
 $artifactRoot = [IO.Path]::GetFullPath($ArtifactDirectory)
 $names = @(
-    "OpenSorSe-v$Version-win-x64.zip",
-    "OpenSorSe-v$Version-win-x64-setup.exe",
-    "OpenSorSe-v$Version-macos-x64.dmg",
-    "OpenSorSe-v$Version-macos-arm64.dmg"
+    "OmniSorSe-v$Version-win-x64.zip",
+    "OmniSorSe-v$Version-win-x64-setup.exe",
+    "OmniSorSe-v$Version-macos-x64.dmg",
+    "OmniSorSe-v$Version-macos-arm64.dmg"
 )
 $lines = foreach ($name in $names) {
     $path = Join-Path $artifactRoot $name
@@ -26,7 +26,7 @@ $lines = foreach ($name in $names) {
     $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $name"
 }
-$checksumPath = Join-Path $artifactRoot "OpenSorSe-v$Version-SHA256SUMS.txt"
+$checksumPath = Join-Path $artifactRoot "OmniSorSe-v$Version-SHA256SUMS.txt"
 [IO.File]::WriteAllLines(
     $checksumPath,
     [string[]]$lines,

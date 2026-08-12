@@ -200,7 +200,7 @@ public sealed class FfmpegVideoFrameSampler : IVideoFrameSampler
         var root = Path.GetFullPath(_temporaryRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
         if (!fullPath.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("The frame workspace is outside OpenSorSe's managed temporary root.");
+            throw new InvalidOperationException("The frame workspace is outside OmniSorSe's managed temporary root.");
         }
 
         if (Directory.Exists(fullPath))

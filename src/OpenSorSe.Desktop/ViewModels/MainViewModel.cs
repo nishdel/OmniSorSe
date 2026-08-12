@@ -880,7 +880,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Diagnostics => "System check",
         NavigationDestination.History => "Operation History",
         NavigationDestination.Help => "Help",
-        NavigationDestination.About => "About OpenSorSe",
+        NavigationDestination.About => "About OmniSorSe",
         _ => throw new InvalidOperationException("The navigation destination is unsupported."),
     };
 

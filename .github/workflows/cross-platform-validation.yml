@@ -12,6 +12,7 @@ on:
       - v2.1-search-ai-quality
       - v2.2-media-intelligence
       - v2.3-content-intelligence
+      - v2.4-omnisorse-transition
   pull_request:
 
 permissions:

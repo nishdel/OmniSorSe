@@ -74,7 +74,7 @@ public static class UserTagFactory
             "User",
             TagSource.UserApproved,
             TagAcceptanceState.Accepted,
-            "Created explicitly in OpenSorSe.",
+            "Created explicitly in OmniSorSe.",
             createdAtUtc)).ToArray());
         return true;
     }

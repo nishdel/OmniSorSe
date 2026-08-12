@@ -274,7 +274,7 @@ public sealed class WhisperCppTranscriptionProviderTests
     {
         public Fixture(string fileName = "speech.wav", MediaKind kind = MediaKind.Audio)
         {
-            Root = Path.Combine(Path.GetTempPath(), "OpenSorSe-whisper-tests", Guid.NewGuid().ToString("N"));
+            Root = Path.Combine(Path.GetTempPath(), "OmniSorSe-whisper-tests", Guid.NewGuid().ToString("N"));
             SourceDirectory = Path.Combine(Root, "source");
             TemporaryRoot = Path.Combine(Root, "owned-temp");
             Directory.CreateDirectory(SourceDirectory);

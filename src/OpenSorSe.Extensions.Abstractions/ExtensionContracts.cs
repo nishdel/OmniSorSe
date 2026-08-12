@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 
 namespace OpenSorSe.Extensions.Abstractions;
 
-/// <summary>Identifies the v1.4 extension points supported by the OpenSorSe host.</summary>
+/// <summary>Identifies the v1.4 extension points supported by the OmniSorSe host.</summary>
 /// <remarks>
 /// Extension points exchange bounded data with the host. None grants access to
 /// Change Plan approval, the executor, the host service provider, credentials,
@@ -139,7 +139,7 @@ public sealed record PluginIdentity(
 /// <summary>Provides the immutable, capability-filtered initialization context for one plugin.</summary>
 /// <param name="Identity">The exact plugin instance being initialized.</param>
 /// <param name="GrantedCapabilities">A read-only snapshot of user-effective grants.</param>
-/// <param name="HostVersion">The OpenSorSe host version used for compatibility decisions.</param>
+/// <param name="HostVersion">The OmniSorSe host version used for compatibility decisions.</param>
 public sealed record PluginInitializationContext(
     PluginIdentity Identity,
     IReadOnlySet<PluginCapability> GrantedCapabilities,
@@ -193,7 +193,7 @@ public interface IExtensionContribution
 /// Do not start untracked background work or retain request objects. The SDK
 /// does not authorize direct user-file mutation, Change Plan approval,
 /// invocation of Apply/Undo, journal access, credential discovery, shell or
-/// script execution, or use of internal OpenSorSe services. Capability grants
+/// script execution, or use of internal OmniSorSe services. Capability grants
 /// are host policy, not sandboxing.
 /// </remarks>
 public interface IOpenSorSePlugin

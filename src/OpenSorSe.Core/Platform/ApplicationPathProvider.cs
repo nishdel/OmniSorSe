@@ -1,11 +1,20 @@
 namespace OpenSorSe.Core.Platform;
 
 /// <summary>
-/// Resolves application-owned storage while preserving the existing Windows
-/// location and following XDG conventions on Linux.
+/// Resolves application-owned storage while preserving the legacy OpenSorSe
+/// locations on every platform so the OmniSorSe rename cannot fork or orphan a profile.
 /// </summary>
 public sealed class ApplicationPathProvider : IApplicationPathProvider
 {
+    /// <summary>
+    /// Stable compatibility folder retained from releases through v2.3. This is an internal
+    /// persistence identity, not the current user-facing product name.
+    /// </summary>
+    public const string LegacyWindowsAndMacStorageName = "OpenSorSe";
+
+    /// <summary>Stable XDG persistence identity retained from releases through v2.3.</summary>
+    public const string LegacyXdgStorageName = "opensorse";
+
     private readonly IPathSemantics _pathSemantics;
 
     /// <summary>Creates paths for the current process environment.</summary>
@@ -72,7 +81,7 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
         var local = string.IsNullOrWhiteSpace(localApplicationDataPath)
             ? Path.Combine(userProfile, "AppData", "Local")
             : RequireAbsolute(localApplicationDataPath, nameof(localApplicationDataPath));
-        var existingRoot = Path.Combine(local, "OpenSorSe");
+        var existingRoot = Path.Combine(local, LegacyWindowsAndMacStorageName);
         return NewSet(
             existingRoot,
             existingRoot,
@@ -103,25 +112,25 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
             Path.Combine(userProfile, ".cache"),
             environmentVariableReader);
         return NewSet(
-            Path.Combine(configuration, "opensorse"),
-            Path.Combine(data, "opensorse"),
-            Path.Combine(state, "opensorse"),
-            Path.Combine(cache, "opensorse"),
-            Path.Combine(state, "opensorse", "logs"),
-            Path.Combine(data, "opensorse", "plugins"));
+            Path.Combine(configuration, LegacyXdgStorageName),
+            Path.Combine(data, LegacyXdgStorageName),
+            Path.Combine(state, LegacyXdgStorageName),
+            Path.Combine(cache, LegacyXdgStorageName),
+            Path.Combine(state, LegacyXdgStorageName, "logs"),
+            Path.Combine(data, LegacyXdgStorageName, "plugins"));
     }
 
     private ApplicationPathSet MacPaths(string userProfile)
     {
-        var support = Path.Combine(userProfile, "Library", "Application Support", "OpenSorSe");
-        var cache = Path.Combine(userProfile, "Library", "Caches", "OpenSorSe");
-        var logs = Path.Combine(userProfile, "Library", "Logs", "OpenSorSe");
+        var support = Path.Combine(userProfile, "Library", "Application Support", LegacyWindowsAndMacStorageName);
+        var cache = Path.Combine(userProfile, "Library", "Caches", LegacyWindowsAndMacStorageName);
+        var logs = Path.Combine(userProfile, "Library", "Logs", LegacyWindowsAndMacStorageName);
         return NewSet(support, support, support, cache, logs, Path.Combine(support, "plugins"));
     }
 
     private ApplicationPathSet ConservativePaths(string userProfile)
     {
-        var root = Path.Combine(userProfile, ".opensorse");
+        var root = Path.Combine(userProfile, $".{LegacyXdgStorageName}");
         return NewSet(root, root, root, Path.Combine(root, "cache"), Path.Combine(root, "logs"), Path.Combine(root, "plugins"));
     }
 

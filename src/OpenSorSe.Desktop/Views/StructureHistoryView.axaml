@@ -34,7 +34,7 @@
                 <Border IsVisible="{Binding IsApplyConfirmationPending}"
                         Padding="8" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
                     <StackPanel Spacing="6">
-                        <TextBlock Text="Confirm apply: OpenSorSe will revalidate the exact preview, reject changed roots and conflicts, and move only the listed files."
+                        <TextBlock Text="Confirm apply: OmniSorSe will revalidate the exact preview, reject changed roots and conflicts, and move only the listed files."
                                    TextWrapping="Wrap" />
                         <WrapPanel>
                             <Button Margin="0,0,8,0" Content="Confirm exact reviewed proposal" Command="{Binding ConfirmApplyCommand}" />

@@ -182,10 +182,10 @@ public sealed class ConflictResolverTests
     private static ConflictResolver CreateResolver() => new(new TestLoggingService(), new TestErrorHandler());
 
     private static string Source(string name) =>
-        Path.Combine(Path.GetTempPath(), "OpenSorSe-Conflict-Source", name);
+        Path.Combine(Path.GetTempPath(), "OmniSorSe-Conflict-Source", name);
 
     private static string Destination(string name) =>
-        Path.Combine(Path.GetTempPath(), "OpenSorSe-Conflict-Destination", name);
+        Path.Combine(Path.GetTempPath(), "OmniSorSe-Conflict-Destination", name);
 
     private static PlannedOperation Operation(string id, PlannedOperationKind kind, string source, string? destination = null) =>
         Operation(id, kind, source, new FileEntry(source), destination);

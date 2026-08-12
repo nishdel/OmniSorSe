@@ -137,7 +137,7 @@ public sealed class SqliteKnowledgeLifecycleLock
                     {
                         throw new SqliteKnowledgeStoreException(
                             SqliteKnowledgeFailureKind.Busy,
-                            "Another OpenSorSe process is performing an application data lifecycle operation.",
+                            "Another OmniSorSe process is performing an application data lifecycle operation.",
                             exception);
                     }
 
@@ -348,7 +348,7 @@ internal static class SqliteKnowledgeInfrastructure
             {
                 throw new SqliteKnowledgeStoreException(
                     SqliteKnowledgeFailureKind.Corrupt,
-                    "The selected database belongs to a different OpenSorSe data store.");
+                    "The selected database belongs to a different OmniSorSe data store.");
             }
 
             if (actualVersion > schemaVersion)

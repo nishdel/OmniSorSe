@@ -1,6 +1,6 @@
-# OpenSorSe current System Overview
+# OmniSorSe current system overview
 
-OpenSorSe is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
+OmniSorSe (formerly OpenSorSe) is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
 
 ## Product boundary
 
@@ -30,6 +30,13 @@ conservative media relationships. It migrates only `deep-index.db` to schema 4.
 Released v2.3 adds bounded deterministic topics, textual entities,
 extractive summaries, optional user-managed whisper.cpp transcription, and
 schema 5 without creating a parallel Search or AI database.
+OmniSorSe v2.4 changes active product and package identity to
+OmniSorSe while deliberately retaining the established profile, schema,
+installer identity, and macOS bundle identity. It adds a dependency-free
+Explorer Protocol contract and an on-demand current-user named-pipe host for a
+future separate OmniExplorer. The host is dormant until an explicit authorized
+session is created and exposes only bounded read-only projections of existing
+indexed services.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 
@@ -39,12 +46,13 @@ reports remain analysis inputs, not authorization or filesystem truth.
 
 | Project | Responsibility |
 | --- | --- |
+| `OmniSorSe.ExplorerProtocol` | Dependency-free versioned DTO, operation, capability, bounds, and stable-error contract for an optional future OmniExplorer; no SQLite, filesystem, UI, or transport implementation. |
 | `OpenSorSe.Extensions.Abstractions` | Stable immutable plugin SDK contracts; no reference to Application, Desktop, DI, persistence, credentials, or execution. |
 | `OpenSorSe.Core` | Validated settings, logging, lifecycle, events, state, tasks, platform contracts/implementations, application locations, capability reporting, and dependency-injection support. |
 | `OpenSorSe.Scanner` | Read-only traversal, filesystem metadata, hashing, deterministic classification, and exact duplicate detection. |
 | `OpenSorSe.Rules` | Deterministic rule evaluation/planning and conflict resolution; no Desktop execution workflow. |
 | `OpenSorSe.Executor` | v1.1 Change Plan factory/validator/stores, durable journal, filesystem gateway, deterministic execution, rollback, Undo, restart recovery, and report export; historical generic components remain unregistered. |
-| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, deterministic query interpretation and hybrid ranking, relationship evidence/engine/contracts/collections/context, provider-neutral Knowledge Graph projection/query/decision/privacy/repair, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
+| `OpenSorSe.Application` | Processing orchestration, Results projection, workflow profile/recipe domain/store/validation/templates/resolution/import/export/plan generation, plugin discovery/loading/lifecycle/packages/registry/invocation/diagnostics, persistent watched-folder management/coordinator/catalogues, debounced event hints, stability and incremental/reconciliation processing, AI gates/contracts, suggestion-to-plan adapters, catalog/search/comparison, deterministic query interpretation and hybrid ranking, relationship evidence/engine/contracts/collections/context, provider-neutral Knowledge Graph projection/query/decision/privacy/repair, provider-neutral Explorer read projection/on-demand transport, content extraction, OCR service, provenance tags, semantic index/search, and restructuring/history/comparison. |
 | `OpenSorSe.AI` | Optional Ollama-compatible HTTP transport and bounded AI review-decision persistence. |
 | `OpenSorSe.Indexing.Sqlite` | Embedded schema-versioned implementation of provider-neutral durable indexing, Search projection, relationship evidence/collections/corrections, isolated graph/decision sidecars, recovery, coverage, quota, privacy, and targeted-repair contracts. |
 | `OpenSorSe.Desktop` | Avalonia shell, Windows/Linux desktop adapters, platform diagnostics, global feature controls, Knowledge Graph/Collections/Search presentation, Workflows/profile/recipe management and preview, manual profile selection, Watched Folders management/status/actions/activity, MVVM pages, Review Changes, Operation History/details/report/Undo, Help, diagnostics, and explicit confirmation. |
@@ -77,7 +85,7 @@ flowchart LR
 Settings, logs, AI decisions, saved catalog/searches, extracted content,
 semantic index, structure history, workflow library, plugin state/packages,
 watched configurations/catalogues/grouped activity, Change Plans, and the
-Operation Journal live in separate bounded OpenSorSe application-owned files.
+Operation Journal live in separate bounded OmniSorSe application-owned files.
 v1.6 serializes process-local transactions per normalized path and replaces an
 owned document only after a complete bounded sibling is durably flushed.
 Released v2.2 used schema-4 `deep-index.db` after transactionally migrating
@@ -90,7 +98,7 @@ state that must not be silently reset.
 
 ## Deferred
 
-An online plugin marketplace/download/update service, out-of-process plugin sandbox, publisher signature authority, broad localization, installers/updaters/distribution packages, full macOS support, cloud indexing/synchronization, background-service monitoring while OpenSorSe is closed, automatic moved-root discovery, autonomous AI actions, permanent deletion, arbitrary recipe scripting, learned/external embedding models, automatic speculative entity identity, graph canvas/unrestricted traversal, and generic rule execution remain future work.
+An online plugin marketplace/download/update service, out-of-process plugin sandbox, publisher signature authority, broad localization, installers/updaters/distribution packages, full macOS support, cloud indexing/synchronization, background-service monitoring while OmniSorSe is closed, automatic moved-root discovery, autonomous AI actions, permanent deletion, arbitrary recipe scripting, learned/external embedding models, automatic speculative entity identity, graph canvas/unrestricted traversal, and generic rule execution remain future work.
 
 ## Related documents
 

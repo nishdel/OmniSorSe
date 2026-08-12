@@ -116,13 +116,36 @@ public sealed class PlatformFoundationTests : IDisposable
             _ => null,
             _workspace,
             local);
-        var root = Path.Combine(local, "OpenSorSe");
+        var root = Path.Combine(local, ApplicationPathProvider.LegacyWindowsAndMacStorageName);
 
         Assert.Equal(root, provider.Paths.ConfigurationDirectory);
         Assert.Equal(root, provider.Paths.DataDirectory);
         Assert.Equal(root, provider.Paths.StateDirectory);
         Assert.Equal(Path.Combine(root, "Logs"), provider.Paths.DiagnosticsDirectory);
         Assert.Equal(Path.Combine(root, "plugins"), provider.Paths.PluginDirectory);
+        Assert.Equal("OpenSorSe", ApplicationPathProvider.LegacyWindowsAndMacStorageName);
+        Assert.Equal("opensorse", ApplicationPathProvider.LegacyXdgStorageName);
+        Assert.DoesNotContain("OmniSorSe", provider.SettingsFilePath, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MacApplicationPaths_PreserveExistingProfileAcrossProductRename()
+    {
+        var provider = new ApplicationPathProvider(
+            HostPlatformKind.MacOS,
+            _ => null,
+            _workspace);
+
+        Assert.Equal(
+            Path.Combine(_workspace, "Library", "Application Support", "OpenSorSe"),
+            provider.Paths.DataDirectory);
+        Assert.Equal(
+            Path.Combine(_workspace, "Library", "Caches", "OpenSorSe"),
+            provider.Paths.CacheDirectory);
+        Assert.Equal(
+            Path.Combine(_workspace, "Library", "Logs", "OpenSorSe"),
+            provider.Paths.DiagnosticsDirectory);
+        Assert.DoesNotContain("OmniSorSe", provider.SettingsFilePath, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,11 +1,11 @@
-# Installing OpenSorSe
+# Installing OmniSorSe
 
 **Document type:** Living installation and update guidance
 
 ## Availability
 
-OpenSorSe v2.3.0 is distributed from the official
-[GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.3.0) as:
+The latest published package is OmniSorSe v2.4.0 from the official
+[GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.4.0) as:
 
 - a self-contained Windows x64 portable ZIP;
 - a per-user Windows x64 installer;
@@ -15,38 +15,44 @@ OpenSorSe v2.3.0 is distributed from the official
 
 No Linux installer is published. Linux x64 remains a source-build preview.
 Do not download packages from unrelated sites. Check [Release Status](RELEASE_STATUS.md)
-and [v2.3.0 Release Notes](RELEASE_NOTES_v2.3.0.md) before relying on a package.
+and [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) before relying on a package.
+
+The visible rename deliberately
+continues using the established OpenSorSe application-data directories, schema-5
+database, Windows installer AppId/default install directory, and macOS bundle
+identifier so existing profiles are not orphaned. See the
+[v2.4 transition design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md).
 
 ## Windows x64 installer
 
-1. Download `OpenSorSe-v2.3.0-win-x64-setup.exe` and the checksum file from the
+1. Download `OmniSorSe-v2.4.0-win-x64-setup.exe` and the checksum file from the
    same official release.
 2. Verify the checksum as described below.
 3. Run the installer. The default is a per-user installation below Local
    AppData, with a Start Menu shortcut and uninstall entry.
-4. Start OpenSorSe and select only folders you intend to analyse.
+4. Start OmniSorSe and select only folders you intend to analyse.
 
-The installer and executable are unsigned for v2.3.0 unless the release page
+The installer and executable are unsigned for v2.4.0 unless the release page
 explicitly records otherwise. Windows SmartScreen may warn that the publisher
 is unrecognized. Review the source location and checksum before continuing.
 
 ## Windows x64 portable
 
-1. Download `OpenSorSe-v2.3.0-win-x64.zip` and the checksum file from the same
+1. Download `OmniSorSe-v2.4.0-win-x64.zip` and the checksum file from the same
    official release.
 2. Verify the checksum.
 3. Extract the entire ZIP into a writable directory.
-4. Keep all extracted files together and start `OpenSorSe.exe`.
+4. Keep all extracted files together and start `OmniSorSe.exe`.
 
 The portable package is self-contained and does not require a separate .NET
 runtime installation.
 
 ## macOS Intel and Apple Silicon
 
-1. Choose `OpenSorSe-v2.3.0-macos-x64.dmg` for Intel or
-   `OpenSorSe-v2.3.0-macos-arm64.dmg` for Apple Silicon.
-2. Verify the checksum, open the DMG, and copy `OpenSorSe.app` to Applications.
-3. The v2.3.0 app is unsigned and unnotarized unless the release page explicitly
+1. Choose `OmniSorSe-v2.4.0-macos-x64.dmg` for Intel or
+   `OmniSorSe-v2.4.0-macos-arm64.dmg` for Apple Silicon.
+2. Verify the checksum, open the DMG, and copy `OmniSorSe.app` to Applications.
+3. The v2.4.0 app is unsigned and unnotarized unless the release page explicitly
    records otherwise. Gatekeeper may require an explicit reviewed override.
 
 The app bundle and native dependencies are built and smoke-tested on matching
@@ -57,14 +63,14 @@ guarantees.
 
 ## Verify SHA-256 checksums
 
-Download `OpenSorSe-v2.3.0-SHA256SUMS.txt` from the same release.
+Download `OmniSorSe-v2.4.0-SHA256SUMS.txt` from the same release.
 
 ```powershell
-(Get-FileHash .\OpenSorSe-v2.3.0-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+(Get-FileHash .\OmniSorSe-v2.4.0-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 
 ```bash
-shasum -a 256 OpenSorSe-v2.3.0-macos-arm64.dmg
+shasum -a 256 OmniSorSe-v2.4.0-macos-arm64.dmg
 ```
 
 Compare the complete value with the named line. A checksum detects changed
@@ -88,6 +94,9 @@ dotnet build .\OpenSorSe.sln --configuration Debug --no-restore
 dotnet test .\OpenSorSe.sln --configuration Debug --no-build --no-restore
 dotnet run --project .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj
 ```
+
+The project path remains internal/compatible, while the
+desktop assembly and native apphost are named `OmniSorSe`.
 
 Use disposable folders when evaluating Change Plan Apply, rollback, recovery,
 or Undo. A successful local build is not a signed or published release.
@@ -118,7 +127,7 @@ SmartScreen may report it as unrecognized.
 
 ## Optional Ollama-compatible AI
 
-OpenSorSe does not bundle, install, or start Ollama.
+OmniSorSe does not bundle, install, or start Ollama.
 
 1. Install and manage a compatible provider separately.
 2. Install a model supported by that provider.
@@ -147,19 +156,19 @@ and scanned PDF pages.
 
 ## Optional media tools
 
-OpenSorSe does not bundle `ffprobe` or `ffmpeg`. Install and manage compatible
+OmniSorSe does not bundle `ffprobe` or `ffmpeg`. Install and manage compatible
 local executables separately, then configure their absolute paths in Settings
 or make them available on `PATH`. `ffprobe` supplies bounded audio/video
 metadata; `ffmpeg` supplies bounded representative video frames. Missing or
 invalid tools disable only those capabilities and do not disable ordinary
 Search.
 
-No concrete visual-description provider ships. OpenSorSe does not send images
+No concrete visual-description provider ships. OmniSorSe does not send images
 or video frames to Ollama for visual analysis.
 
 ### Optional local whisper.cpp transcription
 
-v2.3.0 can use a separately installed, user-managed `whisper-cli` executable
+OmniSorSe can use a separately installed, user-managed `whisper-cli` executable
 and local GGML model. Official packages contain neither file and never download
 a model.
 
@@ -181,7 +190,7 @@ this speech provider. No concrete visual-description provider is included.
 
 ## Optional local plugins
 
-OpenSorSe accepts local ZIP packages; it does not search a marketplace,
+OmniSorSe accepts local ZIP packages; it does not search a marketplace,
 download plugin dependencies, or update plugins automatically. External
 plugins start disabled and require explicit capability grants.
 
@@ -218,7 +227,7 @@ do not copy it into the repository.
 
 ## Update a source build or portable release
 
-1. Close OpenSorSe so stores, indexing, watchers, and plugins shut down.
+1. Close OmniSorSe (or OpenSorSe v2.3) so stores, indexing, watchers, and plugins shut down.
 2. Read Version Notes, Release Status, and migration information.
 3. Keep the previous program directory and a reviewed backup of important
    application-owned state.
@@ -232,10 +241,12 @@ migration, newer-version rejection, corruption, and recovery behavior.
 
 ## Uninstall
 
-1. Close OpenSorSe.
-2. For the Windows installer, use the OpenSorSe uninstall entry. For a portable
+1. Close OmniSorSe.
+2. For the v2.4 Windows installer, use the OmniSorSe uninstall entry. The
+   retained AppId upgrades the previous OpenSorSe entry rather than creating a
+   second product. For a portable
    or source build, delete only its extracted/build program directory.
-3. Optionally remove the exact OpenSorSe-owned application-data directories.
+3. Optionally remove the exact legacy-named OpenSorSe-owned application-data directories.
 
 Removing application data does not delete scanned source files. It does remove
 local indexes, settings, plugins, plans, journal/recovery facts, Undo evidence,
@@ -261,7 +272,7 @@ data is a separate explicit user decision.
   executable and local model paths plus `ffmpeg` for video/container
   preparation. Ordinary Search remains available.
 - **Visual descriptions are unavailable:** no concrete provider ships in
-  v2.3.0; metadata/OCR/Search remain available.
+  v2.4.0; metadata/OCR/Search remain available.
 - **Search is incomplete:** review Background indexing coverage, exclusions,
   dependencies, failures, quota, pause state, and index availability.
 - **Settings do not persist:** verify the current platform’s application-data

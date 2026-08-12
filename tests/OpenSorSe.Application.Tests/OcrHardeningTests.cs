@@ -192,7 +192,7 @@ public sealed class OcrHardeningTests
             var builder = new PdfDocumentBuilder();
             var font = builder.AddStandard14Font(Standard14Font.Helvetica);
             var page = builder.AddPage(PageSize.A4);
-            page.AddText("OpenSorSe local PDF rendering test", 18, new PdfPoint(40, 760), font);
+            page.AddText("OmniSorSe local PDF rendering test", 18, new PdfPoint(40, 760), font);
             await File.WriteAllBytesAsync(pdfPath, builder.Build());
             var rasterizer = new PdfPageRasterizer();
             var workspace = rasterizer.CreateWorkspace();

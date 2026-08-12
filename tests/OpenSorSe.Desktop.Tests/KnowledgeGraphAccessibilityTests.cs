@@ -146,6 +146,6 @@ public sealed class KnowledgeGraphAccessibilityTests
             directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("The OpenSorSe repository root could not be located.");
+        throw new DirectoryNotFoundException("The OmniSorSe repository root could not be located.");
     }
 }

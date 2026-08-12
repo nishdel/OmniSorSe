@@ -156,7 +156,7 @@ public sealed record AiModel(string Id, string DisplayName)
 {
     /// <summary>
     /// Gets the runtime state supported by the provider. Ollama exposes installed and running
-    /// models, but not a reliable intermediate loading state, so OpenSorSe does not invent one.
+    /// models, but not a reliable intermediate loading state, so OmniSorSe does not invent one.
     /// </summary>
     public AiModelRuntimeState RuntimeState { get; init; } = AiModelRuntimeState.Available;
 }

@@ -498,7 +498,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
             {
                 Status = OperationStatus.Interrupted,
                 CompletedAtUtc = DateTimeOffset.UtcNow,
-                Summary = "OpenSorSe found an interrupted operation and inspected the current paths. Review Operation Details before recovery or Undo.",
+                Summary = "OmniSorSe found an interrupted operation and inspected the current paths. Review Operation Details before recovery or Undo.",
             };
             await PersistOperationAsync(updated).ConfigureAwait(false);
             _logger.LogWarning(
@@ -898,7 +898,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         {
             if (!action.DirectoryCreatedByOpenSorSe)
             {
-                throw new UndoBlockedException("OpenSorSe did not create this directory.");
+                throw new UndoBlockedException("OmniSorSe did not create this directory.");
             }
 
             if (!_fileSystem.DirectoryExists(action.IntendedDestinationPath))
@@ -1201,7 +1201,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
                     (PathEquals(candidate.OriginalPath, result) ||
                      PathEquals(candidate.IntendedDestinationPath, result))))
             {
-                return $"A later OpenSorSe operation ({later.OperationId}) depends on this path.";
+                return $"A later OmniSorSe operation ({later.OperationId}) depends on this path.";
             }
         }
 

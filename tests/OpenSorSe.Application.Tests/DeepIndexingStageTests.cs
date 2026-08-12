@@ -734,7 +734,7 @@ public sealed class DeepIndexingStageTests
         {
             Root = Path.Combine(
                 Path.GetTempPath(),
-                "OpenSorSe-deep-stage-tests",
+                "OmniSorSe-deep-stage-tests",
                 Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Root);
         }

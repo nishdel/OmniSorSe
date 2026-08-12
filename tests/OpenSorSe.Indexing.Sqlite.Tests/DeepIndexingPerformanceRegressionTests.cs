@@ -18,7 +18,7 @@ public sealed class DeepIndexingPerformanceRegressionTests
     {
         var root = Path.Combine(
             Path.GetTempPath(),
-            "OpenSorSe-index-performance",
+            "OmniSorSe-index-performance",
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         var databasePath = Path.Combine(root, "deep-index.db");

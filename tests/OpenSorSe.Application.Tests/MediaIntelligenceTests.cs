@@ -237,7 +237,7 @@ public sealed class MediaIntelligenceTests
     public async Task VideoSampler_UsesDeterministicCappedInteriorFramesAndCleansWorkspace()
     {
         using var fixture = new TempFixture("long video.mp4", [1]);
-        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var runner = new RecordingProcessRunner("ffmpeg version synthetic", string.Empty, createFrameOutput: true);
         var sampler = new FfmpegVideoFrameSampler(
             new Configuration(),
@@ -272,7 +272,7 @@ public sealed class MediaIntelligenceTests
             new Configuration(),
             new FixedToolLocator("ffmpeg"),
             runner,
-            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N")));
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N")));
         var metadata = new MediaMetadata { Kind = MediaKind.Video, Duration = TimeSpan.FromHours(5) };
 
         var result = await sampler.SampleAsync(fixture.File, metadata, new MediaIntelligenceSettings(), default);
@@ -286,7 +286,7 @@ public sealed class MediaIntelligenceTests
     public async Task VideoSampler_TimeoutFailsSafelyAndCleansWorkspace()
     {
         using var fixture = new TempFixture("timeout.mp4", [1]);
-        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var sampler = new FfmpegVideoFrameSampler(
             new Configuration(),
             new FixedToolLocator("ffmpeg"),
@@ -666,7 +666,7 @@ public sealed class MediaIntelligenceTests
         using var fixture = new TempFixture(
             "preview.png",
             CreateDecodablePng());
-        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var provider = new SkiaMediaThumbnailProvider(new Configuration(), cache);
 
         var first = await provider.GetThumbnailAsync(fixture.Path, Evidence(MediaKind.Image), default);
@@ -689,7 +689,7 @@ public sealed class MediaIntelligenceTests
     {
         using var fixture = new TempFixture("portrait.png", CreateDecodablePng());
         var sourceBefore = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(fixture.Path)));
-        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var provider = new SkiaMediaThumbnailProvider(new Configuration(), cache);
         var evidence = Evidence(MediaKind.Image) with
         {
@@ -716,7 +716,7 @@ public sealed class MediaIntelligenceTests
     public async Task ThumbnailProvider_SkipsEvidenceBeyondPixelLimit()
     {
         using var fixture = new TempFixture("huge.png", CreateDecodablePng());
-        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var provider = new SkiaMediaThumbnailProvider(
             new Configuration(new ApplicationSettings
             {
@@ -748,7 +748,7 @@ public sealed class MediaIntelligenceTests
     {
         using var fixture = new TempFixture("performance.png", CreateDecodablePng());
         var metadata = new ImageMediaMetadataProvider();
-        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var cache = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var thumbnails = new SkiaMediaThumbnailProvider(new Configuration(), cache);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -820,7 +820,7 @@ public sealed class MediaIntelligenceTests
             new RecordingProcessRunner(
                 "ffprobe version synthetic",
                 """{"streams":[{"codec_type":"video","codec_name":"h264","width":1920,"height":1080,"avg_frame_rate":"30/1"}],"format":{"format_name":"mp4","duration":"7200"}}"""));
-        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
         var sampler = new FfmpegVideoFrameSampler(
             new Configuration(),
             new FixedToolLocator("ffmpeg"),
@@ -989,7 +989,7 @@ public sealed class MediaIntelligenceTests
 
         public TempFixture(string fileName, byte[] content, long? reportedLength = null)
         {
-            _root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenSorSe-media-tests", Guid.NewGuid().ToString("N"));
+            _root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OmniSorSe-media-tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_root);
             Path = System.IO.Path.Combine(_root, fileName);
             System.IO.File.WriteAllBytes(Path, content);

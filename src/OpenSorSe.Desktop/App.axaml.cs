@@ -20,6 +20,7 @@ using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.Explorer;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
@@ -292,6 +293,9 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ISearchSnippetFactory, SearchSnippetFactory>();
         services.AddSingleton<ISearchRanker, HybridSearchRanker>();
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
+        services.AddSingleton<IExplorerDataSource, ExplorerDataSource>();
+        services.AddSingleton<IExplorerCompanionPresence, UnavailableExplorerCompanionPresence>();
+        services.AddSingleton<IExplorerProtocolHost, NamedPipeExplorerProtocolHost>();
         services.AddSingleton<IFolderStructureSnapshotService, FolderStructureSnapshotService>();
         services.AddSingleton<IStructureComparisonService, StructureComparisonService>();
         services.AddSingleton<IStructureHistoryStore>(serviceProvider =>
@@ -538,7 +542,7 @@ public partial class App : Avalonia.Application
         var category = exception.GetType().Name;
         var window = new Window
         {
-            Title = "OpenSorSe could not start",
+            Title = "OmniSorSe could not start",
             Width = 560,
             Height = 300,
             MinWidth = 440,
@@ -550,7 +554,7 @@ public partial class App : Avalonia.Application
             Content = "Close",
             HorizontalAlignment = HorizontalAlignment.Left,
         };
-        AutomationProperties.SetName(closeButton, "Close OpenSorSe startup error");
+        AutomationProperties.SetName(closeButton, "Close OmniSorSe startup error");
         closeButton.Click += (_, _) => window.Close();
         window.Content = new StackPanel
         {
@@ -560,13 +564,13 @@ public partial class App : Avalonia.Application
             {
                 new TextBlock
                 {
-                    Text = "OpenSorSe could not complete startup.",
+                    Text = "OmniSorSe could not complete startup.",
                     FontSize = 24,
                     FontWeight = FontWeight.SemiBold,
                 },
                 new TextBlock
                 {
-                    Text = "Your original files were not changed. Restart the application. If the problem continues, include the local OpenSorSe logs when reporting the issue after reviewing them for private information.",
+                    Text = "Your original files were not changed. Restart the application. If the problem continues, include the local OmniSorSe logs when reporting the issue after reviewing them for private information.",
                     TextWrapping = TextWrapping.Wrap,
                 },
                 new TextBlock
@@ -577,7 +581,7 @@ public partial class App : Avalonia.Application
                 closeButton,
             },
         };
-        AutomationProperties.SetName(window, "OpenSorSe startup error");
+        AutomationProperties.SetName(window, "OmniSorSe startup error");
         return window;
     }
 
@@ -594,7 +598,7 @@ public partial class App : Avalonia.Application
         catch (Exception loggingException)
         {
             System.Diagnostics.Trace.TraceError(
-                "OpenSorSe lifecycle failure in {0} ({1}); local logging also failed ({2}).",
+                "OmniSorSe lifecycle failure in {0} ({1}); local logging also failed ({2}).",
                 operation,
                 exception.GetType().Name,
                 loggingException.GetType().Name);
@@ -612,7 +616,7 @@ public partial class App : Avalonia.Application
         catch (Exception exception)
         {
             System.Diagnostics.Trace.TraceError(
-                "OpenSorSe lifecycle logger was unavailable ({0}).",
+                "OmniSorSe lifecycle logger was unavailable ({0}).",
                 exception.GetType().Name);
             return null;
         }

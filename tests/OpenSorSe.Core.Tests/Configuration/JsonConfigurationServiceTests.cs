@@ -160,7 +160,7 @@ public sealed class JsonConfigurationServiceTests
     public async Task InitializeAsync_PreservesLoggingOutputSettingsDuringEnvironmentOverride()
     {
         var settingsFilePath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}.json");
-        var logDirectoryPath = Path.Combine(Path.GetTempPath(), "OpenSorSe-Logs");
+        var logDirectoryPath = Path.Combine(Path.GetTempPath(), "OmniSorSe-Logs");
         await File.WriteAllTextAsync(
             settingsFilePath,
             JsonSerializer.Serialize(new

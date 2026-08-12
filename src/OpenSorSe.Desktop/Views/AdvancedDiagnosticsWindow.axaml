@@ -4,7 +4,7 @@
         xmlns:vm="clr-namespace:OpenSorSe.Desktop.ViewModels"
         x:Class="OpenSorSe.Desktop.Views.AdvancedDiagnosticsWindow"
         x:DataType="vm:AdvancedDiagnosticsViewModel"
-        Title="OpenSorSe Advanced Diagnostics"
+        Title="OmniSorSe Advanced Diagnostics"
         Width="1240" Height="820" MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterOwner">
   <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="14" RowSpacing="10">

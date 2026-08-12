@@ -11,7 +11,7 @@
                 <Button Grid.Column="1" Content="Help" Command="{Binding HelpCommand}"
                         ToolTip.Tip="Open scan-folder help" AutomationProperties.Name="Help for Scan folders" />
             </Grid>
-            <TextBlock Text="Add accessible local folders, then start a read-only analysis. OpenSorSe does not modify selected files."
+            <TextBlock Text="Add accessible local folders, then start a read-only analysis. OmniSorSe does not modify selected files."
                        TextWrapping="Wrap" />
             <TextBlock Text="Selected folders" FontWeight="SemiBold" />
             <ListBox ItemsSource="{Binding SelectedFolders}"

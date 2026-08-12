@@ -311,7 +311,7 @@ public sealed class LogViewerViewModel : ViewModelBase
     /// <summary>Gets a plain-language logging-health summary.</summary>
     public string LoggingStatus => Statistics.FileWriteFailures == 0
         ? "Healthy: no diagnostic log write failures have been recorded."
-        : "Attention needed: OpenSorSe could not write one or more diagnostic log entries.";
+        : "Attention needed: OmniSorSe could not write one or more diagnostic log entries.";
 
     /// <summary>Gets the empty-state explanation.</summary>
     public string EmptyStateMessage => "No diagnostic events have been recorded in this application session.";

@@ -316,12 +316,12 @@ public sealed class DeepIndexCorruptException : IOException
     }
 }
 
-/// <summary>Signals a durable schema created by a newer unsupported OpenSorSe version.</summary>
+/// <summary>Signals a durable schema created by a newer unsupported OmniSorSe version.</summary>
 public sealed class DeepIndexUnsupportedSchemaException : IOException
 {
     /// <summary>Initializes an unsupported-schema exception.</summary>
     public DeepIndexUnsupportedSchemaException(int foundVersion, int supportedVersion)
-        : base($"The index schema version {foundVersion} is newer than the supported version {supportedVersion}. Update OpenSorSe or restore a compatible backup.")
+        : base($"The index schema version {foundVersion} is newer than the supported version {supportedVersion}. Update OmniSorSe or restore a compatible backup.")
     {
         FoundVersion = foundVersion;
         SupportedVersion = supportedVersion;

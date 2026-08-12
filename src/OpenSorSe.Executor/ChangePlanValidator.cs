@@ -288,7 +288,7 @@ public sealed class ChangePlanValidator : IChangePlanValidator
                     ? ChangeConflictCategory.SourceRenamedExternally
                     : ChangeConflictCategory.SourceMissing,
                 renamed
-                    ? "The source appears to have been renamed outside OpenSorSe."
+                    ? "The source appears to have been renamed outside OmniSorSe."
                     : "The source file no longer exists.",
                 true);
             return;

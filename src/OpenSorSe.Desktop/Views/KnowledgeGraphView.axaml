@@ -55,7 +55,7 @@
 
                 <StackPanel IsVisible="{Binding ShowEnablement}" Spacing="8">
                     <TextBlock Text="{Binding EnablementText}" TextWrapping="Wrap" />
-                    <TextBlock Text="The graph stores rebuildable connections and a separate record of graph-native choices in OpenSorSe application data. Enabling it never moves, renames, edits, or deletes original files."
+                    <TextBlock Text="The graph stores rebuildable connections and a separate record of graph-native choices in OmniSorSe application data. Enabling it never moves, renames, edits, or deletes original files."
                                TextWrapping="Wrap"
                                AutomationProperties.Name="Knowledge Graph privacy and storage explanation" />
                     <Button x:Name="GraphEnableButton"
@@ -381,7 +381,7 @@
                                 <Border Classes="card" IsVisible="{Binding HasFacts}">
                                     <StackPanel Spacing="8">
                                         <TextBlock Text="Evidence-backed facts" FontSize="18" FontWeight="SemiBold" />
-                                        <TextBlock Text="These bounded values come from the current indexed record and include retained evidence references; OpenSorSe does not infer missing values."
+                                        <TextBlock Text="These bounded values come from the current indexed record and include retained evidence references; OmniSorSe does not infer missing values."
                                                    TextWrapping="Wrap" />
                                         <ListBox ItemsSource="{Binding Facts}"
                                                  AutomationProperties.Name="Bounded evidence-backed Knowledge Graph facts">
@@ -402,7 +402,7 @@
                                 <Border Classes="card" IsVisible="{Binding HasTimeline}">
                                     <StackPanel Spacing="8">
                                         <TextBlock Text="Timeline" FontSize="18" FontWeight="SemiBold" />
-                                        <TextBlock Text="Timeline entries are retained timestamped facts; OpenSorSe does not infer missing events."
+                                        <TextBlock Text="Timeline entries are retained timestamped facts; OmniSorSe does not infer missing events."
                                                    TextWrapping="Wrap" />
                                         <ListBox ItemsSource="{Binding Timeline}"
                                                  AutomationProperties.Name="Bounded Knowledge Graph timeline">
@@ -422,7 +422,7 @@
                                 <Border Classes="card">
                                     <StackPanel Spacing="8">
                                         <TextBlock Text="Manual graph controls" FontSize="18" FontWeight="SemiBold" />
-                                        <TextBlock Text="Manual links and compatible entity corrections change only OpenSorSe-owned graph decisions. Original files remain unchanged."
+                                        <TextBlock Text="Manual links and compatible entity corrections change only OmniSorSe-owned graph decisions. Original files remain unchanged."
                                                    TextWrapping="Wrap" />
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                             <TextBox Text="{Binding ManualEntityLabel, Mode=TwoWay}"
@@ -494,7 +494,7 @@
                                                 <TextBlock Text="{Binding DecisionConfirmationText}"
                                                            TextWrapping="Wrap"
                                                            AutomationProperties.Name="Knowledge Graph correction impact" />
-                                                <TextBlock Text="This action changes only OpenSorSe-owned index decisions and can be reviewed before it is applied. Original files remain unchanged."
+                                                <TextBlock Text="This action changes only OmniSorSe-owned index decisions and can be reviewed before it is applied. Original files remain unchanged."
                                                            TextWrapping="Wrap" />
                                                 <WrapPanel>
                                                     <Button x:Name="GraphDecisionConfirmButton"
@@ -545,7 +545,7 @@
                                         AutomationProperties.Name="Confirm Knowledge Graph privacy action">
                                     <StackPanel Spacing="8">
                                         <TextBlock Text="{Binding PrivacyConfirmationText}" TextWrapping="Wrap" />
-                                        <TextBlock Text="This removes or suppresses OpenSorSe-owned graph data only. Original files and folders remain unchanged."
+                                        <TextBlock Text="This removes or suppresses OmniSorSe-owned graph data only. Original files and folders remain unchanged."
                                                    TextWrapping="Wrap" />
                                         <WrapPanel>
                                             <Button Margin="0,0,8,0" Content="Confirm privacy action" Command="{Binding ConfirmPrivacyActionCommand}" />
@@ -640,7 +640,7 @@
                                         AutomationProperties.Name="Confirm Knowledge Graph repair action">
                                     <StackPanel Spacing="8">
                                         <TextBlock Text="{Binding RepairConfirmationText}" TextWrapping="Wrap" />
-                                        <TextBlock Text="Only OpenSorSe-owned graph data will be replaced. Original files remain unchanged."
+                                        <TextBlock Text="Only OmniSorSe-owned graph data will be replaced. Original files remain unchanged."
                                                    TextWrapping="Wrap" />
                                         <WrapPanel>
                                             <Button Margin="0,0,8,0" Content="Confirm repair action" Command="{Binding ConfirmRepairActionCommand}" />

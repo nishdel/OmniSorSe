@@ -542,7 +542,7 @@ public sealed class ChangePlanSafetyTests
         var undo = await context.Executor.UndoAsync(first.Operation.OperationId, null, null, CancellationToken.None);
 
         Assert.Equal(OperationStatus.UndoBlockedByConflicts, undo.Operation.Status);
-        Assert.Contains("later OpenSorSe operation", Assert.Single(undo.Operation.Actions).UndoConflictDetails);
+        Assert.Contains("later OmniSorSe operation", Assert.Single(undo.Operation.Actions).UndoConflictDetails);
         Assert.True(File.Exists(final));
     }
 
@@ -640,7 +640,7 @@ public sealed class ChangePlanSafetyTests
         var report = new OperationReportExporter().Export(Assert.Single(reloadedOperations));
 
         Assert.Single(reloadedPlans);
-        Assert.Contains("OpenSorSe Operation Report", report);
+        Assert.Contains("OmniSorSe Operation Report", report);
         Assert.Contains(result.Operation.OperationId, report);
         Assert.Contains("Undo: Available", report);
         Assert.DoesNotContain("data", report);

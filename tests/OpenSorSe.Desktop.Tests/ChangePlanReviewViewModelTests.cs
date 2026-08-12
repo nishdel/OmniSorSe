@@ -169,7 +169,7 @@ public sealed class ChangePlanReviewViewModelTests
         Assert.True(history.RequestOperationUndoCommand.CanExecute(null));
 
         await history.CopyReportCommand.ExecuteAsync(null);
-        Assert.Contains("OpenSorSe Operation Report", clipboard.Text);
+        Assert.Contains("OmniSorSe Operation Report", clipboard.Text);
 
         history.RequestOperationUndoCommand.Execute(null);
         Assert.True(history.IsUndoConfirmationPending);

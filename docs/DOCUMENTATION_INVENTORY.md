@@ -4,8 +4,9 @@
 
 **Audit date:** 2026-08-03
 
-**Repository basis:** `v1.9-relationships-context`, created from exact validated
-v1.8 tip `01899f9701f58d3bf2e5c0eaadc5c87efe68ea2d`
+**Repository basis:** released OmniSorSe v2.4.0 from
+`v2.4-omnisorse-transition`, based on exact OpenSorSe v2.3.0 tip
+`abe43e171bdcefa48cc55a6af6e560e2c8c8ce94`
 
 ## Audit method and initial inventory
 
@@ -71,6 +72,13 @@ The v2.3 release adds
 boundary, `docs/MANUAL_TESTING_v2.3.md` as its evidence-separated validation
 tracker, and `docs/RELEASE_NOTES_v2.3.0.md` as the published release summary.
 
+The v2.4 release adds
+`docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` as the authoritative
+rename, compatibility, threat-model, and Explorer Protocol boundary, plus
+`docs/MANUAL_TESTING_v2.4.md` as its evidence-separated checklist, and
+`docs/RELEASE_NOTES_v2.4.0.md` as its published summary. These documents do not
+claim an OmniExplorer implementation.
+
 ## Authority model
 
 ### Living and authoritative
@@ -99,6 +107,8 @@ These files describe current product/project policy or the current source tree:
 - `docs/FOSS_DEPENDENCY_POLICY.md`
 - `docs/CONTENT_INTELLIGENCE_v2.3.md`
 - `docs/MANUAL_TESTING_v2.3.md`
+- `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`
+- `docs/MANUAL_TESTING_v2.4.md`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`

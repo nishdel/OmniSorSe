@@ -12,7 +12,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
 
     /// <summary>Initializes the renderer and removes stale application-owned OCR workspaces.</summary>
     public PdfPageRasterizer()
-        : this(Path.Combine(Path.GetTempPath(), "OpenSorSe", "ocr"))
+        : this(Path.Combine(Path.GetTempPath(), "OmniSorSe", "ocr"))
     {
     }
 
@@ -220,7 +220,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
             name.Length != WorkspacePrefix.Length + 32 ||
             !Guid.TryParseExact(name[WorkspacePrefix.Length..], "N", out _))
         {
-            throw new InvalidOperationException("Only an isolated OpenSorSe OCR workspace may be deleted or written.");
+            throw new InvalidOperationException("Only an isolated OmniSorSe OCR workspace may be deleted or written.");
         }
 
         if (Directory.Exists(normalized))

@@ -2,7 +2,7 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '2.3.0',
+    [string]$Version = '2.4.0',
 
     [Parameter()]
     [string]$OutputDirectory = '',
@@ -33,7 +33,7 @@ if (Test-Path -LiteralPath $stagingRoot) {
     Remove-Item -LiteralPath $stagingRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
-$applicationDirectory = Join-Path $stagingRoot 'OpenSorSe'
+$applicationDirectory = Join-Path $stagingRoot 'OmniSorSe'
 
 $publishArguments = @(
     'publish',
@@ -61,14 +61,14 @@ if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
     throw "Release notes for v$Version are missing: $releaseNotes"
 }
 Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $applicationDirectory 'RELEASE_NOTES.md')
-Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\OpenSorSe.Desktop\Assets\opensorse-app-icon.ico') -Destination (Join-Path $applicationDirectory 'OpenSorSe.ico')
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\OpenSorSe.Desktop\Assets\opensorse-app-icon.ico') -Destination (Join-Path $applicationDirectory 'OmniSorSe.ico')
 
 Get-ChildItem -LiteralPath $applicationDirectory -Recurse -Force -File -Filter '*.pdb' |
     Remove-Item -Force
 
-$executable = Join-Path $applicationDirectory 'OpenSorSe.exe'
+$executable = Join-Path $applicationDirectory 'OmniSorSe.exe'
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-    throw 'The self-contained Windows publish did not produce OpenSorSe.exe.'
+    throw 'The self-contained Windows publish did not produce OmniSorSe.exe.'
 }
 
 $forbidden = Get-ChildItem -LiteralPath $applicationDirectory -Recurse -Force -File | Where-Object {
@@ -79,7 +79,7 @@ if ($forbidden) {
     throw "Forbidden release payload entries: $($forbidden.FullName -join ', ')"
 }
 
-$portableArchive = Join-Path $outputRoot "OpenSorSe-v$Version-win-x64.zip"
+$portableArchive = Join-Path $outputRoot "OmniSorSe-v$Version-win-x64.zip"
 if (Test-Path -LiteralPath $portableArchive) {
     Remove-Item -LiteralPath $portableArchive -Force
 }
@@ -105,7 +105,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }
 
-$installer = Join-Path $outputRoot "OpenSorSe-v$Version-win-x64-setup.exe"
+$installer = Join-Path $outputRoot "OmniSorSe-v$Version-win-x64-setup.exe"
 if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
     throw 'The Windows installer was not produced at the expected path.'
 }

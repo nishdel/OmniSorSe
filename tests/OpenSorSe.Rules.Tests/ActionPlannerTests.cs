@@ -199,7 +199,7 @@ public sealed class ActionPlannerTests
     {
         var sourcePath = Path.Combine(
             Path.GetTempPath(),
-            "OpenSorSe-ActionPlanner-Case",
+            "OmniSorSe-ActionPlanner-Case",
             "file.txt");
         var file = new FileEntry(
             sourcePath,
@@ -243,10 +243,10 @@ public sealed class ActionPlannerTests
         new(new TestLoggingService(), new TestErrorHandler(), pathSemantics);
 
     private static string SourceDirectory =>
-        Path.Combine(Path.GetTempPath(), "OpenSorSe-Rules-Source");
+        Path.Combine(Path.GetTempPath(), "OmniSorSe-Rules-Source");
 
     private static string DestinationDirectory =>
-        Path.Combine(Path.GetTempPath(), "OpenSorSe-Rules-Destination");
+        Path.Combine(Path.GetTempPath(), "OmniSorSe-Rules-Destination");
 
     private static string SourcePath(string name) => Path.Combine(SourceDirectory, name);
 

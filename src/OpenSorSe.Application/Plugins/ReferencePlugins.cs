@@ -64,7 +64,7 @@ public static class BuiltInPluginCatalog
                 name,
                 "A low-risk built-in reference plugin that proves the public extension SDK and host boundary.",
                 "1.4.0",
-                "OpenSorSe contributors",
+                "OmniSorSe contributors",
                 "MIT",
                 "1.4.0",
                 "1.5.99",

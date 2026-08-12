@@ -166,7 +166,7 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
 
         if (!TryVersion(manifest.MinimumOpenSorSeVersion, out var minimum))
         {
-            Add(issues, "manifest.minimum-host", "The minimum OpenSorSe version is invalid.");
+            Add(issues, "manifest.minimum-host", "The minimum OmniSorSe version is invalid.");
         }
 
         Version? maximum = null;
@@ -174,7 +174,7 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
         {
             if (!TryVersion(manifest.MaximumOpenSorSeVersion, out var parsedMaximum))
             {
-                Add(issues, "manifest.maximum-host", "The maximum OpenSorSe version is invalid.");
+                Add(issues, "manifest.maximum-host", "The maximum OmniSorSe version is invalid.");
             }
             else
             {
@@ -184,7 +184,7 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
 
         if (minimum is not null && maximum is not null && minimum > maximum)
         {
-            Add(issues, "manifest.host-range", "The supported OpenSorSe version range is contradictory.");
+            Add(issues, "manifest.host-range", "The supported OmniSorSe version range is contradictory.");
         }
 
         if (!Bounded(manifest.DisplayName, 256) ||

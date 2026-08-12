@@ -1,6 +1,7 @@
-# OpenSorSe system map
+# OmniSorSe system map
 
-These Mermaid diagrams model released v2.3 Content Intelligence. They emphasize
+These Mermaid diagrams model the released OmniSorSe v2.4 implementation over the
+released v2.3 Content Intelligence baseline. They emphasize
 communication, ownership, persistence, and safety boundaries; minor helper
 classes and presentation details are intentionally omitted.
 
@@ -47,6 +48,7 @@ flowchart TB
         Tesseract["Tesseract OCR engine"]
         MediaTools["Optional local ffprobe and ffmpeg"]
         Package["External local plugin ZIP"]
+        Companion["Future optional OmniExplorer (not shipped)"]
     end
 
     subgraph Desktop["Desktop layer"]
@@ -83,6 +85,8 @@ flowchart TB
         GraphCoordinator["Durable Knowledge Graph projection coordinator"]
         GraphServices["Provider-neutral graph query, decision, privacy, repair, and Search services"]
         MediaCoordinator["Provider-neutral bounded media coordinator"]
+        ExplorerHost["On-demand Explorer Protocol host"]
+        ExplorerContract["Dependency-free Protocol v1 contract"]
     end
 
     subgraph Processing["Read-only processing and suggestion layer"]
@@ -122,12 +126,16 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Released schema 4 + candidate schema 5 Search, relationship, media, and Content Intelligence index"]
+        DeepIndex["Schema 5 Search, relationship, media, and Content Intelligence index"]
         GraphIndex["Schema 1 rebuildable Knowledge Graph projection"]
         GraphDecisions["Schema 1 graph-native decision and privacy authority"]
     end
 
     User -->|commands and review| Shell
+    Companion -.->|authenticated, source-scoped, bounded, read-only local session| ExplorerHost
+    ExplorerHost --> ExplorerContract
+    ExplorerHost --> IndexCoordinator
+    ExplorerHost --> RelationshipService
     Shell --> ScanUI
     Shell --> FilesUI
     Shell --> SearchUI

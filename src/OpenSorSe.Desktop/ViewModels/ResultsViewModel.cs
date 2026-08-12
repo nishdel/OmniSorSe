@@ -336,7 +336,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 UserTagText = null;
                 UserTagStatusText = value is null
                     ? "Select a result file to manage application-owned tags."
-                    : "Tags are OpenSorSe metadata and never change the selected file.";
+                    : "Tags are OmniSorSe metadata and never change the selected file.";
                 SelectedUserTag = null;
                 UpdateSelectedDetails();
                 UpdateAiSuggestionContext();
@@ -574,7 +574,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         }
         catch (UnauthorizedAccessException)
         {
-            StatusText = "The Files layout could not be saved. Check access to the OpenSorSe settings folder.";
+            StatusText = "The Files layout could not be saved. Check access to the OmniSorSe settings folder.";
         }
         finally
         {
@@ -997,8 +997,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             .ToArray());
         UserTagText = null;
         var status = additions.Length == 1
-            ? "Tag added as OpenSorSe metadata. The selected file was not changed."
-            : $"{additions.Length} tags added as OpenSorSe metadata. The selected file was not changed.";
+            ? "Tag added as OmniSorSe metadata. The selected file was not changed."
+            : $"{additions.Length} tags added as OmniSorSe metadata. The selected file was not changed.";
         await PublishTagChangeAsync(status);
     }
 
@@ -1022,7 +1022,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
         _tagsByFile[SelectedRow.FileId] = Array.AsReadOnly(remaining);
         SelectedUserTag = null;
-        await PublishTagChangeAsync("Tag removed from OpenSorSe metadata. The selected file was not changed.");
+        await PublishTagChangeAsync("Tag removed from OmniSorSe metadata. The selected file was not changed.");
     }
 
     private Task AcceptSuggestedTagAsync() =>
@@ -1073,7 +1073,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         SelectedUserTag = UserTags.FirstOrDefault(tag =>
             string.Equals(tag.TagId, selectedTagId, StringComparison.Ordinal));
         UserTagStatusText = state == TagAcceptanceState.Accepted
-            ? "Generated tag accepted as local OpenSorSe metadata."
+            ? "Generated tag accepted as local OmniSorSe metadata."
             : "Generated tag rejected until source content changes or generated tags are reset.";
     }
 

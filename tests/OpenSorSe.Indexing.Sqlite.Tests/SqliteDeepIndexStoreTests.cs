@@ -1737,7 +1737,7 @@ public sealed class SqliteDeepIndexStoreTests
     {
         public IndexFixture()
         {
-            Root = Path.Combine(Path.GetTempPath(), "OpenSorSe-index-tests", Guid.NewGuid().ToString("N"));
+            Root = Path.Combine(Path.GetTempPath(), "OmniSorSe-index-tests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(Root);
             DatabasePath = Path.Combine(Root, "deep-index.db");
         }

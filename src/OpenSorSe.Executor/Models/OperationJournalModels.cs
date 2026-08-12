@@ -86,7 +86,7 @@ public sealed record OperationJournalAction(
     string? AiRequestCorrelationId,
     bool DirectoryCreatedByOpenSorSe);
 
-/// <summary>Persists what OpenSorSe actually attempted, independently from its source Change Plan.</summary>
+/// <summary>Persists what OmniSorSe actually attempted, independently from its source Change Plan.</summary>
 public sealed record OperationJournalRecord(
     int SchemaVersion,
     string OperationId,

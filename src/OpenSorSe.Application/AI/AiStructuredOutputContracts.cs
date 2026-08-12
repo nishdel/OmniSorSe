@@ -206,7 +206,7 @@ public sealed record AiSearchRerankingResponseContract
     [JsonPropertyName("status"), JsonPropertyOrder(1)]
     public string? Status { get; init; }
 
-    /// <summary>Gets only request-local candidate identities supplied by OpenSorSe.</summary>
+    /// <summary>Gets only request-local candidate identities supplied by OmniSorSe.</summary>
     [JsonPropertyName("orderedCandidateIds"), JsonPropertyOrder(2)]
     public IReadOnlyList<string>? OrderedCandidateIds { get; init; }
 

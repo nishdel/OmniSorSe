@@ -3,7 +3,7 @@ using Avalonia.Controls;
 namespace OpenSorSe.Desktop.Views;
 
 /// <summary>
-/// Displays static OpenSorSe application information.
+/// Displays static OmniSorSe application information.
 /// </summary>
 public partial class AboutView : UserControl
 {

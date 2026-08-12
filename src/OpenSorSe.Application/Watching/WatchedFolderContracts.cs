@@ -462,7 +462,7 @@ public sealed record WatchedSuggestionResult(
     public IReadOnlySet<string> FailedAiFileIds { get; init; } = new HashSet<string>(StringComparer.Ordinal);
 }
 
-/// <summary>Classifies verified hints caused by a recorded OpenSorSe operation.</summary>
+/// <summary>Classifies verified hints caused by a recorded OmniSorSe operation.</summary>
 public interface IWatchedExecutionCorrelation
 {
     Task<bool> IsOpenSorSeGeneratedAsync(

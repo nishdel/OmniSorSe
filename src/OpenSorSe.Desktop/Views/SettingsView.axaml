@@ -9,7 +9,7 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                 <StackPanel Spacing="3">
                     <TextBlock Classes="page-title" Text="Settings" />
-                    <TextBlock Classes="page-subtitle" Text="Make OpenSorSe yours." />
+                    <TextBlock Classes="page-subtitle" Text="Make OmniSorSe yours." />
                 </StackPanel>
                 <Button Grid.Column="1"
                         Classes="help"
@@ -22,9 +22,9 @@
             <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="Completed scan library" FontSize="18" FontWeight="SemiBold" />
-                    <CheckBox Content="Save completed scans in OpenSorSe's local library"
+                    <CheckBox Content="Save completed scans in OmniSorSe's local library"
                               IsChecked="{Binding Draft.CatalogEnabled, Mode=TwoWay}" />
-                    <TextBlock Text="Scanning is always local. This optional setting retains display-safe scan information and accepted tags in OpenSorSe application data so the scan can be reopened; selected files are never changed."
+                    <TextBlock Text="Scanning is always local. This optional setting retains display-safe scan information and accepted tags in OmniSorSe application data so the scan can be reopened; selected files are never changed."
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -130,7 +130,7 @@
                     <TextBlock Text="File analysis" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Extract searchable information and build Search coverage in the background"
                               IsChecked="{Binding Draft.DeepIndexingEnabled, Mode=TwoWay}" />
-                    <TextBlock Text="Search indexing is performed locally and does not require AI. The index is stored in OpenSorSe application data; original files are not changed."
+                    <TextBlock Text="Search indexing is performed locally and does not require AI. The index is stored in OmniSorSe application data; original files are not changed."
                                TextWrapping="Wrap" />
                     <TextBlock Text="Basic stores names and metadata. Standard adds document text and related concepts. Deep adds applicable OCR and richer bounded analysis. Completed stages resume after interruption."
                                TextWrapping="Wrap" />
@@ -163,7 +163,7 @@
                         <CheckBox Margin="0,0,16,6"
                                   Content="Store derived summaries, keywords, and Content Intelligence"
                                   IsChecked="{Binding Draft.DeepSummaryProcessingEnabled, Mode=TwoWay}"
-                                  AutomationProperties.HelpText="Derived summaries, keywords, topics, and textual entities are stored only in OpenSorSe's local index. The Content Intelligence controls choose which categories are retained." />
+                                  AutomationProperties.HelpText="Derived summaries, keywords, topics, and textual entities are stored only in OmniSorSe's local index. The Content Intelligence controls choose which categories are retained." />
                         <CheckBox Margin="0,0,16,6"
                                   Content="Store related-concept data and selected chunks"
                                   IsChecked="{Binding Draft.DeepSemanticProcessingEnabled, Mode=TwoWay}"
@@ -307,7 +307,7 @@
                               IsChecked="{Binding Draft.OcrEnabled, Mode=TwoWay}" />
                     <CheckBox Content="OCR only when reliable native text is unavailable"
                               IsChecked="{Binding Draft.OcrOnlyWhenNativeTextUnavailable, Mode=TwoWay}" />
-                    <TextBlock Text="OCR is off by default, remains local, and never writes recognized text into source documents. OpenSorSe includes a local PDF page renderer; recognition requires an externally managed Tesseract CLI and selected language packs."
+                    <TextBlock Text="OCR is off by default, remains local, and never writes recognized text into source documents. OmniSorSe includes a local PDF page renderer; recognition requires an externally managed Tesseract CLI and selected language packs."
                                TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                         <StackPanel Spacing="3">
@@ -427,7 +427,7 @@
                                       IsChecked="{Binding Draft.VideoFrameAnalysisEnabled, Mode=TwoWay}" />
                         </StackPanel>
                     </Grid>
-                    <TextBlock Text="No media is silently uploaded. OCR and transcripts can reveal words that are not visible in filenames. GPS metadata stays in OpenSorSe's local index and is never reverse-geocoded or transmitted by Media Intelligence. Transcription and visual descriptions require separately configured local providers."
+                    <TextBlock Text="No media is silently uploaded. OCR and transcripts can reveal words that are not visible in filenames. GPS metadata stays in OmniSorSe's local index and is never reverse-geocoded or transmitted by Media Intelligence. Transcription and visual descriptions require separately configured local providers."
                                TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                         <StackPanel Spacing="3">
@@ -443,7 +443,7 @@
                                      AutomationProperties.Name="Local whisper.cpp model path" />
                         </StackPanel>
                     </Grid>
-                    <TextBlock Text="Speech transcription runs locally only when both a user-managed whisper.cpp runtime and model are configured. OpenSorSe never downloads models automatically."
+                    <TextBlock Text="Speech transcription runs locally only when both a user-managed whisper.cpp runtime and model are configured. OmniSorSe never downloads models automatically."
                                TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                         <StackPanel Spacing="3">
@@ -521,7 +521,7 @@
                     <TextBlock Text="Optional AI assistance" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Enable AI features"
                               IsChecked="{Binding Draft.AiEnabled, Mode=TwoWay}" />
-                    <TextBlock Text="Off by default. When disabled, OpenSorSe hides AI actions and does not check Ollama, discover models, or send model requests."
+                    <TextBlock Text="Off by default. When disabled, OmniSorSe hides AI actions and does not check Ollama, discover models, or send model requests."
                                TextWrapping="Wrap" />
 
                     <StackPanel IsVisible="{Binding IsAiCapabilitySettingsVisible}" Spacing="8">

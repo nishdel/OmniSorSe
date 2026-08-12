@@ -1,6 +1,8 @@
-# OpenSorSe architecture overview
+# OmniSorSe architecture overview
 
-This is the authoritative top-level architecture for released OpenSorSe v2.3.0.
+This is the authoritative top-level architecture for the released OmniSorSe
+v2.4 implementation candidate. It extends the released OpenSorSe v2.3.0
+baseline without changing schema 5 or established profile locations.
 The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
@@ -13,7 +15,7 @@ cross-cutting implementation and validation policy.
 
 ## Architectural shape
 
-OpenSorSe is a local-first cross-platform desktop application with a primary
+OmniSorSe is a local-first cross-platform desktop application with a primary
 Windows target, native macOS distribution, and Linux source-build preview. It is built with .NET 8,
 Avalonia, MVVM, dependency injection, asynchronous bounded services,
 user-local JSON persistence, an embedded provider-isolated SQLite Search index,
@@ -39,6 +41,7 @@ internal services.
 | Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
 | Media Intelligence candidate | `IMediaIntelligenceService` coordinates capability-based metadata, transcription, representative-frame, OCR, visual-description, and thumbnail providers. Structured evidence enters the existing durable stage/store/Search contracts; providers never own traversal, ranking, or source-file mutation. |
 | Content Intelligence candidate | `IContentIntelligenceProvider` receives only bounded retained evidence and returns normalized topics, textual entities, keywords, an extractive summary, provenance, and a processing fingerprint. `WhisperCppTranscriptionProvider` is an optional user-managed local process adapter; no runtime/model is bundled or downloaded. |
+| Explorer Protocol v1 | The dependency-free `OmniSorSe.ExplorerProtocol` project owns only DTOs/enums/version/capabilities. Application `IExplorerDataSource`, `ExplorerReadService`, and the on-demand current-user local named-pipe host project authorized indexed Structure/Search/Context without exposing SQLite or write operations. The host remains dormant while the future OmniExplorer companion is absent. |
 | Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
 | Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
 | Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
@@ -255,7 +258,7 @@ and the [Capability Matrix](PLATFORM_COMPATIBILITY_MATRIX.md).
    never calls `IChangePlanExecutionService`.
 
 `OperationJournalWatchedExecutionCorrelation` recognizes verified events caused
-by prior OpenSorSe execution so watcher hints do not recursively create the same
+by prior OmniSorSe execution so watcher hints do not recursively create the same
 proposal. It does not suppress unrelated external changes.
 
 ## Plugin lifecycle
@@ -330,7 +333,7 @@ code. They are not the production route for current Desktop suggestions.
 
 ## Persistence view
 
-Production stores are rooted under `%LOCALAPPDATA%\OpenSorSe` unless the user
+Production stores remain rooted under `%LOCALAPPDATA%\OpenSorSe` unless the user
 chooses an allowed log directory. Source files remain where the user selected
 them.
 

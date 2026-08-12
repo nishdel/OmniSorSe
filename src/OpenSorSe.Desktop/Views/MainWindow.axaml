@@ -29,7 +29,7 @@
             <Grid RowDefinitions="Auto,*,Auto" RowSpacing="18">
                 <Grid ColumnDefinitions="64,*"
                       ColumnSpacing="10"
-                      AutomationProperties.Name="OpenSorSe, Open Sort and Search">
+                      AutomationProperties.Name="OmniSorSe, Open Sort and Search">
                     <Image Width="64"
                            Height="64"
                            Source="/Assets/opensorse-app-icon.png"

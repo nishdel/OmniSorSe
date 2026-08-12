@@ -16,11 +16,11 @@ public sealed class AboutViewModelTests
     {
         var viewModel = new AboutViewModel();
 
-        Assert.Equal("OpenSorSe", viewModel.ApplicationName);
-        Assert.Equal("2.3", viewModel.Version);
-        Assert.Equal(new Version(2, 3, 0, 0), typeof(AboutViewModel).Assembly.GetName().Version);
+        Assert.Equal("OmniSorSe", viewModel.ApplicationName);
+        Assert.Equal("2.4", viewModel.Version);
+        Assert.Equal(new Version(2, 4, 0, 0), typeof(AboutViewModel).Assembly.GetName().Version);
         Assert.Equal(
-            "2.3.0",
+            "2.4.0",
             typeof(AboutViewModel).Assembly
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                 .InformationalVersion);

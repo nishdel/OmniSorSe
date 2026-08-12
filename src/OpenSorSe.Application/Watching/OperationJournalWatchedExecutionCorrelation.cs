@@ -7,10 +7,10 @@ using OpenSorSe.Executor.Models;
 namespace OpenSorSe.Application.Watching;
 
 /// <summary>
-/// Correlates watcher hints with verified paths recorded by OpenSorSe execution.
+/// Correlates watcher hints with verified paths recorded by OmniSorSe execution.
 /// </summary>
 /// <remarks>
-/// Correlation prevents a successful OpenSorSe move/rename from recursively
+/// Correlation prevents a successful OmniSorSe move/rename from recursively
 /// producing the same suggestion. It is bounded and consume-on-match; failure
 /// to read the journal fails open to normal reconciliation rather than hiding
 /// an external filesystem change.

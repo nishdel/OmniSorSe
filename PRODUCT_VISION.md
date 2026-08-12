@@ -1,4 +1,4 @@
-# OpenSorSe product vision
+# OmniSorSe product vision
 
 **Document type:** Living product direction
 
@@ -9,14 +9,14 @@ behavior and future intent
 [Release Status](docs/RELEASE_STATUS.md), and
 [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md)
 
-## Why OpenSorSe exists
+## Why OmniSorSe exists
 
 People accumulate files faster than they can understand, retrieve, and safely
 organize them. Existing tools often make one of two poor trade-offs: they are
 limited to filenames and folders, or they ask users to hand control and content
 to an opaque service.
 
-OpenSorSe exists to provide a third option: a local-first, inspectable desktop
+OmniSorSe exists to provide a third option: a local-first, inspectable desktop
 tool that helps people understand and organize the information they already
 own while keeping consequential decisions under their control.
 
@@ -25,7 +25,7 @@ review system with a deliberately narrow execution boundary.
 
 ## Who it is for
 
-OpenSorSe is intended for:
+OmniSorSe is intended for:
 
 - people with large personal, research, creative, administrative, or small-team
   file collections;
@@ -41,7 +41,7 @@ backup product, full office-content platform, or unattended automation engine.
 
 ## Product goals
 
-OpenSorSe aims to:
+OmniSorSe aims to:
 
 1. make selected files easier to discover, understand, compare, and organize;
 2. remain useful without AI, a cloud account, or a database server;
@@ -56,10 +56,14 @@ OpenSorSe aims to:
 
 ## Current behavior
 
-The current source line targets OpenSorSe v2.0.0. Integration, validation,
+The current source line targets unreleased OmniSorSe v2.4. Integration, validation,
 packaging, publication, and interactive/community-testing facts can change
 without changing the product purpose, so exact readiness belongs in
 [Release Status](docs/RELEASE_STATUS.md), not in this vision.
+
+v2.4 preserves the released OpenSorSe v2.3 schema/profile while adding a
+dormant local read-only protocol for the separate future OmniExplorer. The
+companion is not part of this repository and remains optional/unreleased.
 
 Today, the source implements:
 
@@ -92,7 +96,7 @@ Today, the source implements:
   conflict-aware Undo.
 
 Current source does **not** implement cloud synchronization, collaboration,
-OpenSorSe Server, an unrestricted or remote knowledge graph, a conversational
+OmniSorSe Server, an unrestricted or remote knowledge graph, a conversational
 assistant, unrestricted media understanding, autonomous organization,
 or permanent deletion.
 
@@ -183,12 +187,12 @@ AI is an optional assistant, never the authority.
 
 ### Explainable AI
 
-“Explainable” means OpenSorSe should expose the evidence, provenance, and
+“Explainable” means OmniSorSe should expose the evidence, provenance, and
 decision boundary it actually possesses. It must not invent a rationale for a
 model or present confidence as truth.
 
 For Search, explanations come from the ranking components that determined the
-result. For suggestions, OpenSorSe records supplied reasons and evidence only
+result. For suggestions, OmniSorSe records supplied reasons and evidence only
 after validating their shape and grounding. For generated data, the interface
 must distinguish deterministic facts, extracted evidence, user decisions, and
 unverified inference.
@@ -225,7 +229,7 @@ Privacy is an architectural constraint, not a slogan.
 - Treat extracted text and indexes as sensitive application data.
 - Make diagnostic collection, unredacted detail, exports, AI, OCR, and deep
   indexing separately understandable and controllable.
-- Make clearing, forgetting, and repair operate only on OpenSorSe-owned data
+- Make clearing, forgetting, and repair operate only on OmniSorSe-owned data
   unless a reviewed Change Plan explicitly authorizes a supported source-file
   action.
 - Do not claim custom at-rest encryption that the product does not provide.

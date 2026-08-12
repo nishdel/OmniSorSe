@@ -74,7 +74,7 @@ public sealed class JsonConfigurationService : IConfigurationService
             catch (Exception exception) when (exception is JsonException or ConfigurationValidationException or IOException or UnauthorizedAccessException)
             {
                 settings = new ApplicationSettings();
-                InitializationWarning = "The existing OpenSorSe settings file could not be loaded and was preserved. Safe defaults are active; save Settings to replace the invalid owned file.";
+                InitializationWarning = "The existing OmniSorSe settings file could not be loaded and was preserved. Safe defaults are active; save Settings to replace the invalid owned file.";
             }
         }
 

@@ -193,7 +193,7 @@ public sealed partial class SqliteGraphProjectionSource : IGraphProjectionSource
 
         throw new GraphPersistenceException(
             "source-snapshot-busy",
-            "The deep index changed repeatedly while OpenSorSe was creating a consistent graph manifest. Retry after indexing reaches a durable boundary.");
+            "The deep index changed repeatedly while OmniSorSe was creating a consistent graph manifest. Retry after indexing reaches a durable boundary.");
     }
 
     private GraphProjectionPage ReadPageCore(

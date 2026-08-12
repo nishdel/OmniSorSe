@@ -566,7 +566,7 @@
                                            TextWrapping="Wrap"
                                            AutomationProperties.LiveSetting="Polite" />
                                 <Border Classes="notice-card">
-                                    <TextBlock Text="Safe removal moves selected copies into a hidden OpenSorSe recovery area under this scan root. It does not permanently delete them or reclaim disk space immediately. A successful move is journalled and can be undone while conflict checks pass."
+                                    <TextBlock Text="Safe removal moves selected copies into a hidden OmniSorSe recovery area under this scan root. It does not permanently delete them or reclaim disk space immediately. A successful move is journalled and can be undone while conflict checks pass."
                                                TextWrapping="Wrap" />
                                 </Border>
                                 <WrapPanel>

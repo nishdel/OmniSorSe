@@ -416,7 +416,7 @@ public sealed class SettingsDraft : ViewModelBase
         set => SetProperty(ref _documentTextInterpretationEnabled, value);
     }
 
-    /// <summary>Gets or sets whether OpenSorSe may retain bounded completed scan metadata in its own local application-data catalog.</summary>
+    /// <summary>Gets or sets whether OmniSorSe may retain bounded completed scan metadata in its own local application-data catalog.</summary>
     public bool CatalogEnabled
     {
         get => _catalogEnabled;

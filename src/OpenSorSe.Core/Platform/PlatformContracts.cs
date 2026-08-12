@@ -34,7 +34,7 @@ public enum PlatformSupportState
     Unavailable,
 }
 
-/// <summary>Identifies a platform-sensitive OpenSorSe capability.</summary>
+/// <summary>Identifies a platform-sensitive OmniSorSe capability.</summary>
 public enum PlatformCapabilityKind
 {
     /// <summary>Read-only folder scanning.</summary>

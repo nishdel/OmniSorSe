@@ -1,15 +1,15 @@
-# OpenSorSe
+# OmniSorSe
 
 <p align="center">
-  <img src="docs/images/opensorse-logo.png" width="144" alt="OpenSorSe logo">
+  <img src="docs/images/opensorse-logo.png" width="144" alt="OmniSorSe logo">
 </p>
 
 <p align="center">
-  <strong>Open Sort and Search</strong><br>
+  <strong>Omni Sort and Search</strong><br>
   Find clarity in your files.
 </p>
 
-OpenSorSe is an open-source, local-first desktop application for scanning,
+OmniSorSe (formerly OpenSorSe) is an open-source, local-first desktop application for scanning,
 searching, understanding, and safely organizing explicitly selected folders.
 It combines deterministic file analysis, exact duplicate review, local text and
 OCR extraction, progressive Search, reviewable organization, and optional
@@ -18,27 +18,31 @@ Ollama-compatible assistance.
 It is not an autonomous file manager. Analysis and suggestions do not authorize
 file changes.
 
-## OpenSorSe v2.3.0
+## Latest published release: OmniSorSe v2.4.0
 
-v2.3.0 is the Content Intelligence & Local Understanding release. It adds
-bounded deterministic topics, keywords, textual entities, source-grounded
-extractive summaries, and explainable cross-media relationships to v2.2's
-local media-aware index. An optional adapter can run a user-managed whisper.cpp
-CLI and model locally; neither is bundled or downloaded. Exact filenames and
-deterministic Search remain authoritative.
+v2.4.0 is the Transition & Explorer Foundation release. The active product,
+desktop executable, and package identity are now OmniSorSe. Existing OpenSorSe
+application-data locations, schema 5, installer identity, and other documented
+compatibility identities remain in place so upgrading does not create a new
+empty profile or require a branding-only reindex.
+
+This release also introduces Explorer Protocol v1: an on-demand,
+authenticated, source-scoped, bounded, read-only local named-pipe interface for
+a future separate OmniExplorer. OmniExplorer itself is not included, no graph
+renderer or GPU dependency was added, and ordinary OmniSorSe operation starts
+no protocol listener.
 
 The release is automatically validated on Windows, Ubuntu, and macOS. Automated
 validation is not a claim of broad interactive testing on every host or with
 every Ollama/OCR configuration. Read [Release Status](docs/RELEASE_STATUS.md)
 for the evidence boundary,
-[v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) for user-facing changes,
+[v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) for user-facing changes,
 and [Release History](RELEASE_HISTORY.md) for earlier milestones.
 
-The [Content Intelligence guide](docs/CONTENT_INTELLIGENCE_v2.3.md) documents
-the provider architecture and limits. The
-[manual checklist](docs/MANUAL_TESTING_v2.3.md) separates observed Windows
-native-provider evidence from remaining interactive and native Linux/macOS
-checks.
+The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
+documents the compatibility and security boundaries. The
+[manual checklist](docs/MANUAL_TESTING_v2.4.md) separates genuine Windows
+upgrade/two-process evidence from checks that were not performed.
 
 ## Screenshots
 
@@ -51,15 +55,15 @@ remaining capture work is explicit in the unchecked
 ## Downloads and installation
 
 Use only the official
-[v2.3.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.3.0):
+[v2.4.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.4.0):
 
-- Windows x64 installer: `OpenSorSe-v2.3.0-win-x64-setup.exe`;
-- Windows x64 portable: `OpenSorSe-v2.3.0-win-x64.zip`;
-- macOS Intel: `OpenSorSe-v2.3.0-macos-x64.dmg`;
-- macOS Apple Silicon: `OpenSorSe-v2.3.0-macos-arm64.dmg`;
-- SHA-256 checksums: `OpenSorSe-v2.3.0-SHA256SUMS.txt`.
+- Windows x64 installer: `OmniSorSe-v2.4.0-win-x64-setup.exe`;
+- Windows x64 portable: `OmniSorSe-v2.4.0-win-x64.zip`;
+- macOS Intel: `OmniSorSe-v2.4.0-macos-x64.dmg`;
+- macOS Apple Silicon: `OmniSorSe-v2.4.0-macos-arm64.dmg`;
+- SHA-256 checksums: `OmniSorSe-v2.4.0-SHA256SUMS.txt`.
 
-The v2.3.0 Windows and macOS artifacts are unsigned, and the macOS packages are
+The v2.4.0 Windows and macOS artifacts are unsigned, and the macOS packages are
 not notarized, unless the release page explicitly records otherwise. Windows
 SmartScreen or macOS Gatekeeper may therefore warn. Checksums detect changed
 bytes but do not authenticate an unsigned publisher.
@@ -82,20 +86,21 @@ update, uninstall, application-data, and checksum guidance is in
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
 | Media Intelligence | Adds bounded structured image metadata and EXIF-oriented lazy thumbnails; optional image/video-frame OCR; optional `ffprobe` audio/video metadata and `ffmpeg` representative frames; and provider-neutral transcription/visual-description boundaries. v2.3 can use an explicitly configured user-managed whisper.cpp CLI/model for local speech transcription; no visual-description provider is included. Missing optional tools never disable ordinary Search. |
 | Content Intelligence | Derives bounded normalized topics, textual entities, keywords, and a one-sentence extractive summary from already indexed local evidence, retaining provider/version and source provenance. These remain optional clues rather than facts. |
+| Explorer Protocol v1 | Provides an on-demand current-user local named-pipe boundary for a future optional OmniExplorer: authorized indexed roots, bounded Structure, grounded Search, Related/context, and safe details. It is read-only, session-scoped, dormant by default, and independent of SQLite schema. |
 | Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
-| Persistence | Released v2.3 uses bounded local JSON, schema-5 embedded Search with shared bounded media/content evidence and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. Transactional migration preserves v2.2 schema-4 data and recovery policy. No database server is required. |
+| Persistence | OmniSorSe v2.4 continues using bounded local JSON, schema-5 embedded Search with shared bounded media/content evidence and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. The established OpenSorSe profile locations remain authoritative, so the product rename neither migrates nor duplicates user state. No database server is required. |
 
 The current source does not implement cloud synchronization, collaboration,
-OpenSorSe Server, a conversational assistant, unrestricted
+OmniSorSe Server, a conversational assistant, unrestricted
 media intelligence, autonomous organization, permanent deletion, generic
 script execution, or a plugin security sandbox.
 
 ## Safety and privacy
 
-OpenSorSe is non-destructive by default:
+OmniSorSe is non-destructive by default:
 
 - scanning, watchers, duplicate review, extraction, OCR, Search/indexing,
   relationships, virtual collections, Knowledge Graph projection, comparison,
@@ -108,7 +113,7 @@ OpenSorSe is non-destructive by default:
 - rollback, recovery, and Undo verify current state and report unsafe
   ambiguity instead of guessing.
 
-OpenSorSe is local-first:
+OmniSorSe is local-first:
 
 - selected files are not uploaded by scanning, OCR, Search, indexing, saved
   scans, or duplicate review;
@@ -137,13 +142,13 @@ contract.
 - **macOS Intel and Apple Silicon:** native `.app`/DMG packages. Read-only and
   non-mutating capabilities are packaged and smoke-tested; source-file mutation
   remains disabled where platform capability policy cannot prove equivalent
-  safety. Packages are unsigned/unnotarized for v2.3.0.
+  safety. Packages are unsigned/unnotarized for v2.4.0.
 - **Linux x64:** source-build preview with documented filesystem, watcher,
   desktop, and packaging limitations; no binary installer is advertised.
 - **Ollama-compatible service:** optional and externally managed.
 - **Tesseract 5:** optional and externally installed for OCR recognition.
 - **whisper.cpp CLI and model:** optional, user-managed, and never downloaded or
-  bundled by OpenSorSe.
+  bundled by OmniSorSe.
 - **Plugins:** optional local ZIP packages; external code runs in-process as the
   current user. Load-context isolation and SHA-256 integrity are not sandboxing
   or publisher authentication.
@@ -176,7 +181,7 @@ documents are:
 
 | Document | Purpose |
 | --- | --- |
-| [Product Vision](PRODUCT_VISION.md) | Why OpenSorSe exists, its current product philosophy, and its long-term direction. |
+| [Product Vision](PRODUCT_VISION.md) | Why OmniSorSe exists, its current product philosophy, and its long-term direction. |
 | [Product Roadmap](PRODUCT_ROADMAP.md) | Completed, in-progress, planned, research, and backlog work with branch/integration truth. |
 | [Engineering Principles](ENGINEERING_PRINCIPLES.md) | Reasoning behind architecture, MVVM, persistence, testing, releases, security, privacy, recovery, and review. |
 | [Release History](RELEASE_HISTORY.md) | Concise version, branch, date, test-total, and merged-status index. |
@@ -187,8 +192,11 @@ documents are:
 | [v2.2 Manual Testing](docs/MANUAL_TESTING_v2.2.md) | Controlled Windows native-provider, OCR, and migration evidence plus explicitly unchecked interactive, transcription, and native Linux/macOS scenarios. |
 | [v2.3 Content Intelligence](docs/CONTENT_INTELLIGENCE_v2.3.md) | Released provider architecture, deterministic topics/entities/summaries, optional user-managed whisper.cpp adapter, schema 5, Search/Related Files integration, privacy, and limits. |
 | [v2.3 Manual Testing](docs/MANUAL_TESTING_v2.3.md) | Explicitly separated automated, provider-native, interactive, and native-platform release evidence. |
+| [v2.4 Transition and Explorer Protocol](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md) | Released branding/profile compatibility contract and bounded, authenticated, read-only Explorer Protocol v1 design. |
+| [v2.4 Manual Testing](docs/MANUAL_TESTING_v2.4.md) | Genuine Windows profile/installer and external two-process protocol evidence with explicit unchecked boundaries. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
-| [v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) | Downloads, Content Intelligence and local-transcription changes, checksums, trust status, limitations, and validation boundary. |
+| [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | OmniSorSe transition, profile compatibility, Explorer Protocol v1, package trust, limitations, and final validation boundary. |
+| [v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence and local-transcription release snapshot. |
 | [v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence and UX release snapshot. |
 | [v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) | Historical Search/AI quality release snapshot. |
 | [v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) | Historical v2.0.0 release and integration record. |
@@ -220,7 +228,7 @@ change.
 
 ## License
 
-OpenSorSe is available under the [MIT License](LICENSE). Dependencies retain
+OmniSorSe is available under the [MIT License](LICENSE). Dependencies retain
 their own licenses; see [Third-Party Notices](THIRD_PARTY_NOTICES.md), the
 [FOSS Dependency Policy](docs/FOSS_DEPENDENCY_POLICY.md), and the
 [machine-readable dependency inventory](docs/dependency-licenses.json).

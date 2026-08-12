@@ -12,8 +12,8 @@ public sealed class DesktopBrandingAndLayoutTests
     [Fact]
     public void Branding_UsesOfficialPackagedIdentity()
     {
-        Assert.Equal("OpenSorSe", DesktopBranding.ProductName);
-        Assert.Equal("OPEN SORT AND SEARCH", DesktopBranding.ExpandedName);
+        Assert.Equal("OmniSorSe", DesktopBranding.ProductName);
+        Assert.Equal("OMNI SORT AND SEARCH", DesktopBranding.ExpandedName);
         Assert.Equal("Find clarity in your files", DesktopBranding.Tagline);
         var assembly = typeof(DesktopBranding).Assembly;
         var resourceName = Assert.Single(
@@ -245,6 +245,6 @@ public sealed class DesktopBrandingAndLayoutTests
             directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("The OpenSorSe repository root could not be located.");
+        throw new DirectoryNotFoundException("The OmniSorSe repository root could not be located.");
     }
 }

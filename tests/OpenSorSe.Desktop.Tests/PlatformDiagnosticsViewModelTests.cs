@@ -45,7 +45,7 @@ public sealed class PlatformDiagnosticsViewModelTests : IDisposable
         Assert.Contains("Test OS", viewModel.OperatingSystem, StringComparison.Ordinal);
         Assert.Contains(pathProvider.Paths.PluginDirectory, viewModel.ApplicationLocations, StringComparison.Ordinal);
         Assert.Equal(2, viewModel.Capabilities.Count);
-        Assert.Contains("OpenSorSe platform diagnostics", clipboard.Text, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe platform diagnostics", clipboard.Text, StringComparison.Ordinal);
         Assert.Equal("Platform report copied.", viewModel.StatusText);
     }
 
@@ -82,6 +82,6 @@ public sealed class PlatformDiagnosticsViewModelTests : IDisposable
             Capabilities.Single(value => value.Kind == kind);
 
         public string ExportHumanReadable() =>
-            "OpenSorSe platform diagnostics\nPlatform: Linux\nNo secrets.";
+            "OmniSorSe platform diagnostics\nPlatform: Linux\nNo secrets.";
     }
 }
