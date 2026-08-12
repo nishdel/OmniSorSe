@@ -1,5 +1,6 @@
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 
 namespace OpenSorSe.Application.Indexing;
 
@@ -7,10 +8,10 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 4;
+    public const int SchemaVersion = 5;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
-    public const string ProcessorVersion = "2.2.0";
+    public const string ProcessorVersion = "2.3.0";
 }
 
 /// <summary>Identifies a durable stage in the background-indexing pipeline.</summary>
@@ -246,6 +247,9 @@ public sealed record IndexingWorkItem
     /// <summary>Gets durable structured media evidence needed by later indexing stages.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
 
+    /// <summary>Gets bounded structured topics, textual entities, and source-grounded summary evidence.</summary>
+    public IndexedContentIntelligence? ContentIntelligence { get; init; }
+
     /// <summary>Gets whether per-file policy disables OCR processing.</summary>
     public bool SuppressOcr { get; init; }
 
@@ -279,6 +283,9 @@ public sealed record IndexingStageOutput
 
     /// <summary>Gets bounded provider-neutral media evidence produced or reused by this stage.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
+
+    /// <summary>Gets bounded provider-neutral content intelligence produced or reused by this stage.</summary>
+    public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
     /// <summary>Gets a bounded non-sensitive summary when one was produced.</summary>
     public string? Summary { get; init; }
@@ -354,6 +361,9 @@ public sealed record IndexStorageBreakdown(
 
     /// <summary>Gets the logical bytes retained for structured media evidence.</summary>
     public long MediaDerivedDataBytes { get; init; }
+
+    /// <summary>Gets the logical bytes retained for bounded content-intelligence evidence.</summary>
+    public long ContentIntelligenceBytes { get; init; }
 }
 
 /// <summary>Describes current persistent progress suitable for UI binding.</summary>
@@ -471,6 +481,9 @@ public sealed record ProgressiveSearchDocument
 
     /// <summary>Gets structured image, audio, or video evidence retained by the provider.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
+
+    /// <summary>Gets bounded topics, textual entities, and summary provenance retained by local indexing.</summary>
+    public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
     /// <summary>Gets bounded tags or generated keywords.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];

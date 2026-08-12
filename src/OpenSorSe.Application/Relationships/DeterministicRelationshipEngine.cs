@@ -39,7 +39,7 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
     public string Algorithm => "deterministic-evidence";
 
     /// <inheritdoc />
-    public string Version => "2.2.0";
+    public string Version => "2.3.0";
 
     /// <inheritdoc />
     public RelationshipFeatureSet CreateFeatures(RelationshipFileDocument document)
@@ -62,6 +62,8 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             Fingerprint(document.Summary),
             document.Keywords
                 .Concat(document.Tags)
+                .Concat(document.ContentIntelligence?.Topics.Select(item => item.NormalizedValue) ?? [])
+                .Concat(document.ContentIntelligence?.Entities.Select(item => item.NormalizedValue) ?? [])
                 .Select(SearchTextNormalizer.Normalize)
                 .Where(term => term.Length is >= 3 and <= 64 && !GenericTerms.Contains(term))
                 .Distinct(StringComparer.Ordinal)
@@ -226,13 +228,44 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             strongContext ??= $"tag:{HashKey(sharedTags[0])}";
         }
 
-        var sharedKeywords = SharedValues(target.Keywords, candidate.Keywords);
-        if (sharedKeywords.Count > 0)
+        var sharedTopics = SharedValues(
+            target.ContentIntelligence?.Topics.Select(item => item.NormalizedValue).ToArray() ?? [],
+            candidate.ContentIntelligence?.Topics.Select(item => item.NormalizedValue).ToArray() ?? []);
+        var sharedEntities = SharedValues(
+            target.ContentIntelligence?.Entities.Select(item => item.NormalizedValue).ToArray() ?? [],
+            candidate.ContentIntelligence?.Entities.Select(item => item.NormalizedValue).ToArray() ?? []);
+        var intelligenceTerms = sharedTopics.Concat(sharedEntities).ToHashSet(StringComparer.Ordinal);
+        var sharedKeywords = SharedValues(target.Keywords, candidate.Keywords)
+            .Where(value => !intelligenceTerms.Contains(value))
+            .ToArray();
+        if (sharedKeywords.Length > 0)
         {
             var display = string.Join(", ", sharedKeywords.Take(3));
             evidence.Add(Evidence(RelationshipEvidenceKind.Keyword, HashKey(display), $"Shared keyword: {display}"));
-            score += sharedKeywords.Count >= 2 ? 3 : 2;
+            score += sharedKeywords.Length >= 2 ? 3 : 2;
             strongContext ??= $"keyword:{HashKey(sharedKeywords[0])}";
+        }
+
+        if (sharedTopics.Count >= 2)
+        {
+            var display = string.Join(", ", sharedTopics.Take(3));
+            evidence.Add(Evidence(
+                RelationshipEvidenceKind.ContentTopic,
+                HashKey(display),
+                $"Shared content topics: {display}"));
+            score += sharedTopics.Count >= 3 ? 5 : 4;
+            strongContext ??= $"topic:{HashKey(sharedTopics[0])}";
+        }
+
+        if (sharedEntities.Count > 0)
+        {
+            var display = string.Join(", ", sharedEntities.Take(3));
+            evidence.Add(Evidence(
+                RelationshipEvidenceKind.ContentEntity,
+                HashKey(display),
+                $"Shared textual entity: {display}"));
+            score += sharedEntities.Count >= 2 ? 4 : 3;
+            strongContext ??= $"entity:{HashKey(sharedEntities[0])}";
         }
 
         if (EqualNonEmpty(targetFeatures.FolderKey, candidateFeatures.FolderKey) &&
@@ -243,7 +276,7 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         }
 
         var similarity = Cosine(target.SemanticRepresentation, candidate.SemanticRepresentation);
-        if (similarity >= 0.88 && (sharedKeywords.Count > 0 || sharedTags.Count > 0 || stemOverlap.Count > 0))
+        if (similarity >= 0.88 && (sharedKeywords.Length > 0 || sharedTags.Count > 0 || stemOverlap.Count > 0))
         {
             evidence.Add(Evidence(RelationshipEvidenceKind.SemanticConcept, HashKey($"{target.FileId}|{candidate.FileId}"), "Related indexed concepts corroborate literal evidence"));
             score += similarity >= 0.94 ? 3 : 2;
@@ -263,7 +296,7 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
             RelationshipEvidenceKind.ExtractedText or
             RelationshipEvidenceKind.OcrText or
             RelationshipEvidenceKind.MediaTranscript or
-            RelationshipEvidenceKind.MediaOcr);
+            RelationshipEvidenceKind.MediaOcr) || sharedTopics.Count >= 2;
         if (score < 4 || evidence.Count < 2 && !hasStrongSingleEvidence)
         {
             return null;
@@ -272,6 +305,8 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         var terms = targetFeatures.KeywordKeys
             .Intersect(candidateFeatures.KeywordKeys, StringComparer.Ordinal)
             .Concat(stemOverlap)
+            .Concat(sharedTopics)
+            .Concat(sharedEntities)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         var type = InferType(exactContent, targetIdentifier, terms);

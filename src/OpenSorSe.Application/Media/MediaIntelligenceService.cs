@@ -503,7 +503,7 @@ public sealed class MediaIntelligenceService : IMediaIntelligenceService
     {
         var value = string.Join(
             '|',
-            "media-2.2.0",
+            "media-2.3.0",
             allowOcr,
             settings.Enabled,
             settings.ImageMetadataEnabled,
@@ -524,6 +524,9 @@ public sealed class MediaIntelligenceService : IMediaIntelligenceService
             settings.ProviderTimeoutSeconds,
             settings.FfprobeExecutablePath ?? string.Empty,
             settings.FfmpegExecutablePath ?? string.Empty,
+            settings.WhisperExecutablePath ?? string.Empty,
+            settings.WhisperModelPath ?? string.Empty,
+            settings.TranscriptionTimeoutSeconds,
             string.Join(',', _metadataProviders.Select(provider => $"{provider.Name}:{provider.Version}")),
             $"{_transcriptionProvider.Name}:{_transcriptionProvider.Version}",
             $"{_descriptionProvider.Name}:{_descriptionProvider.Version}",
@@ -535,7 +538,7 @@ public sealed class MediaIntelligenceService : IMediaIntelligenceService
     {
         var value = string.Join(
             '|',
-            "media-metadata-2.2.0",
+            "media-metadata-2.3.0",
             settings.Enabled,
             settings.ImageMetadataEnabled,
             settings.AudioMetadataEnabled,

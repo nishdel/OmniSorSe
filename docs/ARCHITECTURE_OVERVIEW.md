@@ -1,7 +1,7 @@
 # OpenSorSe architecture overview
 
-This is the authoritative top-level architecture for OpenSorSe v2.2.0 Media
-Intelligence. The
+This is the authoritative top-level architecture for released OpenSorSe v2.3.0.
+The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
 describes project ownership and references.
@@ -38,6 +38,7 @@ internal services.
 | Text and OCR | `ContentIndexingService` → `MetadataExtractionPipeline`; `OcrService`, `PdfPageRasterizer`, and `TesseractCliOcrEngine` supply bounded local OCR where enabled and needed. |
 | Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
 | Media Intelligence candidate | `IMediaIntelligenceService` coordinates capability-based metadata, transcription, representative-frame, OCR, visual-description, and thumbnail providers. Structured evidence enters the existing durable stage/store/Search contracts; providers never own traversal, ranking, or source-file mutation. |
+| Content Intelligence candidate | `IContentIntelligenceProvider` receives only bounded retained evidence and returns normalized topics, textual entities, keywords, an extractive summary, provenance, and a processing fingerprint. `WhisperCppTranscriptionProvider` is an optional user-managed local process adapter; no runtime/model is bundled or downloaded. |
 | Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
 | Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
 | Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
@@ -147,11 +148,32 @@ audio/video stream metadata, and optional `ffmpeg` produces at most the
 configured number of evenly distributed interior frames. Both are invoked
 without a shell and with time, output, size, duration, and cancellation bounds.
 
-Transcription and visual descriptions are provider-neutral optional contracts;
-the release bundles no implementation and records their absence explicitly.
-Media evidence is versioned and content-hash shared in schema 4, while the
+Transcription and visual descriptions are provider-neutral optional contracts.
+Released v2.2 bundled no implementation. Released v2.3 adds an
+optional process-isolated adapter for a user-managed whisper.cpp CLI/model;
+visual descriptions remain unavailable. Media evidence is versioned and
+content-hash shared in schema 4, while the
 existing file, job, stage, privacy, quota, recovery, and Search architecture is
 retained. See [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
+
+## v2.3 Content Intelligence boundary
+
+`IContentIntelligenceProvider` consumes only already bounded index evidence.
+The deterministic provider produces capped normalized topics, textual entities,
+keywords, and a single-sentence extractive summary with source references,
+origin, provider/version, and processing fingerprint. It performs no I/O or
+network request. Search projects three explicit lower-tier signals while
+preserving exact/literal tiers and unknown-ID rejection. Related Files requires
+corroborated specific concepts and suppresses generic one-topic clusters.
+
+Schema 5 adds one nullable validated JSON field to content-hash-owned index
+content plus an indexed, bounded relationship-term projection through the
+established transactional recovery migration. The projection avoids an
+unbounded all-pairs relationship scan and is replaced atomically with its
+owning feature record. Corrupt derived evidence is omitted and exposed as an indexing failure. Privacy
+inspection, byte reporting, per-file clear, source forget, and full index clear
+remain provider-neutral and never affect source files. See
+[Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md).
 
 ## v1.9 relationships and context boundary
 
@@ -182,8 +204,9 @@ user decisions. Merely similar text or semantic data cannot merge identities.
 
 `knowledge-graph.db` schema 1 is rebuildable derived state;
 `knowledge-decisions.db` schema 1 is non-rebuildable graph-native decision and
-privacy authority. v2.2 uses `deep-index.db` schema 4 after a transactional
-migration from schema 3 while retaining its authority for v1.9
+privacy authority. Released v2.2 used `deep-index.db` schema 4 after a
+transactional migration from schema 3. Released v2.3 adds only
+bounded Content Intelligence as schema 5 while retaining its authority for v1.9
 relationships, Collections, decisions, and privacy. Completed source manifests
 carry a canonical count and hash, and projection keeps source, decision, and
 privacy ingestion watermarks separate from applied watermarks.

@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Media;
@@ -256,6 +257,26 @@ public sealed class DeepIndexingStageTests
         Assert.Contains("quarterly", complete.Keywords!);
     }
 
+    /// <summary>Verifies the existing enrichment stage progressively produces structured local concepts.</summary>
+    [Fact]
+    public async Task SummaryStageProducesStructuredContentIntelligenceWithoutAi()
+    {
+        var processor = CreateProcessor(contentIntelligence: new DeterministicContentIntelligenceProvider());
+        var output = await processor.ProcessAsync(
+            Work(IndexingStage.SummaryKeywordsGenerated) with
+            {
+                Level = IndexingLevel.Deep,
+                ExtractedText = "Docker Compose deploys Grafana monitoring on a Raspberry Pi.",
+            },
+            new DeepIndexingSettings { AiProcessingEnabled = false });
+
+        Assert.Equal(IndexingStageStatus.Complete, output.Status);
+        var intelligence = Assert.IsType<IndexedContentIntelligence>(output.ContentIntelligence);
+        Assert.Contains(intelligence.Topics, topic => topic.NormalizedValue.Contains("raspberry", StringComparison.Ordinal));
+        Assert.Equal(ContentIntelligenceOrigin.Deterministic, intelligence.Topics[0].Origin);
+        Assert.NotNull(intelligence.Summary);
+    }
+
     /// <summary>Verifies Deep selected chunks respect the configured maximum without arbitrary source-size assumptions.</summary>
     [Fact]
     public async Task DeepChunksRespectMaximumPolicy()
@@ -430,23 +451,44 @@ public sealed class DeepIndexingStageTests
         Assert.Equal(64, first.Length);
     }
 
+    /// <summary>Verifies only relevant Content Intelligence configuration invalidates completed derived work.</summary>
+    [Fact]
+    public void ProcessorFingerprintTracksContentIntelligencePolicy()
+    {
+        var first = CreateProcessor(
+            contentIntelligence: new DeterministicContentIntelligenceProvider(),
+            contentSettings: new ContentIntelligenceSettings()).CreateProcessorFingerprint(new DeepIndexingSettings());
+        var changed = CreateProcessor(
+            contentIntelligence: new DeterministicContentIntelligenceProvider(),
+            contentSettings: new ContentIntelligenceSettings { MaximumTopics = 8 }).CreateProcessorFingerprint(new DeepIndexingSettings());
+        var excerptChanged = CreateProcessor(
+            contentIntelligence: new DeterministicContentIntelligenceProvider(),
+            contentSettings: new ContentIntelligenceSettings { MaximumEvidenceExcerptCharacters = 96 }).CreateProcessorFingerprint(new DeepIndexingSettings());
+
+        Assert.NotEqual(first, changed);
+        Assert.NotEqual(first, excerptChanged);
+    }
+
     private static DefaultIndexingStageProcessor CreateProcessor(
         IFileHasher? hasher = null,
         FakeContentStore? contentStore = null,
         IIndexingEnrichmentProvider? enrichment = null,
         bool ocrEnabled = false,
         IMediaIntelligenceService? media = null,
-        MediaIntelligenceSettings? mediaSettings = null)
+        MediaIntelligenceSettings? mediaSettings = null,
+        IContentIntelligenceProvider? contentIntelligence = null,
+        ContentIntelligenceSettings? contentSettings = null)
     {
         var store = contentStore ?? new FakeContentStore(Record());
         return new DefaultIndexingStageProcessor(
-            new FakeConfiguration(ocrEnabled, mediaSettings),
+            new FakeConfiguration(ocrEnabled, mediaSettings, contentSettings),
             hasher ?? new FakeHasher(hash: "hash"),
             new FakeContentIndexer(),
             store,
             new FakeEmbedding(),
             enrichment,
-            mediaIntelligenceService: media);
+            mediaIntelligenceService: media,
+            contentIntelligenceProvider: contentIntelligence);
     }
 
     private static IndexingWorkItem Work(IndexingStage stage, string? path = null)
@@ -512,12 +554,16 @@ public sealed class DeepIndexingStageTests
 
     private sealed class FakeConfiguration : IConfigurationService
     {
-        public FakeConfiguration(bool ocrEnabled, MediaIntelligenceSettings? mediaSettings = null)
+        public FakeConfiguration(
+            bool ocrEnabled,
+            MediaIntelligenceSettings? mediaSettings = null,
+            ContentIntelligenceSettings? contentSettings = null)
         {
             Current = new ApplicationSettings
             {
                 Content = new ContentSettings { OcrEnabled = ocrEnabled },
                 MediaIntelligence = mediaSettings ?? new MediaIntelligenceSettings(),
+                ContentIntelligence = contentSettings ?? new ContentIntelligenceSettings(),
             };
         }
 

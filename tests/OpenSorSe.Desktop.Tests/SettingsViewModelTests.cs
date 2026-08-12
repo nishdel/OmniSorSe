@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Desktop.Tests;
 
@@ -95,6 +97,9 @@ public sealed class SettingsViewModelTests
             MaximumThumbnailDimension = 256,
             MaximumThumbnailSourcePixels = 50_000_000,
             ProviderTimeoutSeconds = 45,
+            WhisperExecutablePath = Path.Combine(Path.GetTempPath(), "whisper-cli"),
+            WhisperModelPath = Path.Combine(Path.GetTempPath(), "ggml-model.bin"),
+            TranscriptionTimeoutSeconds = 750,
         };
         var draft = SettingsDraft.FromSettings(new ApplicationSettings { MediaIntelligence = expected });
 
@@ -108,6 +113,41 @@ public sealed class SettingsViewModelTests
         Assert.True(actual.ImageOcrEnabled);
         Assert.True(actual.AudioTranscriptionEnabled);
         Assert.True(actual.VideoFrameAnalysisEnabled);
+        Assert.Equal(expected.WhisperExecutablePath, actual.WhisperExecutablePath);
+        Assert.Equal(expected.WhisperModelPath, actual.WhisperModelPath);
+        Assert.Equal(expected.TranscriptionTimeoutSeconds, actual.TranscriptionTimeoutSeconds);
+    }
+
+    /// <summary>Verifies all bounded local Content Intelligence choices survive settings editing.</summary>
+    [Fact]
+    public void ContentIntelligenceSettings_RoundTripWithoutLosingBounds()
+    {
+        var expected = new ContentIntelligenceSettings
+        {
+            TopicExtractionEnabled = false,
+            EntityExtractionEnabled = true,
+            SummaryGenerationEnabled = false,
+            MaximumInputCharacters = 32_768,
+            MaximumTopics = 9,
+            MaximumEntities = 11,
+            MaximumKeywords = 17,
+            MaximumSummaryCharacters = 640,
+            MaximumEvidenceExcerptCharacters = 192,
+        };
+
+        var actual = SettingsDraft.FromSettings(new ApplicationSettings { ContentIntelligence = expected })
+            .ToSettings()
+            .ContentIntelligence;
+
+        Assert.Equal(expected.TopicExtractionEnabled, actual.TopicExtractionEnabled);
+        Assert.Equal(expected.EntityExtractionEnabled, actual.EntityExtractionEnabled);
+        Assert.Equal(expected.SummaryGenerationEnabled, actual.SummaryGenerationEnabled);
+        Assert.Equal(expected.MaximumInputCharacters, actual.MaximumInputCharacters);
+        Assert.Equal(expected.MaximumTopics, actual.MaximumTopics);
+        Assert.Equal(expected.MaximumEntities, actual.MaximumEntities);
+        Assert.Equal(expected.MaximumKeywords, actual.MaximumKeywords);
+        Assert.Equal(expected.MaximumSummaryCharacters, actual.MaximumSummaryCharacters);
+        Assert.Equal(expected.MaximumEvidenceExcerptCharacters, actual.MaximumEvidenceExcerptCharacters);
     }
 
     /// <summary>
@@ -312,6 +352,35 @@ public sealed class SettingsViewModelTests
         viewModel.Draft.AiEndpoint = endpoint;
 
         Assert.Contains(expected, viewModel.AiEndpointPrivacyText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies optional media states distinguish missing, invalid, unavailable, and ready providers.</summary>
+    [Fact]
+    public async Task MediaCapabilityCheck_UsesTruthfulProviderStates()
+    {
+        var capabilities = new[]
+        {
+            new MediaCapability(MediaCapabilityKind.Transcription, false, "whisper", "1", "Choose a model.")
+            {
+                State = MediaCapabilityState.NotConfigured,
+            },
+            new MediaCapability(MediaCapabilityKind.VideoMetadata, false, "ffprobe", null, "The configured path is invalid.")
+            {
+                State = MediaCapabilityState.InvalidConfiguration,
+            },
+            new MediaCapability(MediaCapabilityKind.VideoFrameSampling, false, "ffmpeg", null, "ffmpeg is unavailable."),
+            new MediaCapability(MediaCapabilityKind.ImageMetadata, true, "image", "1", "Built in."),
+        };
+        using var viewModel = new SettingsViewModel(
+            new TestConfigurationService(),
+            mediaIntelligenceService: new CapabilityMediaService(capabilities));
+
+        await viewModel.CheckMediaCapabilitiesCommand.ExecuteAsync(null);
+
+        Assert.Contains("Transcription — Not configured", viewModel.MediaCapabilityStatusText, StringComparison.Ordinal);
+        Assert.Contains("Video metadata — Invalid configuration", viewModel.MediaCapabilityStatusText, StringComparison.Ordinal);
+        Assert.Contains("Video frame analysis — Unavailable", viewModel.MediaCapabilityStatusText, StringComparison.Ordinal);
+        Assert.Contains("Image metadata — Available", viewModel.MediaCapabilityStatusText, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies changing provider identity invalidates stale discovery and tells the user what to do.</summary>
@@ -608,5 +677,27 @@ public sealed class SettingsViewModelTests
             ResetCallCount++;
             return Task.FromResult(new AiDecisionResult(AiAvailabilityState.ModelSelected, "Local AI review history was reset. No scanned file changed."));
         }
+    }
+
+    private sealed class CapabilityMediaService(IReadOnlyList<MediaCapability> capabilities) : IMediaIntelligenceService
+    {
+        public MediaKind Classify(string fullPath) => MediaKind.None;
+
+        public Task<IReadOnlyList<MediaCapability>> GetCapabilitiesAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(capabilities);
+        }
+
+        public Task<MediaIntelligenceResult> ExtractMetadataAsync(
+            FileEntry file,
+            IndexedMediaEvidence? existing,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<MediaIntelligenceResult> ExtractAsync(
+            FileEntry file,
+            IndexedMediaEvidence? existing,
+            bool allowOcr,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

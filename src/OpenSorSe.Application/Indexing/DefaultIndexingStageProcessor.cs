@@ -3,6 +3,7 @@ using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Scanner;
 using OpenSorSe.Scanner.Models;
@@ -24,6 +25,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
     private readonly IIndexingEnrichmentProvider? _enrichmentProvider;
     private readonly IRelationshipService? _relationshipService;
     private readonly IMediaIntelligenceService? _mediaIntelligenceService;
+    private readonly IContentIntelligenceProvider? _contentIntelligenceProvider;
 
     /// <summary>Initializes the provider-independent application stage processor.</summary>
     public DefaultIndexingStageProcessor(
@@ -34,7 +36,8 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         IEmbeddingProvider embeddingProvider,
         IIndexingEnrichmentProvider? enrichmentProvider = null,
         IRelationshipService? relationshipService = null,
-        IMediaIntelligenceService? mediaIntelligenceService = null)
+        IMediaIntelligenceService? mediaIntelligenceService = null,
+        IContentIntelligenceProvider? contentIntelligenceProvider = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _fileHasher = fileHasher ?? throw new ArgumentNullException(nameof(fileHasher));
@@ -44,6 +47,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         _enrichmentProvider = enrichmentProvider;
         _relationshipService = relationshipService;
         _mediaIntelligenceService = mediaIntelligenceService;
+        _contentIntelligenceProvider = contentIntelligenceProvider;
     }
 
     /// <inheritdoc />
@@ -104,6 +108,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         ArgumentNullException.ThrowIfNull(settings);
         var content = _configurationService.Current.Content;
         var media = _configurationService.Current.MediaIntelligence;
+        var intelligence = _configurationService.Current.ContentIntelligence;
         var value = string.Join(
             "|",
             DeepIndexingVersion.ProcessorVersion,
@@ -142,6 +147,20 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             media.MaximumVideoOcrFrames,
             media.MaximumTranscriptCharacters,
             media.MaximumDescriptionCharacters,
+            media.WhisperExecutablePath ?? string.Empty,
+            media.WhisperModelPath ?? string.Empty,
+            media.TranscriptionTimeoutSeconds,
+            intelligence.Enabled,
+            intelligence.TopicExtractionEnabled,
+            intelligence.EntityExtractionEnabled,
+            intelligence.SummaryGenerationEnabled,
+            intelligence.MaximumInputCharacters,
+            intelligence.MaximumTopics,
+            intelligence.MaximumEntities,
+            intelligence.MaximumKeywords,
+            intelligence.MaximumSummaryCharacters,
+            intelligence.MaximumEvidenceExcerptCharacters,
+            _contentIntelligenceProvider?.Version ?? "none",
             _embeddingProvider.Dimensions,
             _enrichmentProvider?.Version ?? "none");
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(value)))
@@ -382,6 +401,17 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             settings.MaximumExtractedTextCharacters + settings.MaximumOcrTextCharacters) ?? string.Empty;
         var summaryEnabled = settings.SummaryProcessingEnabled && !workItem.SuppressSummary;
         var semanticEnabled = settings.SemanticProcessingEnabled && !workItem.SuppressSemantic;
+        var intelligenceSettings = _configurationService.Current.ContentIntelligence;
+        IndexedContentIntelligence? contentIntelligence = null;
+        if (summaryEnabled && intelligenceSettings.Enabled && _contentIntelligenceProvider is not null &&
+            await _contentIntelligenceProvider.IsAvailableAsync(cancellationToken).ConfigureAwait(false))
+        {
+            var intelligenceResult = await _contentIntelligenceProvider.AnalyzeAsync(
+                new ContentIntelligenceRequest(CreateContentIntelligenceSources(workItem)),
+                intelligenceSettings,
+                cancellationToken).ConfigureAwait(false);
+            contentIntelligence = intelligenceResult.Intelligence;
+        }
         var keywords = summaryEnabled
             ? CreateKeywords(Path.GetFileName(workItem.FullPath), text)
             : [];
@@ -415,7 +445,16 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         }
         else if (workItem.Level == IndexingLevel.Deep && summaryEnabled)
         {
-            summary = CreateExtractiveSummary(text);
+            summary = contentIntelligence?.Summary?.Text ?? CreateExtractiveSummary(text);
+        }
+
+        if (contentIntelligence is not null)
+        {
+            keywords = contentIntelligence.Keywords
+                .Concat(keywords)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(Math.Min(64, intelligenceSettings.MaximumKeywords))
+                .ToArray();
         }
 
         return new IndexingStageOutput
@@ -423,6 +462,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             Status = IndexingStageStatus.Complete,
             Summary = summary,
             Keywords = keywords,
+            ContentIntelligence = contentIntelligence,
             SelectedChunks = workItem.Level == IndexingLevel.Deep && semanticEnabled
                 ? CreateChunks(text, settings.MaximumSemanticChunksPerDocument)
                 : null,
@@ -450,12 +490,35 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             workItem.MediaEvidence?.Transcript,
             workItem.MediaEvidence?.OcrText,
             workItem.MediaEvidence?.VisualDescription,
-            MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence));
+            MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence),
+            workItem.ContentIntelligence?.Summary?.Text,
+            string.Join(' ', workItem.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? []),
+            string.Join(' ', workItem.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? []));
         return new IndexingStageOutput
         {
             Status = IndexingStageStatus.Complete,
             SemanticRepresentation = _embeddingProvider.Embed(input),
         };
+    }
+
+    private static IReadOnlyList<ContentIntelligenceSourceText> CreateContentIntelligenceSources(IndexingWorkItem workItem)
+    {
+        var sources = new List<ContentIntelligenceSourceText>(6);
+        Add(ContentEvidenceSourceKind.ExtractedText, workItem.ExtractedText);
+        Add(ContentEvidenceSourceKind.OcrText, workItem.OcrText);
+        Add(ContentEvidenceSourceKind.MediaTranscript, workItem.MediaEvidence?.Transcript);
+        Add(ContentEvidenceSourceKind.MediaOcr, workItem.MediaEvidence?.OcrText);
+        Add(ContentEvidenceSourceKind.VisualDescription, workItem.MediaEvidence?.VisualDescription);
+        Add(ContentEvidenceSourceKind.Metadata, MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence));
+        return sources;
+
+        void Add(ContentEvidenceSourceKind kind, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                sources.Add(new ContentIntelligenceSourceText(kind, value));
+            }
+        }
     }
 
     private async Task<IndexingStageOutput> AnalyzeRelationshipsAsync(

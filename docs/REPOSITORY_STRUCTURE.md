@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the released v2.2 solution as its projects exist in source. It describes
+This guide maps the released v2.3 solution as its projects exist in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -166,6 +166,9 @@ reference cycles.
   - `Media`: format classification, deterministic image metadata/EXIF,
     optional external-process metadata/frame providers, coordinator, bounded
     evidence projection, transcription/visual contracts, and lazy thumbnails.
+  - `ContentIntelligence`: bounded provider-neutral concept/summary contracts,
+    deterministic local extraction with provenance, and the optional
+    user-managed whisper.cpp process adapter.
   - `Semantic`: deterministic local index and explained search.
   - `Structure`: snapshots, preview plans, history, and comparisons.
   - `Tags`: provenance-aware generated tag candidates.
@@ -195,7 +198,8 @@ reference cycles.
   background-index store.
 - **Owns:** SQLite schema/versioning, migrations/backups, transactions,
   integrity checks, durable sources/runs/jobs/stages, shared bounded content,
-  coverage/search projections, schema-4 shared media evidence and media
+  coverage/search projections, schema-4 shared media evidence, schema-5
+  bounded Content Intelligence, and media
   relationship features, relationship evidence/edges/corrections,
   virtual collections/membership, isolated Knowledge Graph/decision sidecars,
   retention, quota maintenance, and compaction.

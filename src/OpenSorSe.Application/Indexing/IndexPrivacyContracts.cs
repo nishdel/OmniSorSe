@@ -24,6 +24,8 @@ public enum IndexedDataKind
     ProcessingHistory = 1 << 6,
     /// <summary>Structured media metadata, OCR, transcripts, and optional descriptions.</summary>
     MediaDerived = 1 << 7,
+    /// <summary>Bounded topics, textual entities, summaries, and their provenance.</summary>
+    ContentIntelligence = 1 << 8,
     /// <summary>All content-derived and operational data while retaining source registration.</summary>
     AllDerived = ExtractedText |
         OcrText |
@@ -32,7 +34,8 @@ public enum IndexedDataKind
         Chunks |
         Relationships |
         ProcessingHistory |
-        MediaDerived,
+        MediaDerived |
+        ContentIntelligence,
 }
 
 /// <summary>Identifies a targeted durable repair boundary.</summary>
@@ -127,6 +130,15 @@ public sealed record IndexPrivacyItem
 
     /// <summary>Gets whether an optional derived visual description is retained.</summary>
     public bool HasVisualDescription { get; init; }
+
+    /// <summary>Gets whether bounded Content Intelligence is retained.</summary>
+    public bool HasContentIntelligence { get; init; }
+
+    /// <summary>Gets the number of retained bounded topics.</summary>
+    public int ContentTopicCount { get; init; }
+
+    /// <summary>Gets the number of retained textual entities.</summary>
+    public int ContentEntityCount { get; init; }
 
     /// <summary>Gets whether all applicable stages completed.</summary>
     public bool IsFullyIndexed { get; init; }

@@ -41,6 +41,13 @@ They are not downloaded or redistributed by OpenSorSe. FFmpeg build licensing
 depends on how that external build was configured; users and downstream
 distributors must review the license and codec terms of the build they choose.
 
+The unmerged v2.3 candidate can also invoke a separately installed
+MIT-licensed whisper.cpp CLI with a user-supplied local GGML model. OpenSorSe
+does not download, bundle, or redistribute that executable or model. Users and
+downstream distributors must review and retain the license and provenance of
+the exact runtime and model they choose. The optional adapter does not make
+whisper.cpp part of the OpenSorSe binary distribution.
+
 ## Other MIT components
 
 CommunityToolkit.Mvvm, Newtonsoft.Json, PDFtoImage, Tmds.DBus.Protocol, HarfBuzzSharp, MicroCom.Runtime, SkiaSharp, and coverlet packages in the inventory are MIT licensed. Retain each package's copyright and permission notice when its files are redistributed.

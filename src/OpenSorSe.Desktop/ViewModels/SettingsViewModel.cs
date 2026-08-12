@@ -577,7 +577,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             MediaCapabilityStatusText = string.Join(
                 Environment.NewLine,
                 capabilities.Select(capability =>
-                    $"{CapabilityLabel(capability.Kind)} — {(capability.IsAvailable ? "Available" : "Not configured")}: {capability.Message}"));
+                    $"{CapabilityLabel(capability.Kind)} — {CapabilityStateLabel(capability.State)}: {capability.Message}"));
         }
         catch (Exception)
         {
@@ -600,6 +600,17 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         MediaCapabilityKind.VisualDescription => "Visual descriptions",
         MediaCapabilityKind.Thumbnail => "Thumbnails",
         _ => kind.ToString(),
+    };
+
+    private static string CapabilityStateLabel(MediaCapabilityState state) => state switch
+    {
+        MediaCapabilityState.NotConfigured => "Not configured",
+        MediaCapabilityState.InvalidConfiguration => "Invalid configuration",
+        MediaCapabilityState.Unavailable => "Unavailable",
+        MediaCapabilityState.Available => "Available",
+        MediaCapabilityState.Processing => "Processing",
+        MediaCapabilityState.Error => "Error",
+        _ => "Disabled",
     };
 
     private void RequestContentCacheReset()

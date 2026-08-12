@@ -56,13 +56,38 @@ public enum MediaExtractionStatus
     Failed,
 }
 
+/// <summary>Describes a provider capability state without treating optional absence as a failure.</summary>
+public enum MediaCapabilityState
+{
+    /// <summary>The user disabled the capability.</summary>
+    Disabled,
+    /// <summary>Required user-managed configuration is missing.</summary>
+    NotConfigured,
+    /// <summary>Configuration exists but cannot be accepted safely.</summary>
+    InvalidConfiguration,
+    /// <summary>The optional runtime or platform capability is unavailable.</summary>
+    Unavailable,
+    /// <summary>The capability is ready for bounded work.</summary>
+    Available,
+    /// <summary>The capability is currently processing work.</summary>
+    Processing,
+    /// <summary>Capability detection failed safely.</summary>
+    Error,
+}
+
 /// <summary>Describes one media capability without opening user content.</summary>
 public sealed record MediaCapability(
     MediaCapabilityKind Kind,
     bool IsAvailable,
     string Provider,
     string? ProviderVersion,
-    string Message);
+    string Message)
+{
+    /// <summary>Gets the user-facing capability state.</summary>
+    public MediaCapabilityState State { get; init; } = IsAvailable
+        ? MediaCapabilityState.Available
+        : MediaCapabilityState.Unavailable;
+}
 
 /// <summary>Contains one bounded speech segment with optional playback timing.</summary>
 public sealed record MediaTranscriptSegment(TimeSpan Start, TimeSpan? End, string Text);

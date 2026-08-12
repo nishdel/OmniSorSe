@@ -276,3 +276,20 @@ Never commit:
   codec accidentally.
 - Cross-target compilation is not native codec/extraction evidence. Record the
   exact executable build, platform, formats, and operations tested.
+
+## v2.3 Content Intelligence maintenance
+
+- Treat [Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md) as the
+  unmerged implementation boundary and keep
+  [its manual checklist](MANUAL_TESTING_v2.3.md) honest about fake-provider,
+  native-provider, interactive, and cross-target evidence.
+- Preserve exact/literal Search tiers when changing topic/entity/summary
+  weights. Derived signals and optional AI cannot introduce file membership.
+- Changes to deterministic extraction, relevant bounds, whisper.cpp
+  runtime/model metadata, or provider contract version must invalidate the
+  processing fingerprint. Avoid hashing a large model on every file operation.
+- Validate schema-4-to-5 migration, recovery-copy stability, malformed evidence,
+  clear/forget, relationship regeneration, and source-file preservation.
+- whisper.cpp, its model, ffmpeg, ffprobe, Tesseract, and Ollama remain external
+  user-managed capabilities. Never add a downloaded runtime/model, private
+  sample, or provider workspace to Git or release artifacts.

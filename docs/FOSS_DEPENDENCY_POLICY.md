@@ -37,21 +37,31 @@ GPL); users and distributors are responsible for choosing and licensing their
 external build. Absence, timeout, cancellation, malformed output, or unsupported
 codecs leave ordinary Search and deterministic image metadata usable.
 
-No Whisper-compatible transcription engine or visual-description model is
-selected, downloaded, or bundled. v2.2 provides provider contracts and explicit
-unavailable capability states only. Any future concrete provider requires a
-separate dependency, license, size, platform, security, and redistribution
-review under this policy.
+Released v2.2 selected no Whisper-compatible transcription engine or
+visual-description model. Released v2.3 adds a process adapter
+for an optional **user-managed** MIT-licensed whisper.cpp CLI and GGML model.
+OpenSorSe does not download, bundle, redistribute, or update either. The user or
+downstream distributor is responsible for the executable/model source and
+license. Missing configuration retains ordinary Search and deterministic
+Content Intelligence.
 
 The final v2.2 review considered MIT-licensed `whisper.cpp` 1.8.1,
 MIT-licensed Whisper.net 1.9.1, and the MIT OpenAI Whisper Python reference.
-`whisper.cpp` is the preferred future process-isolated direction but still
-needs a versioned CLI/timestamp adapter, user-supplied model validation, safe
-audio conversion, and native testing on every target. Whisper.net would add
+`whisper.cpp` is selected for v2.3's external, process-isolated
+adapter because it keeps runtime/model redistribution outside OpenSorSe and
+supports bounded JSON timestamp output, argument-list invocation, cancellation,
+and safe audio conversion. Native runtime/model testing remains platform- and
+model-specific. Whisper.net would add
 per-RID native runtime assets and material package/native-validation scope.
 The Python reference would make Python/PyTorch a large mandatory or
-externally-managed runtime. None is added in v2.2, and no model is silently
-downloaded.
+externally-managed runtime. Neither alternative is added, no model is silently
+downloaded, and no concrete visual provider is selected.
+
+Upstream `whisper.cpp` release 1.9.2 was rechecked for v2.3.0 on
+2026-08-12. OpenSorSe intentionally neither pins nor redistributes that external
+executable: the adapter validates the configured CLI and model at runtime and
+fails safely when either is absent or incompatible. Actual native compatibility
+remains dependent on the user-supplied build, platform, and model.
 
 ## Embedded SQLite components
 

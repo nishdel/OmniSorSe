@@ -170,6 +170,57 @@ public sealed class SqliteRelationshipStoreTests
         Assert.Equal(0, diagnostics.LastGeneratedRelationshipCount);
     }
 
+    /// <summary>Verifies clearing content intelligence invalidates automatic relationships derived from it.</summary>
+    [Fact]
+    public async Task ClearContentIntelligence_InvalidatesAutomaticRelationshipProjection()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, second) = await GetPairAsync(store);
+        var batch = CreateBatch(first, second);
+        await store.SaveRelationshipAnalysisAsync(batch, 100);
+
+        var result = await store.ClearFileDataAsync(
+            first.FileId,
+            IndexedDataKind.ContentIntelligence,
+            Epoch.AddHours(1));
+
+        Assert.True(result.Applied);
+        Assert.Null(await store.GetRelationshipAsync(batch.Proposals[0].Relationship.Id));
+        Assert.Empty(await store.GetRelatedFilesAsync(second.FileId, null, null, RelatedFileSort.Confidence, 10));
+        Assert.Equal("0", fixture.Scalar("SELECT COUNT(*) FROM index_relationship_features;"));
+    }
+
+    /// <summary>Verifies a privacy clear never removes an explicit user-created relationship.</summary>
+    [Fact]
+    public async Task ClearContentIntelligence_PreservesManualRelationship()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, second) = await GetPairAsync(store);
+        await store.LinkFilesAsync(
+            first.FileId,
+            second.FileId,
+            RelationshipType.Manual,
+            null,
+            true,
+            Epoch);
+
+        await store.ClearFileDataAsync(
+            first.FileId,
+            IndexedDataKind.ContentIntelligence,
+            Epoch.AddHours(1));
+
+        var retained = Assert.Single(await store.GetRelatedFilesAsync(
+            first.FileId,
+            null,
+            null,
+            RelatedFileSort.Confidence,
+            10));
+        Assert.True(retained.Relationship.IsManual);
+        Assert.Equal(RelationshipDecision.AlwaysRelate, retained.Relationship.Decision);
+    }
+
     /// <summary>Verifies forgetting relationship data can suppress future analysis without deleting the indexed file.</summary>
     [Fact]
     public async Task ForgetFile_RetainsFileAndSuppressesFutureRelationshipAnalysis()
@@ -408,6 +459,55 @@ public sealed class SqliteRelationshipStoreTests
         Assert.Equal(3, candidates.Count);
         Assert.DoesNotContain(candidates, item => item.FileId == target.FileId);
         Assert.Equal(candidates.OrderBy(item => item.FileId, StringComparer.Ordinal).Select(item => item.FileId), candidates.Select(item => item.FileId));
+    }
+
+    /// <summary>Shared bounded concepts retrieve cross-media candidates without relying on filename, folder, or date proximity.</summary>
+    [Fact]
+    public async Task CandidateSelection_FindsIndexedConceptAcrossOtherwiseUnrelatedFiles()
+    {
+        using var fixture = new Fixture(fileCount: 3);
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var files = await store.GetRelationshipFilesAsync(10);
+        await store.UpsertRelationshipFeaturesAsync(
+            new RelationshipFeatureSet(files[0].FileId, "network notes", "documents", null, null, null, null, null, ["raspberry pi"], "2.3.0"),
+            Epoch);
+        await store.UpsertRelationshipFeaturesAsync(
+            new RelationshipFeatureSet(files[1].FileId, "spoken diary", "recordings", null, null, null, null, null, ["raspberry pi"], "2.3.0"),
+            Epoch);
+        await store.UpsertRelationshipFeaturesAsync(
+            new RelationshipFeatureSet(files[2].FileId, "holiday photo", "images", null, null, null, null, null, ["dolomites"], "2.3.0"),
+            Epoch);
+
+        var candidates = await store.GetRelationshipCandidatesAsync(
+            new RelationshipFeatureSet(files[0].FileId, "network notes", "documents", null, null, null, null, null, ["raspberry pi"], "2.3.0"),
+            10);
+
+        var candidate = Assert.Single(candidates);
+        Assert.Equal(files[1].FileId, candidate.FileId);
+    }
+
+    /// <summary>Oversized candidate terms are rejected before JSON or indexed projections are written.</summary>
+    [Fact]
+    public async Task RelationshipFeatures_RejectOversizedCandidateTerm()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var file = Assert.Single((await store.GetRelationshipFilesAsync(10)).Take(1));
+        var features = new RelationshipFeatureSet(
+            file.FileId,
+            "notes",
+            "documents",
+            null,
+            null,
+            null,
+            null,
+            null,
+            [new string('x', 65)],
+            "2.3.0");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.UpsertRelationshipFeaturesAsync(features, Epoch));
+
+        Assert.Equal("0", fixture.Scalar("SELECT COUNT(*) FROM index_relationship_feature_terms;"));
     }
 
     private static async Task<(RelationshipFileDocument First, RelationshipFileDocument Second)> GetPairAsync(SqliteDeepIndexStore store)

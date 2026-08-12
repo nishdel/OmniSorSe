@@ -11,6 +11,7 @@ on:
       - v2.0-knowledge-graph
       - v2.1-search-ai-quality
       - v2.2-media-intelligence
+      - v2.3-content-intelligence
   pull_request:
 
 permissions:

@@ -19,6 +19,7 @@ using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogComparison;
 using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
@@ -179,7 +180,12 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IMediaProcessRunner, ExternalMediaProcessRunner>();
         services.AddSingleton<IMediaMetadataProvider, ImageMediaMetadataProvider>();
         services.AddSingleton<IMediaMetadataProvider, FfprobeMediaMetadataProvider>();
-        services.AddSingleton<IMediaTranscriptionProvider, UnavailableMediaTranscriptionProvider>();
+        services.AddSingleton<IMediaTranscriptionProvider>(serviceProvider =>
+            new WhisperCppTranscriptionProvider(
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>(),
+                serviceProvider.GetRequiredService<IExternalToolLocator>(),
+                serviceProvider.GetRequiredService<IMediaProcessRunner>(),
+                Path.Combine(paths.CacheDirectory, "media-temporary", "transcription")));
         services.AddSingleton<IMediaVisualDescriptionProvider, UnavailableMediaVisualDescriptionProvider>();
         services.AddSingleton<IVideoFrameSampler>(serviceProvider =>
             new FfmpegVideoFrameSampler(
@@ -200,6 +206,7 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
+        services.AddSingleton<IContentIntelligenceProvider, DeterministicContentIntelligenceProvider>();
         services.AddSingleton<SqliteDeepIndexStore>(serviceProvider =>
         {
             return new SqliteDeepIndexStore(

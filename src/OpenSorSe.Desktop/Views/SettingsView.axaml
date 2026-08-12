@@ -76,6 +76,57 @@
 
             <Border Classes="card">
                 <StackPanel Spacing="8">
+                    <TextBlock Text="Content Intelligence" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Derive a small set of local topics, textual entities, and source-grounded summaries from content already retained in the index. These are explainable clues, not objective facts."
+                               TextWrapping="Wrap" />
+                    <CheckBox Content="Enable Content Intelligence"
+                              IsChecked="{Binding Draft.ContentIntelligenceEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable local Content Intelligence" />
+                    <WrapPanel>
+                        <CheckBox Margin="0,0,16,6" Content="Generate topics"
+                                  IsChecked="{Binding Draft.TopicExtractionEnabled, Mode=TwoWay}" />
+                        <CheckBox Margin="0,0,16,6" Content="Detect textual entities"
+                                  IsChecked="{Binding Draft.EntityExtractionEnabled, Mode=TwoWay}" />
+                        <CheckBox Margin="0,0,16,6" Content="Generate source-grounded summaries"
+                                  IsChecked="{Binding Draft.ContentSummaryGenerationEnabled, Mode=TwoWay}" />
+                    </WrapPanel>
+                    <TextBlock Text="Deterministic processing is local and bounded. It does not identify people from images, call the internet, or move source files."
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="The File analysis option for derived summaries, keywords, and Content Intelligence must also remain enabled. Individual controls here decide which bounded evidence is retained."
+                               TextWrapping="Wrap"
+                               Classes="page-subtitle" />
+                    <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
+                          ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Maximum input characters" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumContentIntelligenceInputCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum topics" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumContentTopics, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Maximum entities" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumContentEntities, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Spacing="3">
+                            <TextBlock Text="Maximum keywords" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumContentKeywords, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Maximum summary characters" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumContentSummaryCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="3">
+                            <TextBlock Text="Maximum evidence excerpt" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumContentEvidenceExcerptCharacters, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
                     <TextBlock Text="File analysis" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Extract searchable information and build Search coverage in the background"
                               IsChecked="{Binding Draft.DeepIndexingEnabled, Mode=TwoWay}" />
@@ -110,9 +161,9 @@
                                   Content="Enable optional AI-generated indexing stages"
                                   IsChecked="{Binding Draft.DeepAiProcessingEnabled, Mode=TwoWay}" />
                         <CheckBox Margin="0,0,16,6"
-                                  Content="Store generated summaries and keywords"
+                                  Content="Store derived summaries, keywords, and Content Intelligence"
                                   IsChecked="{Binding Draft.DeepSummaryProcessingEnabled, Mode=TwoWay}"
-                                  AutomationProperties.HelpText="Generated summaries and keywords are stored only in OpenSorSe's local index." />
+                                  AutomationProperties.HelpText="Derived summaries, keywords, topics, and textual entities are stored only in OpenSorSe's local index. The Content Intelligence controls choose which categories are retained." />
                         <CheckBox Margin="0,0,16,6"
                                   Content="Store related-concept data and selected chunks"
                                   IsChecked="{Binding Draft.DeepSemanticProcessingEnabled, Mode=TwoWay}"
@@ -378,6 +429,22 @@
                     </Grid>
                     <TextBlock Text="No media is silently uploaded. OCR and transcripts can reveal words that are not visible in filenames. GPS metadata stays in OpenSorSe's local index and is never reverse-geocoded or transmitted by Media Intelligence. Transcription and visual descriptions require separately configured local providers."
                                TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="whisper.cpp executable (optional)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.WhisperExecutablePath, Mode=TwoWay}"
+                                     PlaceholderText="Absolute whisper-cli path, or leave blank for PATH"
+                                     AutomationProperties.Name="Local whisper.cpp executable path" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="whisper.cpp model (optional)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.WhisperModelPath, Mode=TwoWay}"
+                                     PlaceholderText="Absolute path to a user-supplied GGML model"
+                                     AutomationProperties.Name="Local whisper.cpp model path" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Speech transcription runs locally only when both a user-managed whisper.cpp runtime and model are configured. OpenSorSe never downloads models automatically."
+                               TextWrapping="Wrap" />
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
                         <StackPanel Spacing="3">
                             <TextBlock Text="Maximum media file (MiB)" FontWeight="SemiBold" />
@@ -394,7 +461,7 @@
                         </StackPanel>
                     </Grid>
                     <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
-                          ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                          ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                         <StackPanel Spacing="3">
                             <TextBlock Text="Maximum sampled video frames" FontWeight="SemiBold" />
                             <TextBox Text="{Binding Draft.MaximumVideoFrames, Mode=TwoWay}" />
@@ -430,6 +497,11 @@
                             <TextBlock Text="Provider timeout (seconds)" FontWeight="SemiBold" />
                             <TextBox Text="{Binding Draft.MediaProviderTimeoutSeconds, Mode=TwoWay}"
                                      AutomationProperties.Name="Media provider timeout" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="4" Spacing="3">
+                            <TextBlock Text="Transcription timeout (seconds)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.TranscriptionTimeoutSeconds, Mode=TwoWay}"
+                                     AutomationProperties.Name="Local transcription timeout" />
                         </StackPanel>
                     </Grid>
                     <Button Classes="secondary"

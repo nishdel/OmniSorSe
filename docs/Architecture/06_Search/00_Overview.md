@@ -135,6 +135,8 @@ The Search subsystem may retrieve information from:
 * Extracted document text.
 * Image and representative-frame OCR.
 * Bounded local-provider transcripts when a concrete provider is available.
+* Bounded deterministic topics, textual entities, and source-grounded
+  extractive summaries with provider/source provenance.
 * Optional low-weight visual descriptions when a reviewed provider is available.
 * AI-generated summaries.
 * AI classifications.
@@ -143,6 +145,12 @@ The Search subsystem may retrieve information from:
 * File properties.
 
 The origin of information should remain transparent to the user whenever practical.
+
+The released v2.3 implementation projects topics, entities, and extractive
+summaries into the existing candidate model. These are explicit lower-tier
+ranking components and labelled snippets. Exact filename and literal evidence
+remain authoritative. No derived provider can add a file identity that was not
+already returned by deterministic candidate retrieval.
 
 ---
 

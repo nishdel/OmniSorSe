@@ -64,7 +64,10 @@ public sealed class UnavailableMediaTranscriptionProvider : IMediaTranscriptionP
             false,
             Name,
             Version,
-            "Transcription is not configured. Metadata and ordinary Search remain available."));
+            "Transcription is not configured. Metadata and ordinary Search remain available.")
+        {
+            State = MediaCapabilityState.NotConfigured,
+        });
     }
 
     /// <inheritdoc />
@@ -105,7 +108,10 @@ public sealed class UnavailableMediaVisualDescriptionProvider : IMediaVisualDesc
             false,
             Name,
             Version,
-            "Visual descriptions require a compatible explicitly configured local provider."));
+            "Visual descriptions require a compatible explicitly configured local provider.")
+        {
+            State = MediaCapabilityState.NotConfigured,
+        });
     }
 
     /// <inheritdoc />

@@ -37,6 +37,9 @@ public sealed class ApplicationSettings
     /// <summary>Gets or initializes bounded local media-analysis settings.</summary>
     public MediaIntelligenceSettings MediaIntelligence { get; init; } = new();
 
+    /// <summary>Gets or initializes bounded local content-understanding settings.</summary>
+    public ContentIntelligenceSettings ContentIntelligence { get; init; } = new();
+
     /// <summary>Gets or initializes local Search settings.</summary>
     public SemanticSearchSettings SemanticSearch { get; init; } = new();
 
@@ -73,6 +76,7 @@ public sealed class ApplicationSettings
         Catalog = Catalog,
         Content = Content,
         MediaIntelligence = MediaIntelligence,
+        ContentIntelligence = ContentIntelligence,
         SemanticSearch = SemanticSearch,
         DeepIndexing = DeepIndexing,
     };
@@ -95,6 +99,7 @@ public sealed class ApplicationSettings
         Catalog = Catalog,
         Content = Content,
         MediaIntelligence = MediaIntelligence,
+        ContentIntelligence = ContentIntelligence,
         SemanticSearch = SemanticSearch,
         DeepIndexing = DeepIndexing,
     };
@@ -155,6 +160,13 @@ public sealed class ApplicationSettings
         }
 
         MediaIntelligence.Validate();
+
+        if (ContentIntelligence is null)
+        {
+            throw new ConfigurationValidationException("Content Intelligence settings are required.");
+        }
+
+        ContentIntelligence.Validate();
 
         if (SemanticSearch is null)
         {
@@ -535,6 +547,15 @@ public sealed class MediaIntelligenceSettings
     /// <summary>Gets or initializes an optional absolute ffmpeg executable path; null uses PATH.</summary>
     public string? FfmpegExecutablePath { get; init; }
 
+    /// <summary>Gets or initializes an optional absolute whisper.cpp CLI path; null uses PATH.</summary>
+    public string? WhisperExecutablePath { get; init; }
+
+    /// <summary>Gets or initializes the user-supplied local whisper.cpp GGML model path.</summary>
+    public string? WhisperModelPath { get; init; }
+
+    /// <summary>Gets or initializes the finite timeout for one local transcription job.</summary>
+    public int TranscriptionTimeoutSeconds { get; init; } = 900;
+
     /// <summary>Validates all media resource and executable-path bounds.</summary>
     public void Validate()
     {
@@ -549,8 +570,11 @@ public sealed class MediaIntelligenceSettings
             MaximumThumbnailDimension is < 64 or > 1_024 ||
             MaximumThumbnailSourcePixels is < 1_000_000 or > 400_000_000 ||
             ProviderTimeoutSeconds is < 5 or > 300 ||
+            TranscriptionTimeoutSeconds is < 30 or > 7_200 ||
             !ValidOptionalExecutablePath(FfprobeExecutablePath) ||
-            !ValidOptionalExecutablePath(FfmpegExecutablePath))
+            !ValidOptionalExecutablePath(FfmpegExecutablePath) ||
+            !ValidOptionalExecutablePath(WhisperExecutablePath) ||
+            !ValidOptionalModelPath(WhisperModelPath))
         {
             throw new ConfigurationValidationException("Media Intelligence settings are invalid.");
         }
@@ -559,6 +583,58 @@ public sealed class MediaIntelligenceSettings
     private static bool ValidOptionalExecutablePath(string? path) =>
         path is null ||
         !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path) && path.Length <= 1_024;
+
+    private static bool ValidOptionalModelPath(string? path) =>
+        path is null ||
+        !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path) && path.Length <= 1_024;
+}
+
+/// <summary>Defines conservative local controls for derived topics, entities, and summaries.</summary>
+public sealed class ContentIntelligenceSettings
+{
+    /// <summary>Gets or initializes whether bounded local content understanding may run.</summary>
+    public bool Enabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether normalized topics and keywords are retained.</summary>
+    public bool TopicExtractionEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether conservative textual entities are retained.</summary>
+    public bool EntityExtractionEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes whether a short evidence-grounded extractive summary is retained.</summary>
+    public bool SummaryGenerationEnabled { get; init; } = true;
+
+    /// <summary>Gets or initializes the maximum combined indexed characters analyzed per file.</summary>
+    public int MaximumInputCharacters { get; init; } = 16_384;
+
+    /// <summary>Gets or initializes the maximum retained topics per file.</summary>
+    public int MaximumTopics { get; init; } = 16;
+
+    /// <summary>Gets or initializes the maximum retained entities per file.</summary>
+    public int MaximumEntities { get; init; } = 16;
+
+    /// <summary>Gets or initializes the maximum retained keyword values per file.</summary>
+    public int MaximumKeywords { get; init; } = 32;
+
+    /// <summary>Gets or initializes the maximum summary length.</summary>
+    public int MaximumSummaryCharacters { get; init; } = 512;
+
+    /// <summary>Gets or initializes the maximum evidence excerpt length.</summary>
+    public int MaximumEvidenceExcerptCharacters { get; init; } = 160;
+
+    /// <summary>Validates bounded local content-understanding settings.</summary>
+    public void Validate()
+    {
+        if (MaximumInputCharacters is < 1_024 or > 262_144 ||
+            MaximumTopics is < 1 or > 64 ||
+            MaximumEntities is < 1 or > 64 ||
+            MaximumKeywords is < 1 or > 128 ||
+            MaximumSummaryCharacters is < 128 or > 2_048 ||
+            MaximumEvidenceExcerptCharacters is < 64 or > 512)
+        {
+            throw new ConfigurationValidationException("Content Intelligence settings are invalid.");
+        }
+    }
 }
 
 /// <summary>

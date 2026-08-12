@@ -18,26 +18,27 @@ Ollama-compatible assistance.
 It is not an autonomous file manager. Analysis and suggestions do not authorize
 file changes.
 
-## OpenSorSe v2.2.0
+## OpenSorSe v2.3.0
 
-v2.2.0 is the Media Intelligence release. It extends the same local-first,
-deterministic Search experience to images, audio, and video using bounded image
-metadata and EXIF, optional local OCR, lazy thumbnails, and optional
-user-managed `ffprobe`/`ffmpeg` metadata and representative-frame analysis. It
-also improves Search discovery, scan ETA, multi-group duplicate recovery,
-Collections/Related Files scrolling, navigation, and privacy wording.
+v2.3.0 is the Content Intelligence & Local Understanding release. It adds
+bounded deterministic topics, keywords, textual entities, source-grounded
+extractive summaries, and explainable cross-media relationships to v2.2's
+local media-aware index. An optional adapter can run a user-managed whisper.cpp
+CLI and model locally; neither is bundled or downloaded. Exact filenames and
+deterministic Search remain authoritative.
 
 The release is automatically validated on Windows, Ubuntu, and macOS. Automated
 validation is not a claim of broad interactive testing on every host or with
 every Ollama/OCR configuration. Read [Release Status](docs/RELEASE_STATUS.md)
 for the evidence boundary,
-[v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) for user-facing changes,
+[v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) for user-facing changes,
 and [Release History](RELEASE_HISTORY.md) for earlier milestones.
 
-The [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) documents the
-provider architecture and limits. The [manual checklist](docs/MANUAL_TESTING_v2.2.md)
-separates observed Windows native-provider evidence from remaining interactive
-and native Linux/macOS checks.
+The [Content Intelligence guide](docs/CONTENT_INTELLIGENCE_v2.3.md) documents
+the provider architecture and limits. The
+[manual checklist](docs/MANUAL_TESTING_v2.3.md) separates observed Windows
+native-provider evidence from remaining interactive and native Linux/macOS
+checks.
 
 ## Screenshots
 
@@ -50,15 +51,15 @@ remaining capture work is explicit in the unchecked
 ## Downloads and installation
 
 Use only the official
-[v2.2.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.2.0):
+[v2.3.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.3.0):
 
-- Windows x64 installer: `OpenSorSe-v2.2.0-win-x64-setup.exe`;
-- Windows x64 portable: `OpenSorSe-v2.2.0-win-x64.zip`;
-- macOS Intel: `OpenSorSe-v2.2.0-macos-x64.dmg`;
-- macOS Apple Silicon: `OpenSorSe-v2.2.0-macos-arm64.dmg`;
-- SHA-256 checksums: `OpenSorSe-v2.2.0-SHA256SUMS.txt`.
+- Windows x64 installer: `OpenSorSe-v2.3.0-win-x64-setup.exe`;
+- Windows x64 portable: `OpenSorSe-v2.3.0-win-x64.zip`;
+- macOS Intel: `OpenSorSe-v2.3.0-macos-x64.dmg`;
+- macOS Apple Silicon: `OpenSorSe-v2.3.0-macos-arm64.dmg`;
+- SHA-256 checksums: `OpenSorSe-v2.3.0-SHA256SUMS.txt`.
 
-The v2.2.0 Windows and macOS artifacts are unsigned, and the macOS packages are
+The v2.3.0 Windows and macOS artifacts are unsigned, and the macOS packages are
 not notarized, unless the release page explicitly records otherwise. Windows
 SmartScreen or macOS Gatekeeper may therefore warn. Checksums detect changed
 bytes but do not authenticate an unsigned publisher.
@@ -79,12 +80,13 @@ update, uninstall, application-data, and checksum guidance is in
 | Relationships and Collections | Discovers bounded deterministic relationships from retained evidence, provides virtual Smart Collections and timelines, preserves user corrections, and never moves original files. |
 | Related Files | Optionally projects stable files, sources, folders, Collections, exact-content sets, and manual entities into an evidence-backed local Knowledge Graph with bounded browsing, privacy/repair controls, and opt-out Search context. It is disabled by default. |
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
-| Media Intelligence | Adds bounded structured image metadata and EXIF-oriented lazy thumbnails; optional image/video-frame OCR; optional `ffprobe` audio/video metadata and `ffmpeg` representative frames; and provider-neutral transcription/visual-description boundaries. No concrete transcription or visual-description provider is included. Missing optional tools never disable ordinary Search. |
+| Media Intelligence | Adds bounded structured image metadata and EXIF-oriented lazy thumbnails; optional image/video-frame OCR; optional `ffprobe` audio/video metadata and `ffmpeg` representative frames; and provider-neutral transcription/visual-description boundaries. v2.3 can use an explicitly configured user-managed whisper.cpp CLI/model for local speech transcription; no visual-description provider is included. Missing optional tools never disable ordinary Search. |
+| Content Intelligence | Derives bounded normalized topics, textual entities, keywords, and a one-sentence extractive summary from already indexed local evidence, retaining provider/version and source provenance. These remain optional clues rather than facts. |
 | Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
-| Persistence | v2.2 uses bounded local JSON, schema-4 embedded Search with shared bounded media evidence, and isolated schema-1 Knowledge Graph/decision sidecars. Migration from the v2.1 schema-3 index is transactional and backed up. No database server is required. |
+| Persistence | Released v2.3 uses bounded local JSON, schema-5 embedded Search with shared bounded media/content evidence and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. Transactional migration preserves v2.2 schema-4 data and recovery policy. No database server is required. |
 
 The current source does not implement cloud synchronization, collaboration,
 OpenSorSe Server, a conversational assistant, unrestricted
@@ -135,11 +137,13 @@ contract.
 - **macOS Intel and Apple Silicon:** native `.app`/DMG packages. Read-only and
   non-mutating capabilities are packaged and smoke-tested; source-file mutation
   remains disabled where platform capability policy cannot prove equivalent
-  safety. Packages are unsigned/unnotarized for v2.2.0.
+  safety. Packages are unsigned/unnotarized for v2.3.0.
 - **Linux x64:** source-build preview with documented filesystem, watcher,
   desktop, and packaging limitations; no binary installer is advertised.
 - **Ollama-compatible service:** optional and externally managed.
 - **Tesseract 5:** optional and externally installed for OCR recognition.
+- **whisper.cpp CLI and model:** optional, user-managed, and never downloaded or
+  bundled by OpenSorSe.
 - **Plugins:** optional local ZIP packages; external code runs in-process as the
   current user. Load-context isolation and SHA-256 integrity are not sandboxing
   or publisher authentication.
@@ -181,8 +185,11 @@ documents are:
 | [v2.1 Search and AI quality](docs/SEARCH_AND_AI_QUALITY_v2.1.md) | Current released behavior for ranking, optional Ollama reranking, truthful model/indexing states, fallbacks, privacy, and limits. |
 | [v2.2 Media Intelligence](docs/MEDIA_INTELLIGENCE_v2.2.md) | Released media-provider architecture, supported evidence, optional dependencies, bounds, privacy, Search integration, and honest limitations. |
 | [v2.2 Manual Testing](docs/MANUAL_TESTING_v2.2.md) | Controlled Windows native-provider, OCR, and migration evidence plus explicitly unchecked interactive, transcription, and native Linux/macOS scenarios. |
+| [v2.3 Content Intelligence](docs/CONTENT_INTELLIGENCE_v2.3.md) | Released provider architecture, deterministic topics/entities/summaries, optional user-managed whisper.cpp adapter, schema 5, Search/Related Files integration, privacy, and limits. |
+| [v2.3 Manual Testing](docs/MANUAL_TESTING_v2.3.md) | Explicitly separated automated, provider-native, interactive, and native-platform release evidence. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
-| [v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) | Downloads, Media Intelligence and UX changes, checksums, trust status, limitations, and validation boundary. |
+| [v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) | Downloads, Content Intelligence and local-transcription changes, checksums, trust status, limitations, and validation boundary. |
+| [v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence and UX release snapshot. |
 | [v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) | Historical Search/AI quality release snapshot. |
 | [v2.0.0 Release Notes](docs/RELEASE_NOTES_v2.0.0.md) | Historical v2.0.0 release and integration record. |
 | [v2.0 Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md) | Implemented scope, sidecar storage, projection/recovery, Search, privacy, bounds, and deferred behavior. |

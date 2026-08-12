@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
@@ -81,6 +82,12 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                             EnsureColumn(connection, transaction, "index_relationship_features", "media_device_key", "TEXT");
                             EnsureColumn(connection, transaction, "index_relationship_features", "capture_date_bucket", "INTEGER");
                             ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFourIndexes);
+                        }
+
+                        if (version < 5)
+                        {
+                            EnsureColumn(connection, transaction, "index_content", "content_intelligence_json", "TEXT");
+                            ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
                         }
 
                         ExecuteNonQuery(
@@ -555,7 +562,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                            COALESCE(p.suppress_ocr, 0),
                            COALESCE(p.suppress_summary, 0),
                            COALESCE(p.suppress_semantic, 0),
-                           COALESCE(p.force_reprocess, 0)
+                           COALESCE(p.force_reprocess, 0),
+                           c.content_intelligence_json
                     FROM index_jobs j
                     JOIN index_runs r ON r.id = j.run_id
                     JOIN index_sources s ON s.id = r.source_id
@@ -619,6 +627,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     SuppressSummary = reader.GetBoolean(22),
                     SuppressSemantic = reader.GetBoolean(23),
                     ForceReprocess = reader.GetBoolean(24),
+                    ContentIntelligence = reader.IsDBNull(25)
+                        ? null
+                        : TryDeserializeContentIntelligence(reader.GetString(25)),
                 };
                 reader.Close();
                 var changed = ExecuteNonQuery(
@@ -1355,7 +1366,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                            COALESCE(p.suppress_ocr, 0),
                            COALESCE(p.suppress_summary, 0),
                            COALESCE(p.suppress_semantic, 0),
-                           m.evidence_json
+                           m.evidence_json, c.content_intelligence_json
                     FROM index_files f
                     JOIN index_sources s ON s.id = f.source_id
                     LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -1389,6 +1400,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                         ? null
                         : TryDeserializeFloats(reader.GetString(10), out semanticValid);
                     var mediaEvidence = reader.IsDBNull(21) ? null : TryDeserializeMediaEvidence(reader.GetString(21));
+                    var contentIntelligence = reader.IsDBNull(22)
+                        ? null
+                        : TryDeserializeContentIntelligence(reader.GetString(22));
                     documents.Add(new ProgressiveSearchDocument
                     {
                         FileId = reader.GetString(0),
@@ -1417,12 +1431,17 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                             ? null
                             : reader.GetString(7),
                         MediaEvidence = mediaEvidence,
+                        ContentIntelligence = indexingLevel == IndexingLevel.Basic || suppressSummary
+                            ? null
+                            : contentIntelligence,
                         Summary = indexingLevel == IndexingLevel.Basic || suppressSummary || reader.IsDBNull(8)
                             ? null
                             : reader.GetString(8),
                         Keywords = indexingLevel == IndexingLevel.Basic || suppressSummary ? [] : keywords,
                         SemanticRepresentation = indexingLevel == IndexingLevel.Basic ? null : semantic,
-                        HasIndexingFailure = reader.GetBoolean(16) || !keywordsValid || !semanticValid || (!reader.IsDBNull(21) && mediaEvidence is null),
+                        HasIndexingFailure = reader.GetBoolean(16) || !keywordsValid || !semanticValid ||
+                            (!reader.IsDBNull(21) && mediaEvidence is null) ||
+                            (!reader.IsDBNull(22) && contentIntelligence is null),
                     });
                     if (indexingLevel != IndexingLevel.Basic &&
                         !suppressSemantic &&
@@ -1498,7 +1517,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                            COALESCE(p.suppress_ocr, 0),
                            COALESCE(p.suppress_summary, 0),
                            COALESCE(p.suppress_semantic, 0),
-                           m.evidence_json
+                           m.evidence_json, c.content_intelligence_json
                     FROM index_files f
                     JOIN index_sources s ON s.id = f.source_id
                     LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -1531,6 +1550,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                         ? null
                         : TryDeserializeFloats(reader.GetString(10), out semanticValid);
                     var mediaEvidence = reader.IsDBNull(21) ? null : TryDeserializeMediaEvidence(reader.GetString(21));
+                    var contentIntelligence = reader.IsDBNull(22)
+                        ? null
+                        : TryDeserializeContentIntelligence(reader.GetString(22));
                     documents.Add(new ProgressiveSearchDocument
                     {
                         FileId = reader.GetString(0),
@@ -1559,12 +1581,17 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                             ? null
                             : reader.GetString(7),
                         MediaEvidence = mediaEvidence,
+                        ContentIntelligence = indexingLevel == IndexingLevel.Basic || suppressSummary
+                            ? null
+                            : contentIntelligence,
                         Summary = indexingLevel == IndexingLevel.Basic || suppressSummary || reader.IsDBNull(8)
                             ? null
                             : reader.GetString(8),
                         Keywords = indexingLevel == IndexingLevel.Basic || suppressSummary ? [] : keywords,
                         SemanticRepresentation = indexingLevel == IndexingLevel.Basic ? null : semantic,
-                        HasIndexingFailure = reader.GetBoolean(16) || !keywordsValid || !semanticValid || (!reader.IsDBNull(21) && mediaEvidence is null),
+                        HasIndexingFailure = reader.GetBoolean(16) || !keywordsValid || !semanticValid ||
+                            (!reader.IsDBNull(21) && mediaEvidence is null) ||
+                            (!reader.IsDBNull(22) && contentIntelligence is null),
                     });
                     if (indexingLevel != IndexingLevel.Basic &&
                         !suppressSemantic &&
@@ -1884,6 +1911,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                                 IndexedDataKind.ExtractedText |
                                 IndexedDataKind.OcrText |
                                 IndexedDataKind.SummaryAndKeywords |
+                                IndexedDataKind.ContentIntelligence |
                                 IndexedDataKind.SemanticData |
                                 IndexedDataKind.Chunks,
                                 changedAtUtc);
@@ -2247,6 +2275,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionTwo);
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionThree);
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFour);
+                EnsureColumn(connection, transaction, "index_relationship_features", "media_transcript_fingerprint", "TEXT");
+                EnsureColumn(connection, transaction, "index_relationship_features", "media_ocr_fingerprint", "TEXT");
+                EnsureColumn(connection, transaction, "index_relationship_features", "media_device_key", "TEXT");
+                EnsureColumn(connection, transaction, "index_relationship_features", "capture_date_bucket", "INTEGER");
+                ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFourIndexes);
+                EnsureColumn(connection, transaction, "index_content", "content_intelligence_json", "TEXT");
+                ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -2591,7 +2626,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
             output.OcrText is not null ||
             output.Summary is not null ||
             output.Keywords is not null ||
-            output.SemanticRepresentation is not null)
+            output.SemanticRepresentation is not null ||
+            output.ContentIntelligence is not null)
         {
             ExecuteNonQuery(
                 connection,
@@ -2599,16 +2635,17 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 """
                 INSERT INTO index_content(
                     content_hash, extracted_text, ocr_text, summary, keywords_json,
-                    semantic_json, coverage_level, processor_fingerprint, updated_utc_ticks)
+                    semantic_json, content_intelligence_json, coverage_level, processor_fingerprint, updated_utc_ticks)
                 VALUES(
                     $hash, $text, $ocr, $summary, $keywords,
-                    $semantic, $coverage, $processor, $now)
+                    $semantic, $intelligence, $coverage, $processor, $now)
                 ON CONFLICT(content_hash) DO UPDATE SET
                     extracted_text = COALESCE(excluded.extracted_text, index_content.extracted_text),
                     ocr_text = COALESCE(excluded.ocr_text, index_content.ocr_text),
                     summary = COALESCE(excluded.summary, index_content.summary),
                     keywords_json = COALESCE(excluded.keywords_json, index_content.keywords_json),
                     semantic_json = COALESCE(excluded.semantic_json, index_content.semantic_json),
+                    content_intelligence_json = COALESCE(excluded.content_intelligence_json, index_content.content_intelligence_json),
                     coverage_level = MAX(index_content.coverage_level, excluded.coverage_level),
                     processor_fingerprint = excluded.processor_fingerprint,
                     updated_utc_ticks = excluded.updated_utc_ticks;
@@ -2619,6 +2656,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ("$summary", output.Summary),
                 ("$keywords", output.Keywords is null ? null : JsonSerializer.Serialize(output.Keywords.Take(64))),
                 ("$semantic", output.SemanticRepresentation is null ? null : JsonSerializer.Serialize(output.SemanticRepresentation)),
+                ("$intelligence", output.ContentIntelligence is null ? null : JsonSerializer.Serialize(output.ContentIntelligence)),
                 ("$coverage", work.Stage == IndexingStage.SemanticRepresentationGenerated ? (int)work.Level : -1),
                 ("$processor", work.ProcessorFingerprint),
                 ("$now", completedAtUtc.UtcTicks));
@@ -2977,6 +3015,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         var extracted = ScalarInt64(connection, "SELECT COALESCE(SUM(LENGTH(extracted_text)), 0) FROM index_content;");
         var ocr = ScalarInt64(connection, "SELECT COALESCE(SUM(LENGTH(ocr_text)), 0) FROM index_content;");
         var media = ScalarInt64(connection, "SELECT COALESCE(SUM(LENGTH(evidence_json)), 0) FROM index_media_content;");
+        var contentIntelligence = ScalarInt64(
+            connection,
+            "SELECT COALESCE(SUM(LENGTH(content_intelligence_json)), 0) FROM index_content;");
         var summaries = ScalarInt64(
             connection,
             "SELECT COALESCE(SUM(LENGTH(summary) + LENGTH(keywords_json)), 0) FROM index_content;");
@@ -3013,6 +3054,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
             maximumBytes)
         {
             MediaDerivedDataBytes = media,
+            ContentIntelligenceBytes = contentIntelligence,
         };
     }
 
@@ -3051,7 +3093,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                    (SELECT COUNT(*) FROM index_relationships r
                     WHERE r.first_file_id = f.id OR r.second_file_id = f.id),
                    (SELECT COUNT(*) FROM smart_collection_members m WHERE m.file_id = f.id)
-                   , mc.evidence_json
+                   , mc.evidence_json, c.content_intelligence_json
             FROM index_files f
             JOIN index_sources s ON s.id = f.source_id
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -3076,6 +3118,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ? []
                 : TryDeserializeStrings(reader.GetString(12));
             var media = reader.IsDBNull(28) ? null : TryDeserializeMediaEvidence(reader.GetString(28));
+            var contentIntelligence = reader.IsDBNull(29)
+                ? null
+                : TryDeserializeContentIntelligence(reader.GetString(29));
             items.Add(new IndexPrivacyItem
             {
                 FileId = reader.GetString(0),
@@ -3101,6 +3146,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 HasMediaTranscript = !string.IsNullOrWhiteSpace(media?.Transcript),
                 HasMediaOcr = !string.IsNullOrWhiteSpace(media?.OcrText),
                 HasVisualDescription = !string.IsNullOrWhiteSpace(media?.VisualDescription),
+                HasContentIntelligence = contentIntelligence is not null,
+                ContentTopicCount = contentIntelligence?.Topics.Count ?? 0,
+                ContentEntityCount = contentIntelligence?.Entities.Count ?? 0,
                 IsFullyIndexed = reader.GetBoolean(18),
                 LastIndexedUtc = new DateTimeOffset(reader.GetInt64(19), TimeSpan.Zero),
                 ProcessorVersion = DeepIndexingVersion.ProcessorVersion,
@@ -3313,8 +3361,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     summary = CASE WHEN $summary = 1 THEN NULL ELSE summary END,
                     keywords_json = CASE WHEN $summary = 1 THEN NULL ELSE keywords_json END,
                     semantic_json = CASE WHEN $semantic = 1 THEN NULL ELSE semantic_json END,
+                    content_intelligence_json = CASE WHEN $intelligence = 1 THEN NULL ELSE content_intelligence_json END,
                     coverage_level = CASE
-                        WHEN $text = 1 OR $ocr = 1 OR $summary = 1 OR $semantic = 1 THEN -1
+                        WHEN $text = 1 OR $ocr = 1 OR $summary = 1 OR $semantic = 1 OR $intelligence = 1 THEN -1
                         ELSE coverage_level
                     END,
                     updated_utc_ticks = $now
@@ -3324,6 +3373,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ("$ocr", data.HasFlag(IndexedDataKind.OcrText) ? 1 : 0),
                 ("$summary", data.HasFlag(IndexedDataKind.SummaryAndKeywords) ? 1 : 0),
                 ("$semantic", data.HasFlag(IndexedDataKind.SemanticData) ? 1 : 0),
+                ("$intelligence", data.HasFlag(IndexedDataKind.ContentIntelligence) ? 1 : 0),
                 ("$now", changedAtUtc.UtcTicks),
                 ("$hash", contentHash));
             if (data.HasFlag(IndexedDataKind.Chunks))
@@ -3367,6 +3417,18 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         {
             DeleteFileRelationshipData(connection, transaction, fileId, keepManualRelationships: false);
         }
+        else if (data.HasFlag(IndexedDataKind.ExtractedText) ||
+                 data.HasFlag(IndexedDataKind.OcrText) ||
+                 data.HasFlag(IndexedDataKind.SummaryAndKeywords) ||
+                 data.HasFlag(IndexedDataKind.SemanticData) ||
+                 data.HasFlag(IndexedDataKind.MediaDerived) ||
+                 data.HasFlag(IndexedDataKind.ContentIntelligence))
+        {
+            // Automatic relationships are derived from these fields and cannot
+            // outlive forgotten evidence. Explicit manual links and overrides
+            // are user authority and are preserved.
+            DeleteFileRelationshipData(connection, transaction, fileId, keepManualRelationships: true);
+        }
 
         ExecuteNonQuery(
             connection,
@@ -3383,6 +3445,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         {
             data |= IndexedDataKind.OcrText |
                 IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
                 IndexedDataKind.Chunks;
         }
@@ -3390,11 +3453,22 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         if (data.HasFlag(IndexedDataKind.OcrText))
         {
             data |= IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
                 IndexedDataKind.Chunks;
         }
 
         if (data.HasFlag(IndexedDataKind.SummaryAndKeywords))
+        {
+            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+        }
+
+        if (data.HasFlag(IndexedDataKind.MediaDerived))
+        {
+            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+        }
+
+        if (data.HasFlag(IndexedDataKind.ContentIntelligence))
         {
             data |= IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
         }
@@ -3519,15 +3593,18 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 IndexedDataKind.ExtractedText |
                 IndexedDataKind.OcrText |
                 IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
                 IndexedDataKind.Chunks,
             IndexingStage.OcrProcessed =>
                 IndexedDataKind.OcrText |
                 IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
                 IndexedDataKind.Chunks,
             IndexingStage.SummaryKeywordsGenerated =>
                 IndexedDataKind.SummaryAndKeywords |
+                IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
                 IndexedDataKind.Chunks,
             IndexingStage.SemanticRepresentationGenerated =>
@@ -3889,6 +3966,73 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
             return null;
         }
     }
+
+    private static IndexedContentIntelligence? TryDeserializeContentIntelligence(string value)
+    {
+        try
+        {
+            if (value.Length > 262_144)
+            {
+                return null;
+            }
+
+            var intelligence = JsonSerializer.Deserialize<IndexedContentIntelligence>(value);
+            if (intelligence is null ||
+                intelligence.Topics is null ||
+                intelligence.Entities is null ||
+                intelligence.Keywords is null ||
+                intelligence.Topics.Count > 64 ||
+                intelligence.Entities.Count > 64 ||
+                intelligence.Keywords.Count > 128 ||
+                intelligence.Keywords.Any(keyword => !IsBoundedContentText(keyword, 256)) ||
+                !IsBoundedContentText(intelligence.Provider, 128) ||
+                !IsBoundedContentText(intelligence.ProviderVersion, 128) ||
+                !IsBoundedContentText(intelligence.ProcessingFingerprint, 128) ||
+                intelligence.Topics.Concat(intelligence.Entities).Any(concept => !IsValidContentConcept(concept)) ||
+                intelligence.Summary is { } summary && !IsValidContentSummary(summary))
+            {
+                return null;
+            }
+
+            return intelligence;
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static bool IsValidContentConcept(ContentConcept? concept) =>
+        concept is not null &&
+        Enum.IsDefined(concept.Kind) &&
+        Enum.IsDefined(concept.Confidence) &&
+        Enum.IsDefined(concept.Origin) &&
+        IsBoundedContentText(concept.DisplayName, 256) &&
+        IsBoundedContentText(concept.NormalizedValue, 256) &&
+        IsBoundedContentText(concept.Provider, 128) &&
+        IsBoundedContentText(concept.ProviderVersion, 128) &&
+        concept.Evidence is not null &&
+        concept.Evidence.Count <= 8 &&
+        concept.Evidence.All(IsValidContentEvidence);
+
+    private static bool IsValidContentSummary(ContentSummaryEvidence? summary) =>
+        summary is not null &&
+        IsBoundedContentText(summary.Text, 4_096) &&
+        IsBoundedContentText(summary.Provider, 128) &&
+        IsBoundedContentText(summary.ProviderVersion, 128) &&
+        Enum.IsDefined(summary.Origin) &&
+        summary.Evidence is not null &&
+        summary.Evidence.Count <= 8 &&
+        summary.Evidence.All(IsValidContentEvidence);
+
+    private static bool IsValidContentEvidence(ContentEvidenceReference? evidence) =>
+        evidence is not null &&
+        Enum.IsDefined(evidence.Source) &&
+        IsBoundedContentText(evidence.EvidenceKey, 128) &&
+        IsBoundedContentText(evidence.Excerpt, 1_024);
+
+    private static bool IsBoundedContentText(string? value, int maximum) =>
+        !string.IsNullOrWhiteSpace(value) && value.Length <= maximum;
 
     private static void ValidateMediaEvidence(IndexedMediaEvidence? evidence)
     {

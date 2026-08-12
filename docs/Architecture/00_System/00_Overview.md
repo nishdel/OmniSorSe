@@ -27,6 +27,9 @@ change. v2.2 adds provider-neutral bounded media
 metadata, OCR/transcript/description evidence, lazy image thumbnails, optional
 `ffprobe` metadata, optional capped `ffmpeg` frames, Search integration, and
 conservative media relationships. It migrates only `deep-index.db` to schema 4.
+Released v2.3 adds bounded deterministic topics, textual entities,
+extractive summaries, optional user-managed whisper.cpp transcription, and
+schema 5 without creating a parallel Search or AI database.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 
@@ -77,8 +80,10 @@ watched configurations/catalogues/grouped activity, Change Plans, and the
 Operation Journal live in separate bounded OpenSorSe application-owned files.
 v1.6 serializes process-local transactions per normalized path and replaces an
 owned document only after a complete bounded sibling is durably flushed.
-v2.2 uses schema-4 `deep-index.db` after transactionally migrating schema 3
-for shared media evidence. Optional schema-1
+Released v2.2 used schema-4 `deep-index.db` after transactionally migrating
+schema 3 for shared media evidence. Released v2.3 transactionally adds one
+nullable content-intelligence record plus a bounded indexed relationship-term
+projection as schema 5. Optional schema-1
 `knowledge-graph.db` contains rebuildable projection data, while schema-1
 `knowledge-decisions.db` contains graph-native decisions and privacy recovery
 state that must not be silently reset.
@@ -103,6 +108,7 @@ An online plugin marketplace/download/update service, out-of-process plugin sand
 - [v1.4 specification](../../Implementation_Spec/v1.4/056_Plugin_Foundation_and_Extension_SDK.md)
 - [v1.5 platform architecture](08_v1.5_Platform_Architecture.md)
 - [v1.5 specification](../../Implementation_Spec/v1.5/057_Cross_Platform_Foundation_and_Linux_Preview.md)
+- [v2.3 Content Intelligence](../../CONTENT_INTELLIGENCE_v2.3.md)
 - [v1.6 reliability architecture](09_v1.6_Reliability_Architecture.md)
 - [v1.6 specification](../../Implementation_Spec/v1.6/058_Reliability_Performance_and_Production_Hardening.md)
 - [v1.7 deep indexing architecture](10_v1.7_Deep_Indexing_Architecture.md)

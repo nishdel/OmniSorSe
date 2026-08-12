@@ -103,6 +103,19 @@ public sealed class SettingsDraft : ViewModelBase
     private int _mediaProviderTimeoutSeconds = 30;
     private string? _ffprobeExecutablePath;
     private string? _ffmpegExecutablePath;
+    private string? _whisperExecutablePath;
+    private string? _whisperModelPath;
+    private int _transcriptionTimeoutSeconds = 900;
+    private bool _contentIntelligenceEnabled = true;
+    private bool _topicExtractionEnabled = true;
+    private bool _entityExtractionEnabled = true;
+    private bool _contentSummaryGenerationEnabled = true;
+    private int _maximumContentIntelligenceInputCharacters = 16_384;
+    private int _maximumContentTopics = 16;
+    private int _maximumContentEntities = 16;
+    private int _maximumContentKeywords = 32;
+    private int _maximumContentSummaryCharacters = 512;
+    private int _maximumContentEvidenceExcerptCharacters = 160;
 
     /// <summary>Gets or sets whether specialist and troubleshooting interface features are shown.</summary>
     public bool ShowAdvancedFeatures
@@ -153,6 +166,32 @@ public sealed class SettingsDraft : ViewModelBase
     public string? FfprobeExecutablePath { get => _ffprobeExecutablePath; set => SetProperty(ref _ffprobeExecutablePath, value); }
     /// <summary>Gets or sets an optional absolute ffmpeg path.</summary>
     public string? FfmpegExecutablePath { get => _ffmpegExecutablePath; set => SetProperty(ref _ffmpegExecutablePath, value); }
+    /// <summary>Gets or sets an optional absolute whisper.cpp CLI path.</summary>
+    public string? WhisperExecutablePath { get => _whisperExecutablePath; set => SetProperty(ref _whisperExecutablePath, value); }
+    /// <summary>Gets or sets an optional absolute user-managed whisper.cpp model path.</summary>
+    public string? WhisperModelPath { get => _whisperModelPath; set => SetProperty(ref _whisperModelPath, value); }
+    /// <summary>Gets or sets the finite local transcription timeout.</summary>
+    public int TranscriptionTimeoutSeconds { get => _transcriptionTimeoutSeconds; set => SetProperty(ref _transcriptionTimeoutSeconds, value); }
+    /// <summary>Gets or sets whether bounded local Content Intelligence runs.</summary>
+    public bool ContentIntelligenceEnabled { get => _contentIntelligenceEnabled; set => SetProperty(ref _contentIntelligenceEnabled, value); }
+    /// <summary>Gets or sets whether local deterministic topics are retained.</summary>
+    public bool TopicExtractionEnabled { get => _topicExtractionEnabled; set => SetProperty(ref _topicExtractionEnabled, value); }
+    /// <summary>Gets or sets whether textual named entities are retained.</summary>
+    public bool EntityExtractionEnabled { get => _entityExtractionEnabled; set => SetProperty(ref _entityExtractionEnabled, value); }
+    /// <summary>Gets or sets whether bounded source-grounded summaries are retained.</summary>
+    public bool ContentSummaryGenerationEnabled { get => _contentSummaryGenerationEnabled; set => SetProperty(ref _contentSummaryGenerationEnabled, value); }
+    /// <summary>Gets or sets the bounded content input supplied to deterministic intelligence.</summary>
+    public int MaximumContentIntelligenceInputCharacters { get => _maximumContentIntelligenceInputCharacters; set => SetProperty(ref _maximumContentIntelligenceInputCharacters, value); }
+    /// <summary>Gets or sets the maximum retained topics.</summary>
+    public int MaximumContentTopics { get => _maximumContentTopics; set => SetProperty(ref _maximumContentTopics, value); }
+    /// <summary>Gets or sets the maximum retained textual entities.</summary>
+    public int MaximumContentEntities { get => _maximumContentEntities; set => SetProperty(ref _maximumContentEntities, value); }
+    /// <summary>Gets or sets the maximum retained normalized keywords.</summary>
+    public int MaximumContentKeywords { get => _maximumContentKeywords; set => SetProperty(ref _maximumContentKeywords, value); }
+    /// <summary>Gets or sets the maximum source-grounded summary characters.</summary>
+    public int MaximumContentSummaryCharacters { get => _maximumContentSummaryCharacters; set => SetProperty(ref _maximumContentSummaryCharacters, value); }
+    /// <summary>Gets or sets the maximum retained evidence excerpt characters.</summary>
+    public int MaximumContentEvidenceExcerptCharacters { get => _maximumContentEvidenceExcerptCharacters; set => SetProperty(ref _maximumContentEvidenceExcerptCharacters, value); }
 
     /// <summary>Gets or sets the master detailed-diagnostics switch.</summary>
     public bool DiagnosticsEnabled
@@ -812,6 +851,19 @@ public sealed class SettingsDraft : ViewModelBase
             MediaProviderTimeoutSeconds = settings.MediaIntelligence.ProviderTimeoutSeconds,
             FfprobeExecutablePath = settings.MediaIntelligence.FfprobeExecutablePath,
             FfmpegExecutablePath = settings.MediaIntelligence.FfmpegExecutablePath,
+            WhisperExecutablePath = settings.MediaIntelligence.WhisperExecutablePath,
+            WhisperModelPath = settings.MediaIntelligence.WhisperModelPath,
+            TranscriptionTimeoutSeconds = settings.MediaIntelligence.TranscriptionTimeoutSeconds,
+            ContentIntelligenceEnabled = settings.ContentIntelligence.Enabled,
+            TopicExtractionEnabled = settings.ContentIntelligence.TopicExtractionEnabled,
+            EntityExtractionEnabled = settings.ContentIntelligence.EntityExtractionEnabled,
+            ContentSummaryGenerationEnabled = settings.ContentIntelligence.SummaryGenerationEnabled,
+            MaximumContentIntelligenceInputCharacters = settings.ContentIntelligence.MaximumInputCharacters,
+            MaximumContentTopics = settings.ContentIntelligence.MaximumTopics,
+            MaximumContentEntities = settings.ContentIntelligence.MaximumEntities,
+            MaximumContentKeywords = settings.ContentIntelligence.MaximumKeywords,
+            MaximumContentSummaryCharacters = settings.ContentIntelligence.MaximumSummaryCharacters,
+            MaximumContentEvidenceExcerptCharacters = settings.ContentIntelligence.MaximumEvidenceExcerptCharacters,
         };
     }
 
@@ -912,6 +964,22 @@ public sealed class SettingsDraft : ViewModelBase
                 ProviderTimeoutSeconds = MediaProviderTimeoutSeconds,
                 FfprobeExecutablePath = string.IsNullOrWhiteSpace(FfprobeExecutablePath) ? null : FfprobeExecutablePath.Trim(),
                 FfmpegExecutablePath = string.IsNullOrWhiteSpace(FfmpegExecutablePath) ? null : FfmpegExecutablePath.Trim(),
+                WhisperExecutablePath = string.IsNullOrWhiteSpace(WhisperExecutablePath) ? null : WhisperExecutablePath.Trim(),
+                WhisperModelPath = string.IsNullOrWhiteSpace(WhisperModelPath) ? null : WhisperModelPath.Trim(),
+                TranscriptionTimeoutSeconds = TranscriptionTimeoutSeconds,
+            },
+            ContentIntelligence = new ContentIntelligenceSettings
+            {
+                Enabled = ContentIntelligenceEnabled,
+                TopicExtractionEnabled = TopicExtractionEnabled,
+                EntityExtractionEnabled = EntityExtractionEnabled,
+                SummaryGenerationEnabled = ContentSummaryGenerationEnabled,
+                MaximumInputCharacters = MaximumContentIntelligenceInputCharacters,
+                MaximumTopics = MaximumContentTopics,
+                MaximumEntities = MaximumContentEntities,
+                MaximumKeywords = MaximumContentKeywords,
+                MaximumSummaryCharacters = MaximumContentSummaryCharacters,
+                MaximumEvidenceExcerptCharacters = MaximumContentEvidenceExcerptCharacters,
             },
             SemanticSearch = new SemanticSearchSettings
             {

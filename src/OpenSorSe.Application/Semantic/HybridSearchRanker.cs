@@ -278,6 +278,33 @@ public sealed class HybridSearchRanker : ISearchRanker
                     110,
                     ref rankClass);
                 literalScore += AddFieldMatch(
+                    fields.ContentTopics,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.ContentTopic,
+                    "content topics",
+                    "derived topic",
+                    130,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
+                    fields.ContentEntities,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.ContentEntity,
+                    "content entities",
+                    "textual entity",
+                    140,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
+                    fields.ContentIntelligenceSummary,
+                    tokens,
+                    components,
+                    SearchRankingSignalKind.ContentIntelligenceSummary,
+                    "content summary",
+                    "source-grounded summary",
+                    85,
+                    ref rankClass);
+                literalScore += AddFieldMatch(
                     fields.Metadata,
                     tokens,
                     components,
@@ -551,6 +578,21 @@ public sealed class HybridSearchRanker : ISearchRanker
             return ("document text", "document text");
         }
 
+        if (fields.ContentEntities.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("content entities", "a textual entity");
+        }
+
+        if (fields.ContentTopics.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("content topics", "a derived topic");
+        }
+
+        if (fields.ContentIntelligenceSummary.Contains(phrase, StringComparison.Ordinal))
+        {
+            return ("content summary", "the source-grounded summary");
+        }
+
         if (fields.OcrText.Contains(phrase, StringComparison.Ordinal))
         {
             return ("OCR text", "OCR text");
@@ -616,6 +658,9 @@ public sealed class HybridSearchRanker : ISearchRanker
         {
             SearchRankingSignalKind.Tag => $"Matched tags: {matched}",
             SearchRankingSignalKind.ExtractedText => "Native text / document text matched",
+            SearchRankingSignalKind.ContentTopic => $"Topic match: {matched}",
+            SearchRankingSignalKind.ContentEntity => $"Entity match: {matched}",
+            SearchRankingSignalKind.ContentIntelligenceSummary => "Source-grounded summary matched",
             _ => $"{label} matched",
         };
         return Add(
@@ -809,6 +854,9 @@ public sealed class HybridSearchRanker : ISearchRanker
         string FileType,
         string Tags,
         string Keywords,
+        string ContentTopics,
+        string ContentEntities,
+        string ContentIntelligenceSummary,
         string Metadata,
         string MediaMetadata,
         string MediaTranscript,
@@ -829,6 +877,9 @@ public sealed class HybridSearchRanker : ISearchRanker
             SearchTextNormalizer.Normalize(candidate.FileType),
             SearchTextNormalizer.Normalize(string.Join(' ', candidate.Tags)),
             SearchTextNormalizer.Normalize(string.Join(' ', candidate.Keywords)),
+            SearchTextNormalizer.Normalize(string.Join(' ', candidate.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? [])),
+            SearchTextNormalizer.Normalize(string.Join(' ', candidate.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? [])),
+            SearchTextNormalizer.Normalize(candidate.ContentIntelligence?.Summary?.Text),
             SearchTextNormalizer.Normalize(candidate.MetadataText),
             SearchTextNormalizer.Normalize(MediaEvidenceText.CreateMetadataText(candidate.MediaEvidence)),
             SearchTextNormalizer.Normalize(candidate.MediaEvidence?.Transcript),
@@ -866,6 +917,9 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
             SearchRankingSignalKind.MediaTranscript or
             SearchRankingSignalKind.MediaOcr or
             SearchRankingSignalKind.MediaVisualDescription or
+            SearchRankingSignalKind.ContentTopic or
+            SearchRankingSignalKind.ContentEntity or
+            SearchRankingSignalKind.ContentIntelligenceSummary or
             SearchRankingSignalKind.Summary or
             SearchRankingSignalKind.Chunk or
             SearchRankingSignalKind.Metadata or
@@ -897,6 +951,12 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
                 (SearchSnippetSource.MediaOcr, "Image or video OCR", candidate.MediaEvidence?.OcrText),
             SearchRankingSignalKind.MediaVisualDescription =>
                 (SearchSnippetSource.MediaVisualDescription, "Optional visual description", candidate.MediaEvidence?.VisualDescription),
+            SearchRankingSignalKind.ContentTopic =>
+                (SearchSnippetSource.ContentTopic, "Derived topic", string.Join(", ", candidate.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? [])),
+            SearchRankingSignalKind.ContentEntity =>
+                (SearchSnippetSource.ContentEntity, "Textual entity", string.Join(", ", candidate.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? [])),
+            SearchRankingSignalKind.ContentIntelligenceSummary =>
+                (SearchSnippetSource.ContentIntelligenceSummary, "Source-grounded summary", candidate.ContentIntelligence?.Summary?.Text),
             SearchRankingSignalKind.Summary =>
                 (SearchSnippetSource.Summary, "Summary", candidate.Summary),
             SearchRankingSignalKind.Chunk =>

@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
@@ -91,7 +92,10 @@ public sealed partial class SqliteDeepIndexStore
     {
         ArgumentNullException.ThrowIfNull(features);
         ValidateRelationshipIdentifier(features.FileId, nameof(features));
-        if (features.KeywordKeys.Count > 64 || features.FeatureVersion.Length > 64)
+        if (features.KeywordKeys.Count > 64 ||
+            features.KeywordKeys.Any(value => string.IsNullOrWhiteSpace(value) || value.Length > 64) ||
+            string.IsNullOrWhiteSpace(features.FeatureVersion) ||
+            features.FeatureVersion.Length > 64)
         {
             throw new InvalidDataException("Relationship features exceed supported bounds.");
         }
@@ -100,9 +104,10 @@ public sealed partial class SqliteDeepIndexStore
             () =>
             {
                 using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
                 ExecuteNonQuery(
                     connection,
-                    null,
+                    transaction,
                     """
                     INSERT INTO index_relationship_features(
                         file_id, normalized_stem, folder_key, content_hash, date_bucket,
@@ -142,6 +147,22 @@ public sealed partial class SqliteDeepIndexStore
                     ("$device", BoundOrNull(features.MediaDeviceKey, 256)),
                     ("$captureDate", features.CaptureDateBucket),
                     ("$now", changedAtUtc.UtcTicks));
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    "DELETE FROM index_relationship_feature_terms WHERE file_id = $file;",
+                    ("$file", features.FileId));
+                foreach (var term in features.KeywordKeys.Distinct(StringComparer.Ordinal).Take(64))
+                {
+                    ExecuteNonQuery(
+                        connection,
+                        transaction,
+                        "INSERT INTO index_relationship_feature_terms(file_id, term) VALUES($file, $term);",
+                        ("$file", features.FileId),
+                        ("$term", term));
+                }
+
+                transaction.Commit();
                 return 0;
             },
             cancellationToken);
@@ -181,10 +202,15 @@ public sealed partial class SqliteDeepIndexStore
                         OR ($device IS NOT NULL AND rf.media_device_key = $device
                             AND $captureDate IS NOT NULL
                             AND rf.capture_date_bucket BETWEEN $captureDate - $day AND $captureDate + $day)
-                        OR ($folder <> '' AND rf.folder_key = $folder)
-                        OR ($stem <> '' AND rf.normalized_stem = $stem)
-                        OR ($date IS NOT NULL AND rf.date_bucket BETWEEN $date - $day AND $date + $day)
-                      )
+                         OR ($folder <> '' AND rf.folder_key = $folder)
+                         OR ($stem <> '' AND rf.normalized_stem = $stem)
+                         OR ($date IS NOT NULL AND rf.date_bucket BETWEEN $date - $day AND $date + $day)
+                         OR EXISTS (
+                            SELECT 1
+                            FROM index_relationship_feature_terms term
+                            JOIN json_each($keywords) requested ON requested.value = term.term
+                            WHERE term.file_id = rf.file_id)
+                       )
                     ORDER BY
                         CASE WHEN $hash IS NOT NULL AND rf.content_hash = $hash THEN 0
                              WHEN $text IS NOT NULL AND rf.extracted_text_fingerprint = $text THEN 1
@@ -192,9 +218,14 @@ public sealed partial class SqliteDeepIndexStore
                              WHEN $summary IS NOT NULL AND rf.summary_fingerprint = $summary THEN 3
                              WHEN $mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript THEN 4
                              WHEN $mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr THEN 5
-                             WHEN $stem <> '' AND rf.normalized_stem = $stem THEN 6
-                             WHEN $folder <> '' AND rf.folder_key = $folder THEN 7
-                             ELSE 8 END,
+                             WHEN EXISTS (
+                                SELECT 1
+                                FROM index_relationship_feature_terms term
+                                JOIN json_each($keywords) requested ON requested.value = term.term
+                                WHERE term.file_id = rf.file_id) THEN 6
+                             WHEN $stem <> '' AND rf.normalized_stem = $stem THEN 7
+                             WHEN $folder <> '' AND rf.folder_key = $folder THEN 8
+                             ELSE 9 END,
                         rf.file_id
                     LIMIT $maximum;
                     """;
@@ -211,6 +242,7 @@ public sealed partial class SqliteDeepIndexStore
                     ("$captureDate", target.CaptureDateBucket),
                     ("$folder", target.FolderKey),
                     ("$stem", target.NormalizedStem),
+                    ("$keywords", JsonSerializer.Serialize(target.KeywordKeys.Take(64))),
                     ("$date", target.DateBucket),
                     ("$day", TimeSpan.TicksPerDay),
                     ("$maximum", maximumCount));
@@ -497,7 +529,8 @@ public sealed partial class SqliteDeepIndexStore
                    c.keywords_json, c.semantic_json, f.fully_indexed,
                    COALESCE(p.suppress_relationships, 0), f.indexing_level,
                    COALESCE(p.suppress_ocr, 0), COALESCE(p.suppress_summary, 0),
-                   COALESCE(p.suppress_semantic, 0), m.evidence_json
+                   COALESCE(p.suppress_semantic, 0), m.evidence_json,
+                   c.content_intelligence_json
             FROM index_files f
             JOIN index_sources s ON s.id = f.source_id
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -525,6 +558,9 @@ public sealed partial class SqliteDeepIndexStore
             ? null
             : TryDeserializeFloats(reader.GetString(13), out semanticValid);
         var media = reader.IsDBNull(20) ? null : TryDeserializeMediaEvidence(reader.GetString(20));
+        var contentIntelligence = basic || reader.GetBoolean(18) || reader.IsDBNull(21)
+            ? null
+            : TryDeserializeContentIntelligence(reader.GetString(21));
         return new RelationshipFileDocument
         {
             FileId = reader.GetString(0),
@@ -542,6 +578,7 @@ public sealed partial class SqliteDeepIndexStore
             ExtractedText = basic || reader.IsDBNull(9) ? null : reader.GetString(9),
             OcrText = basic || reader.GetBoolean(17) || reader.IsDBNull(10) ? null : reader.GetString(10),
             MediaEvidence = media,
+            ContentIntelligence = contentIntelligence,
             Summary = basic || reader.GetBoolean(18) || reader.IsDBNull(11) ? null : reader.GetString(11),
             Keywords = keywords,
             SemanticRepresentation = semanticValid ? semantic : null,

@@ -680,6 +680,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             ExtractedText = document.ExtractedText,
             OcrText = document.OcrText,
             MediaEvidence = document.MediaEvidence,
+            ContentIntelligence = document.ContentIntelligence,
             Summary = document.Summary,
             Keywords = document.Keywords,
             Chunks = document.SelectedChunks,
@@ -722,6 +723,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             candidate.Document.SourceName)
         {
             MediaEvidence = candidate.Document.MediaEvidence,
+            ContentIntelligence = candidate.Document.ContentIntelligence,
         };
     }
 

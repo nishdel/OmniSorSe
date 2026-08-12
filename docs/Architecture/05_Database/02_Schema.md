@@ -86,6 +86,17 @@ Cache --> AI
 
 The exact implementation of these entities may evolve while preserving the overall logical relationships.
 
+The current embedded provider is more specific than this conceptual diagram.
+Released v2.2 used Search schema 4. Released v2.3 transactionally
+adds one nullable bounded `content_intelligence_json` field to the existing
+content-hash-owned record and an indexed `index_relationship_feature_terms`
+projection of at most 64 normalized terms per file, then advances to schema 5.
+The term projection provides bounded cross-media relationship candidates without
+an all-pairs scan and is updated transactionally with its feature owner. It does not add a second AI
+database, duplicate source content, or modify source files. Unsupported newer
+schemas and malformed bounded evidence continue to fail closed under the
+existing recovery policy.
+
 ---
 
 # Core Entities
