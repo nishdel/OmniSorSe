@@ -445,9 +445,14 @@ public sealed class DeepIndexingStageTests
         {
             SemanticProcessingEnabled = false,
         });
+        var schedulingChanged = processor.CreateProcessorFingerprint(new DeepIndexingSettings
+        {
+            InitialScanDepth = InitialScanDepth.DeepInitialAnalysis,
+        });
 
         Assert.NotEqual(first, second);
         Assert.NotEqual(first, privacyChanged);
+        Assert.Equal(first, schedulingChanged);
         Assert.Equal(64, first.Length);
     }
 

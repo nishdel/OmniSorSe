@@ -419,6 +419,31 @@ primary Search navigation, and clearer privacy wording.
 See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 [v2.2.0 release notes](docs/RELEASE_NOTES_v2.2.0.md).
 
+## In progress
+
+### v2.5 — Workflow Completion & Indexing Quality
+
+**Branch:** `v2.5-workflow-indexing-quality`, created from released v2.4.0.
+
+**Merged status:** Implementation and validation in progress. It is not
+released and does not alter Explorer Protocol v1.
+
+v2.5 completes existing workflows rather than introducing another subsystem.
+Its release scope is outcome-driven reconciliation of Files, Search, duplicate
+review, and selection after reviewed Change Plans and Undo; plus progressive
+base-first indexing so names, paths, and inexpensive evidence become searchable
+before enabled media/content intelligence finishes. A persisted initial-scan
+depth controls scheduling without duplicating OCR, transcription, or media
+capability switches.
+
+Folder suggestions remain bounded proposals and all source-file changes still
+require Change Plan review. OmniExplorer, protocol expansion, server/cloud
+architecture, autonomous organization, embeddings, and graph rendering are
+outside this release.
+
+See [v2.5 workflow and indexing design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md)
+and [v2.5 manual testing](docs/MANUAL_TESTING_v2.5.md).
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.
@@ -459,22 +484,6 @@ selective local retention.
 
 **Conceptual dependencies:** provider protocol and threat-model research,
 identity/conflict semantics, encryption/authentication, and migration policy.
-
-### v2.5 — OpenSorSe Server
-
-**Branch:** None; no branch exists.
-
-**Merged status:** Not applicable; planned concept only.
-
-The concept is a self-hostable server provider for durable indexing and query
-services. It would not make PostgreSQL or another server a desktop requirement.
-
-**Potential major capabilities:** authenticated provider API; server-side
-indexing/storage; provider-neutral desktop client; deployment, backup,
-migration, quotas, and observability.
-
-**Conceptual dependencies:** mature provider boundaries, a formal security model,
-operational ownership, protocol versioning, and compatibility tests.
 
 ### v2.6 — Collaboration
 

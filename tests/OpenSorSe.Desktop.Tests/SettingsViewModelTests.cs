@@ -13,6 +13,23 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class SettingsViewModelTests
 {
+    /// <summary>The optional companion path round-trips without making OmniBrille a startup dependency.</summary>
+    [Fact]
+    public void OmniBrillePath_RoundTripsAsOptionalAbsolutePath()
+    {
+        var expected = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "OmniBrille", "OmniBrille.exe"));
+        var draft = SettingsDraft.FromSettings(new ApplicationSettings
+        {
+            ExplorerCompanion = new ExplorerCompanionSettings { ExecutablePath = expected },
+        });
+
+        Assert.Equal(expected, draft.OmniBrilleExecutablePath);
+        Assert.Equal(expected, draft.ToSettings().ExplorerCompanion.ExecutablePath);
+
+        draft.OmniBrilleExecutablePath = "   ";
+        Assert.Null(draft.ToSettings().ExplorerCompanion.ExecutablePath);
+    }
+
     /// <summary>Verifies settings corruption recovery is visible rather than silently using defaults.</summary>
     [Fact]
     public void Constructor_ExposesConfigurationRecoveryWarning()
@@ -413,6 +430,7 @@ public sealed class SettingsViewModelTests
         using var viewModel = new SettingsViewModel(configuration);
         viewModel.Draft.DeepIndexingEnabled = true;
         viewModel.Draft.DefaultIndexingLevel = IndexingLevel.Deep;
+        viewModel.Draft.InitialScanDepth = InitialScanDepth.DeepInitialAnalysis;
         viewModel.Draft.IndexingResourceMode = IndexingResourceMode.Eco;
         viewModel.Draft.MaximumIndexSizeMiB = 2048;
         viewModel.Draft.MaximumExtractedTextCharacters = 262_144;
@@ -446,6 +464,7 @@ public sealed class SettingsViewModelTests
 
         var saved = configuration.Current.DeepIndexing;
         Assert.Equal(IndexingLevel.Deep, saved.DefaultLevel);
+        Assert.Equal(InitialScanDepth.DeepInitialAnalysis, saved.InitialScanDepth);
         Assert.Equal(IndexingResourceMode.Eco, saved.ResourceMode);
         Assert.Equal(2048, saved.MaximumIndexSizeMiB);
         Assert.Equal(262_144, saved.MaximumExtractedTextCharacters);

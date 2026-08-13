@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
+using OpenSorSe.Application.Explorer;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
@@ -26,6 +27,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
     private readonly IGraphDecisionService? _decisionService;
     private readonly IAdvancedDiagnosticsWindowService? _diagnosticsWindowService;
     private readonly IGraphDiagnosticsService? _graphDiagnosticsService;
+    private readonly IExplorerCompanionLaunchService? _companionLaunchService;
     private readonly ObservableCollection<KnowledgeGraphNodeRow> _nodes = [];
     private readonly ObservableCollection<KnowledgeGraphNeighborRow> _neighbors = [];
     private readonly ObservableCollection<KnowledgeGraphEvidenceRow> _evidence = [];
@@ -41,6 +43,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
     private CancellationTokenSource? _neighborCancellation;
     private CancellationTokenSource? _evidenceCancellation;
     private CancellationTokenSource? _operationCancellation;
+    private CancellationTokenSource? _companionCancellation;
     private GraphCoordinatorStatus? _coordinatorStatus;
     private GraphNodeDetails? _selectedDetails;
     private GraphPageCursor? _nextNodeCursor;
@@ -123,10 +126,12 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
     private string _maintenanceText = "Graph storage maintenance has not been inspected.";
     private string _maintenanceConfirmationText = string.Empty;
     private KnowledgeGraphFocusRequest? _lastFocusRequest;
+    private bool _isCompanionLaunching;
+    private string _companionStatusText = "OmniBrille is optional and has not been opened.";
 
     /// <summary>Initializes a preview/no-provider surface that remains safe and explanatory.</summary>
     public KnowledgeGraphViewModel()
-        : this(null, null, null, null, null, null, null)
+        : this(null, null, null, null, null, null, null, null)
     {
     }
 
@@ -138,7 +143,8 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
         IGraphRepairService? repairService,
         IGraphDecisionService? decisionService,
         IAdvancedDiagnosticsWindowService? diagnosticsWindowService = null,
-        IGraphDiagnosticsService? graphDiagnosticsService = null)
+        IGraphDiagnosticsService? graphDiagnosticsService = null,
+        IExplorerCompanionLaunchService? companionLaunchService = null)
     {
         _coordinator = coordinator;
         _queryService = queryService;
@@ -147,6 +153,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
         _decisionService = decisionService;
         _diagnosticsWindowService = diagnosticsWindowService;
         _graphDiagnosticsService = graphDiagnosticsService;
+        _companionLaunchService = companionLaunchService;
         Nodes = new ReadOnlyObservableCollection<KnowledgeGraphNodeRow>(_nodes);
         Neighbors = new ReadOnlyObservableCollection<KnowledgeGraphNeighborRow>(_neighbors);
         Evidence = new ReadOnlyObservableCollection<KnowledgeGraphEvidenceRow>(_evidence);
@@ -155,6 +162,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
         Aliases = new ReadOnlyObservableCollection<string>(_aliases);
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => _coordinator is not null && !IsBusy);
+        OpenInOmniBrilleCommand = new AsyncRelayCommand(OpenInOmniBrilleAsync, () => _companionLaunchService is not null && !IsCompanionLaunching);
         ReconcileCommand = new AsyncRelayCommand(ReconcileAsync, CanReconcile);
         CancelCurrentCommand = new RelayCommand(CancelCurrent, () => IsBusy);
         RequestEnableCommand = new RelayCommand(RequestEnable, () => _coordinator is not null && !IsBusy && !IsEnabled);
@@ -826,8 +834,30 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
         private set => SetProperty(ref _lastFocusRequest, value);
     }
 
+    /// <summary>Gets whether one bounded companion launch is awaiting acknowledgement.</summary>
+    public bool IsCompanionLaunching
+    {
+        get => _isCompanionLaunching;
+        private set
+        {
+            if (SetProperty(ref _isCompanionLaunching, value))
+            {
+                OpenInOmniBrilleCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets the current optional-companion launch state.</summary>
+    public string CompanionStatusText
+    {
+        get => _companionStatusText;
+        private set => SetProperty(ref _companionStatusText, value);
+    }
+
     /// <summary>Gets the bounded refresh command.</summary>
     public IAsyncRelayCommand RefreshCommand { get; }
+    /// <summary>Gets the lazy, scoped OmniBrille launch command.</summary>
+    public IAsyncRelayCommand OpenInOmniBrilleCommand { get; }
     /// <summary>Gets the explicit durable projection reconciliation command.</summary>
     public IAsyncRelayCommand ReconcileCommand { get; }
     /// <summary>Gets the cancellation command for the current UI request.</summary>
@@ -930,6 +960,36 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand ConfirmMaintenanceCommand { get; }
     /// <summary>Gets the graph-only maintenance confirmation dismissal command.</summary>
     public IRelayCommand CancelMaintenanceCommand { get; }
+
+    private async Task OpenInOmniBrilleAsync()
+    {
+        if (_companionLaunchService is null || IsCompanionLaunching)
+        {
+            return;
+        }
+
+        var cancellation = ReplaceCancellation(ref _companionCancellation);
+        IsCompanionLaunching = true;
+        CompanionStatusText = "Opening OmniBrille and authorizing the current indexed sources...";
+        try
+        {
+            var result = await _companionLaunchService.LaunchAsync(cancellation.Token).ConfigureAwait(false);
+            await ApplyOnUiThreadAsync(() => CompanionStatusText = result.Message);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            await ApplyOnUiThreadAsync(() => CompanionStatusText = "Opening OmniBrille was cancelled.");
+        }
+        catch (Exception)
+        {
+            await ApplyOnUiThreadAsync(() => CompanionStatusText = "OmniBrille could not be opened safely. OmniSorSe remains available.");
+        }
+        finally
+        {
+            ReleaseCancellation(ref _companionCancellation, cancellation);
+            await ApplyOnUiThreadAsync(() => IsCompanionLaunching = false);
+        }
+    }
 
     /// <summary>Refreshes durable state and the current bounded first page.</summary>
     public async Task RefreshAsync()
@@ -3062,6 +3122,7 @@ public sealed class KnowledgeGraphViewModel : ViewModelBase, IDisposable
         CancelAndDispose(ref _neighborCancellation);
         CancelAndDispose(ref _evidenceCancellation);
         CancelAndDispose(ref _operationCancellation);
+        CancelAndDispose(ref _companionCancellation);
         // Do not dispose the gate here: an already-cancelled command continuation may still
         // execute its finally block and release it after this synchronous teardown returns.
     }

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using OpenSorSe.Application.Explorer;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Desktop.ViewModels;
 
@@ -7,6 +8,31 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Validates bounded Knowledge Graph presentation, control, recovery, and privacy behavior.</summary>
 public sealed class KnowledgeGraphViewModelTests
 {
+    /// <summary>The Related Files surface exposes a bounded optional-companion launch with honest status.</summary>
+    [Fact]
+    public async Task OpenInOmniBrille_UsesLaunchServiceAndPresentsItsOutcome()
+    {
+        var companion = new FakeCompanionLaunchService(new ExplorerCompanionLaunchResult(
+            ExplorerCompanionLaunchStatus.Connected,
+            "OmniBrille connected to the authorized local index.",
+            "launch-1",
+            "session-1"));
+        using var viewModel = Create(
+            new FakeCoordinator(Status(enabled: true)),
+            new FakeQueryService(),
+            companion: companion);
+
+        Assert.True(viewModel.OpenInOmniBrilleCommand.CanExecute(null));
+        await viewModel.OpenInOmniBrilleCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, companion.LaunchCount);
+        Assert.False(viewModel.IsCompanionLaunching);
+        Assert.Contains("connected", viewModel.CompanionStatusText, StringComparison.OrdinalIgnoreCase);
+        var source = ReadViewSource();
+        Assert.Contains("Open in OmniBrille", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting", source, StringComparison.Ordinal);
+    }
+
     /// <summary>Verifies a missing provider leaves an honest no-op surface and existing shell navigation intact.</summary>
     [Fact]
     public async Task UnavailableProvider_IsSafeAndKnowledgeGraphNavigationRemainsReachable()
@@ -678,14 +704,16 @@ public sealed class KnowledgeGraphViewModelTests
         FakePrivacyService? privacy = null,
         FakeRepairService? repair = null,
         FakeDecisionService? decisions = null,
-        IGraphDiagnosticsService? diagnostics = null) => new(
+        IGraphDiagnosticsService? diagnostics = null,
+        IExplorerCompanionLaunchService? companion = null) => new(
             coordinator,
             query,
             privacy,
             repair,
             decisions,
             null,
-            diagnostics);
+            diagnostics,
+            companion);
 
     private static FakeQueryService QueryWithNodes(params GraphNode[] nodes) => new()
     {
@@ -1010,6 +1038,19 @@ public sealed class KnowledgeGraphViewModelTests
 
         public Task<GraphProjectionCoverage> GetCoverageAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Status(enabled: true).Coverage);
+    }
+
+    private sealed class FakeCompanionLaunchService(ExplorerCompanionLaunchResult result)
+        : IExplorerCompanionLaunchService
+    {
+        public int LaunchCount { get; private set; }
+
+        public Task<ExplorerCompanionLaunchResult> LaunchAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LaunchCount++;
+            return Task.FromResult(result);
+        }
     }
 
     private sealed class FakePrivacyService : IGraphPrivacyService

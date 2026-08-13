@@ -7,7 +7,41 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
-## v2.4.0 â€” OmniSorSe Transition & Explorer Foundation
+## Unreleased — OmniSorSe v2.5 Workflow Completion & Indexing Quality
+
+Implementation branch: `v2.5-workflow-indexing-quality`. This work is not a
+published release.
+
+### Added and changed
+
+- Reconcile Files, Search/index refresh inputs, duplicate projections, details,
+  and logical selection from terminal Apply/Undo journal outcomes rather than
+  assuming the reviewed Change Plan fully succeeded.
+- Preserve stable file identity for successful rename/move projection updates;
+  mixed rollback outcomes remain explicit and refresh only affected configured
+  sources.
+- Add persisted **Fast — searchable first** and **Deep initial analysis**
+  scheduling choices while retaining existing capability switches and durable
+  jobs.
+- Distinguish discovery, usable base Search coverage, and continuing deeper
+  analysis in progress presentation.
+- Clarify the Suggest → Review Changes → execute journey and the bounded
+  current-page scope of folder suggestions.
+- Add an optional **Open in OmniBrille** action that discovers a separately
+  installed companion only on demand, authorizes enabled indexed sources, and
+  transfers one independent short-lived Protocol v1 session through the
+  companion's established one-time current-user handoff pipe. Bearer material
+  is not placed on the command line or disk.
+
+### Boundaries
+
+- Explorer Protocol v1 wire contracts/version and schema 5 are unchanged; the
+  companion bootstrap is an additive desktop integration boundary.
+- No server/cloud architecture, autonomous organization, embeddings/vector
+  store, graph renderer, voice, or OmniBrille rendering/Context functionality
+  is included.
+
+## v2.4.0 — OmniSorSe Transition & Explorer Foundation
 
 Release branch: `v2.4-omnisorse-transition`. Published after genuine Windows
 profile/installer transition, external two-process protocol, full automated,

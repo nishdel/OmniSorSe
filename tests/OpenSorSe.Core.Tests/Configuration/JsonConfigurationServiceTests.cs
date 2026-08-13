@@ -70,9 +70,41 @@ public sealed class JsonConfigurationServiceTests
         Assert.False(service.Current.SemanticSearch.Enabled);
         Assert.True(service.Current.DeepIndexing.Enabled);
         Assert.Equal(IndexingLevel.Basic, service.Current.DeepIndexing.DefaultLevel);
+        Assert.Equal(InitialScanDepth.BaseFirst, service.Current.DeepIndexing.InitialScanDepth);
         Assert.Equal(1, service.Current.DeepIndexing.MaximumConcurrency);
         Assert.True(service.Current.DeepIndexing.SummaryProcessingEnabled);
         Assert.True(service.Current.DeepIndexing.SemanticProcessingEnabled);
+        Assert.Null(service.Current.ExplorerCompanion.ExecutablePath);
+    }
+
+    /// <summary>The optional OmniBrille path persists without changing the profile schema or requiring the file to exist.</summary>
+    [Fact]
+    public async Task SaveAsync_PersistsOptionalOmniBrilleExecutablePath()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
+        var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        var executablePath = Path.GetFullPath(Path.Combine(directoryPath, "OmniBrille.exe"));
+        try
+        {
+            var writer = new JsonConfigurationService(settingsFilePath, _ => null);
+            await writer.InitializeAsync(CancellationToken.None);
+            await writer.SaveAsync(new ApplicationSettings
+            {
+                ExplorerCompanion = new ExplorerCompanionSettings { ExecutablePath = executablePath },
+            }, CancellationToken.None);
+
+            var reader = new JsonConfigurationService(settingsFilePath, _ => null);
+            await reader.InitializeAsync(CancellationToken.None);
+
+            Assert.Equal(executablePath, reader.Current.ExplorerCompanion.ExecutablePath);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
     }
 
     /// <summary>Verifies the master, category, and privacy controls persist independently.</summary>
@@ -369,6 +401,7 @@ public sealed class JsonConfigurationServiceTests
             {
                 Enabled = true,
                 DefaultLevel = IndexingLevel.Deep,
+                InitialScanDepth = InitialScanDepth.DeepInitialAnalysis,
                 ResourceMode = IndexingResourceMode.Fast,
                 MaximumIndexSizeMiB = 2048,
                 MaximumExtractedTextCharacters = 262_144,
@@ -439,6 +472,7 @@ public sealed class JsonConfigurationServiceTests
             Assert.Equal(5000, reader.Current.SemanticSearch.MaximumDocumentCount);
             Assert.Equal(100, reader.Current.SemanticSearch.MaximumResultCount);
             Assert.Equal(IndexingLevel.Deep, reader.Current.DeepIndexing.DefaultLevel);
+            Assert.Equal(InitialScanDepth.DeepInitialAnalysis, reader.Current.DeepIndexing.InitialScanDepth);
             Assert.Equal(IndexingResourceMode.Fast, reader.Current.DeepIndexing.ResourceMode);
             Assert.Equal(2048, reader.Current.DeepIndexing.MaximumIndexSizeMiB);
             Assert.Equal(4, reader.Current.DeepIndexing.MaximumConcurrency);

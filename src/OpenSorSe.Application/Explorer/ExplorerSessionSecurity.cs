@@ -57,7 +57,30 @@ public interface IExplorerProtocolHost : IAsyncDisposable
     Task RevokeSessionAsync(string sessionId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Reports whether the unreleased optional OmniExplorer companion can be launched.</summary>
+/// <summary>Observes the first authenticated use of one exact local Explorer session.</summary>
+public interface IExplorerSessionConnectionObserver
+{
+    /// <summary>Waits for the first attributable connection outcome or a bounded timeout.</summary>
+    Task<ExplorerSessionConnectionOutcome?> WaitForConnectionOutcomeAsync(
+        string sessionId,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>Identifies an attributable first-use outcome without exposing session secrets.</summary>
+public enum ExplorerSessionConnectionOutcome
+{
+    /// <summary>A compatible authenticated request completed successfully.</summary>
+    Authenticated,
+    /// <summary>The intended session identifier was presented with invalid authorization.</summary>
+    AuthenticationRejected,
+    /// <summary>Authorization succeeded but the requested protocol major was incompatible.</summary>
+    IncompatibleVersion,
+    /// <summary>The session expired or was revoked before connection completed.</summary>
+    Revoked,
+}
+
+/// <summary>Reports whether the separately installed optional OmniBrille companion can be launched.</summary>
 public interface IExplorerCompanionPresence
 {
     /// <summary>Gets whether a reviewed companion installation is available.</summary>
@@ -67,14 +90,14 @@ public interface IExplorerCompanionPresence
     string Status { get; }
 }
 
-/// <summary>Safely reports that OmniExplorer is not yet released or installed.</summary>
+/// <summary>Safely reports that OmniBrille is not installed or configured.</summary>
 public sealed class UnavailableExplorerCompanionPresence : IExplorerCompanionPresence
 {
     /// <inheritdoc />
     public bool IsAvailable => false;
 
     /// <inheritdoc />
-    public string Status => "OmniExplorer is an optional future companion and is not available in this release.";
+    public string Status => "OmniBrille is an optional separate companion and is not installed or configured.";
 }
 
 internal enum ExplorerSessionValidation
@@ -100,6 +123,8 @@ internal sealed class ExplorerSessionContext
     private readonly byte[] _nodeSecret;
     private readonly ConcurrentDictionary<string, ExplorerNodeIdentity> _nodesById = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, string> _idsByIdentity = new(StringComparer.Ordinal);
+    private readonly TaskCompletionSource<ExplorerSessionConnectionOutcome> _firstConnectionOutcome =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public ExplorerSessionContext(
         string sessionId,
@@ -135,6 +160,14 @@ internal sealed class ExplorerSessionContext
         return CryptographicOperations.FixedTimeEquals(_tokenHash, candidate);
     }
 
+    public void MarkConnectionOutcome(ExplorerSessionConnectionOutcome outcome) =>
+        _firstConnectionOutcome.TrySetResult(outcome);
+
+    public Task<ExplorerSessionConnectionOutcome> WaitForConnectionOutcomeAsync(
+        TimeSpan timeout,
+        CancellationToken cancellationToken) =>
+        _firstConnectionOutcome.Task.WaitAsync(timeout, cancellationToken);
+
     public string RegisterNode(ExplorerNodeIdentity identity)
     {
         var key = string.Join(
@@ -166,6 +199,7 @@ internal sealed class ExplorerSessionContext
 
     public void ClearSecrets()
     {
+        _firstConnectionOutcome.TrySetResult(ExplorerSessionConnectionOutcome.Revoked);
         CryptographicOperations.ZeroMemory(_tokenHash);
         CryptographicOperations.ZeroMemory(_nodeSecret);
         _nodesById.Clear();
@@ -245,6 +279,35 @@ internal sealed class ExplorerSessionManager : IDisposable
         }
 
         return new ExplorerSessionValidationResult(ExplorerSessionValidation.Valid, session);
+    }
+
+    public void MarkConnectionOutcome(string sessionId, ExplorerSessionConnectionOutcome outcome)
+    {
+        if (!_disposed && !string.IsNullOrWhiteSpace(sessionId) && _sessions.TryGetValue(sessionId, out var session))
+        {
+            session.MarkConnectionOutcome(outcome);
+        }
+    }
+
+    public async Task<ExplorerSessionConnectionOutcome?> WaitForConnectionOutcomeAsync(
+        string sessionId,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (string.IsNullOrWhiteSpace(sessionId) || !_sessions.TryGetValue(sessionId, out var session))
+        {
+            return ExplorerSessionConnectionOutcome.Revoked;
+        }
+
+        try
+        {
+            return await session.WaitForConnectionOutcomeAsync(timeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            return null;
+        }
     }
 
     public void Revoke(string sessionId)

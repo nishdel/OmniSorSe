@@ -1,5 +1,6 @@
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Desktop.Tests;
 
@@ -41,6 +42,7 @@ public sealed class FolderSelectionViewModelTests : IDisposable
         viewModel.OverrideAiEnabled = false;
         viewModel.OverrideOcrEnabled = false;
         viewModel.OverrideMaximumFileSizeMiB = 25;
+        viewModel.SelectedInitialScanDepth = InitialScanDepth.DeepInitialAnalysis;
         ScanRequest? request = null;
         viewModel.ScanRequested += (_, value) => request = value;
 
@@ -50,6 +52,7 @@ public sealed class FolderSelectionViewModelTests : IDisposable
         Assert.Equal(BuiltInWorkflowIds.Photos, request.ProfileId);
         Assert.Equal(25 * 1024 * 1024, request.OneTimeOverride!.MaximumFileSizeBytes);
         Assert.False(request.OneTimeOverride.DuplicateAnalysisEnabled);
+        Assert.Equal(InitialScanDepth.DeepInitialAnalysis, request.InitialScanDepth);
         Assert.Equal(
             1024L * 1024 * 1024,
             BuiltInWorkflowLibrary.Profiles.Single(profile => profile.Id == BuiltInWorkflowIds.Photos)

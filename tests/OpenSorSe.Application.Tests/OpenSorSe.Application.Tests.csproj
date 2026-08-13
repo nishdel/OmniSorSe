@@ -15,5 +15,6 @@
     <ProjectReference Include="..\..\src\OpenSorSe.Application\OpenSorSe.Application.csproj" />
     <ProjectReference Include="..\..\src\OpenSorSe.AI\OpenSorSe.AI.csproj" />
     <ProjectReference Include="..\..\src\OpenSorSe.Executor\OpenSorSe.Executor.csproj" />
+    <ProjectReference Include="..\OmniSorSe.CompanionTestHarness\OmniSorSe.CompanionTestHarness.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

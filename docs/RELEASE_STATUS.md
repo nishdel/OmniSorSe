@@ -183,6 +183,20 @@ filesystem, display scaling, or accessibility technology. See the
 and [manual checklist](MANUAL_TESTING_v2.4.md). OpenSorSe v2.3.0 and earlier
 documents, tags, releases, and validation records remain historical evidence.
 
+## Current development
+
+OmniSorSe v2.5 **Workflow Completion & Indexing Quality** is implemented on
+`v2.5-workflow-indexing-quality` for review and is not released. Its scope is
+post-Change-Plan/Undo Files and indexing reconciliation, progressive
+base-search-first scheduling, truthful indexing phases, and small organization
+clarity improvements. It also includes an optional lazy, scoped desktop handoff
+to the separately installed OmniBrille companion. Explorer Protocol v1's wire
+contract/version, schema 5, release tags, packages, and the published v2.4.0
+state are unchanged. See the
+[v2.5 implementation record](WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) and
+[manual checklist](MANUAL_TESTING_v2.5.md), plus the
+[companion handoff contract](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md).
+
 ## Release identity
 
 - Version: `v2.4.0`

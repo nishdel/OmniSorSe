@@ -25,6 +25,11 @@
                            TextWrapping="Wrap" />
             </StackPanel>
             <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                <Button Margin="0,0,8,0"
+                        Content="Open in OmniBrille"
+                        Command="{Binding OpenInOmniBrilleCommand}"
+                        AutomationProperties.Name="Open the authorized indexed sources in OmniBrille"
+                        AutomationProperties.HelpText="Starts the optional separate OmniBrille application and grants one short-lived, read-only, local Explorer session for currently enabled indexed sources." />
                 <Button x:Name="GraphRefreshButton"
                         Margin="0,0,8,0"
                         Classes="secondary"
@@ -51,6 +56,10 @@
                 <TextBlock Text="{Binding AnnouncementText}"
                            TextWrapping="Wrap"
                            AutomationProperties.Name="Knowledge Graph announcements"
+                           AutomationProperties.LiveSetting="Polite" />
+                <TextBlock Text="{Binding CompanionStatusText}"
+                           TextWrapping="Wrap"
+                           AutomationProperties.Name="OmniBrille companion launch status"
                            AutomationProperties.LiveSetting="Polite" />
 
                 <StackPanel IsVisible="{Binding ShowEnablement}" Spacing="8">

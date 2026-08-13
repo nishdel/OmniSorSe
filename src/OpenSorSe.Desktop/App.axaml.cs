@@ -296,6 +296,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IExplorerDataSource, ExplorerDataSource>();
         services.AddSingleton<IExplorerCompanionPresence, UnavailableExplorerCompanionPresence>();
         services.AddSingleton<IExplorerProtocolHost, NamedPipeExplorerProtocolHost>();
+        services.AddSingleton<IExplorerCompanionLocator, ExplorerCompanionLocator>();
+        services.AddSingleton<IExplorerCompanionLaunchService, ExplorerCompanionLaunchService>();
         services.AddSingleton<IFolderStructureSnapshotService, FolderStructureSnapshotService>();
         services.AddSingleton<IStructureComparisonService, StructureComparisonService>();
         services.AddSingleton<IStructureHistoryStore>(serviceProvider =>

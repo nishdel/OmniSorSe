@@ -141,6 +141,24 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("<VirtualizingStackPanel", related, StringComparison.Ordinal);
     }
 
+    /// <summary>Verifies scan-depth choices use outcome language and are exposed to accessibility APIs.</summary>
+    [Fact]
+    public void ProgressiveIndexing_UsesPlainLanguageAccessibleChoicesAndHelp()
+    {
+        var views = Path.Combine(FindRepositoryRoot(), "src", "OpenSorSe.Desktop", "Views");
+        var scan = File.ReadAllText(Path.Combine(views, "FolderSelectionView.axaml"));
+        var settings = File.ReadAllText(Path.Combine(views, "SettingsView.axaml"));
+        var labels = InitialScanDepthOptions.All.Select(option => option.Label).ToArray();
+        var help = HelpCatalog.Get(HelpTopicId.SemanticSearch);
+
+        Assert.Equal(["Fast — searchable first", "Deep initial analysis"], labels);
+        Assert.Contains("AutomationProperties.Name=\"Initial indexing schedule\"", scan, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Initial scan scheduling\"", settings, StringComparison.Ordinal);
+        Assert.DoesNotContain("BaseFirst makes", settings, StringComparison.Ordinal);
+        Assert.Contains(help.Workflow, step => step.Contains("searchable first", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("deeper analysis", help.CommonErrors, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Verifies Search naming and help remain plain-language and available beyond pointer hover.</summary>
     [Fact]
     public void SearchView_UsesAccessiblePlainLanguageHelpAndNoLegacyMeaningLabel()

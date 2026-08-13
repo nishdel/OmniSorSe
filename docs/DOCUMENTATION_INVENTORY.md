@@ -109,6 +109,9 @@ These files describe current product/project policy or the current source tree:
 - `docs/MANUAL_TESTING_v2.3.md`
 - `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`
 - `docs/MANUAL_TESTING_v2.4.md`
+- `docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md`
+- `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`
+- `docs/MANUAL_TESTING_v2.5.md`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`

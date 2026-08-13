@@ -538,13 +538,16 @@ public sealed class SqliteDeepIndexStoreTests
         var source = fixture.Source();
         await QueueAsync(store, source, [fixture.Observation("original.txt", stableIdentity: "stable")]);
         await CompleteBasicRunAsync(store, "hash-a");
+        var original = Assert.Single(await store.GetSearchDocumentsAsync(10));
 
         await QueueAsync(store, source, [fixture.Observation(relativePath, stableIdentity: "stable")], Epoch.AddHours(1));
 
         Assert.Null(await store.ClaimNextAsync(Epoch.AddHours(2)));
         var document = Assert.Single(await store.GetSearchDocumentsAsync(10));
+        Assert.Equal(original.FileId, document.FileId);
         Assert.Equal(Path.GetFileName(relativePath), document.FileName);
         Assert.EndsWith(relativePath.Replace('/', Path.DirectorySeparatorChar), document.FullPath, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("original.txt", document.FullPath, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Verifies contextual Search resolves only requested visible durable identifiers.</summary>
@@ -1495,6 +1498,70 @@ public sealed class SqliteDeepIndexStoreTests
 
         Assert.Contains("INDEX", sourcePlan, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("INDEX", privacyPlan, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies BaseFirst scheduling publishes the cheapest stage across files before deeper work.</summary>
+    [Fact]
+    public async Task ClaimNext_BaseFirst_BreadthFirstAcrossKnownFiles()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Deep),
+            [fixture.Observation("first.txt", "first"), fixture.Observation("second.txt", "second")]);
+
+        var first = Assert.IsType<IndexingWorkItem>(
+            await store.ClaimNextAsync(Epoch.AddDays(10), InitialScanDepth.BaseFirst));
+        Assert.Equal(IndexingStage.FileDiscovered, first.Stage);
+        await SaveCompleteAsync(store, first, IndexingStage.MetadataIndexed);
+        var second = Assert.IsType<IndexingWorkItem>(
+            await store.ClaimNextAsync(Epoch.AddDays(10), InitialScanDepth.BaseFirst));
+
+        Assert.Equal(IndexingStage.FileDiscovered, second.Stage);
+        Assert.NotEqual(first.FileId, second.FileId);
+    }
+
+    /// <summary>Verifies DeepInitialAnalysis advances one file before starting another file.</summary>
+    [Fact]
+    public async Task ClaimNext_DeepInitialAnalysis_DepthFirstPerFile()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Deep),
+            [fixture.Observation("first.txt", "first"), fixture.Observation("second.txt", "second")]);
+
+        var first = Assert.IsType<IndexingWorkItem>(
+            await store.ClaimNextAsync(Epoch.AddDays(10), InitialScanDepth.DeepInitialAnalysis));
+        await SaveCompleteAsync(store, first, IndexingStage.MetadataIndexed);
+        var second = Assert.IsType<IndexingWorkItem>(
+            await store.ClaimNextAsync(Epoch.AddDays(10), InitialScanDepth.DeepInitialAnalysis));
+
+        Assert.Equal(first.FileId, second.FileId);
+        Assert.Equal(IndexingStage.MetadataIndexed, second.Stage);
+    }
+
+    /// <summary>Verifies names and metadata are searchable before any expensive stage is claimed.</summary>
+    [Fact]
+    public async Task DiscoveryCommit_PublishesBaseSearchCoverageBeforeDeepAnalysis()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Deep),
+            [fixture.Observation("searchable-before-ocr.txt")]);
+
+        var documents = await store.GetSearchDocumentsAsync(10);
+        var progress = await store.GetProgressAsync(1024 * 1024, Epoch.AddDays(10));
+
+        Assert.Equal("searchable-before-ocr.txt", Assert.Single(documents).FileName);
+        Assert.Equal(1, progress.Coverage.FilenameAndMetadataCount);
+        Assert.Equal(0, progress.Coverage.FullyIndexedCount);
+        Assert.True(progress.DiscoveryComplete);
+        Assert.Equal(IndexingProgressPhase.DeeperAnalysis, progress.Phase);
     }
 
     private static async Task<string> QueueAsync(

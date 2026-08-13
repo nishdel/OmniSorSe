@@ -37,6 +37,10 @@ Explorer Protocol contract and an on-demand current-user named-pipe host for a
 future separate OmniExplorer. The host is dormant until an explicit authorized
 session is created and exposes only bounded read-only projections of existing
 indexed services.
+Unreleased v2.5 adds an optional desktop launch bridge for the separately
+installed OmniBrille companion. Discovery, authorization, and one-time
+current-user handoff occur only after explicit user action; the Protocol v1 data contract,
+scope, transport, and version remain unchanged.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 

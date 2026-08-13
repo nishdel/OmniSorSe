@@ -316,6 +316,39 @@ public sealed class ResultsViewModelTests
         Assert.Contains("Ready", viewModel.AiSuggestions.RenameActionAvailabilityText, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Verifies reconciliation preserves logical selection while replacing stale path projections.</summary>
+    [Fact]
+    public async Task ApplyReconciledSnapshotAsync_PreservesSelectionByFileIdentity()
+    {
+        var original = CreateSnapshot([
+            CreateFile("file:stable", "C:\\Selected\\before.txt", DuplicateStatus.Unique, null),
+        ]);
+        using var viewModel = new ResultsViewModel();
+        await viewModel.LoadSnapshotAsync(original);
+        viewModel.QueryText = "txt";
+        await viewModel.RefreshAsync();
+        viewModel.SelectedRow = Assert.Single(viewModel.PageRows);
+
+        var movedFile = original.Files[0] with
+        {
+            FullPath = "C:\\Selected\\after.txt",
+            DisplayFileName = "after.txt",
+            HasPlannedOperation = false,
+        };
+        var reconciled = original with
+        {
+            Files = Array.AsReadOnly([movedFile]),
+            PlannedOperations = Array.AsReadOnly<ResultPlannedOperation>([]),
+        };
+
+        await viewModel.ApplyReconciledSnapshotAsync(reconciled);
+
+        Assert.Equal("txt", viewModel.QueryText);
+        Assert.Equal("file:stable", viewModel.SelectedRow?.FileId);
+        Assert.Equal("C:\\Selected\\after.txt", viewModel.SelectedDetails?.FullPath);
+        Assert.DoesNotContain(viewModel.PageRows, row => row.FullPath.EndsWith("before.txt", StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies secondary filters use progressive disclosure without resetting their values.</summary>
     [Fact]
     public void ToggleFilters_PreservesFilterStateWhileDrawerIsHidden()

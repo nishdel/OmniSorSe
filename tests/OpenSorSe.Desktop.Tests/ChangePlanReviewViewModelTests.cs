@@ -136,6 +136,31 @@ public sealed class ChangePlanReviewViewModelTests
     }
 
     [Fact]
+    public async Task PartialExecutionStillPublishesJournalForProjectionReconciliation()
+    {
+        using var directory = new TemporaryDirectory();
+        var context = await CreateContextAsync(directory, "source.txt", "renamed.txt");
+        var executor = new PartialExecutionService();
+        using var viewModel = new ChangePlanReviewViewModel(
+            context.Validator,
+            executor,
+            context.PlanStore);
+        ChangePlanOperationCompleted? completed = null;
+        viewModel.OperationCompleted += (_, value) => completed = value;
+        await viewModel.LoadAsync(context.Plan);
+        viewModel.ApproveAllSafeCommand.Execute(null);
+        await viewModel.ValidatePlanCommand.ExecuteAsync(null);
+        viewModel.RequestApplyCommand.Execute(null);
+
+        await viewModel.ConfirmApplyCommand.ExecuteAsync(null);
+
+        Assert.NotNull(completed);
+        Assert.False(completed.IsUndo);
+        Assert.Equal(OperationStatus.RollbackPartiallyFailed, completed.Operation.Status);
+        Assert.Equal(ChangePlanStatus.PartiallyApplied, viewModel.CurrentPlan!.Status);
+    }
+
+    [Fact]
     public async Task OperationHistoryLoadsDetailsCopiesReportAndExecutesConfirmedUndo()
     {
         using var directory = new TemporaryDirectory();
@@ -252,6 +277,71 @@ public sealed class ChangePlanReviewViewModelTests
             explanation = "Temporary test paths share one filesystem.";
             return true;
         }
+    }
+
+    private sealed class PartialExecutionService : IChangePlanExecutionService
+    {
+        public Task<ChangePlanExecutionResult> ExecuteAsync(
+            ChangePlan plan,
+            string initiatingFeature,
+            IProgress<ChangeExecutionProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            var action = Assert.Single(plan.Actions);
+            var journalAction = new OperationJournalAction(
+                action.ActionId,
+                action.ActionType,
+                action.SuggestionSource,
+                action.SourcePath,
+                action.DestinationPath,
+                action.DestinationPath,
+                action.SourceIdentity,
+                action.SourceIdentity,
+                action.ValidationState,
+                JournalActionResult.RollbackFailed,
+                WasSkipped: false,
+                ChangeConflictCategory.IoFailure,
+                "rollback failed",
+                [],
+                RollbackAttempted: true,
+                JournalRollbackResult.Failed,
+                UndoAvailable: false,
+                JournalUndoStatus.NotAvailable,
+                UndoTimestampUtc: null,
+                UndoConflictDetails: null,
+                action.AiModel,
+                action.AiRequestCorrelationId,
+                DirectoryCreatedByOpenSorSe: false);
+            var operation = new OperationJournalRecord(
+                OperationJournalSchema.CurrentVersion,
+                "operation:partial",
+                plan.PlanId,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                "2.5.0",
+                OperationStatus.RollbackPartiallyFailed,
+                initiatingFeature,
+                plan.RootPath,
+                [journalAction],
+                CancellationRequested: false,
+                "Rollback partially failed.");
+            return Task.FromResult(new ChangePlanExecutionResult(
+                operation,
+                Succeeded: false,
+                WasCancelled: false,
+                operation.Summary));
+        }
+
+        public Task<ChangePlanUndoResult> UndoAsync(
+            string operationId,
+            IReadOnlyCollection<string>? actionIds,
+            IProgress<ChangeExecutionProgress>? progress,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<OperationJournalRecord>> RecoverInterruptedAsync(
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<OperationJournalRecord>>([]);
     }
 
     private sealed class RecordingClipboard : IClipboardService

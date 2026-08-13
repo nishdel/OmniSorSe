@@ -544,7 +544,10 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
     }
 
     /// <inheritdoc />
-    public Task<IndexingWorkItem?> ClaimNextAsync(DateTimeOffset nowUtc, CancellationToken cancellationToken = default) =>
+    public Task<IndexingWorkItem?> ClaimNextAsync(
+        DateTimeOffset nowUtc,
+        InitialScanDepth initialScanDepth = InitialScanDepth.BaseFirst,
+        CancellationToken cancellationToken = default) =>
         RunExclusiveAsync(
             () =>
             {
@@ -580,7 +583,10 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                           OR (j.status = $waiting AND j.next_retry_utc_ticks IS NOT NULL AND j.next_retry_utc_ticks <= $now)
                       )
                       AND (j.next_retry_utc_ticks IS NULL OR j.next_retry_utc_ticks <= $now)
-                    ORDER BY s.priority DESC, j.priority DESC, j.queued_utc_ticks, j.id
+                    ORDER BY s.priority DESC,
+                             CASE WHEN $baseFirst = 1 THEN j.stage ELSE 0 END,
+                             CASE WHEN $baseFirst = 0 THEN f.id ELSE '' END,
+                             j.priority DESC, j.queued_utc_ticks, j.id
                     LIMIT 1;
                     """;
                 AddParameters(
@@ -589,7 +595,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     ("$queued", (int)IndexingStageStatus.Queued),
                     ("$retry", (int)IndexingStageStatus.RetryScheduled),
                     ("$waiting", (int)IndexingStageStatus.WaitingForDependency),
-                    ("$now", nowUtc.UtcTicks));
+                    ("$now", nowUtc.UtcTicks),
+                    ("$baseFirst", initialScanDepth == InitialScanDepth.BaseFirst ? 1 : 0));
                 using var reader = command.ExecuteReader();
                 if (!reader.Read())
                 {
@@ -1248,7 +1255,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 command.CommandText =
                     """
                     SELECT r.id, r.status, r.current_stage, r.current_file_name,
-                           r.total_discovered, r.started_utc_ticks,
+                           r.total_discovered, r.started_utc_ticks, r.discovery_complete,
                            SUM(CASE WHEN j.status IN ($complete, $skipped, $failed, $cancelled) THEN 1 ELSE 0 END),
                            SUM(CASE WHEN j.status = $complete THEN 1 ELSE 0 END),
                            SUM(CASE WHEN j.status = $skipped THEN 1 ELSE 0 END),
@@ -1288,7 +1295,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 var total = reader.GetInt64(4);
                 var started = new DateTimeOffset(reader.GetInt64(5), TimeSpan.Zero);
-                var processed = reader.IsDBNull(6) ? 0 : reader.GetInt64(6);
+                var processed = reader.IsDBNull(7) ? 0 : reader.GetInt64(7);
                 var elapsed = nowUtc - started;
                 var speed = elapsed.TotalSeconds >= 1 ? processed / elapsed.TotalSeconds : 0;
                 var remaining = Math.Max(0, total - processed);
@@ -1302,12 +1309,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     CurrentStage = reader.IsDBNull(2) ? null : (IndexingStage)reader.GetInt32(2),
                     CurrentFile = reader.IsDBNull(3) ? null : reader.GetString(3),
                     TotalDiscovered = total,
+                    DiscoveryComplete = reader.GetBoolean(6),
                     Processed = processed,
-                    Completed = reader.IsDBNull(7) ? 0 : reader.GetInt64(7),
-                    Skipped = reader.IsDBNull(8) ? 0 : reader.GetInt64(8),
-                    Failed = reader.IsDBNull(9) ? 0 : reader.GetInt64(9),
-                    Waiting = reader.IsDBNull(10) ? 0 : reader.GetInt64(10),
-                    RetryScheduled = reader.IsDBNull(11) ? 0 : reader.GetInt64(11),
+                    Completed = reader.IsDBNull(8) ? 0 : reader.GetInt64(8),
+                    Skipped = reader.IsDBNull(9) ? 0 : reader.GetInt64(9),
+                    Failed = reader.IsDBNull(10) ? 0 : reader.GetInt64(10),
+                    Waiting = reader.IsDBNull(11) ? 0 : reader.GetInt64(11),
+                    RetryScheduled = reader.IsDBNull(12) ? 0 : reader.GetInt64(12),
                     FilesPerSecond = speed,
                     EstimatedRemaining = estimate,
                     IndexSizeBytes = GetPhysicalSize(),

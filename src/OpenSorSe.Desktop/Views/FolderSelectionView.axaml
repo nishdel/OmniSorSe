@@ -45,6 +45,18 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                     <TextBlock Text="{Binding ProfileSummary}" TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="220,*" ColumnSpacing="10">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Initial indexing" FontWeight="SemiBold" />
+                            <ComboBox ItemsSource="{Binding AvailableInitialScanDepths}"
+                                      SelectedItem="{Binding SelectedInitialScanDepthOption, Mode=TwoWay}"
+                                      AutomationProperties.Name="Initial indexing schedule" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding InitialScanDepthDescription}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.Name="Initial indexing schedule explanation" />
+                    </Grid>
                     <CheckBox Content="Use one-time constraints without changing the saved profile"
                               IsChecked="{Binding UseOneTimeOverride}" />
                     <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="10"

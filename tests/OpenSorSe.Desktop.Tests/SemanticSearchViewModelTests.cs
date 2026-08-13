@@ -114,6 +114,7 @@ public sealed class SemanticSearchViewModelTests
                 CurrentStage = IndexingStage.TextExtracted,
                 CurrentFile = "report.pdf",
                 TotalDiscovered = 10,
+                DiscoveryComplete = true,
                 Processed = 4,
                 Completed = 3,
                 Skipped = 1,
@@ -136,7 +137,8 @@ public sealed class SemanticSearchViewModelTests
 
         await viewModel.RefreshAsync();
 
-        Assert.Equal(0.4, viewModel.BackgroundProgressValue);
+        Assert.Equal(0.3, viewModel.BackgroundProgressValue);
+        Assert.Contains("files searchable", viewModel.BackgroundStateText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("document text", viewModel.CurrentStageText, StringComparison.Ordinal);
         Assert.Contains("report.pdf", viewModel.CurrentFileText, StringComparison.Ordinal);
         Assert.Contains("4 of 10", viewModel.ProcessedCountText, StringComparison.Ordinal);
@@ -337,6 +339,39 @@ public sealed class SemanticSearchViewModelTests
         Assert.True(viewModel.IsBackgroundProgressIndeterminate);
         Assert.Contains("determining the total", viewModel.ProcessedCountText, StringComparison.Ordinal);
         Assert.Contains("not yet known", viewModel.RemainingCountText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies the UI says base coverage is usable while deeper evidence continues.</summary>
+    [Fact]
+    public async Task CompletedBaseCoverageReportsDeeperAnalysisWithoutMisleadingOverallProgress()
+    {
+        var background = new BackgroundIndexing
+        {
+            Progress = new IndexingProgressSnapshot
+            {
+                RunId = "progressive",
+                Status = IndexingRunStatus.Running,
+                DiscoveryComplete = true,
+                TotalDiscovered = 10,
+                Processed = 2,
+                Coverage = new SearchCoverage(10, 10, 4, 1, 2, 2),
+                EstimatedRemaining = TimeSpan.FromMinutes(3),
+            },
+        };
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([]),
+            new Store(),
+            new Launcher(),
+            background);
+
+        await viewModel.RefreshAsync();
+
+        Assert.Equal(0.2, viewModel.BackgroundProgressValue, precision: 3);
+        Assert.Contains("files searchable", viewModel.BackgroundStateText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("deeper analysis", viewModel.CoverageText, StringComparison.OrdinalIgnoreCase);
+        Assert.True(viewModel.HasEstimatedTime);
     }
 
     /// <summary>Verifies a known result path uses the existing cross-platform clipboard boundary.</summary>

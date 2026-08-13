@@ -45,7 +45,10 @@ public interface IDeepIndexStore : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>Atomically claims the next eligible durable stage.</summary>
-    Task<IndexingWorkItem?> ClaimNextAsync(DateTimeOffset nowUtc, CancellationToken cancellationToken = default);
+    Task<IndexingWorkItem?> ClaimNextAsync(
+        DateTimeOffset nowUtc,
+        InitialScanDepth initialScanDepth = InitialScanDepth.BaseFirst,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Atomically stores bounded output and advances or terminates the durable job.</summary>
     Task SaveStageOutputAsync(
@@ -231,6 +234,15 @@ public interface IBackgroundIndexingService :
         bool includeSubfolders = true,
         IReadOnlyList<string>? exclusions = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Re-discovers only configured sources affected by verified filesystem outcomes. Active work for those
+    /// sources is cancelled at a durable boundary before the targeted refresh starts.
+    /// </summary>
+    Task<int> ReconcilePathsAsync(
+        IReadOnlyList<string> affectedPaths,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(0);
 
     /// <summary>Returns configured durable sources.</summary>
     Task<IReadOnlyList<IndexingSource>> GetSourcesAsync(CancellationToken cancellationToken = default);

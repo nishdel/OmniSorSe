@@ -358,8 +358,8 @@
                                             x:DataType="vm:AiSuggestionsViewModel">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <StackPanel Spacing="2">
-                                            <TextBlock Text="File Assistant" FontSize="17" FontWeight="SemiBold" />
-                                            <TextBlock Text="Local, unverified suggestions only"
+                                            <TextBlock Text="Organize selected files" FontSize="17" FontWeight="SemiBold" />
+                                            <TextBlock Text="Suggest → Review Changes → execute; nothing is changed automatically"
                                                        Classes="page-subtitle" />
                                         </StackPanel>
                                         <Button Grid.Column="1"

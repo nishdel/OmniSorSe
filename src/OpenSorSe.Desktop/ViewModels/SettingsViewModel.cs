@@ -118,6 +118,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _draft, value))
             {
                 _draft.PropertyChanged += OnDraftPropertyChanged;
+                OnPropertyChanged(nameof(SelectedInitialScanDepthOption));
                 NotifyFeatureVisibilityChanged();
             }
         }
@@ -160,6 +161,16 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the supported durable indexing levels.</summary>
     public IReadOnlyList<IndexingLevel> AvailableIndexingLevels { get; } = Enum.GetValues<IndexingLevel>();
+
+    /// <summary>Gets supported initial-scan scheduling policies.</summary>
+    public IReadOnlyList<InitialScanDepthOption> AvailableInitialScanDepths { get; } = InitialScanDepthOptions.All;
+
+    /// <summary>Gets or sets the plain-language initial indexing schedule.</summary>
+    public InitialScanDepthOption SelectedInitialScanDepthOption
+    {
+        get => InitialScanDepthOptions.For(Draft.InitialScanDepth);
+        set => Draft.InitialScanDepth = value.Value;
+    }
 
     /// <summary>Gets the supported responsible-resource profiles.</summary>
     public IReadOnlyList<IndexingResourceMode> AvailableIndexingResourceModes { get; } =
@@ -1012,6 +1023,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     private void OnDraftPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
+        if (eventArgs.PropertyName == nameof(SettingsDraft.InitialScanDepth))
+        {
+            OnPropertyChanged(nameof(SelectedInitialScanDepthOption));
+        }
+
         if (eventArgs.PropertyName is nameof(SettingsDraft.AiEnabled) or nameof(SettingsDraft.ShowAdvancedFeatures))
         {
             if (!Draft.AiEnabled && IsAiBusy)

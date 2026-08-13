@@ -456,7 +456,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Gets normalized persistent progress from zero through one.</summary>
-    public double BackgroundProgressValue => BackgroundProgress.OverallPercentage / 100d;
+    public double BackgroundProgressValue => BackgroundProgress.PhasePercentage / 100d;
 
     /// <summary>Gets whether discovery is active but a truthful total is not yet known.</summary>
     public bool IsBackgroundProgressIndeterminate =>
@@ -467,7 +467,17 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             IndexingRunStatus.Cancelling;
 
     /// <summary>Gets the durable run-state label.</summary>
-    public string BackgroundStateText => $"Indexing state: {FormatRunStatus(BackgroundProgress.Status)}";
+    public string BackgroundStateText => BackgroundProgress.Phase switch
+    {
+        IndexingProgressPhase.DiscoveringFiles => "Indexing state: scanning files; Search coverage is appearing progressively",
+        IndexingProgressPhase.BuildingBaseSearchCoverage => "Indexing state: building base Search coverage",
+        IndexingProgressPhase.DeeperAnalysis => "Indexing state: files searchable; enabled deeper analysis is continuing",
+        IndexingProgressPhase.Paused => "Indexing state: paused; completed Search coverage remains available",
+        IndexingProgressPhase.Waiting => "Indexing state: waiting; completed Search coverage remains available",
+        IndexingProgressPhase.Cancelled => "Indexing state: cancelled at a durable boundary",
+        IndexingProgressPhase.Failed => "Indexing state: completed coverage retained; some work failed and can be retried",
+        _ => "Indexing state: complete",
+    };
 
     /// <summary>Gets the current durable stage label.</summary>
     public string CurrentStageText => BackgroundProgress.CurrentStage is { } stage
@@ -499,7 +509,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         : "Processing speed will appear after work starts.";
 
     /// <summary>Gets whether an estimate has enough samples to be meaningful.</summary>
-    public bool HasEstimatedTime => BackgroundProgress.EstimatedRemaining.HasValue;
+    public bool HasEstimatedTime =>
+        BackgroundProgress.Phase == IndexingProgressPhase.DeeperAnalysis &&
+        BackgroundProgress.EstimatedRemaining.HasValue;
 
     /// <summary>Gets an explicitly labelled estimated remaining-time value.</summary>
     public string EstimatedTimeText => BackgroundProgress.EstimatedRemaining is { } estimate
@@ -1498,8 +1510,14 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             limitations.Add($"{coverage.FailedStageCount:N0} stage(s) failed");
         }
 
+        var phase = snapshot.Phase == IndexingProgressPhase.DeeperAnalysis
+            ? " Names, paths, and metadata are searchable now; enabled deeper analysis is still arriving."
+            : snapshot.Phase is IndexingProgressPhase.DiscoveringFiles or IndexingProgressPhase.BuildingBaseSearchCoverage
+                ? " Base Search coverage is being published before expensive intelligence."
+                : string.Empty;
         CoverageText =
             $"Search coverage: names and metadata {coverage.FilenameAndMetadataCount:N0}/{coverage.KnownFileCount:N0}, document text {coverage.ExtractedTextCount:N0}/{coverage.KnownFileCount:N0}, OCR {coverage.OcrCount:N0}/{coverage.KnownFileCount:N0}, related concepts {coverage.SemanticCount:N0}/{coverage.KnownFileCount:N0}, fully indexed {coverage.FullyIndexedCount:N0}/{coverage.KnownFileCount:N0}." +
+            phase +
             (limitations.Count > 0
                 ? $" Search coverage is still being built. Some files may not appear yet because {string.Join(", ", limitations)}."
                 : " All known files have complete indexing coverage.");

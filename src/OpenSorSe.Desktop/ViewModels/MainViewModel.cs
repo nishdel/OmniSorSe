@@ -71,6 +71,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IWatchedFolderManager? _watchedFolderManager;
     private readonly IWatchedFolderCoordinator? _watchedFolderCoordinator;
     private readonly IBackgroundIndexingService? _backgroundIndexingService;
+    private readonly IChangePlanReconciliationService _changePlanReconciliationService =
+        new ChangePlanReconciliationService();
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
@@ -403,7 +405,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _watchedFolderCoordinator = watchedFolderCoordinator;
         _backgroundIndexingService = backgroundIndexingService;
         Dashboard = new DashboardViewModel(Navigate);
-        FolderSelection = new FolderSelectionViewModel(workflowLibrary);
+        FolderSelection = new FolderSelectionViewModel(workflowLibrary, configurationService);
         ScanProgress = new ScanProgressViewModel();
         Results = new ResultsViewModel(
             configurationService,
@@ -505,8 +507,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Workflows.AssignToWatchedFolderRequested += OnWorkflowAssignRequested;
         Workflows.LibraryChanged += OnWorkflowLibraryChanged;
         ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
-        ReviewChanges.ChangePlanApplied += OnChangePlanApplied;
-        ReviewChanges.ChangePlanUndone += OnChangePlanUndone;
+        ReviewChanges.OperationCompleted += OnChangePlanOperationCompleted;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
         ReviewChanges.PropertyChanged += OnHostedOperationPropertyChanged;
@@ -1140,8 +1141,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
         Results.ChangePlanCreated -= OnChangePlanCreated;
-        ReviewChanges.ChangePlanApplied -= OnChangePlanApplied;
-        ReviewChanges.ChangePlanUndone -= OnChangePlanUndone;
+        ReviewChanges.OperationCompleted -= OnChangePlanOperationCompleted;
         WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested -= OnWatchedFolderNotificationRequested;
         Workflows.RunScanRequested -= OnWorkflowRunScanRequested;
@@ -1222,11 +1222,43 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void OnChangePlanApplied(object? sender, ChangePlan plan) =>
-        Results.DuplicateReview.ApplyExecutedChangePlan(plan);
+    private async void OnChangePlanOperationCompleted(
+        object? sender,
+        ChangePlanOperationCompleted completed)
+    {
+        try
+        {
+            var reconciliation = _changePlanReconciliationService.Reconcile(
+                Results.Snapshot,
+                completed.Plan,
+                completed.Operation,
+                completed.IsUndo);
+            if (reconciliation.Snapshot is not null)
+            {
+                await Results.ApplyReconciledSnapshotAsync(reconciliation.Snapshot);
+            }
 
-    private void OnChangePlanUndone(object? sender, ChangePlan plan) =>
-        Results.DuplicateReview.RevertExecutedChangePlan(plan);
+            if (_backgroundIndexingService is not null && reconciliation.AffectedPaths.Count > 0)
+            {
+                _ = await _backgroundIndexingService.ReconcilePathsAsync(
+                    reconciliation.AffectedPaths,
+                    CancellationToken.None);
+            }
+
+            StatusText = reconciliation.Summary;
+            Notifications.Publish(new NotificationRequest(
+                reconciliation.RequiresTargetedRefresh
+                    ? NotificationSeverity.Warning
+                    : NotificationSeverity.Success,
+                reconciliation.Summary));
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            StatusText = "File changes completed, but one or more local projections could not be refreshed immediately. A later scan will reconcile the affected paths.";
+            Notifications.Publish(new NotificationRequest(NotificationSeverity.Warning, StatusText));
+        }
+    }
 
     private async void OnWatchedFolderReviewPlanRequested(object? sender, ChangePlan plan)
     {
@@ -1558,6 +1590,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         try
         {
+            if (_configurationService.Current.DeepIndexing.InitialScanDepth != request.InitialScanDepth)
+            {
+                var settingsDraft = SettingsDraft.FromSettings(_configurationService.Current);
+                settingsDraft.InitialScanDepth = request.InitialScanDepth;
+                await _configurationService.SaveAsync(settingsDraft.ToSettings(), cancellation.Token);
+            }
+
             ResolvedWorkflowConfiguration? workflow = null;
             if (_workflowConfigurationResolver is not null)
             {

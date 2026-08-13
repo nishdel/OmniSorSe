@@ -441,6 +441,33 @@ public sealed class BackgroundIndexingServiceTests
         Assert.True(maintenance.IsWithinQuota);
     }
 
+    /// <summary>Verifies an operation outcome refreshes only its configured source and reuses unchanged work.</summary>
+    [Fact]
+    public async Task ReconcilePathsAsync_RefreshesAffectedSourceWithoutRepeatingCompletedStages()
+    {
+        await using var fixture = await ServiceFixture.CreateAsync();
+        await fixture.Service.QueueFolderAsync(fixture.Root, IndexingLevel.Basic);
+        var initial = await WaitForProgressAsync(
+            fixture.Service,
+            snapshot => snapshot.Status == IndexingRunStatus.Complete && snapshot.Completed == 1);
+        var processedBeforeRefresh = fixture.Processor.ProcessedStages.Count;
+        var completion = WaitForProgressAsync(
+            fixture.Service,
+            snapshot => snapshot.Status == IndexingRunStatus.Complete &&
+                        snapshot.RunId is not null &&
+                        snapshot.RunId != initial.RunId);
+
+        var affected = await fixture.Service.ReconcilePathsAsync([
+            Path.Combine(fixture.Root, "document.txt"),
+        ]);
+        var refreshed = await completion;
+
+        Assert.Equal(1, affected);
+        Assert.NotEqual(initial.RunId, refreshed.RunId);
+        Assert.Single(await fixture.Service.GetSourcesAsync());
+        Assert.Equal(processedBeforeRefresh, fixture.Processor.ProcessedStages.Count);
+    }
+
     /// <summary>Verifies disabled watched folders remove only their owned source and never an explicitly queued source.</summary>
     [Fact]
     public async Task WatchedSourceSynchronizationRemovesOnlyDisabledManagedSources()

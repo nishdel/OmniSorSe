@@ -39,6 +39,14 @@ for the evidence boundary,
 [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) for user-facing changes,
 and [Release History](RELEASE_HISTORY.md) for earlier milestones.
 
+Current development is the unreleased **v2.5 Workflow Completion & Indexing
+Quality** branch. It hardens reviewed Change Plan/Undo reconciliation and adds
+base-first progressive indexing. It also adds a lazy, scoped **Open in
+OmniBrille** handoff for the separately installed companion without changing
+Explorer Protocol v1. See the
+[v2.5 design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md); v2.4.0 remains the
+latest published release.
+
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The
 [manual checklist](docs/MANUAL_TESTING_v2.4.md) separates genuine Windows
@@ -86,7 +94,7 @@ update, uninstall, application-data, and checksum guidance is in
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
 | Media Intelligence | Adds bounded structured image metadata and EXIF-oriented lazy thumbnails; optional image/video-frame OCR; optional `ffprobe` audio/video metadata and `ffmpeg` representative frames; and provider-neutral transcription/visual-description boundaries. v2.3 can use an explicitly configured user-managed whisper.cpp CLI/model for local speech transcription; no visual-description provider is included. Missing optional tools never disable ordinary Search. |
 | Content Intelligence | Derives bounded normalized topics, textual entities, keywords, and a one-sentence extractive summary from already indexed local evidence, retaining provider/version and source provenance. These remain optional clues rather than facts. |
-| Explorer Protocol v1 | Provides an on-demand current-user local named-pipe boundary for a future optional OmniExplorer: authorized indexed roots, bounded Structure, grounded Search, Related/context, and safe details. It is read-only, session-scoped, dormant by default, and independent of SQLite schema. |
+| Explorer Protocol v1 | Provides an on-demand current-user local named-pipe boundary for an optional separate explorer companion: authorized indexed roots, bounded Structure, grounded Search, Related/context, and safe details. It is read-only, session-scoped, dormant by default, and independent of SQLite schema. Unreleased v2.5 can launch separately installed OmniBrille through its established one-time current-user handoff pipe. |
 | Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
@@ -196,6 +204,8 @@ documents are:
 | [v2.4 Manual Testing](docs/MANUAL_TESTING_v2.4.md) | Genuine Windows profile/installer and external two-process protocol evidence with explicit unchecked boundaries. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
 | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | OmniSorSe transition, profile compatibility, Explorer Protocol v1, package trust, limitations, and final validation boundary. |
+| [v2.5 Workflow & Indexing Quality](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) | Unreleased implementation contract for post-operation reconciliation and progressive base-first indexing. |
+| [OmniBrille companion handoff](docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md) | Unreleased v2.5 local bootstrap, lifecycle, scope, failure, and threat-model contract; Explorer Protocol v1 remains unchanged. |
 | [v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence and local-transcription release snapshot. |
 | [v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence and UX release snapshot. |
 | [v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) | Historical Search/AI quality release snapshot. |

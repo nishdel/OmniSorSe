@@ -616,6 +616,37 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
+    /// Replaces filesystem-derived projections after a verified operation outcome while preserving the
+    /// active query, logical selection, review mode, and accepted application-owned tags.
+    /// </summary>
+    public async Task ApplyReconciledSnapshotAsync(ResultsSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        var selectedId = SelectedRow?.FileId;
+        var query = Query;
+        var displayMode = DisplayMode;
+        var tags = GetPersistableTags();
+        _snapshot = snapshot;
+        Summary = new ResultsSummary(
+            snapshot.Statistics.FilesDiscovered,
+            snapshot.Statistics.DirectoriesDiscovered,
+            snapshot.Statistics.PlannedOperationCount,
+            snapshot.Statistics.ExactDuplicateFileCount,
+            snapshot.Statistics.WarningCount + snapshot.Statistics.ErrorCount);
+        ReplaceSnapshotCollections(snapshot, tags);
+        Query = query;
+        DuplicateReview.LoadSnapshot(snapshot);
+        OnSnapshotStateChanged();
+        await RefreshAsync();
+        SelectedRow = selectedId is null
+            ? null
+            : _pageRows.FirstOrDefault(row => string.Equals(row.FileId, selectedId, StringComparison.Ordinal));
+        DisplayMode = displayMode == ResultsDisplayMode.ExactDuplicates && !DuplicateReview.HasDuplicateGroups
+            ? ResultsDisplayMode.Explorer
+            : displayMode;
+    }
+
+    /// <summary>
     /// Returns accepted non-deterministic tags eligible for application-owned catalog persistence.
     /// </summary>
     public IReadOnlyList<TagAssociation> GetPersistableTags() => Array.AsReadOnly(_tagsByFile.Values

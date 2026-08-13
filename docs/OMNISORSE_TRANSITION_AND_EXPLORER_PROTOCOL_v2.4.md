@@ -2,6 +2,11 @@
 
 **Status:** released as OmniSorSe v2.4.0 from `v2.4-omnisorse-transition`
 
+> **Later unreleased integration note:** v2.5 keeps every Protocol v1 wire
+> contract and security boundary below unchanged while adding a desktop-only,
+> one-time launch bootstrap for the separately installed OmniBrille companion.
+> See [OmniBrille companion handoff](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md).
+
 **Stable baseline:** OpenSorSe v2.3.0, commit
 `abe43e171bdcefa48cc55a6af6e560e2c8c8ce94`, schema 5
 

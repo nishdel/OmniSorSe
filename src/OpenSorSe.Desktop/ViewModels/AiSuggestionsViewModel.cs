@@ -105,10 +105,11 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     {
         0 => "No files from the current results page are available for a folder request.",
         > AiPromptLimits.MaximumFolderStructureFiles =>
-            $"{_pageFiles.Count} files are in the current results-page selection. The safe request limit is " +
-            $"{AiPromptLimits.MaximumFolderStructureFiles}; none will be sent until the selection is reduced.",
+            $"{_pageFiles.Count} files are on the current bounded results page. This is not the entire indexed library. " +
+            $"The safe request limit is {AiPromptLimits.MaximumFolderStructureFiles}; none will be sent until the page is reduced.",
         _ =>
-            $"{_pageFiles.Count} of {_pageFiles.Count} files will be sent using opaque IDs and must be assigned exactly once.",
+            $"This folder proposal covers only the {_pageFiles.Count} files on the current bounded results page, not the entire indexed library. " +
+            "Opaque IDs are used and every included file must be assigned exactly once.",
     };
 
     /// <summary>Provides a concise review-before-send summary for the currently available AI tasks.</summary>

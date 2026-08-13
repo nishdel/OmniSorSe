@@ -46,6 +46,9 @@ public sealed class ApplicationSettings
     /// <summary>Gets or initializes durable background-indexing settings.</summary>
     public DeepIndexingSettings DeepIndexing { get; init; } = new();
 
+    /// <summary>Gets or initializes optional local companion-discovery settings.</summary>
+    public ExplorerCompanionSettings ExplorerCompanion { get; init; } = new();
+
     /// <summary>
     /// Creates a settings snapshot with only the two shell-wide feature switches changed.
     /// All detailed provider, capability, catalog, and logging values are preserved.
@@ -79,6 +82,7 @@ public sealed class ApplicationSettings
         ContentIntelligence = ContentIntelligence,
         SemanticSearch = SemanticSearch,
         DeepIndexing = DeepIndexing,
+        ExplorerCompanion = ExplorerCompanion,
     };
 
     /// <summary>
@@ -102,6 +106,7 @@ public sealed class ApplicationSettings
         ContentIntelligence = ContentIntelligence,
         SemanticSearch = SemanticSearch,
         DeepIndexing = DeepIndexing,
+        ExplorerCompanion = ExplorerCompanion,
     };
 
     /// <summary>
@@ -181,6 +186,33 @@ public sealed class ApplicationSettings
         }
 
         DeepIndexing.Validate();
+
+        if (ExplorerCompanion is null)
+        {
+            throw new ConfigurationValidationException("Explorer companion settings are required.");
+        }
+
+        ExplorerCompanion.Validate();
+    }
+}
+
+/// <summary>Defines optional local discovery for the separately installed OmniBrille companion.</summary>
+public sealed class ExplorerCompanionSettings
+{
+    /// <summary>Gets or initializes an optional absolute OmniBrille executable path.</summary>
+    public string? ExecutablePath { get; init; }
+
+    /// <summary>Validates the optional path without requiring the companion to be installed.</summary>
+    public void Validate()
+    {
+        if (ExecutablePath is not null &&
+            (string.IsNullOrWhiteSpace(ExecutablePath) ||
+             !Path.IsPathRooted(ExecutablePath) ||
+             ExecutablePath.Length > 1_024 ||
+             ExecutablePath.Any(char.IsControl)))
+        {
+            throw new ConfigurationValidationException("The OmniBrille executable path must be an optional bounded absolute path.");
+        }
     }
 }
 
@@ -291,6 +323,16 @@ public enum IndexingResourceMode
     Fast,
 }
 
+/// <summary>Controls whether an initial scan publishes broad Search coverage before deeper analysis.</summary>
+public enum InitialScanDepth
+{
+    /// <summary>Indexes inexpensive identity, path, metadata, and document evidence across the source first.</summary>
+    BaseFirst,
+
+    /// <summary>Completes enabled analysis for each discovered file earlier in the initial run.</summary>
+    DeepInitialAnalysis,
+}
+
 /// <summary>Defines conservative, bounded settings for durable background indexing.</summary>
 public sealed class DeepIndexingSettings
 {
@@ -299,6 +341,9 @@ public sealed class DeepIndexingSettings
 
     /// <summary>Gets or initializes the default analysis level for newly registered sources.</summary>
     public IndexingLevel DefaultLevel { get; init; } = IndexingLevel.Basic;
+
+    /// <summary>Gets or initializes the scheduling policy for newly queued initial scans.</summary>
+    public InitialScanDepth InitialScanDepth { get; init; } = InitialScanDepth.BaseFirst;
 
     /// <summary>Gets or initializes the background resource profile.</summary>
     public IndexingResourceMode ResourceMode { get; init; } = IndexingResourceMode.Balanced;
@@ -382,6 +427,7 @@ public sealed class DeepIndexingSettings
     public void Validate()
     {
         if (!Enum.IsDefined(DefaultLevel) ||
+            !Enum.IsDefined(InitialScanDepth) ||
             !Enum.IsDefined(ResourceMode) ||
             MaximumIndexSizeMiB is < 16 or > 1_048_576 ||
             MaximumExtractedTextCharacters is < 4096 or > 4_194_304 ||

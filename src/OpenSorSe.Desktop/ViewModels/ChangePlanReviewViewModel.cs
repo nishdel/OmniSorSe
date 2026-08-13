@@ -17,6 +17,12 @@ public enum ChangePlanIssueFilter
 
 public sealed record ChangeActionTypeFilterOption(ChangeActionType? Type, string Label);
 
+/// <summary>Reports a terminal execution or Undo journal for outcome-driven application reconciliation.</summary>
+public sealed record ChangePlanOperationCompleted(
+    ChangePlan Plan,
+    OperationJournalRecord Operation,
+    bool IsUndo);
+
 public sealed class ChangePlanActionRow : ViewModelBase
 {
     private ProposedChangeAction _action;
@@ -143,11 +149,8 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
 
     public event EventHandler? ReturnRequested;
 
-    /// <summary>Occurs after every approved action in a Change Plan completes successfully.</summary>
-    public event EventHandler<ChangePlan>? ChangePlanApplied;
-
-    /// <summary>Occurs after every action from the current Change Plan is restored successfully.</summary>
-    public event EventHandler<ChangePlan>? ChangePlanUndone;
+    /// <summary>Occurs for every terminal execution or Undo result, including partial and rollback outcomes.</summary>
+    public event EventHandler<ChangePlanOperationCompleted>? OperationCompleted;
     public ReadOnlyObservableCollection<ChangePlanActionRow> Actions { get; }
     public IReadOnlyList<ChangeActionTypeFilterOption> AvailableTypeFilters { get; }
     public IReadOnlyList<ChangePlanIssueFilter> AvailableIssueFilters { get; }
@@ -494,10 +497,9 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
                         ? ChangePlanStatus.PartiallyApplied
                     : ChangePlanStatus.Failed,
             };
-            if (execution.Succeeded)
-            {
-                ChangePlanApplied?.Invoke(this, CurrentPlan);
-            }
+            OperationCompleted?.Invoke(
+                this,
+                new ChangePlanOperationCompleted(CurrentPlan, execution.Operation, IsUndo: false));
         }
         catch (OperationCanceledException)
         {
@@ -539,12 +541,11 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
                 _operationCancellation.Token);
             LastExecution = LastExecution with { Operation = LastUndo.Operation };
             StatusText = LastUndo.Summary;
-            if (CurrentPlan is not null &&
-                LastUndo.ActionsUndone == CurrentPlan.ApprovedActionCount &&
-                LastUndo.ActionsBlocked == 0 &&
-                LastUndo.ActionsFailed == 0)
+            if (CurrentPlan is not null)
             {
-                ChangePlanUndone?.Invoke(this, CurrentPlan);
+                OperationCompleted?.Invoke(
+                    this,
+                    new ChangePlanOperationCompleted(CurrentPlan, LastUndo.Operation, IsUndo: true));
             }
         }
         finally

@@ -227,6 +227,40 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
     }
 
     /// <inheritdoc />
+    public async Task<int> ReconcilePathsAsync(
+        IReadOnlyList<string> affectedPaths,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureInitialized();
+        ThrowIfStorageUnavailable();
+        ArgumentNullException.ThrowIfNull(affectedPaths);
+        var normalized = affectedPaths
+            .Where(path => !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path))
+            .Select(_pathSemantics.NormalizeAbsolutePath)
+            .Distinct(_pathSemantics.Comparer)
+            .ToArray();
+        if (normalized.Length == 0)
+        {
+            return 0;
+        }
+
+        var sources = await _deepIndexStore.GetSourcesAsync(cancellationToken).ConfigureAwait(false);
+        var affectedSources = sources
+            .Where(source => source.Enabled && normalized.Any(path =>
+                _pathSemantics.IsWithinRoot(source.RootPath, path) ||
+                _pathSemantics.IsWithinRoot(path, source.RootPath)))
+            .DistinctBy(source => source.Id, StringComparer.Ordinal)
+            .ToArray();
+        foreach (var source in affectedSources)
+        {
+            _ = await QueueSourceAsync(source, cancellationToken).ConfigureAwait(false);
+        }
+
+        Signal(Math.Max(1, affectedSources.Length));
+        return affectedSources.Length;
+    }
+
+    /// <inheritdoc />
     public async Task PauseAsync(CancellationToken cancellationToken = default)
     {
         EnsureInitialized();
@@ -872,7 +906,10 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
                     .ResumeEligibleWaitingRunsAsync(_timeProvider.GetUtcNow(), cancellationToken)
                     .ConfigureAwait(false);
                 var work = await _deepIndexStore
-                    .ClaimNextAsync(_timeProvider.GetUtcNow(), cancellationToken)
+                    .ClaimNextAsync(
+                        _timeProvider.GetUtcNow(),
+                        settings.InitialScanDepth,
+                        cancellationToken)
                     .ConfigureAwait(false);
                 if (work is null)
                 {

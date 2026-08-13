@@ -48,7 +48,7 @@ flowchart TB
         Tesseract["Tesseract OCR engine"]
         MediaTools["Optional local ffprobe and ffmpeg"]
         Package["External local plugin ZIP"]
-        Companion["Future optional OmniExplorer (not shipped)"]
+        Companion["Optional separate OmniBrille companion"]
     end
 
     subgraph Desktop["Desktop layer"]
@@ -86,6 +86,7 @@ flowchart TB
         GraphServices["Provider-neutral graph query, decision, privacy, repair, and Search services"]
         MediaCoordinator["Provider-neutral bounded media coordinator"]
         ExplorerHost["On-demand Explorer Protocol host"]
+        CompanionLaunch["Lazy scoped companion launch/bootstrap"]
         ExplorerContract["Dependency-free Protocol v1 contract"]
     end
 
@@ -132,6 +133,9 @@ flowchart TB
     end
 
     User -->|commands and review| Shell
+    Shell -->|explicit Open in OmniBrille| CompanionLaunch
+    CompanionLaunch -->|lazy session creation| ExplorerHost
+    CompanionLaunch -.->|one-time current-user handoff pipe| Companion
     Companion -.->|authenticated, source-scoped, bounded, read-only local session| ExplorerHost
     ExplorerHost --> ExplorerContract
     ExplorerHost --> IndexCoordinator

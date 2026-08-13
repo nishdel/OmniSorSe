@@ -110,6 +110,34 @@ public enum IndexingRunStatus
     Failed,
 }
 
+/// <summary>Describes the user-meaningful phase of progressive indexing.</summary>
+public enum IndexingProgressPhase
+{
+    /// <summary>Source discovery is still determining the searchable set.</summary>
+    DiscoveringFiles,
+
+    /// <summary>Cheap identity, path, metadata, and document evidence is being published.</summary>
+    BuildingBaseSearchCoverage,
+
+    /// <summary>All known names and metadata are searchable while enabled deeper analysis continues.</summary>
+    DeeperAnalysis,
+
+    /// <summary>Durable work is paused.</summary>
+    Paused,
+
+    /// <summary>Durable work is waiting for an optional dependency or resource condition.</summary>
+    Waiting,
+
+    /// <summary>Cancellation is being applied or has completed.</summary>
+    Cancelled,
+
+    /// <summary>The run failed or completed with retained failures.</summary>
+    Failed,
+
+    /// <summary>All applicable durable work is complete.</summary>
+    Complete,
+}
+
 /// <summary>Classifies failures without retaining private file content.</summary>
 public enum IndexingFailureCategory
 {
@@ -384,6 +412,9 @@ public sealed record IndexingProgressSnapshot
     /// <summary>Gets the number of files discovered for the run.</summary>
     public long TotalDiscovered { get; init; }
 
+    /// <summary>Gets whether durable source discovery reached its commit boundary.</summary>
+    public bool DiscoveryComplete { get; init; }
+
     /// <summary>Gets the number of terminally processed files.</summary>
     public long Processed { get; init; }
 
@@ -423,6 +454,45 @@ public sealed record IndexingProgressSnapshot
 
     /// <summary>Gets progressive Search coverage.</summary>
     public SearchCoverage Coverage { get; init; } = new(0, 0, 0, 0, 0, 0);
+
+    /// <summary>Gets whether every currently known file has local name and metadata coverage.</summary>
+    public bool IsBaseCoverageComplete =>
+        DiscoveryComplete && Coverage.FilenameAndMetadataCount >= Coverage.KnownFileCount;
+
+    /// <summary>Gets normalized progress for the currently communicated indexing phase.</summary>
+    public double PhasePercentage
+    {
+        get
+        {
+            if (!IsBaseCoverageComplete)
+            {
+                return Coverage.KnownFileCount <= 0
+                    ? 0
+                    : Math.Clamp(
+                        Coverage.FilenameAndMetadataCount * 100d / Coverage.KnownFileCount,
+                        0,
+                        100);
+            }
+
+            return Coverage.KnownFileCount <= 0
+                ? Status is IndexingRunStatus.Complete ? 100 : 0
+                : Math.Clamp(Coverage.FullyIndexedCount * 100d / Coverage.KnownFileCount, 0, 100);
+        }
+    }
+
+    /// <summary>Gets a truthful phase label that distinguishes usable base coverage from deeper work.</summary>
+    public IndexingProgressPhase Phase => Status switch
+    {
+        IndexingRunStatus.Paused => IndexingProgressPhase.Paused,
+        IndexingRunStatus.Waiting => IndexingProgressPhase.Waiting,
+        IndexingRunStatus.Cancelling or IndexingRunStatus.Cancelled => IndexingProgressPhase.Cancelled,
+        IndexingRunStatus.Failed or IndexingRunStatus.CompleteWithFailures => IndexingProgressPhase.Failed,
+        IndexingRunStatus.Complete when !Coverage.IsIncomplete => IndexingProgressPhase.Complete,
+        _ when !DiscoveryComplete => IndexingProgressPhase.DiscoveringFiles,
+        _ when !IsBaseCoverageComplete => IndexingProgressPhase.BuildingBaseSearchCoverage,
+        _ when Coverage.IsIncomplete => IndexingProgressPhase.DeeperAnalysis,
+        _ => IndexingProgressPhase.Complete,
+    };
 }
 
 /// <summary>Describes a provider-neutral document available to progressive Search.</summary>
