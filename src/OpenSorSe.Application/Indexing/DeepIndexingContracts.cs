@@ -1,5 +1,6 @@
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Semantic;
 
 namespace OpenSorSe.Application.Indexing;
 
@@ -124,6 +125,22 @@ public interface IDeepIndexStore : IAsyncDisposable
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
 
+    /// <summary>
+    /// Selects lightweight durable file identifiers across the complete visible index before
+    /// bounded document hydration. Providers that do not implement this additive contract retain
+    /// the compatible bounded projection fallback.
+    /// </summary>
+    Task<DiscoveryCandidateSelection> SelectSearchCandidateIdsAsync(
+        DiscoverySearchRequest request,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(DiscoveryCandidateSelection.Unavailable);
+
+    /// <summary>Aggregates bounded facet counts in durable storage for the complete visible index.</summary>
+    Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+        DiscoveryFacetRequest request,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(DiscoveryFacetSnapshot.Unavailable);
+
     /// <summary>Returns bounded absolute paths excluded from Search by durable privacy rules.</summary>
     Task<IReadOnlyList<string>> GetExcludedSearchPathsAsync(
         int maximumCount,
@@ -229,10 +246,25 @@ public interface IProgressiveSmartTagSearchSource
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Selects complete-library Search eligibility in durable storage and hydrates only a bounded,
+/// relevance-ordered candidate projection for the existing deterministic ranker.
+/// </summary>
+public interface IProgressiveDiscoverySearchSource
+{
+    /// <summary>Returns bounded hydrated candidates plus truthful complete-library query coverage.</summary>
+    Task<ProgressiveDiscoveryResult> GetDiscoveryCandidatesAsync(
+        DiscoverySearchRequest request,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ProgressiveDiscoveryResult([], SearchCandidateCoverage.Unknown));
+}
+
 /// <summary>Controls durable background indexing from application services and ViewModels.</summary>
 public interface IBackgroundIndexingService :
     IProgressiveSearchSource,
     IProgressiveSearchDocumentLookup,
+    IProgressiveDiscoverySearchSource,
+    IFacetedDiscoverySource,
     IDisposable,
     IAsyncDisposable
 {
@@ -295,6 +327,33 @@ public interface IBackgroundIndexingService :
     /// <summary>Runs retention, orphan cleanup, compaction, and quota enforcement.</summary>
     Task<IndexMaintenanceResult> MaintainAsync(CancellationToken cancellationToken = default);
 }
+
+
+/// <summary>Contains one storage-neutral complete-library candidate selection request.</summary>
+/// <param name="TopicText">Bounded topic text already separated from deterministic filters.</param>
+/// <param name="Filters">Canonical typed filters using OR within one kind and AND across kinds.</param>
+/// <param name="MaximumCandidateCount">Maximum documents that may be hydrated for ranking.</param>
+public sealed record DiscoverySearchRequest(
+    string TopicText,
+    IReadOnlyList<SearchFilter> Filters,
+    int MaximumCandidateCount);
+
+/// <summary>Contains lightweight durable identifiers selected before document hydration.</summary>
+public sealed record DiscoveryCandidateSelection(
+    IReadOnlyList<string> FileIds,
+    long EligibleFileCount,
+    long MatchingFileCount,
+    bool WasTruncated,
+    bool IsAvailable = true)
+{
+    /// <summary>Gets the fallback value used by providers without complete-library selection.</summary>
+    public static DiscoveryCandidateSelection Unavailable { get; } = new([], 0, 0, false, false);
+}
+
+/// <summary>Contains bounded hydrated documents and truthful complete-library candidate coverage.</summary>
+public sealed record ProgressiveDiscoveryResult(
+    IReadOnlyList<ProgressiveSearchDocument> Documents,
+    SearchCandidateCoverage CandidateCoverage);
 
 /// <summary>Provides optional resource eligibility signals with graceful cross-platform fallback.</summary>
 public interface IBackgroundResourceMonitor

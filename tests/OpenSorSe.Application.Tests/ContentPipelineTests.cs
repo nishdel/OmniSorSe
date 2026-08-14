@@ -94,6 +94,97 @@ public sealed class ContentPipelineTests
         Assert.Contains("finance forecast", result.NativeText, StringComparison.Ordinal);
     }
 
+    /// <summary>Verifies bounded XLSX extraction includes inline, shared, numeric, and formula evidence without execution.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_Xlsx_ReadsRepresentativeCellEvidence()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("finance.xlsx");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "xl/sharedStrings.xml", "<sst><si><t>Approved budget</t></si></sst>");
+            WriteEntry(archive, "xl/worksheets/sheet1.xml", """
+                <worksheet><sheetData><row>
+                  <c t="s"><v>0</v></c>
+                  <c t="inlineStr"><is><t>Project Alpha</t></is></c>
+                  <c><f>SUM(B2:B4)</f><v>12500</v></c>
+                </row></sheetData></worksheet>
+                """);
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Contains("Approved budget", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Project Alpha", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("SUM(B2:B4)", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("12500", result.NativeText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies PPTX slide and speaker-note text are read without rendering or opening relationships.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_Pptx_ReadsSlidesAndNotes()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("briefing.pptx");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "ppt/slides/slide1.xml", "<p:sld xmlns:p=\"urn:p\" xmlns:a=\"urn:a\"><a:t>Travel briefing</a:t></p:sld>");
+            WriteEntry(archive, "ppt/notesSlides/notesSlide1.xml", "<p:notes xmlns:p=\"urn:p\" xmlns:a=\"urn:a\"><a:t>Hotel booking details</a:t></p:notes>");
+            WriteEntry(archive, "ppt/slides/_rels/slide1.xml.rels", "<Relationship Target=\"https://example.invalid/private\"/>");
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Contains("Travel briefing", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Hotel booking details", result.NativeText, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.invalid", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains(result.Fields, field => field.Name == "Slide count" && field.Value == "1");
+    }
+
+    /// <summary>Verifies CSV extraction honors quoted cells and produces bounded native evidence.</summary>
+    [Fact]
+    public async Task CsvExtractor_QuotedCells_ProducesSearchableEvidence()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("records.csv");
+        await File.WriteAllTextAsync(
+            path,
+            "Type,Description,Amount\r\nInvoice,\"Project Alpha, annual support\",1250\r\nReceipt,\"Quoted \"\"value\"\"\",25");
+
+        var result = await new CsvMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Contains("Project Alpha, annual support", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Quoted \"value\"", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("1250", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Bounded native delimited-text cells", result.ExtractionStrategies);
+    }
+
+    /// <summary>Verifies delimited extraction is cancelled before source content is read.</summary>
+    [Fact]
+    public async Task CsvExtractor_Cancelled_PropagatesCancellation()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("cancel.csv");
+        await File.WriteAllTextAsync(path, "a,b\n1,2");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new CsvMetadataExtractor().ExtractAsync(Entry(path), 1024, 25, cancellation.Token));
+    }
+
     /// <summary>Verifies a highly compressed oversized XML part is rejected before decompression can expand it.</summary>
     [Fact]
     public async Task OpenXmlExtractor_CompressedOversizedPart_IsSkipped()

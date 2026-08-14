@@ -227,6 +227,19 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   adds no telemetry, hidden network access, cloud classification, biometric
   identification, or autonomous file mutation.
 
+### Scalable faceted discovery candidate
+
+- Unreleased v2.7 applies free text and canonical facets inside the existing
+  authorized local Search boundary. Candidate selection and facet counts never
+  authorize disabled sources or privacy-excluded/deleted rows.
+- Candidate coverage uses counts only. Ordinary diagnostics do not retain raw
+  query text, User Tag values, facet labels, Saved View names/rules, or evidence
+  excerpts.
+- Saved Views are bounded local query/filter rules in application-owned JSON;
+  they contain no copied file membership and have no cloud synchronization.
+- Filesystem-created and filesystem-modified dates remain explicitly separate;
+  v2.7 does not infer or expose a generic ambiguous year.
+
 ### Explorer Protocol v1
 
 - The v2.4 protocol is an on-demand local named pipe (Unix-domain-backed on
@@ -293,6 +306,7 @@ a competing profile merely because its visible name changed.
 | AI decisions | `decision-history.json` | Up to 1,000 bounded metadata-only review records. |
 | Saved catalog | `catalog.json` | Opt-in bounded historical display metadata, names, source roots, and accepted tags. |
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
+| Saved Views | `saved-discovery-views.json` | Up to 100 versioned current-index query/filter rules; result membership is never stored and contents remain local. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
 | Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 added bounded Content Intelligence and relationship terms as schema 5. Unreleased v2.6 adds normalized Smart Tag definitions, assignments, decisions, and status as schema 6 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |

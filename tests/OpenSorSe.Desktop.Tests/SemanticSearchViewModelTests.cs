@@ -13,6 +13,66 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies Semantic Search Beta presentation state, confirmation, cancellation, and safe shell opening.</summary>
 public sealed class SemanticSearchViewModelTests
 {
+    /// <summary>Facet toggles share one query state and preserve OR-within-type canonical IDs.</summary>
+    [Fact]
+    public async Task FacetsComposeWithQueryAndPublishTruthfulCoverage()
+    {
+        var search = new FacetedSearch();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher());
+        viewModel.QueryText = "tax records";
+
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        var theme = Assert.Single(viewModel.FacetGroups, group => group.Kind == DiscoveryFacetKind.Theme);
+        var financeRow = theme.Values.Single(value => value.CanonicalId == "theme.finance");
+        await viewModel.ToggleFacetCommand.ExecuteAsync(financeRow);
+        theme = Assert.Single(viewModel.FacetGroups, group => group.Kind == DiscoveryFacetKind.Theme);
+        Assert.Same(financeRow, theme.Values.Single(value => value.CanonicalId == "theme.finance"));
+        Assert.True(financeRow.IsSelected);
+        await viewModel.ToggleFacetCommand.ExecuteAsync(theme.Values.Single(value => value.CanonicalId == "theme.insurance"));
+
+        Assert.Equal("tax records", viewModel.QueryText);
+        Assert.Equal(2, search.LastRequest!.ActiveFilters!.Count(filter => filter.Kind == SearchFilterKind.SmartTagTheme));
+        Assert.Contains("20,000", viewModel.CandidateCoverageText, StringComparison.Ordinal);
+        Assert.All(theme.Values, value => Assert.Contains("matching files", value.AccessibleName, StringComparison.Ordinal));
+    }
+
+    /// <summary>Saved Views persist live rules and reopen the canonical query without copied membership.</summary>
+    [Fact]
+    public async Task SavedViewCommandsCreateUpdateOpenAndDeleteRules()
+    {
+        var search = new InterpretingSearch([]);
+        var store = new SavedViews();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher(),
+            savedViewStore: store);
+        viewModel.QueryText = "invoice";
+        viewModel.SavedViewName = "Invoices";
+
+        await viewModel.SaveViewCommand.ExecuteAsync(null);
+        var saved = Assert.Single(store.Items);
+        Assert.Equal("invoice", saved.Query.QueryText);
+
+        viewModel.SelectedSavedView = SavedDiscoveryViewRow.FromModel(saved);
+        viewModel.QueryText = "invoice 2026";
+        viewModel.SavedViewName = "Invoices 2026";
+        await viewModel.UpdateSavedViewCommand.ExecuteAsync(null);
+        Assert.Equal("invoice 2026", Assert.Single(store.Items).Query.QueryText);
+
+        await viewModel.OpenSavedViewCommand.ExecuteAsync(null);
+        Assert.Equal("invoice 2026", viewModel.QueryText);
+        await viewModel.DeleteSavedViewCommand.ExecuteAsync(null);
+        Assert.Empty(store.Items);
+    }
+
     /// <summary>Canonical picker filters are reachable and compose by type without display-string matching.</summary>
     [Fact]
     public async Task SmartTagPickerAddsCanonicalOrWithinAndAcrossFilters()
@@ -815,6 +875,70 @@ public sealed class SemanticSearchViewModelTests
                 AiAssistance = AiAssistance,
             });
         }
+    }
+
+    private sealed class FacetedSearch : ISemanticSearchService
+    {
+        public SearchRequest? LastRequest { get; private set; }
+
+        public Task<SemanticResult<IReadOnlyList<SemanticSearchHit>>> SearchAsync(
+            string query,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new SemanticResult<IReadOnlyList<SemanticSearchHit>>(SemanticState.Ready, "Ready", []));
+
+        public Task<SearchExecutionResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            return Task.FromResult(new SearchExecutionResult(
+                SemanticState.Ready,
+                "Ready",
+                [],
+                new SearchInterpretation(
+                    request.QueryText,
+                    request.TopicTextOverride ?? request.QueryText,
+                    ["tax", "records"],
+                    request.ActiveFilters ?? []),
+                new SearchCoverage(20_000, 20_000, 10_000, 0, 0, 10_000))
+            {
+                CandidateCoverage = new SearchCandidateCoverage(20_000, 320, 10_000, true, true),
+            });
+        }
+
+        public Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+            SearchRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var selected = (request.ActiveFilters ?? [])
+                .Where(filter => filter.Kind == SearchFilterKind.SmartTagTheme)
+                .Select(filter => filter.Value)
+                .ToHashSet(StringComparer.Ordinal);
+            return Task.FromResult(new DiscoveryFacetSnapshot([
+                new DiscoveryFacetGroup(DiscoveryFacetKind.Theme, "Themes", [
+                    new DiscoveryFacetValue("theme.finance", "Finance", 245, selected.Contains("theme.finance")),
+                    new DiscoveryFacetValue("theme.insurance", "Insurance", 41, selected.Contains("theme.insurance")),
+                ]),
+            ]));
+        }
+    }
+
+    private sealed class SavedViews : ISavedDiscoveryViewStore
+    {
+        public List<SavedDiscoveryView> Items { get; } = [];
+
+        public Task<IReadOnlyList<SavedDiscoveryView>> ListAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SavedDiscoveryView>>(Items.ToArray());
+
+        public Task<SavedDiscoveryView> SaveAsync(
+            SavedDiscoveryView view,
+            CancellationToken cancellationToken = default)
+        {
+            Items.RemoveAll(item => item.Id == view.Id);
+            Items.Add(view);
+            return Task.FromResult(view);
+        }
+
+        public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Items.RemoveAll(item => item.Id == id) > 0);
     }
 
     private sealed class Store : ISemanticIndexStore

@@ -181,7 +181,7 @@ public sealed class DeterministicSearchQueryInterpreter : ISearchQueryInterprete
     {
         ArgumentNullException.ThrowIfNull(request);
         var query = request.QueryText?.Trim() ?? string.Empty;
-        ValidateQuery(query);
+        ValidateQuery(query, request.ActiveFilters?.Count > 0);
         if (!request.InterpretFilters)
         {
             var explicitFilters = ValidateExplicitFilters(request.ActiveFilters ?? []);
@@ -212,9 +212,10 @@ public sealed class DeterministicSearchQueryInterpreter : ISearchQueryInterprete
 
     private static Regex Pattern(string expression) => new(expression, Options, RegexTimeout);
 
-    private static void ValidateQuery(string query)
+    private static void ValidateQuery(string query, bool hasExplicitFilters)
     {
-        if (query.Length is 0 or > SearchLimits.MaximumQueryCharacters)
+        if ((!hasExplicitFilters && query.Length == 0) ||
+            query.Length > SearchLimits.MaximumQueryCharacters)
         {
             throw new SearchQueryValidationException(
                 $"Enter a Search query of up to {SearchLimits.MaximumQueryCharacters} characters.");

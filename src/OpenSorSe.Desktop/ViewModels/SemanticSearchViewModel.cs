@@ -25,6 +25,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly IAdvancedDiagnosticsWindowService? _advancedDiagnosticsWindowService;
     private readonly IMediaThumbnailProvider? _mediaThumbnailProvider;
     private readonly ISmartTagService? _smartTagService;
+    private readonly ISavedDiscoveryViewStore? _savedViewStore;
     private readonly ObservableCollection<SemanticSearchHit> _hits = [];
     private readonly ObservableCollection<SearchFilter> _activeFilters = [];
     private readonly ObservableCollection<IndexingSource> _sources = [];
@@ -32,6 +33,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<SmartTagFilterChoice> _themeTagChoices = [];
     private readonly ObservableCollection<SmartTagFilterChoice> _documentTypeTagChoices = [];
     private readonly ObservableCollection<SmartTagFilterChoice> _userTagChoices = [];
+    private readonly ObservableCollection<DiscoveryFacetGroupRow> _facetGroups = [];
+    private readonly ObservableCollection<SavedDiscoveryViewRow> _savedViews = [];
     private CancellationTokenSource? _operationCancellation;
     private string? _queryText;
     private bool _isBusy;
@@ -62,6 +65,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private SmartTagFilterChoice? _selectedThemeTag;
     private SmartTagFilterChoice? _selectedDocumentTypeTag;
     private SmartTagFilterChoice? _selectedUserTag;
+    private string _candidateCoverageText = "Query candidate coverage has not been inspected.";
+    private string? _savedViewName;
+    private SavedDiscoveryViewRow? _selectedSavedView;
 
     /// <summary>Initializes a preview instance with Search unavailable.</summary>
     public SemanticSearchViewModel()
@@ -81,7 +87,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         IIndexPrivacyService? privacyService = null,
         IClipboardService? clipboard = null,
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
-        ISmartTagService? smartTagService = null)
+        ISmartTagService? smartTagService = null,
+        ISavedDiscoveryViewStore? savedViewStore = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _indexer = indexer;
@@ -94,6 +101,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _advancedDiagnosticsWindowService = advancedDiagnosticsWindowService;
         _mediaThumbnailProvider = mediaThumbnailProvider;
         _smartTagService = smartTagService;
+        _savedViewStore = savedViewStore;
         Hits = new ReadOnlyObservableCollection<SemanticSearchHit>(_hits);
         ActiveFilters = new ReadOnlyObservableCollection<SearchFilter>(_activeFilters);
         Sources = new ReadOnlyObservableCollection<IndexingSource>(_sources);
@@ -101,6 +109,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         ThemeTagChoices = new ReadOnlyObservableCollection<SmartTagFilterChoice>(_themeTagChoices);
         DocumentTypeTagChoices = new ReadOnlyObservableCollection<SmartTagFilterChoice>(_documentTypeTagChoices);
         UserTagChoices = new ReadOnlyObservableCollection<SmartTagFilterChoice>(_userTagChoices);
+        FacetGroups = new ReadOnlyObservableCollection<DiscoveryFacetGroupRow>(_facetGroups);
+        SavedViews = new ReadOnlyObservableCollection<SavedDiscoveryViewRow>(_savedViews);
         SearchCommand = new AsyncRelayCommand(SearchAsync, CanSearch);
         BuildIndexCommand = new AsyncRelayCommand(() => BuildIndexAsync(false), CanIndex);
         RebuildIndexCommand = new AsyncRelayCommand(() => BuildIndexAsync(true), CanIndex);
@@ -116,6 +126,12 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         RemoveFilterCommand = new AsyncRelayCommand<SearchFilter>(RemoveFilterAsync, filter => filter is not null && !IsBusy);
         ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync, () => _activeFilters.Count > 0 && !IsBusy);
         AddSmartTagFiltersCommand = new AsyncRelayCommand(AddSmartTagFiltersAsync, CanAddSmartTagFilters);
+        ToggleFacetCommand = new AsyncRelayCommand<DiscoveryFacetValueRow>(ToggleFacetAsync, value => value is not null && !IsBusy);
+        ShowModerateSuggestionsCommand = new AsyncRelayCommand(ShowModerateSuggestionsAsync, () => !IsBusy);
+        SaveViewCommand = new AsyncRelayCommand(SaveViewAsync, CanSaveView);
+        OpenSavedViewCommand = new AsyncRelayCommand(OpenSavedViewAsync, () => SelectedSavedView is not null && !IsBusy);
+        UpdateSavedViewCommand = new AsyncRelayCommand(UpdateSavedViewAsync, () => SelectedSavedView is not null && CanSaveView());
+        DeleteSavedViewCommand = new AsyncRelayCommand(DeleteSavedViewAsync, () => SelectedSavedView is not null && !IsBusy);
         InspectIndexedDataCommand = new AsyncRelayCommand<SemanticSearchHit>(InspectIndexedDataAsync, CanInspectHit);
         RequestForgetFileCommand = new RelayCommand(
             () => IsForgetFilePending = true,
@@ -185,6 +201,10 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             _ = LoadSmartTagFilterChoicesAsync();
         }
+        if (_savedViewStore is not null)
+        {
+            _ = LoadSavedViewsAsync();
+        }
     }
 
     /// <summary>Gets or sets the bounded natural-language query.</summary>
@@ -197,13 +217,17 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             {
                 Interlocked.Increment(ref _queryVersion);
                 _operationCancellation?.Cancel();
-                _activeFilters.Clear();
-                _topicText = string.Empty;
-                _filtersWereEdited = false;
-                OnPropertyChanged(nameof(HasActiveFilters));
-                ClearFiltersCommand.NotifyCanExecuteChanged();
+                if (!_filtersWereEdited)
+                {
+                    _activeFilters.Clear();
+                    _topicText = string.Empty;
+                    OnPropertyChanged(nameof(HasActiveFilters));
+                    ClearFiltersCommand.NotifyCanExecuteChanged();
+                }
                 SearchCommand.NotifyCanExecuteChanged();
                 ClearQueryCommand.NotifyCanExecuteChanged();
+                SaveViewCommand.NotifyCanExecuteChanged();
+                UpdateSavedViewCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -222,6 +246,56 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets canonical User Tag choices from schema-6 authority.</summary>
     public ReadOnlyObservableCollection<SmartTagFilterChoice> UserTagChoices { get; }
+
+    /// <summary>Gets compact database-backed facet groups for the current canonical query.</summary>
+    public ReadOnlyObservableCollection<DiscoveryFacetGroupRow> FacetGroups { get; }
+
+    /// <summary>Gets local Saved View rules; result membership is always evaluated live.</summary>
+    public ReadOnlyObservableCollection<SavedDiscoveryViewRow> SavedViews { get; }
+
+    /// <summary>Gets whether current-context facet values are available.</summary>
+    public bool HasFacetGroups => FacetGroups.Any(group => group.Values.Count > 0);
+
+    /// <summary>Gets truthful query eligibility versus hydration coverage.</summary>
+    public string CandidateCoverageText
+    {
+        get => _candidateCoverageText;
+        private set => SetProperty(ref _candidateCoverageText, value);
+    }
+
+    /// <summary>Gets or sets the bounded name used to create or update a Saved View.</summary>
+    public string? SavedViewName
+    {
+        get => _savedViewName;
+        set
+        {
+            if (SetProperty(ref _savedViewName, value))
+            {
+                SaveViewCommand.NotifyCanExecuteChanged();
+                UpdateSavedViewCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the selected dynamic Saved View.</summary>
+    public SavedDiscoveryViewRow? SelectedSavedView
+    {
+        get => _selectedSavedView;
+        set
+        {
+            if (SetProperty(ref _selectedSavedView, value))
+            {
+                if (value is not null)
+                {
+                    SavedViewName = value.Name;
+                }
+
+                OpenSavedViewCommand.NotifyCanExecuteChanged();
+                UpdateSavedViewCommand.NotifyCanExecuteChanged();
+                DeleteSavedViewCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
 
     /// <summary>Gets or sets the Theme to add to the active filter set.</summary>
     public SmartTagFilterChoice? SelectedThemeTag
@@ -653,6 +727,24 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that adds selected canonical Smart Tag filters.</summary>
     public IAsyncRelayCommand AddSmartTagFiltersCommand { get; }
 
+    /// <summary>Gets the command that toggles one canonical facet value.</summary>
+    public IAsyncRelayCommand<DiscoveryFacetValueRow> ToggleFacetCommand { get; }
+
+    /// <summary>Gets the shortcut that filters to unresolved Moderate Smart Tag suggestions.</summary>
+    public IAsyncRelayCommand ShowModerateSuggestionsCommand { get; }
+
+    /// <summary>Gets the command that saves the current live query/filter rule.</summary>
+    public IAsyncRelayCommand SaveViewCommand { get; }
+
+    /// <summary>Gets the command that evaluates the selected Saved View against the current index.</summary>
+    public IAsyncRelayCommand OpenSavedViewCommand { get; }
+
+    /// <summary>Gets the command that replaces the selected Saved View rule.</summary>
+    public IAsyncRelayCommand UpdateSavedViewCommand { get; }
+
+    /// <summary>Gets the command that deletes only the selected Saved View rule.</summary>
+    public IAsyncRelayCommand DeleteSavedViewCommand { get; }
+
     /// <summary>Gets the command that inspects retained index categories for one result.</summary>
     public IAsyncRelayCommand<SemanticSearchHit> InspectIndexedDataCommand { get; }
 
@@ -814,6 +906,237 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private async Task LoadSavedViewsAsync(string? selectedId = null)
+    {
+        if (_savedViewStore is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var views = await _savedViewStore.ListAsync();
+            await ApplyOnUiThreadAsync(() =>
+            {
+                _savedViews.Clear();
+                foreach (var view in views)
+                {
+                    _savedViews.Add(SavedDiscoveryViewRow.FromModel(view));
+                }
+
+                SelectedSavedView = selectedId is null
+                    ? SelectedSavedView is null
+                        ? null
+                        : _savedViews.FirstOrDefault(view => view.Id == SelectedSavedView.Id)
+                    : _savedViews.FirstOrDefault(view => view.Id == selectedId);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            Status = StatusPresentation.Warning("Saved Views are temporarily unavailable. Search and files were not affected.");
+        }
+    }
+
+    private async Task ToggleFacetAsync(DiscoveryFacetValueRow? value)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        var filter = value.ToFilter();
+        var existing = _activeFilters.FirstOrDefault(item =>
+            item.Kind == filter.Kind && string.Equals(item.Value, filter.Value, StringComparison.Ordinal));
+        if (existing is null)
+        {
+            _activeFilters.Add(filter);
+        }
+        else
+        {
+            _activeFilters.Remove(existing);
+        }
+
+        _filtersWereEdited = true;
+        AreFiltersVisible = true;
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        SearchCommand.NotifyCanExecuteChanged();
+        SaveViewCommand.NotifyCanExecuteChanged();
+        UpdateSavedViewCommand.NotifyCanExecuteChanged();
+        await SearchAsync();
+    }
+
+    private async Task ShowModerateSuggestionsAsync()
+    {
+        if (!_activeFilters.Any(filter => filter.Kind == SearchFilterKind.UnresolvedModerateSmartTag))
+        {
+            _activeFilters.Add(new SearchFilter(
+                "smart-tags:unresolved-moderate",
+                SearchFilterKind.UnresolvedModerateSmartTag,
+                "true",
+                "Smart Tags: unresolved Moderate suggestions"));
+        }
+
+        _filtersWereEdited = true;
+        AreFiltersVisible = true;
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        await SearchAsync();
+    }
+
+    private bool CanSaveView() =>
+        _savedViewStore is not null &&
+        !IsBusy &&
+        !string.IsNullOrWhiteSpace(SavedViewName) &&
+        (HasActiveFilters || !string.IsNullOrWhiteSpace(QueryText));
+
+    private async Task SaveViewAsync()
+    {
+        if (_savedViewStore is null || !CanSaveView())
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var view = new SavedDiscoveryView(
+            $"saved-view:{Guid.NewGuid():N}",
+            SavedViewName!.Trim(),
+            new DiscoveryQueryState(QueryText?.Trim() ?? string.Empty, _activeFilters.ToArray()),
+            1,
+            now,
+            now);
+        try
+        {
+            var saved = await _savedViewStore.SaveAsync(view);
+            await LoadSavedViewsAsync(saved.Id);
+            Status = StatusPresentation.Success("Saved View created. It will always evaluate against the current local index.");
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or ArgumentException)
+        {
+            Status = StatusPresentation.Warning("The Saved View could not be stored. Search and files were not affected.");
+        }
+    }
+
+    private async Task OpenSavedViewAsync()
+    {
+        var selected = SelectedSavedView?.Model;
+        if (selected is null)
+        {
+            return;
+        }
+
+        _filtersWereEdited = true;
+        QueryText = selected.Query.QueryText;
+        _activeFilters.Clear();
+        foreach (var filter in selected.Query.Filters)
+        {
+            _activeFilters.Add(filter);
+        }
+
+        _topicText = selected.Query.QueryText;
+        AreFiltersVisible = _activeFilters.Count > 0;
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        await SearchAsync();
+    }
+
+    private async Task UpdateSavedViewAsync()
+    {
+        if (_savedViewStore is null || SelectedSavedView?.Model is not { } existing || !CanSaveView())
+        {
+            return;
+        }
+
+        var updated = existing with
+        {
+            Name = SavedViewName!.Trim(),
+            Query = new DiscoveryQueryState(QueryText?.Trim() ?? string.Empty, _activeFilters.ToArray()),
+            UpdatedAtUtc = DateTimeOffset.UtcNow,
+        };
+        try
+        {
+            var saved = await _savedViewStore.SaveAsync(updated);
+            await LoadSavedViewsAsync(saved.Id);
+            Status = StatusPresentation.Success("Saved View updated. No result membership was copied.");
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or ArgumentException)
+        {
+            Status = StatusPresentation.Warning("The Saved View could not be updated. Its previous rule was preserved.");
+        }
+    }
+
+    private async Task DeleteSavedViewAsync()
+    {
+        if (_savedViewStore is null || SelectedSavedView is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var removed = await _savedViewStore.DeleteAsync(SelectedSavedView.Id);
+            if (removed)
+            {
+                SelectedSavedView = null;
+                SavedViewName = null;
+                await LoadSavedViewsAsync();
+                Status = StatusPresentation.Information("Saved View deleted. Indexed files and Search data were unchanged.");
+            }
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or ArgumentException)
+        {
+            Status = StatusPresentation.Warning("The Saved View could not be deleted. Search and files were not affected.");
+        }
+    }
+
+    private void PublishFacetSnapshot(DiscoveryFacetSnapshot snapshot)
+    {
+        if (snapshot.IsAvailable)
+        {
+            var visibleGroups = snapshot.Groups.Where(group => group.Values.Count > 0).ToArray();
+            var visibleKinds = visibleGroups.Select(group => group.Kind).ToHashSet();
+            for (var index = _facetGroups.Count - 1; index >= 0; index--)
+            {
+                if (!visibleKinds.Contains(_facetGroups[index].Kind))
+                {
+                    _facetGroups.RemoveAt(index);
+                }
+            }
+
+            foreach (var group in visibleGroups)
+            {
+                var existing = _facetGroups.FirstOrDefault(row => row.Kind == group.Kind);
+                if (existing is null)
+                {
+                    _facetGroups.Add(new DiscoveryFacetGroupRow(
+                        group.Kind,
+                        group.DisplayName,
+                        Array.AsReadOnly(group.Values
+                            .Select(value => new DiscoveryFacetValueRow(
+                                group.Kind,
+                                value.CanonicalId,
+                                value.DisplayName,
+                                value.Count,
+                                value.IsSelected))
+                            .ToArray())));
+                }
+                else
+                {
+                    existing.Apply(group.Values);
+                }
+            }
+        }
+        else
+        {
+            _facetGroups.Clear();
+        }
+
+        OnPropertyChanged(nameof(HasFacetGroups));
+    }
+
     private bool CanAddSmartTagFilters() => !IsBusy &&
         (SelectedThemeTag is not null || SelectedDocumentTypeTag is not null || SelectedUserTag is not null);
 
@@ -869,7 +1192,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _searchService is not null &&
         _configurationService.Current.SemanticSearch.Enabled &&
         !IsBusy &&
-        !string.IsNullOrWhiteSpace(QueryText);
+        (!string.IsNullOrWhiteSpace(QueryText) || HasActiveFilters);
 
     private bool CanIndex() =>
         _indexer is not null &&
@@ -924,6 +1247,21 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(HasHits));
             GraphCoverageText = FormatGraphCoverage(result.GraphCoverage, IncludeGraphContext);
             AiAssistanceText = result.AiAssistance.Message;
+            CandidateCoverageText = result.CandidateCoverage.Message;
+            var facets = await _searchService.GetFacetCountsAsync(
+                new SearchRequest(
+                    QueryText ?? string.Empty,
+                    _activeFilters.ToArray(),
+                    InterpretFilters: false,
+                    TopicTextOverride: _topicText,
+                    IncludeRelationshipContext: false),
+                operation.Token);
+            if (queryVersion != Volatile.Read(ref _queryVersion))
+            {
+                return;
+            }
+
+            PublishFacetSnapshot(facets);
             Status = Present(result.State, result.Message);
         }
         finally
@@ -943,6 +1281,12 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasActiveFilters));
         ClearFiltersCommand.NotifyCanExecuteChanged();
         AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
+        ToggleFacetCommand.NotifyCanExecuteChanged();
+        ShowModerateSuggestionsCommand.NotifyCanExecuteChanged();
+        SaveViewCommand.NotifyCanExecuteChanged();
+        OpenSavedViewCommand.NotifyCanExecuteChanged();
+        UpdateSavedViewCommand.NotifyCanExecuteChanged();
+        DeleteSavedViewCommand.NotifyCanExecuteChanged();
         await SearchAsync();
     }
 
@@ -957,41 +1301,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _filtersWereEdited = true;
         OnPropertyChanged(nameof(HasActiveFilters));
         ClearFiltersCommand.NotifyCanExecuteChanged();
-        if (_searchService is null || string.IsNullOrWhiteSpace(QueryText))
-        {
-            return;
-        }
-
-        using var operation = BeginOperation();
-        try
-        {
-            var result = await _searchService.SearchAsync(
-                new SearchRequest(
-                    QueryText,
-                    [],
-                    InterpretFilters: false,
-                    TopicTextOverride: _topicText,
-                    IncludeRelationshipContext: IncludeRelationshipContext)
-                {
-                    IncludeGraphContext = IncludeGraphContext,
-                    UseAiAssistance = UseAiAssistance,
-                },
-                operation.Token);
-            _hits.Clear();
-            foreach (var hit in result.Hits)
-            {
-                _hits.Add(hit);
-            }
-
-            OnPropertyChanged(nameof(HasHits));
-            GraphCoverageText = FormatGraphCoverage(result.GraphCoverage, IncludeGraphContext);
-            AiAssistanceText = result.AiAssistance.Message;
-            Status = Present(result.State, result.Message);
-        }
-        finally
-        {
-            EndOperation(operation);
-        }
+        await SearchAsync();
     }
 
     private async Task BuildIndexAsync(bool rebuild)
@@ -1029,6 +1339,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _topicText = string.Empty;
         _filtersWereEdited = false;
         SelectedHit = null;
+        _facetGroups.Clear();
+        CandidateCoverageText = string.Empty;
         PrivacyItem = null;
         PrivacyText = "Select Inspect indexed data on a Search result to review retained categories.";
         IsForgetFilePending = false;
@@ -1435,6 +1747,12 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         ClearFiltersCommand.NotifyCanExecuteChanged();
         AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
         InspectIndexedDataCommand.NotifyCanExecuteChanged();
+        ToggleFacetCommand.NotifyCanExecuteChanged();
+        ShowModerateSuggestionsCommand.NotifyCanExecuteChanged();
+        SaveViewCommand.NotifyCanExecuteChanged();
+        OpenSavedViewCommand.NotifyCanExecuteChanged();
+        UpdateSavedViewCommand.NotifyCanExecuteChanged();
+        DeleteSavedViewCommand.NotifyCanExecuteChanged();
         RebuildBackgroundIndexCommand.NotifyCanExecuteChanged();
         MaintainIndexCommand.NotifyCanExecuteChanged();
         NotifyPrivacyCommands();

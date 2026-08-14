@@ -116,6 +116,51 @@ public sealed class SmartTagClassificationTests
         Assert.DoesNotContain(invoice.Evidence, item => item.EvidenceKey.StartsWith("derived:", StringComparison.Ordinal));
     }
 
+    /// <summary>Representative documents protect v2.7 discovery from accidental broad classifier drift.</summary>
+    [Theory]
+    [MemberData(nameof(RepresentativeClassificationCorpus))]
+    public async Task RepresentativeCorpusProducesExpectedDocumentType(
+        string fileName,
+        string text,
+        string expectedDocumentType)
+    {
+        var classifier = new DeterministicSmartTagClassifier(SmartTagTaxonomy.LoadBuiltIn());
+
+        var result = await classifier.ClassifyAsync(Request(fileName, text));
+
+        Assert.Equal(SmartTagClassificationState.Classified, result.State);
+        Assert.Contains(result.Candidates, candidate =>
+            candidate.TagId == expectedDocumentType &&
+            candidate.Type == SmartTagType.DocumentType);
+    }
+
+    /// <summary>Provides bounded, deterministic real-world classification examples used as a release corpus.</summary>
+    public static TheoryData<string, string, string> RepresentativeClassificationCorpus => new()
+    {
+        { "scan-0042.pdf", "INVOICE NUMBER 55. Amount due. Payment terms are net 30.", "document-type.invoice" },
+        { "account.pdf", "ACCOUNT STATEMENT. Statement period January. Opening balance and closing balance.", "document-type.statement" },
+        { "signed-copy.pdf", "THIS AGREEMENT states the terms and conditions and is signed by both parties.", "document-type.contract" },
+        { "quarterly.pdf", "EXECUTIVE SUMMARY. Findings and recommendations for the quarter.", "document-type.report" },
+        { "confirmation.pdf", "BOOKING CONFIRMATION. Reservation number AB42 for the hotel.", "document-type.booking" },
+        { "paper.pdf", "ABSTRACT INTRODUCTION. Research methodology, methods and results, and references.", "document-type.research-paper" },
+        { "scratch.md", "PERSONAL NOTES. Reminder and observations for tomorrow.", "document-type.notes" },
+    };
+
+    /// <summary>Filename and quoted sample terminology alone do not turn documentation into an invoice.</summary>
+    [Theory]
+    [InlineData("invoice-contract.pdf", "A sparse document with no supported classification evidence.")]
+    [InlineData("template-guide.md", "This documentation contains sample invoice language for testing only.")]
+    public async Task RepresentativeCorpusDoesNotPromoteWeakOrMisleadingInvoiceEvidence(
+        string fileName,
+        string text)
+    {
+        var classifier = new DeterministicSmartTagClassifier(SmartTagTaxonomy.LoadBuiltIn());
+
+        var result = await classifier.ClassifyAsync(Request(fileName, text));
+
+        Assert.DoesNotContain(result.Candidates, candidate => candidate.TagId == "document-type.invoice");
+    }
+
     /// <summary>UTF-8 and Markdown content is read locally within configured bounds.</summary>
     [Theory]
     [InlineData(".txt")]

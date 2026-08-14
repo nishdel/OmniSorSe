@@ -41,6 +41,11 @@ Unreleased v2.5 adds an optional desktop launch bridge for the separately
 installed OmniBrille companion. Discovery, authorization, and one-time
 current-user handoff occur only after explicit user action; the Protocol v1 data contract,
 scope, transport, and version remain unchanged.
+The committed v2.6 release candidate advances the embedded Search index to
+schema 6 for normalized Explainable Smart Tags while retaining stable file
+identity and deferred searchable-first scheduling. Unreleased v2.7 keeps schema
+6 and adds complete-library SQLite candidate selection, database-backed facets,
+and local dynamic Saved Views without changing the ranker or Protocol v1.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 

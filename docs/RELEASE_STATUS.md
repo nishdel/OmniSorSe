@@ -185,7 +185,20 @@ documents, tags, releases, and validation records remain historical evidence.
 
 ## Current development
 
-OmniSorSe v2.6 **Explainable Smart Tags** is being implemented on
+OmniSorSe v2.7 **Scalable Faceted Discovery** is implemented and locally
+validated on
+`v2.7-scalable-faceted-discovery` from the committed v2.6 release candidate. It
+is not released, merged, tagged, packaged, or published. Complete-library
+SQLite candidate selection precedes bounded hydration into the unchanged
+deterministic ranker. Canonical facets/counts and dynamic Saved Views share one
+query model; schema 6 and Explorer Protocol v1 remain unchanged. Debug and
+Release each pass 1,753 tests with zero failures/skips, and all four supported
+RID-specific Release compilations pass. Interactive desktop, DPI, screen-reader,
+and native Linux/macOS execution remain manual release gates. See
+[v2.7 Scalable Faceted Discovery](SCALABLE_FACETED_DISCOVERY_v2.7.md) and the
+[manual checklist](MANUAL_TESTING_v2.7.md).
+
+OmniSorSe v2.6 **Explainable Smart Tags** is a committed release candidate on
 `v2.6-explainable-smart-tags` from the committed v2.5 release candidate. It is
 not released, merged, tagged, packaged, or published. Schema 6 becomes the
 durable authority for versioned Theme/Document Type definitions, generated

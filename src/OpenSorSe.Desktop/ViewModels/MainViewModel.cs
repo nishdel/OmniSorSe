@@ -295,7 +295,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
-        ISmartTagService? smartTagService = null)
+        ISmartTagService? smartTagService = null,
+        ISavedDiscoveryViewStore? savedDiscoveryViewStore = null)
         : this(
             configurationService,
             loggingService,
@@ -343,7 +344,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             knowledgeGraphViewModel,
             mediaIntelligenceService,
             mediaThumbnailProvider,
-            smartTagService)
+            smartTagService,
+            savedDiscoveryViewStore)
     {
     }
 
@@ -394,7 +396,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
-        ISmartTagService? smartTagService = null)
+        ISmartTagService? smartTagService = null,
+        ISavedDiscoveryViewStore? savedDiscoveryViewStore = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -444,7 +447,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             advancedDiagnosticsWindowService,
             clipboard: clipboardService,
             mediaThumbnailProvider: mediaThumbnailProvider,
-            smartTagService: smartTagService);
+            smartTagService: smartTagService,
+            savedViewStore: savedDiscoveryViewStore);
         Collections = new CollectionsViewModel(relationshipService);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);

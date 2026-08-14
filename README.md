@@ -53,6 +53,13 @@ Tag authority in schema 6, reuses retained Content/Media Intelligence evidence,
 and preserves base-first Search. It is not released. See the
 [v2.6 design](docs/EXPLAINABLE_SMART_TAGS_v2.6.md).
 
+The active implementation branch, **v2.7 Scalable Faceted Discovery**, builds
+on the committed v2.6 candidate. It restores complete-library candidate
+eligibility beyond the former 10,000-document projection, adds database-backed
+typed facets/counts and dynamic Saved Views, and keeps the established ranker,
+schema 6, progressive indexing, and Explorer Protocol v1. It is not released.
+See the [v2.7 design](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md).
+
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The
 [manual checklist](docs/MANUAL_TESTING_v2.4.md) separates genuine Windows
@@ -93,7 +100,7 @@ update, uninstall, application-data, and checksum guidance is in
 | --- | --- |
 | Scanning and analysis | Recursively discovers selected files with progress, cancellation, metadata, classification, SHA-256 hashing, exact duplicate detection, and isolated errors. |
 | Watched Folders | Treats operating-system events as hints, verifies actual state, performs bounded incremental analysis, and reconciles missed/offline changes. Watching never applies file changes. |
-| Search | A primary navigation destination using deterministic local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context. v2.1 strengthens exact/stem/prefix filename order, bounded typo handling, match explanations, and progressive coverage. |
+| Search | A primary navigation destination using deterministic local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context. v2.7 selects plausible IDs across the complete authorized index before bounded hydration, preserving exact/stem/prefix order beyond the old path-ordered projection ceiling. |
 | Search explanations | Preserves exact/literal evidence above related-concept-only similarity and exposes actual ranking reasons plus bounded source-labelled snippets. |
 | Relationships and Collections | Discovers bounded deterministic relationships from retained evidence, provides virtual Smart Collections and timelines, preserves user corrections, and never moves original files. |
 | Related Files | Optionally projects stable files, sources, folders, Collections, exact-content sets, and manual entities into an evidence-backed local Knowledge Graph with bounded browsing, privacy/repair controls, and opt-out Search context. It is disabled by default. |
@@ -101,12 +108,13 @@ update, uninstall, application-data, and checksum guidance is in
 | Media Intelligence | Adds bounded structured image metadata and EXIF-oriented lazy thumbnails; optional image/video-frame OCR; optional `ffprobe` audio/video metadata and `ffmpeg` representative frames; and provider-neutral transcription/visual-description boundaries. v2.3 can use an explicitly configured user-managed whisper.cpp CLI/model for local speech transcription; no visual-description provider is included. Missing optional tools never disable ordinary Search. |
 | Content Intelligence | Derives bounded normalized topics, textual entities, keywords, and a one-sentence extractive summary from already indexed local evidence, retaining provider/version and source provenance. These remain optional clues rather than facts. |
 | Explainable Smart Tags (unreleased v2.6) | Classifies retained local evidence into bounded Theme and Document Type suggestions, preserves explicit User Tags and accept/reject authority, and adds canonical Search filters without requiring AI or writing file metadata. |
+| Scalable faceted discovery (unreleased v2.7) | Combines free text with database-backed Theme, Document Type, User Tag, file-type, filesystem-created-year, and filesystem-modified-year facets; shows contextual counts and truthful candidate coverage; and saves dynamic current-index query rules without copying membership. |
 | Explorer Protocol v1 | Provides an on-demand current-user local named-pipe boundary for an optional separate explorer companion: authorized indexed roots, bounded Structure, grounded Search, Related/context, and safe details. It is read-only, session-scoped, dormant by default, and independent of SQLite schema. Unreleased v2.5 can launch separately installed OmniBrille through its established one-time current-user handoff pipe. |
 | Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
-| Persistence | OmniSorSe v2.4 continues using bounded local JSON, schema-5 embedded Search with shared bounded media/content evidence and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. The established OpenSorSe profile locations remain authoritative, so the product rename neither migrates nor duplicates user state. No database server is required. |
+| Persistence | The current unreleased source uses bounded local JSON, schema-6 embedded Search with shared media/content evidence, normalized Smart Tag authority, and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. v2.7 keeps schema 6 and stores Saved View rules in bounded atomic application-owned JSON. The established OpenSorSe profile locations remain authoritative. No database server is required. |
 
 The current source does not implement cloud synchronization, collaboration,
 OmniSorSe Server, a conversational assistant, unrestricted
@@ -214,6 +222,7 @@ documents are:
 | [v2.5 Workflow & Indexing Quality](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) | Unreleased implementation contract for post-operation reconciliation and progressive base-first indexing. |
 | [OmniBrille companion handoff](docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md) | Unreleased v2.5 local bootstrap, lifecycle, scope, failure, and threat-model contract; Explorer Protocol v1 remains unchanged. |
 | [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) | Unreleased schema-6 taxonomy, authority, classifier, Search/filter, progressive-indexing, privacy, and UI contract. |
+| [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md) | Unreleased complete-library candidate selection, database-backed facets/counts, dynamic Saved Views, bounded extraction, privacy, and UI contract. |
 | [v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence and local-transcription release snapshot. |
 | [v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence and UX release snapshot. |
 | [v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) | Historical Search/AI quality release snapshot. |

@@ -4,13 +4,15 @@ using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Application.Content;
 
-/// <summary>Reads bounded DOCX and XLSX ZIP/XML parts without loading macros or external relationships.</summary>
+/// <summary>Reads bounded DOCX, XLSX, and PPTX ZIP/XML parts without loading macros or external relationships.</summary>
 public sealed class OpenXmlMetadataExtractor : IMetadataExtractor
 {
     private const int MaximumXmlCharacters = 1_000_000;
+    private const int MaximumArchiveEntries = 2048;
+    private const long MaximumSelectedUncompressedBytes = 32L * 1024 * 1024;
 
     /// <inheritdoc />
-    public bool Supports(string normalizedExtension) => normalizedExtension is ".docx" or ".xlsx";
+    public bool Supports(string normalizedExtension) => normalizedExtension is ".docx" or ".xlsx" or ".pptx";
 
     /// <inheritdoc />
     public Task<MetadataExtractionResult> ExtractAsync(
@@ -39,11 +41,20 @@ public sealed class OpenXmlMetadataExtractor : IMetadataExtractor
                 FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
             using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
+            if (archive.Entries.Count > MaximumArchiveEntries)
+            {
+                return Task.FromResult(Empty("Open XML metadata was skipped because the package contains too many entries."));
+            }
+
             var fields = ReadCoreProperties(archive, cancellationToken);
             var extension = Path.GetExtension(file.FullPath).ToLowerInvariant();
-            var text = extension == ".docx"
-                ? ReadTextPart(archive, "word/document.xml", "t", cancellationToken)
-                : ReadTextPart(archive, "xl/sharedStrings.xml", "t", cancellationToken);
+            var text = extension switch
+            {
+                ".docx" => ReadTextPart(archive, "word/document.xml", "t", cancellationToken),
+                ".xlsx" => ReadWorkbookText(archive, cancellationToken),
+                ".pptx" => ReadPresentationText(archive, maximumPages, cancellationToken),
+                _ => string.Empty,
+            };
             int? pageCount = null;
             if (extension == ".xlsx")
             {
@@ -64,6 +75,14 @@ public sealed class OpenXmlMetadataExtractor : IMetadataExtractor
                         sheet,
                         ContentProvenance.EmbeddedMetadata));
                 }
+            }
+            else if (extension == ".pptx")
+            {
+                pageCount = SelectOrderedParts(archive, "ppt/slides/slide", ".xml").Count;
+                fields.Add(new ExtractedMetadataField(
+                    "Slide count",
+                    pageCount.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ContentProvenance.EmbeddedMetadata));
             }
 
             var normalized = ContentText.Normalize(text);
@@ -169,6 +188,215 @@ public sealed class OpenXmlMetadataExtractor : IMetadataExtractor
         }
 
         return text.ToString();
+    }
+
+    private static string ReadWorkbookText(ZipArchive archive, CancellationToken cancellationToken)
+    {
+        var sharedStrings = ReadElementValues(
+            archive.GetEntry("xl/sharedStrings.xml"),
+            "t",
+            cancellationToken);
+        var text = new System.Text.StringBuilder();
+        var worksheets = SelectOrderedParts(archive, "xl/worksheets/sheet", ".xml");
+        foreach (var worksheet in worksheets.Take(256))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var reader = CreateReader(worksheet);
+            while (reader.Read())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "c")
+                {
+                    continue;
+                }
+
+                var cellType = reader.GetAttribute("t");
+                using var cellReader = reader.ReadSubtree();
+                string? rawValue = null;
+                var inlineValues = new List<string>();
+                var formulas = new List<string>();
+                cellReader.Read();
+                while (!cellReader.EOF)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (cellReader.NodeType != XmlNodeType.Element)
+                    {
+                        cellReader.Read();
+                        continue;
+                    }
+
+                    if (cellReader.LocalName == "v")
+                    {
+                        rawValue = cellReader.ReadElementContentAsString();
+                        continue;
+                    }
+                    else if (cellReader.LocalName == "t")
+                    {
+                        inlineValues.Add(cellReader.ReadElementContentAsString());
+                        continue;
+                    }
+                    else if (cellReader.LocalName == "f")
+                    {
+                        formulas.Add(cellReader.ReadElementContentAsString());
+                        continue;
+                    }
+
+                    cellReader.Read();
+                }
+
+                foreach (var formula in formulas)
+                {
+                    AppendText(text, formula);
+                }
+
+                foreach (var inline in inlineValues)
+                {
+                    AppendText(text, inline);
+                }
+
+                if (cellType == "s" && int.TryParse(rawValue, out var sharedIndex) &&
+                    sharedIndex >= 0 && sharedIndex < sharedStrings.Count)
+                {
+                    AppendText(text, sharedStrings[sharedIndex]);
+                }
+                else if (!string.IsNullOrWhiteSpace(rawValue))
+                {
+                    AppendText(text, rawValue);
+                }
+
+                if (text.Length >= ContentText.MaximumTextCharacters)
+                {
+                    return text.ToString();
+                }
+            }
+        }
+
+        if (worksheets.Count == 0)
+        {
+            foreach (var sharedString in sharedStrings)
+            {
+                AppendText(text, sharedString);
+            }
+        }
+
+        return text.ToString();
+    }
+
+    private static string ReadPresentationText(
+        ZipArchive archive,
+        int maximumPages,
+        CancellationToken cancellationToken)
+    {
+        var text = new System.Text.StringBuilder();
+        var slideLimit = Math.Clamp(maximumPages, 1, 512);
+        foreach (var entry in SelectOrderedParts(archive, "ppt/slides/slide", ".xml").Take(slideLimit))
+        {
+            AppendPartText(text, entry, "t", cancellationToken);
+        }
+
+        foreach (var entry in SelectOrderedParts(archive, "ppt/notesSlides/notesSlide", ".xml").Take(slideLimit))
+        {
+            AppendPartText(text, entry, "t", cancellationToken);
+        }
+
+        return text.ToString();
+    }
+
+    private static void AppendPartText(
+        System.Text.StringBuilder text,
+        ZipArchiveEntry entry,
+        string elementName,
+        CancellationToken cancellationToken)
+    {
+        if (entry.Length > MaximumXmlCharacters * 4L)
+        {
+            return;
+        }
+
+        using var reader = CreateReader(entry);
+        while (!reader.EOF)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (reader.NodeType == XmlNodeType.Element && reader.LocalName == elementName)
+            {
+                AppendText(text, reader.ReadElementContentAsString());
+                if (text.Length >= ContentText.MaximumTextCharacters)
+                {
+                    return;
+                }
+
+                continue;
+            }
+
+            reader.Read();
+        }
+    }
+
+    private static IReadOnlyList<string> ReadElementValues(
+        ZipArchiveEntry? entry,
+        string elementName,
+        CancellationToken cancellationToken)
+    {
+        var values = new List<string>();
+        if (entry is null || entry.Length > MaximumXmlCharacters * 4L)
+        {
+            return values;
+        }
+
+        using var reader = CreateReader(entry);
+        while (!reader.EOF)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (reader.NodeType == XmlNodeType.Element && reader.LocalName == elementName)
+            {
+                var value = reader.ReadElementContentAsString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    values.Add(value);
+                }
+
+                continue;
+            }
+
+            reader.Read();
+        }
+
+        return values;
+    }
+
+    private static IReadOnlyList<ZipArchiveEntry> SelectOrderedParts(
+        ZipArchive archive,
+        string prefix,
+        string suffix)
+    {
+        var selected = archive.Entries
+            .Where(entry =>
+                entry.FullName.StartsWith(prefix, StringComparison.Ordinal) &&
+                entry.FullName.EndsWith(suffix, StringComparison.Ordinal) &&
+                !entry.FullName.Contains("..", StringComparison.Ordinal) &&
+                entry.Length <= MaximumXmlCharacters * 4L)
+            .OrderBy(entry => entry.FullName, StringComparer.Ordinal)
+            .Take(512)
+            .ToArray();
+        return selected.Sum(entry => entry.Length) <= MaximumSelectedUncompressedBytes
+            ? selected
+            : [];
+    }
+
+    private static void AppendText(System.Text.StringBuilder text, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || text.Length >= ContentText.MaximumTextCharacters)
+        {
+            return;
+        }
+
+        if (text.Length > 0)
+        {
+            text.Append(' ');
+        }
+
+        var remaining = ContentText.MaximumTextCharacters - text.Length;
+        text.Append(value.AsSpan(0, Math.Min(remaining, value.Length)));
     }
 
     private static IReadOnlyList<string> ReadAttributeValues(

@@ -7,6 +7,35 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.7 Scalable Faceted Discovery
+
+Implementation branch: `v2.7-scalable-faceted-discovery`. This work is not a
+published release and builds directly on the committed v2.6 release candidate.
+
+### Added and changed
+
+- Select complete-library Search candidate eligibility in SQLite before
+  bounded hydration into the existing filename-first deterministic ranker.
+- Report candidate eligibility, plausible matches, hydration count, and any
+  deliberate bound separately from indexing coverage and displayed results.
+- Add database-backed Theme, Document Type, User Tag, file-type,
+  filesystem-created-year, and filesystem-modified-year facets with contextual
+  counts, OR-within-type, and AND-across-type semantics.
+- Add dynamic local Saved Views that persist canonical query/filter rules and
+  reevaluate current index contents without copying result membership.
+- Add unresolved Moderate Smart Tag discovery using the existing user-authority
+  review actions.
+- Add bounded CSV/TSV native evidence and conservative XLSX/PPTX text evidence
+  without executing formulas, macros, embedded objects, or external resources.
+
+### Boundaries
+
+- Schema 6, Explorer Protocol v1, Smart Tag authority, filename ranking,
+  progressive indexing, Change Plans, and OmniBrille separation remain intact.
+- No entity facet, bulk dashboard, Ollama classifier, embeddings, metadata
+  writeback, automatic organization, cloud service, or new production
+  dependency is included.
+
 ## Unreleased — OmniSorSe v2.6 Explainable Smart Tags
 
 Implementation branch: `v2.6-explainable-smart-tags`. This work is not a

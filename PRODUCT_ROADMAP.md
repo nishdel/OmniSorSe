@@ -421,13 +421,36 @@ See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 
 ## In progress
 
+### v2.5 — Workflow Completion & Indexing Quality
+
+**Branch:** `v2.5-workflow-indexing-quality`, created from released v2.4.0.
+
+**Merged status:** Committed release candidate awaiting maintainer sign-off. It
+is not released and does not alter Explorer Protocol v1.
+
+v2.5 completes existing workflows rather than introducing another subsystem.
+Its release scope is outcome-driven reconciliation of Files, Search, duplicate
+review, and selection after reviewed Change Plans and Undo; plus progressive
+base-first indexing so names, paths, and inexpensive evidence become searchable
+before enabled media/content intelligence finishes. A persisted initial-scan
+depth controls scheduling without duplicating OCR, transcription, or media
+capability switches.
+
+Folder suggestions remain bounded proposals and all source-file changes still
+require Change Plan review. OmniExplorer, protocol expansion, server/cloud
+architecture, autonomous organization, embeddings, and graph rendering are
+outside this release.
+
+See [v2.5 workflow and indexing design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md)
+and [v2.5 manual testing](docs/MANUAL_TESTING_v2.5.md).
+
 ### v2.6 — Explainable Smart Tags
 
 **Branch:** `v2.6-explainable-smart-tags`, created from the committed v2.5
 release candidate because v2.5 has not yet been merged.
 
-**Merged status:** Implementation and validation in progress. It is not
-released and does not alter Explorer Protocol v1.
+**Merged status:** Committed release candidate awaiting maintainer sign-off. It
+is not released and does not alter Explorer Protocol v1.
 
 v2.6 consolidates generated classifications, existing user tags, and explicit
 accept/reject authority in schema 6. A small versioned Theme and Document Type
@@ -446,28 +469,30 @@ files automatically, modify OmniBrille, or change Explorer Protocol v1.
 See [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) and the
 [v2.6 manual checklist](docs/MANUAL_TESTING_v2.6.md).
 
-### v2.5 — Workflow Completion & Indexing Quality
+### v2.7 — Scalable Faceted Discovery
 
-**Branch:** `v2.5-workflow-indexing-quality`, created from released v2.4.0.
+**Branch:** `v2.7-scalable-faceted-discovery`, created directly from the
+committed v2.6 release candidate.
 
-**Merged status:** Implementation and validation in progress. It is not
-released and does not alter Explorer Protocol v1.
+**Merged status:** Implementation and local automated validation complete on
+the feature branch; maintainer review/manual validation remain pending. It is
+not released, does not bump schema 6, and does not alter Explorer Protocol v1.
 
-v2.5 completes existing workflows rather than introducing another subsystem.
-Its release scope is outcome-driven reconciliation of Files, Search, duplicate
-review, and selection after reviewed Change Plans and Undo; plus progressive
-base-first indexing so names, paths, and inexpensive evidence become searchable
-before enabled media/content intelligence finishes. A persisted initial-scan
-depth controls scheduling without duplicating OCR, transcription, or media
-capability switches.
+v2.7 makes existing intelligence usable at ordinary-library scale. SQLite
+selects plausible candidates across the complete authorized index before a
+bounded projection reaches the established deterministic ranker. Search and
+Files share canonical Theme, Document Type, User Tag, file-type, created-year,
+and modified-year facets with contextual counts. Dynamic Saved Views persist
+query/filter rules and always reevaluate the current index; historical Saved
+scans remain distinct catalog snapshots.
 
-Folder suggestions remain bounded proposals and all source-file changes still
-require Change Plan review. OmniExplorer, protocol expansion, server/cloud
-architecture, autonomous organization, embeddings, and graph rendering are
-outside this release.
+The release also adds bounded CSV/TSV evidence extraction and conservative
+XLSX/PPTX text improvements. Fast/searchable-first indexing, Smart Tag user
+authority, exact filename ranking, human-reviewed Change Plans, local privacy,
+OmniBrille separation, and Protocol v1 remain unchanged.
 
-See [v2.5 workflow and indexing design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md)
-and [v2.5 manual testing](docs/MANUAL_TESTING_v2.5.md).
+See [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md)
+and [v2.7 manual testing](docs/MANUAL_TESTING_v2.7.md).
 
 ## Planned
 

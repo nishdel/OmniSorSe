@@ -179,6 +179,22 @@ inspection, byte reporting, per-file clear, source forget, and full index clear
 remain provider-neutral and never affect source files. See
 [Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md).
 
+## v2.6 Smart Tag and v2.7 discovery boundary
+
+The committed v2.6 release candidate makes schema 6 the durable authority for
+normalized Theme, Document Type, and User Tag definitions, file assignments,
+explicit accept/reject decisions, classifier status, provenance, and
+fingerprints. Classification consumes retained bounded evidence as a deferred
+stage; it neither duplicates OCR/transcription nor delays base Search.
+
+Unreleased v2.7 retains schema 6. `SqliteDeepIndexStore` evaluates authorized
+candidate eligibility and canonical filters across the complete index, then
+hydrates only a relevance-ordered bounded identity set for the unchanged
+`HybridSearchRanker`. The same query/filter values drive SQLite facet counts and
+atomic JSON Saved View rules. Saved Views are current-index rules; Saved scans
+remain historical catalog snapshots. See
+[Scalable Faceted Discovery v2.7](SCALABLE_FACETED_DISCOVERY_v2.7.md).
+
 ## v1.9 relationships and context boundary
 
 `IRelationshipEngine` compares only bounded retained index projections and
@@ -210,7 +226,9 @@ user decisions. Merely similar text or semantic data cannot merge identities.
 `knowledge-decisions.db` schema 1 is non-rebuildable graph-native decision and
 privacy authority. Released v2.2 used `deep-index.db` schema 4 after a
 transactional migration from schema 3. Released v2.3 adds only
-bounded Content Intelligence as schema 5 while retaining its authority for v1.9
+bounded Content Intelligence as schema 5; the committed v2.6 candidate advances
+the authoritative Search index to schema 6 for normalized Smart Tags while
+retaining its authority for v1.9
 relationships, Collections, decisions, and privacy. Completed source manifests
 carry a canonical count and hash, and projection keeps source, decision, and
 privacy ingestion watermarks separate from applied watermarks.

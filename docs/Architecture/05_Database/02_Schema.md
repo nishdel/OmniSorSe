@@ -109,6 +109,12 @@ loading the full association graph. Existing schema-5 Content Intelligence and
 relationship features remain their own evidence sources rather than being
 overloaded as tag persistence.
 
+Unreleased v2.7 keeps schema 6. Complete-library candidate eligibility, typed
+filter intersection, and facet counts query these existing normalized tables
+and file/source/date columns. Dynamic Saved Views are bounded versioned
+application JSON rules and do not persist result membership. No schema 7
+migration is required.
+
 ---
 
 # Core Entities

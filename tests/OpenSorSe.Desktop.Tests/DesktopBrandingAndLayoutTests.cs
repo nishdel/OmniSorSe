@@ -250,6 +250,29 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("CommandParameter=\"{Binding}\"", source, StringComparison.Ordinal);
     }
 
+    /// <summary>Facets and Saved Views expose bounded scrolling, live coverage, and named keyboard actions.</summary>
+    [Fact]
+    public void SearchView_FacetedDiscoveryIsBoundedAndAccessible()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "SemanticSearchView.axaml"));
+
+        Assert.Contains("AutomationProperties.Name=\"Available Search facets\"", source, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight=\"300\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Clear all active Search filters\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Show files with unresolved Moderate Smart Tag suggestions\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Save current query and filters as a new Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Open selected Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Update selected Saved View from current query and filters\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Delete selected Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding CandidateCoverageText}\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

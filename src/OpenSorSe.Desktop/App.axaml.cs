@@ -180,6 +180,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IResultsSnapshotProjector, ResultsSnapshotProjector>();
         services.AddSingleton<IMetadataExtractor, FilesystemMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, PlainTextMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, CsvMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, PdfMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, OpenXmlMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, ImageMetadataExtractor>();
@@ -308,6 +309,10 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ISearchSnippetFactory, SearchSnippetFactory>();
         services.AddSingleton<ISearchRanker, HybridSearchRanker>();
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
+        services.AddSingleton<ISavedDiscoveryViewStore>(serviceProvider =>
+            new JsonSavedDiscoveryViewStore(
+                Path.Combine(paths.DataDirectory, "saved-discovery-views.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>()));
         services.AddSingleton<IExplorerDataSource, ExplorerDataSource>();
         services.AddSingleton<IExplorerCompanionPresence, UnavailableExplorerCompanionPresence>();
         services.AddSingleton<IExplorerProtocolHost, NamedPipeExplorerProtocolHost>();

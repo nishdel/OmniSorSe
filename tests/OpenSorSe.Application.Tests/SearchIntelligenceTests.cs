@@ -122,6 +122,22 @@ public sealed class SearchIntelligenceTests
         Assert.Equal("tax files", result.TopicText);
     }
 
+    /// <summary>Verifies a canonical facet-only request does not require synthetic query text.</summary>
+    [Fact]
+    public void Interpreter_AllowsExplicitFiltersWithoutQueryText()
+    {
+        SearchFilter[] filters =
+        [
+            new("modified-year:2025", SearchFilterKind.ModifiedYear, "2025", "Modified year: 2025"),
+        ];
+
+        var result = new DeterministicSearchQueryInterpreter().Interpret(
+            new SearchRequest(string.Empty, filters, InterpretFilters: false, TopicTextOverride: string.Empty));
+
+        Assert.Empty(result.TopicTokens);
+        Assert.Equal(filters, result.Filters);
+    }
+
     /// <summary>Verifies hostile and pathological query inputs fail with actionable validation.</summary>
     [Theory]
     [MemberData(nameof(InvalidQueries))]
@@ -384,6 +400,20 @@ public sealed class SearchIntelligenceTests
 
         Assert.Single(result);
         Assert.Equal(filters.Length, result[0].Components.Count(item => item.Kind == SearchRankingSignalKind.Filter));
+    }
+
+    /// <summary>Verifies the fallback category is a real canonical facet value in the ranker.</summary>
+    [Fact]
+    public void Ranker_MatchesOtherFileTypeFacet()
+    {
+        var candidate = Candidate("other", "artifact.custom", @"C:\work\artifact.custom");
+        var filter = Filter(SearchFilterKind.FileType, "other");
+        var interpretation = new SearchInterpretation(string.Empty, string.Empty, [], [filter]);
+
+        var result = CreateRanker().Rank(interpretation, [candidate], 10, CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal("other", candidate.FileType);
     }
 
     /// <summary>Eligible Smart Tags explain matches without outranking an exact filename.</summary>

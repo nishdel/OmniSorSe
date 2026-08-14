@@ -168,4 +168,10 @@ public interface ISemanticSearchService
             interpretation,
             new Indexing.SearchCoverage(0, 0, 0, 0, 0, 0));
     }
+
+    /// <summary>Returns bounded database-backed facets for the same canonical query/filter state.</summary>
+    Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+        SearchRequest request,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(DiscoveryFacetSnapshot.Unavailable);
 }

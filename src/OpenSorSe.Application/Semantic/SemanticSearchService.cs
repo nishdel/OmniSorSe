@@ -25,6 +25,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly IProgressiveSearchSource? _progressiveSearchSource;
     private readonly IProgressiveSearchDocumentLookup? _searchDocumentLookup;
     private readonly IProgressiveSmartTagSearchSource? _smartTagSearchSource;
+    private readonly IProgressiveDiscoverySearchSource? _discoverySearchSource;
+    private readonly IFacetedDiscoverySource? _facetedDiscoverySource;
     private readonly IAiSearchAssistant? _aiSearchAssistant;
     private readonly IRelationshipSearchSource? _relationshipSearchSource;
     private readonly IGraphSearchSource? _graphSearchSource;
@@ -59,7 +61,55 @@ public sealed class SemanticSearchService : ISemanticSearchService
         _graphSearchSource = graphSearchSource;
         _searchDocumentLookup = searchDocumentLookup ?? progressiveSearchSource as IProgressiveSearchDocumentLookup;
         _smartTagSearchSource = progressiveSearchSource as IProgressiveSmartTagSearchSource;
+        _discoverySearchSource = progressiveSearchSource as IProgressiveDiscoverySearchSource;
+        _facetedDiscoverySource = progressiveSearchSource as IFacetedDiscoverySource;
         _aiSearchAssistant = aiSearchAssistant;
+    }
+
+    /// <inheritdoc />
+    public async Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+        SearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (_facetedDiscoverySource is null || !_configurationService.Current.SemanticSearch.Enabled)
+        {
+            return DiscoveryFacetSnapshot.Unavailable;
+        }
+
+        SearchInterpretation interpretation;
+        try
+        {
+            interpretation = _queryInterpreter.Interpret(request);
+        }
+        catch (SearchQueryValidationException)
+        {
+            return DiscoveryFacetSnapshot.Unavailable;
+        }
+
+        try
+        {
+            return await _facetedDiscoverySource.GetFacetCountsAsync(
+                    new DiscoveryFacetRequest(interpretation.TopicText, interpretation.Filters),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (IsRecoverableIndexFailure(exception))
+        {
+            _diagnostics?.Publish(
+                null,
+                "Faceted Search fallback",
+                DiagnosticStatus.PartiallySucceeded,
+                DiagnosticSeverity.Warning,
+                DiagnosticSection.Performance,
+                "Facet counts were unavailable; ordinary deterministic Search remained available.",
+                [new DiagnosticField("Failure category", exception.GetType().Name)]);
+            return DiscoveryFacetSnapshot.Unavailable;
+        }
     }
 
     /// <inheritdoc />
@@ -129,7 +179,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 var legacyTask = LoadLegacySafelyAsync(cancellationToken);
                 var progressiveTask = LoadProgressiveSafelyAsync(
                     settings.MaximumDocumentCount,
-                    CreateSmartTagFilter(interpretation.Filters),
+                    interpretation,
                     cancellationToken);
                 await Task.WhenAll(legacyTask, progressiveTask).ConfigureAwait(false);
                 var progressive = await progressiveTask.ConfigureAwait(false);
@@ -138,7 +188,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     await legacyTask.ConfigureAwait(false),
                     progressive.Documents,
                     progressive.ExcludedPaths,
-                    settings.MaximumDocumentCount);
+                    settings.MaximumDocumentCount,
+                    progressive.CandidateCoverage.UsedCompleteLibrarySelection);
                 if (candidates.Count == 0)
                 {
                     var emptyGraph = request.IncludeGraphContext && _graphSearchSource is not null
@@ -160,7 +211,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
                         [],
                         interpretation,
                         coverage,
-                        emptyGraph?.Coverage);
+                        emptyGraph?.Coverage,
+                        candidateCoverage: progressive.CandidateCoverage);
                 }
 
                 var ranked = _ranker.Rank(
@@ -307,7 +359,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     interpretation,
                     coverage,
                     graphCoverage,
-                    aiAssistance);
+                    aiAssistance,
+                    progressive.CandidateCoverage);
             }
             finally
             {
@@ -380,31 +433,59 @@ public sealed class SemanticSearchService : ISemanticSearchService
 
     private async Task<ProgressiveLoad> LoadProgressiveSafelyAsync(
         int maximumDocuments,
-        SmartTagFilter? smartTagFilter,
+        SearchInterpretation interpretation,
         CancellationToken cancellationToken)
     {
         if (_progressiveSearchSource is null)
         {
-            return new ProgressiveLoad([], EmptyCoverage, []);
+            return new ProgressiveLoad([], EmptyCoverage, [], SearchCandidateCoverage.Unknown);
         }
 
         try
         {
-            var documentsTask = smartTagFilter is not null && _smartTagSearchSource is not null
-                ? _smartTagSearchSource.GetDocumentsBySmartTagsAsync(
-                    smartTagFilter,
-                    maximumDocuments,
-                    cancellationToken)
-                : _progressiveSearchSource.GetDocumentsAsync(maximumDocuments, cancellationToken);
+            var smartTagFilter = CreateSmartTagFilter(interpretation.Filters);
+            var discoveryTask = _discoverySearchSource?.GetDiscoveryCandidatesAsync(
+                new DiscoverySearchRequest(
+                    interpretation.TopicText,
+                    interpretation.Filters,
+                    maximumDocuments),
+                cancellationToken);
+            var documentsTask = discoveryTask is not null
+                ? null
+                : smartTagFilter is not null && _smartTagSearchSource is not null
+                    ? _smartTagSearchSource.GetDocumentsBySmartTagsAsync(
+                        smartTagFilter,
+                        maximumDocuments,
+                        cancellationToken)
+                    : _progressiveSearchSource.GetDocumentsAsync(maximumDocuments, cancellationToken);
             var coverageTask = _progressiveSearchSource.GetCoverageAsync(cancellationToken);
             var exclusionsTask = _progressiveSearchSource.GetExcludedPathsAsync(
                 maximumDocuments,
                 cancellationToken);
-            await Task.WhenAll(documentsTask, coverageTask, exclusionsTask).ConfigureAwait(false);
+            var pending = new List<Task> { coverageTask, exclusionsTask };
+            if (discoveryTask is not null)
+            {
+                pending.Add(discoveryTask);
+            }
+            else if (documentsTask is not null)
+            {
+                pending.Add(documentsTask);
+            }
+
+            await Task.WhenAll(pending).ConfigureAwait(false);
+            var discovery = discoveryTask is null ? null : await discoveryTask.ConfigureAwait(false);
+            var documents = discovery?.Documents ??
+                (documentsTask is null ? [] : await documentsTask.ConfigureAwait(false));
             return new ProgressiveLoad(
-                await documentsTask.ConfigureAwait(false),
+                documents,
                 await coverageTask.ConfigureAwait(false),
-                await exclusionsTask.ConfigureAwait(false));
+                await exclusionsTask.ConfigureAwait(false),
+                discovery?.CandidateCoverage ?? new SearchCandidateCoverage(
+                    documents.Count,
+                    documents.Count,
+                    documents.Count,
+                    false,
+                    false));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -423,7 +504,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
             return new ProgressiveLoad(
                 [],
                 EmptyCoverage with { IsAvailable = false },
-                []);
+                [],
+                SearchCandidateCoverage.Unknown);
         }
     }
 
@@ -600,7 +682,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
         IReadOnlyList<SemanticIndexEntry> legacyEntries,
         IReadOnlyList<ProgressiveSearchDocument> progressiveDocuments,
         IReadOnlyList<string> excludedPaths,
-        int maximumDocuments)
+        int maximumDocuments,
+        bool preserveProgressiveSelectionOrder)
     {
         var byPath = new Dictionary<string, SearchCandidateDocument>(PathComparer);
         foreach (var entry in legacyEntries.OrderBy(item => item.FullPath, PathComparer))
@@ -640,11 +723,30 @@ public sealed class SemanticSearchService : ISemanticSearchService
             byPath.Remove(excludedPath);
         }
 
-        return Array.AsReadOnly(
-            byPath.Values
-                .OrderBy(item => item.FullPath, PathComparer)
-                .Take(maximumDocuments)
-                .ToArray());
+        if (preserveProgressiveSelectionOrder)
+        {
+            var selectedPaths = progressiveDocuments
+                .Where(document => !document.IsExcluded)
+                .Select(document => document.FullPath)
+                .Distinct(PathComparer)
+                .ToArray();
+            var selectedSet = selectedPaths.ToHashSet(PathComparer);
+            return Array.AsReadOnly(
+                selectedPaths
+                    .Where(byPath.ContainsKey)
+                    .Select(path => byPath[path])
+                    .Concat(byPath
+                        .Where(pair => !selectedSet.Contains(pair.Key))
+                        .OrderBy(pair => pair.Key, PathComparer)
+                        .Select(pair => pair.Value))
+                    .Take(maximumDocuments)
+                    .ToArray());
+        }
+
+        return Array.AsReadOnly(byPath.Values
+            .OrderBy(item => item.FullPath, PathComparer)
+            .Take(maximumDocuments)
+            .ToArray());
     }
 
     private static SearchCandidateDocument FromLegacy(SemanticIndexEntry entry)
@@ -866,11 +968,13 @@ public sealed class SemanticSearchService : ISemanticSearchService
         SearchInterpretation interpretation,
         SearchCoverage coverage,
         GraphProjectionCoverage? graphCoverage = null,
-        AiSearchAssistanceResult? aiAssistance = null) =>
+        AiSearchAssistanceResult? aiAssistance = null,
+        SearchCandidateCoverage? candidateCoverage = null) =>
         new SearchExecutionResult(state, message, hits, interpretation, coverage)
         {
             GraphCoverage = graphCoverage,
             AiAssistance = aiAssistance ?? AiSearchAssistanceResult.NotRequested,
+            CandidateCoverage = candidateCoverage ?? SearchCandidateCoverage.Unknown,
         };
 
     private static SearchInterpretation EmptyInterpretation(string? query) => new(
@@ -895,5 +999,6 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private sealed record ProgressiveLoad(
         IReadOnlyList<ProgressiveSearchDocument> Documents,
         SearchCoverage Coverage,
-        IReadOnlyList<string> ExcludedPaths);
+        IReadOnlyList<string> ExcludedPaths,
+        SearchCandidateCoverage CandidateCoverage);
 }
