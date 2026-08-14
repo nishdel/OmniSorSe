@@ -26,6 +26,8 @@ public enum IndexedDataKind
     MediaDerived = 1 << 7,
     /// <summary>Bounded topics, textual entities, summaries, and their provenance.</summary>
     ContentIntelligence = 1 << 8,
+    /// <summary>Generated and user-authoritative schema-6 Smart Tag state.</summary>
+    SmartTags = 1 << 9,
     /// <summary>All content-derived and operational data while retaining source registration.</summary>
     AllDerived = ExtractedText |
         OcrText |
@@ -35,7 +37,8 @@ public enum IndexedDataKind
         Relationships |
         ProcessingHistory |
         MediaDerived |
-        ContentIntelligence,
+        ContentIntelligence |
+        SmartTags,
 }
 
 /// <summary>Identifies a targeted durable repair boundary.</summary>
@@ -139,6 +142,9 @@ public sealed record IndexPrivacyItem
 
     /// <summary>Gets the number of retained textual entities.</summary>
     public int ContentEntityCount { get; init; }
+
+    /// <summary>Gets the count of active schema-6 Smart Tag assignments without exposing their values.</summary>
+    public int SmartTagCount { get; init; }
 
     /// <summary>Gets whether all applicable stages completed.</summary>
     public bool IsFullyIndexed { get; init; }

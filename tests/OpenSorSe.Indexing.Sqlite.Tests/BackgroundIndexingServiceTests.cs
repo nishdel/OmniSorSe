@@ -1,10 +1,13 @@
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Indexing.Sqlite;
+using Microsoft.Data.Sqlite;
 
 namespace OpenSorSe.Indexing.Sqlite.Tests;
 
@@ -52,6 +55,80 @@ public sealed class BackgroundIndexingServiceTests
         Assert.Equal(0, snapshot.TotalDiscovered);
         Assert.Equal(100, snapshot.OverallPercentage);
         Assert.Empty(await fixture.Service.GetDocumentsAsync(10));
+    }
+
+    /// <summary>Typed tag filtering stays database-backed and bounded at meaningful library scale.</summary>
+    [Fact]
+    [Trait("Category", "PerformanceRegression")]
+    public async Task SmartTagFilteredSearchMaterializesMoreThanOneLookupBatch()
+    {
+        const int documentCount = 10_000;
+        await using var fixture = await ServiceFixture.CreateAsync(discovery: new FakeDiscovery([]));
+        SeedSmartTagSearchDocuments(fixture.DatabasePath, fixture.Root, documentCount);
+
+        var started = Stopwatch.GetTimestamp();
+        var documents = await fixture.Service.GetDocumentsBySmartTagsAsync(
+            new SmartTagFilter(ThemeTagIds: ["theme.finance"]),
+            documentCount);
+        var elapsed = Stopwatch.GetElapsedTime(started);
+
+        Assert.Equal(documentCount, documents.Count);
+        Assert.Equal(documentCount, documents.Select(document => document.FileId).Distinct(StringComparer.Ordinal).Count());
+        Assert.True(elapsed < TimeSpan.FromSeconds(20), $"10,000-file canonical filtering took {elapsed}.");
+    }
+
+    private static void SeedSmartTagSearchDocuments(string databasePath, string root, int count)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var ticks = DateTimeOffset.UnixEpoch.UtcTicks;
+        using (var source = connection.CreateCommand())
+        {
+            source.Transaction = transaction;
+            source.CommandText = """
+                INSERT INTO index_sources(
+                    id, root_path, root_path_key, display_name, indexing_level,
+                    include_subfolders, enabled, priority, exclusions_json,
+                    managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+                VALUES('filter-source', $root, $root, 'Filter source', 0, 1, 1, 0, '[]', 0, $ticks, $ticks);
+                """;
+            source.Parameters.AddWithValue("$root", root);
+            source.Parameters.AddWithValue("$ticks", ticks);
+            source.ExecuteNonQuery();
+        }
+
+        for (var index = 0; index < count; index++)
+        {
+            var fileId = $"filter-{index:D3}";
+            var relativePath = $"document-{index:D3}.txt";
+            var fullPath = Path.Combine(root, relativePath);
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                INSERT INTO index_files(
+                    id, source_id, full_path, path_key, relative_path, relative_path_key,
+                    stable_identity, file_system_id, length, creation_utc_ticks, modified_utc_ticks,
+                    attributes, metadata_fingerprint, content_hash, processor_fingerprint,
+                    indexing_level, fully_indexed, updated_utc_ticks)
+                VALUES($id, 'filter-source', $path, $path, $relative, $relative, NULL, NULL,
+                    100, $ticks, $ticks, 0, $metadata, NULL, 'fixture', 0, 1, $ticks);
+                INSERT INTO file_smart_tag_assignments(
+                    file_id, tag_id, confidence, evidence_score, origin, classifier,
+                    classifier_version, taxonomy_version, input_fingerprint, evidence_json,
+                    assignment_state, active, created_utc_ticks, updated_utc_ticks)
+                VALUES($id, 'theme.finance', 2, 8.0, 1, 'fixture', '1', '1.0',
+                    'fixture', '[]', 1, 1, $ticks, $ticks);
+                """;
+            command.Parameters.AddWithValue("$id", fileId);
+            command.Parameters.AddWithValue("$path", fullPath);
+            command.Parameters.AddWithValue("$relative", relativePath);
+            command.Parameters.AddWithValue("$metadata", $"metadata-{index:D3}");
+            command.Parameters.AddWithValue("$ticks", ticks);
+            command.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
     }
 
     /// <summary>Verifies queuing returns while slow discovery remains off the caller thread.</summary>

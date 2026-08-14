@@ -1,6 +1,7 @@
 using System.Globalization;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.SmartTags;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -268,6 +269,7 @@ public sealed class HybridSearchRanker : ISearchRanker
                     "tag",
                     150,
                     ref rankClass);
+                literalScore += AddSmartTagMatches(candidate.SmartTags, tokens, components, ref rankClass);
                 literalScore += AddFieldMatch(
                     fields.Keywords,
                     tokens,
@@ -471,7 +473,30 @@ public sealed class HybridSearchRanker : ISearchRanker
         IReadOnlyList<SearchFilter> filters,
         ICollection<SearchRankingComponent> components)
     {
-        foreach (var filter in filters)
+        var typedSmartTagFilters = filters
+            .Where(filter => filter.Kind is SearchFilterKind.SmartTagTheme or
+                SearchFilterKind.SmartTagDocumentType or SearchFilterKind.SmartTagUser)
+            .GroupBy(filter => filter.Kind)
+            .ToArray();
+        foreach (var group in typedSmartTagFilters)
+        {
+            var matched = group.FirstOrDefault(filter => MatchesSmartTagFilter(candidate, filter));
+            if (matched is null)
+            {
+                return false;
+            }
+
+            components.Add(new SearchRankingComponent(
+                SearchRankingSignalKind.Filter,
+                matched.Kind.ToString(),
+                1,
+                $"{matched.DisplayName} matched"));
+        }
+
+        foreach (var filter in filters.Where(filter => filter.Kind is not
+                     SearchFilterKind.SmartTagTheme and not
+                     SearchFilterKind.SmartTagDocumentType and not
+                     SearchFilterKind.SmartTagUser))
         {
             var matches = filter.Kind switch
             {
@@ -529,6 +554,22 @@ public sealed class HybridSearchRanker : ISearchRanker
         }
 
         return true;
+    }
+
+    private static bool MatchesSmartTagFilter(SearchCandidateDocument candidate, SearchFilter filter)
+    {
+        var expectedType = filter.Kind switch
+        {
+            SearchFilterKind.SmartTagTheme => SmartTagType.Theme,
+            SearchFilterKind.SmartTagDocumentType => SmartTagType.DocumentType,
+            SearchFilterKind.SmartTagUser => SmartTagType.UserTag,
+            _ => (SmartTagType?)null,
+        };
+        return expectedType.HasValue && candidate.SmartTags.Any(tag =>
+            tag.Definition.Type == expectedType.Value &&
+            string.Equals(tag.Definition.TagId, filter.Value, StringComparison.Ordinal) &&
+            tag.Decision != SmartTagDecision.Rejected &&
+            (tag.State is SmartTagAssignmentState.Accepted or SmartTagAssignmentState.Automatic));
     }
 
     private static bool CompareDate(DateTimeOffset? candidate, string value, bool onOrAfter) =>
@@ -670,6 +711,54 @@ public sealed class HybridSearchRanker : ISearchRanker
             contribution + (count - 1) * 10,
             explanation,
             matched);
+    }
+
+    private static double AddSmartTagMatches(
+        IReadOnlyList<FileSmartTag> tags,
+        IReadOnlyList<string> tokens,
+        ICollection<SearchRankingComponent> components,
+        ref int rankClass)
+    {
+        var contribution = 0d;
+        foreach (var tag in tags.Where(tag =>
+                     tag.Decision != SmartTagDecision.Rejected &&
+                     (tag.State is SmartTagAssignmentState.Accepted or SmartTagAssignmentState.Automatic)))
+        {
+            var normalized = SearchTextNormalizer.Normalize(tag.Definition.DisplayName);
+            if (!tokens.Any(token => normalized.Contains(token, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            rankClass = Math.Max(rankClass, 2);
+            var kind = tag.Definition.Type switch
+            {
+                SmartTagType.Theme => SearchRankingSignalKind.SmartTagTheme,
+                SmartTagType.DocumentType => SearchRankingSignalKind.SmartTagDocumentType,
+                _ => SearchRankingSignalKind.SmartTagUser,
+            };
+            var label = tag.Definition.Type switch
+            {
+                SmartTagType.Theme => "Theme",
+                SmartTagType.DocumentType => "Document Type",
+                _ => "User Tag",
+            };
+            var authority = tag.State == SmartTagAssignmentState.Accepted
+                ? tag.Definition.Type == SmartTagType.UserTag ? string.Empty : " — Accepted"
+                : $" — {tag.Confidence}";
+            var weight = tag.Definition.Type == SmartTagType.UserTag
+                ? 180
+                : tag.State == SmartTagAssignmentState.Accepted ? 165 : 145;
+            contribution += Add(
+                components,
+                kind,
+                $"smart tag {tag.Definition.Type}",
+                weight,
+                $"{label}: {tag.Definition.DisplayName}{authority}",
+                tag.Definition.DisplayName);
+        }
+
+        return contribution;
     }
 
     private static double Add(

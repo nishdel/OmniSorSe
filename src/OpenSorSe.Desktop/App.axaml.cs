@@ -27,6 +27,7 @@ using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
@@ -116,6 +117,14 @@ public partial class App : Avalonia.Application
             .InitializeAsync(CancellationToken.None)
             .GetAwaiter()
             .GetResult();
+        _serviceProvider.GetRequiredService<SqliteDeepIndexStore>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<ISmartTagService>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
         _serviceProvider.GetRequiredService<IBackgroundIndexingService>()
             .InitializeAsync(CancellationToken.None)
             .GetAwaiter()
@@ -170,6 +179,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IApplicationController, ApplicationController>();
         services.AddSingleton<IResultsSnapshotProjector, ResultsSnapshotProjector>();
         services.AddSingleton<IMetadataExtractor, FilesystemMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, PlainTextMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, PdfMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, OpenXmlMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, ImageMetadataExtractor>();
@@ -208,6 +218,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
         services.AddSingleton<IContentIntelligenceProvider, DeterministicContentIntelligenceProvider>();
+        services.AddSingleton(_ => SmartTagTaxonomy.LoadBuiltIn());
+        services.AddSingleton<ISmartTagClassifier, DeterministicSmartTagClassifier>();
         services.AddSingleton<SqliteDeepIndexStore>(serviceProvider =>
         {
             return new SqliteDeepIndexStore(
@@ -219,6 +231,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IIndexPrivacyStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IRelationshipStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<ISmartTagStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IRelationshipEngine, DeterministicRelationshipEngine>();
         services.AddSingleton<RelationshipService>();
@@ -234,6 +248,7 @@ public partial class App : Avalonia.Application
             serviceProvider.GetRequiredService<BackgroundIndexingService>());
         services.AddSingleton<IIndexPrivacyService>(serviceProvider =>
             serviceProvider.GetRequiredService<BackgroundIndexingService>());
+        services.AddSingleton<ISmartTagService, SmartTagService>();
         services.AddSingleton<IProgressiveSearchSource>(serviceProvider =>
             serviceProvider.GetRequiredService<IBackgroundIndexingService>());
         services.AddSingleton<IProgressiveSearchDocumentLookup>(serviceProvider =>

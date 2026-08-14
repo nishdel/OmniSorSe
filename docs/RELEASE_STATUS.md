@@ -185,6 +185,16 @@ documents, tags, releases, and validation records remain historical evidence.
 
 ## Current development
 
+OmniSorSe v2.6 **Explainable Smart Tags** is being implemented on
+`v2.6-explainable-smart-tags` from the committed v2.5 release candidate. It is
+not released, merged, tagged, packaged, or published. Schema 6 becomes the
+durable authority for versioned Theme/Document Type definitions, generated
+assignments, explicit User Tags, and accept/reject decisions. Classification
+reuses bounded local evidence and runs as a deferred stage so v2.5 base-first
+Search remains usable first. Explorer Protocol remains v1 and OmniBrille is not
+modified. See [v2.6 Explainable Smart Tags](EXPLAINABLE_SMART_TAGS_v2.6.md) and
+[manual checklist](MANUAL_TESTING_v2.6.md).
+
 OmniSorSe v2.5 **Workflow Completion & Indexing Quality** is implemented on
 `v2.5-workflow-indexing-quality` for review and is not released. Its scope is
 post-Change-Plan/Undo Files and indexing reconciliation, progressive

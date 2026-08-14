@@ -3,6 +3,7 @@ using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Indexing.Sqlite;
@@ -88,7 +89,7 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
     }
 
-    /// <summary>Verifies the exact v2.2 schema gains one nullable content-intelligence field without altering existing records.</summary>
+    /// <summary>Verifies the exact v2.2 schema reaches schema 6 without altering existing records.</summary>
     [Fact]
     public async Task VersionFourMigratesToContentIntelligenceSchemaAndPreservesSearch()
     {
@@ -130,7 +131,7 @@ public sealed class SqliteDeepIndexStoreTests
 
         await migrated.InitializeAsync();
 
-        Assert.Equal(5, ReadUserVersion(fixture.DatabasePath));
+        Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
         var preserved = Assert.Single(await migrated.GetSearchDocumentsAsync(10));
         Assert.Contains("Docker monitoring", preserved.ExtractedText, StringComparison.Ordinal);
         Assert.Equal(
@@ -148,10 +149,321 @@ public sealed class SqliteDeepIndexStoreTests
             ReadScalar(
                 fixture.DatabasePath,
                 "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'ix_relationship_feature_terms_term';"));
+        Assert.Equal(
+            "3",
+            ReadScalar(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('smart_tag_definitions','file_smart_tag_assignments','file_smart_tag_decisions');"));
         Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
 
         await migrated.InitializeAsync();
         Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+    }
+
+    /// <summary>Verifies a genuine schema-5 index gains normalized schema-6 Smart Tag authority transactionally.</summary>
+    [Fact]
+    public async Task VersionFiveMigratesToSmartTagSchemaWithBackupAndPreservesSearch()
+    {
+        using var fixture = new IndexFixture();
+        CreateDatabase(
+            fixture.DatabasePath,
+            SqliteDeepIndexSchema.CreateVersionOne +
+            SqliteDeepIndexSchema.CreateVersionTwo +
+            SqliteDeepIndexSchema.CreateVersionThree +
+            SqliteDeepIndexSchema.CreateVersionFour +
+            """
+            ALTER TABLE index_relationship_features ADD COLUMN media_transcript_fingerprint TEXT;
+            ALTER TABLE index_relationship_features ADD COLUMN media_ocr_fingerprint TEXT;
+            ALTER TABLE index_relationship_features ADD COLUMN media_device_key TEXT;
+            ALTER TABLE index_relationship_features ADD COLUMN capture_date_bucket INTEGER;
+            ALTER TABLE index_content ADD COLUMN content_intelligence_json TEXT;
+            """ +
+            SqliteDeepIndexSchema.CreateVersionFive +
+            """
+            INSERT INTO index_meta(key, value) VALUES ('schema_version', '5');
+            INSERT INTO index_sources(
+                id, root_path, root_path_key, display_name, indexing_level,
+                include_subfolders, enabled, priority, exclusions_json,
+                managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+            VALUES ('source:v25', 'C:/v25', 'c:/v25', 'v2.5 fixture', 1, 1, 1, 0, '[]', 0, 0, 0);
+            INSERT INTO index_content(
+                content_hash, extracted_text, ocr_text, summary, keywords_json,
+                semantic_json, coverage_level, processor_fingerprint, updated_utc_ticks,
+                content_intelligence_json)
+            VALUES ('hash:v25', 'preserved searchable invoice text', NULL, NULL, '[]', NULL, 1, 'v2.5', 0, NULL);
+            INSERT INTO index_files(
+                id, source_id, full_path, path_key, relative_path, relative_path_key,
+                stable_identity, file_system_id, length, creation_utc_ticks,
+                modified_utc_ticks, attributes, metadata_fingerprint, content_hash,
+                processor_fingerprint, indexing_level, fully_indexed, deleted_utc_ticks,
+                last_seen_run_id, updated_utc_ticks)
+            VALUES ('file:v25', 'source:v25', 'C:/v25/scan.txt', 'c:/v25/scan.txt',
+                'scan.txt', 'scan.txt', NULL, NULL, 42, 0, 0, 0, 'metadata:v25',
+                'hash:v25', 'processor:v25', 1, 1, NULL, NULL, 0);
+            PRAGMA user_version = 5;
+            """);
+        await using var migrated = fixture.CreateStore();
+
+        await migrated.InitializeAsync();
+
+        Assert.Equal(DeepIndexingVersion.SchemaVersion, ReadUserVersion(fixture.DatabasePath));
+        Assert.Contains("invoice", Assert.Single(await migrated.GetSearchDocumentsAsync(10)).ExtractedText, StringComparison.Ordinal);
+        Assert.Equal("27", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM smart_tag_definitions WHERE is_builtin = 1;"));
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+
+        await migrated.InitializeAsync();
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+    }
+
+    /// <summary>Schema-6 assignments preserve user authority and exact typed-filter semantics.</summary>
+    [Fact]
+    public async Task SmartTagsPersistAuthorityAndFilterByCanonicalTypeGroups()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("finance-invoice.txt", "finance"), fixture.Observation("legal-invoice.txt", "legal")]);
+        var fileIds = new Dictionary<string, string>(StringComparer.Ordinal);
+        while (await store.ClaimNextAsync(Epoch.AddDays(10)) is { } claim)
+        {
+            fileIds[claim.Observation.RelativePath] = claim.FileId;
+            var next = claim.Stage switch
+            {
+                IndexingStage.FileDiscovered => IndexingStage.MetadataIndexed,
+                IndexingStage.MetadataIndexed => IndexingStage.ContentFingerprinted,
+                IndexingStage.ContentFingerprinted => IndexingStage.TextExtracted,
+                IndexingStage.TextExtracted => IndexingStage.SummaryKeywordsGenerated,
+                IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
+                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+                IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
+                IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
+                IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
+                IndexingStage.FileFullyIndexed => (IndexingStage?)null,
+                _ => throw new InvalidOperationException("Unexpected stage."),
+            };
+            var output = claim.Stage switch
+            {
+                IndexingStage.ContentFingerprinted => new IndexingStageOutput { Status = IndexingStageStatus.Complete, ContentHash = "hash-" + claim.FileId },
+                IndexingStage.TextExtracted => new IndexingStageOutput { Status = IndexingStageStatus.Complete, ExtractedText = "invoice evidence" },
+                IndexingStage.SmartTagsClassified => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    SmartTagClassification = Classification(
+                        claim.Observation.RelativePath.StartsWith("finance", StringComparison.Ordinal)
+                            ? "theme.finance"
+                            : "theme.legal",
+                        "document-type.invoice"),
+                },
+                _ => new IndexingStageOutput { Status = IndexingStageStatus.Complete },
+            };
+            await store.SaveStageOutputAsync(claim, output, next, Epoch.AddDays(10), TimeSpan.Zero, null);
+        }
+
+        var finance = fileIds["finance-invoice.txt"];
+        var legal = fileIds["legal-invoice.txt"];
+        await store.AddUserTagAsync(finance, "Review", Epoch.AddDays(11));
+        var financeTags = await store.GetFileSmartTagsAsync(finance);
+        var userTag = Assert.Single(financeTags, tag => tag.Definition.Type == SmartTagType.UserTag);
+
+        Assert.Equal(
+            new[] { finance, legal }.OrderBy(value => value, StringComparer.Ordinal),
+            await store.FilterFileIdsBySmartTagsAsync(
+                new SmartTagFilter(
+                    ThemeTagIds: ["theme.finance", "theme.legal"],
+                    DocumentTypeTagIds: ["document-type.invoice"]),
+                10));
+        Assert.Equal(
+            [finance],
+            await store.FilterFileIdsBySmartTagsAsync(
+                new SmartTagFilter(
+                    ThemeTagIds: ["theme.finance"],
+                    UserTagIds: [userTag.Definition.TagId]),
+                10));
+
+        await store.SetTagDecisionAsync(finance, "theme.finance", SmartTagDecision.Rejected, Epoch.AddDays(12));
+        Assert.DoesNotContain(await store.GetFileSmartTagsAsync(finance), tag => tag.Definition.TagId == "theme.finance");
+        Assert.Empty(await store.FilterFileIdsBySmartTagsAsync(new SmartTagFilter(ThemeTagIds: ["theme.finance"]), 10));
+
+        await store.ResetTagDecisionsAsync(finance, Epoch.AddDays(13));
+        Assert.Contains(await store.GetFileSmartTagsAsync(finance), tag => tag.Definition.TagId == "theme.finance");
+        Assert.Equal(userTag.Definition.TagId, Assert.Single(await store.GetFileSmartTagsAsync(finance), tag => tag.Definition.Type == SmartTagType.UserTag).Definition.TagId);
+    }
+
+    /// <summary>Only stale classification work is prepared when classifier or taxonomy versions change.</summary>
+    [Fact]
+    public async Task TaxonomyChangePreparesOnlySmartTagReclassification()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("invoice.txt")]);
+        await CompleteStandardRunAsync(store, "hash-smart-tag-reclass");
+
+        var affected = await store.PrepareStaleClassificationsAsync("classifier-next", "taxonomy-next", Epoch.AddDays(20));
+        var second = await store.PrepareStaleClassificationsAsync("classifier-next", "taxonomy-next", Epoch.AddDays(20));
+
+        Assert.Equal(1, affected);
+        Assert.Equal(0, second);
+        Assert.Equal(
+            ((int)IndexingStage.SmartTagsClassified).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ReadScalar(fixture.DatabasePath, "SELECT repair_stage FROM index_privacy_rules LIMIT 1;"));
+        Assert.Equal("0", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM file_smart_tag_status;"));
+        Assert.Equal("1", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM index_content WHERE extracted_text IS NOT NULL;"));
+    }
+
+    /// <summary>Accepted and rejected authority survives regenerated evidence and remains file-specific.</summary>
+    [Fact]
+    public async Task ReclassificationPreservesAcceptedAndRejectedUserAuthority()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("authority.txt")]);
+        await CompleteStandardRunAsync(
+            store,
+            "authority-hash",
+            Classification("theme.finance", "document-type.invoice"));
+        var fileId = Assert.Single(await store.GetSearchDocumentsAsync(10)).FileId;
+        await store.SetTagDecisionAsync(fileId, "document-type.invoice", SmartTagDecision.Accepted, Epoch.AddDays(11));
+        await store.SetTagDecisionAsync(fileId, "theme.finance", SmartTagDecision.Rejected, Epoch.AddDays(11));
+
+        Assert.Equal(1, await store.PrepareStaleClassificationsAsync(
+            "classifier-next",
+            "taxonomy-next",
+            Epoch.AddDays(12)));
+        await QueueAsync(
+            store,
+            fixture.Source(IndexingLevel.Standard),
+            [fixture.Observation("authority.txt")],
+            Epoch.AddDays(13));
+        var repair = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(13)));
+        Assert.Equal(IndexingStage.SmartTagsClassified, repair.Stage);
+        await store.SaveStageOutputAsync(
+            repair,
+            new IndexingStageOutput
+            {
+                Status = IndexingStageStatus.Complete,
+                SmartTagClassification = Classification("theme.finance", "document-type.invoice"),
+            },
+            IndexingStage.SearchIndexUpdated,
+            Epoch.AddDays(13),
+            TimeSpan.FromMilliseconds(1),
+            null);
+
+        var tags = await store.GetFileSmartTagsAsync(fileId);
+        Assert.Contains(tags, tag => tag.Definition.TagId == "document-type.invoice" &&
+            tag.Decision == SmartTagDecision.Accepted && tag.State == SmartTagAssignmentState.Accepted);
+        Assert.DoesNotContain(tags, tag => tag.Definition.TagId == "theme.finance");
+        await store.ResetTagDecisionsAsync(fileId, Epoch.AddDays(14));
+        Assert.Contains(await store.GetFileSmartTagsAsync(fileId), tag =>
+            tag.Definition.TagId == "theme.finance" && tag.State == SmartTagAssignmentState.Automatic);
+    }
+
+    /// <summary>No-evidence passes retain real fingerprints and are not needlessly queued again at startup.</summary>
+    [Fact]
+    public async Task NoEvidenceClassificationRetainsFingerprintAndAvoidsRequeue()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("empty.txt")]);
+
+        while (await store.ClaimNextAsync(Epoch.AddDays(10)) is { } claim)
+        {
+            var next = claim.Stage switch
+            {
+                IndexingStage.FileDiscovered => IndexingStage.MetadataIndexed,
+                IndexingStage.MetadataIndexed => IndexingStage.ContentFingerprinted,
+                IndexingStage.ContentFingerprinted => IndexingStage.TextExtracted,
+                IndexingStage.TextExtracted => IndexingStage.SummaryKeywordsGenerated,
+                IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
+                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+                IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
+                IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
+                IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
+                IndexingStage.FileFullyIndexed => (IndexingStage?)null,
+                _ => throw new InvalidOperationException("Unexpected stage."),
+            };
+            var output = claim.Stage switch
+            {
+                IndexingStage.ContentFingerprinted => new IndexingStageOutput { Status = IndexingStageStatus.Complete, ContentHash = "hash-empty" },
+                IndexingStage.SmartTagsClassified => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    SmartTagClassification = new SmartTagClassificationResult(
+                        SmartTagClassificationState.NoEvidence,
+                        [],
+                        "No evidence.")
+                    {
+                        Classifier = "test-classifier",
+                        ClassifierVersion = "test-version",
+                        TaxonomyVersion = "test-taxonomy",
+                        InputFingerprint = "input-empty",
+                    },
+                },
+                _ => new IndexingStageOutput { Status = IndexingStageStatus.Complete },
+            };
+            await store.SaveStageOutputAsync(claim, output, next, Epoch.AddDays(10), TimeSpan.Zero, null);
+        }
+
+        Assert.Equal(0, await store.PrepareStaleClassificationsAsync("test-version", "test-taxonomy", Epoch.AddDays(11)));
+        Assert.Equal("test-version", ReadScalar(fixture.DatabasePath, "SELECT classifier_version FROM file_smart_tag_status LIMIT 1;"));
+        Assert.Equal("input-empty", ReadScalar(fixture.DatabasePath, "SELECT input_fingerprint FROM file_smart_tag_status LIMIT 1;"));
+    }
+
+    /// <summary>Generated clearing and file forgetting preserve or remove authority according to their distinct contracts.</summary>
+    [Fact]
+    public async Task SmartTagClearAndForgetHaveDistinctAuthoritySemantics()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("invoice.txt")]);
+        await CompleteStandardRunAsync(store, "hash-clear", Classification("theme.finance", "document-type.invoice"));
+        var fileId = Assert.Single(await store.GetSearchDocumentsAsync(10)).FileId;
+
+        await store.AddUserTagAsync(fileId, "Review", Epoch.AddDays(11));
+        await store.SetTagDecisionAsync(fileId, "document-type.invoice", SmartTagDecision.Accepted, Epoch.AddDays(12));
+        await store.SetTagDecisionAsync(fileId, "theme.finance", SmartTagDecision.Rejected, Epoch.AddDays(12));
+        await store.ClearGeneratedSmartTagsAsync(fileId, Epoch.AddDays(13));
+
+        var retained = await store.GetFileSmartTagsAsync(fileId);
+        Assert.Contains(retained, tag => tag.Definition.Type == SmartTagType.UserTag);
+        Assert.Contains(retained, tag => tag.Definition.TagId == "document-type.invoice" && tag.Decision == SmartTagDecision.Accepted);
+        Assert.DoesNotContain(retained, tag => tag.Definition.TagId == "theme.finance");
+        Assert.Equal("2", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM file_smart_tag_decisions;"));
+
+        await store.ForgetFileAsync(fileId, Epoch.AddDays(14));
+        Assert.Equal("0", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM file_smart_tag_assignments;"));
+        Assert.Equal("0", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM file_smart_tag_decisions;"));
+    }
+
+    /// <summary>Legacy authority imports only exact active identities and is recorded once.</summary>
+    [Fact]
+    public async Task LegacySmartTagImportIsConservativeAndIdempotent()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var observation = fixture.Observation("legacy.txt", stableIdentity: "legacy-stable");
+        await QueueAsync(store, fixture.Source(), [observation]);
+        await CompleteBasicRunAsync(store, "hash-legacy");
+        var fileId = Assert.Single(await store.GetSearchDocumentsAsync(10)).FileId;
+
+        var imported = await store.ImportLegacySmartTagsAsync(
+        [
+            new LegacySmartTagImport(observation.FullPath, "Personal Project", "personal project", SmartTagDecision.Accepted, true, null),
+            new LegacySmartTagImport(observation.FullPath, "Finance", "finance", SmartTagDecision.Rejected, false, "theme.finance"),
+            new LegacySmartTagImport(Path.Combine(fixture.Root, "missing.txt"), "Review", "review", SmartTagDecision.Accepted, true, null),
+        ], Epoch.AddDays(11));
+        var repeated = await store.ImportLegacySmartTagsAsync([], Epoch.AddDays(12));
+
+        Assert.True(imported.Applied);
+        Assert.Equal(2, imported.AffectedCount);
+        Assert.False(repeated.Applied);
+        var tags = await store.GetFileSmartTagsAsync(fileId);
+        Assert.Contains(tags, tag => tag.Definition.Type == SmartTagType.UserTag && tag.Definition.DisplayName == "Personal Project");
+        Assert.DoesNotContain(tags, tag => tag.Definition.TagId == "theme.finance");
+        Assert.Equal("2", ReadScalar(fixture.DatabasePath, "SELECT COUNT(*) FROM file_smart_tag_decisions;"));
+        await store.ResetTagDecisionsAsync(fileId, Epoch.AddDays(13));
+        Assert.DoesNotContain(await store.GetFileSmartTagsAsync(fileId), tag => tag.Definition.TagId == "theme.finance");
     }
 
     /// <summary>Verifies structured media evidence round-trips without being flattened into generic metadata.</summary>
@@ -539,6 +851,7 @@ public sealed class SqliteDeepIndexStoreTests
         await QueueAsync(store, source, [fixture.Observation("original.txt", stableIdentity: "stable")]);
         await CompleteBasicRunAsync(store, "hash-a");
         var original = Assert.Single(await store.GetSearchDocumentsAsync(10));
+        await store.AddUserTagAsync(original.FileId, "Important", Epoch.AddMinutes(1));
 
         await QueueAsync(store, source, [fixture.Observation(relativePath, stableIdentity: "stable")], Epoch.AddHours(1));
 
@@ -548,6 +861,8 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.Equal(Path.GetFileName(relativePath), document.FileName);
         Assert.EndsWith(relativePath.Replace('/', Path.DirectorySeparatorChar), document.FullPath, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("original.txt", document.FullPath, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(await store.GetFileSmartTagsAsync(document.FileId), tag =>
+            tag.Definition.Type == SmartTagType.UserTag && tag.Definition.DisplayName == "Important");
     }
 
     /// <summary>Verifies contextual Search resolves only requested visible durable identifiers.</summary>
@@ -1579,6 +1894,31 @@ public sealed class SqliteDeepIndexStoreTests
         return runId;
     }
 
+    private static SmartTagClassificationResult Classification(params string[] tagIds) => new(
+        SmartTagClassificationState.Classified,
+        Array.AsReadOnly(tagIds.Select(tagId => new SmartTagCandidate
+        {
+            TagId = tagId,
+            Type = tagId.StartsWith("theme.", StringComparison.Ordinal)
+                ? SmartTagType.Theme
+                : SmartTagType.DocumentType,
+            Confidence = ContentIntelligenceConfidence.Strong,
+            EvidenceScore = 6,
+            Origin = SmartTagOrigin.DeterministicClassifier,
+            Classifier = "test-classifier",
+            ClassifierVersion = "1.0-taxonomy-1.0",
+            TaxonomyVersion = "1.0",
+            InputFingerprint = "input-test",
+            Evidence = [new SmartTagEvidence(ContentEvidenceSourceKind.ExtractedText, "native:test", "Native content matched a test fixture.")],
+        }).ToArray()),
+        "Classified by deterministic test evidence.")
+    {
+        Classifier = "test-classifier",
+        ClassifierVersion = "1.0-taxonomy-1.0",
+        TaxonomyVersion = "1.0",
+        InputFingerprint = "input-test",
+    };
+
     private static async Task CompleteBasicRunAsync(SqliteDeepIndexStore store, string hash)
     {
         while (await store.ClaimNextAsync(Epoch.AddDays(10)) is { } claim)
@@ -1607,7 +1947,10 @@ public sealed class SqliteDeepIndexStoreTests
         }
     }
 
-    private static async Task CompleteStandardRunAsync(SqliteDeepIndexStore store, string hash)
+    private static async Task CompleteStandardRunAsync(
+        SqliteDeepIndexStore store,
+        string hash,
+        SmartTagClassificationResult? classification = null)
     {
         while (await store.ClaimNextAsync(Epoch.AddDays(10)) is { } claim)
         {
@@ -1618,7 +1961,8 @@ public sealed class SqliteDeepIndexStoreTests
                 IndexingStage.ContentFingerprinted => IndexingStage.TextExtracted,
                 IndexingStage.TextExtracted => IndexingStage.SummaryKeywordsGenerated,
                 IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
-                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SearchIndexUpdated,
+                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+                IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
                 IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
                 IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
                 IndexingStage.FileFullyIndexed => (IndexingStage?)null,
@@ -1669,6 +2013,11 @@ public sealed class SqliteDeepIndexStoreTests
                     Status = IndexingStageStatus.Complete,
                     SemanticRepresentation = [0.5f, 0.5f],
                 },
+                IndexingStage.SmartTagsClassified when classification is not null => new IndexingStageOutput
+                {
+                    Status = IndexingStageStatus.Complete,
+                    SmartTagClassification = classification,
+                },
                 _ => new IndexingStageOutput { Status = IndexingStageStatus.Complete },
             };
             await store.SaveStageOutputAsync(
@@ -1693,7 +2042,8 @@ public sealed class SqliteDeepIndexStoreTests
                 IndexingStage.TextExtracted => IndexingStage.OcrProcessed,
                 IndexingStage.OcrProcessed => IndexingStage.SummaryKeywordsGenerated,
                 IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
-                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SearchIndexUpdated,
+                IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+                IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
                 IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
                 IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
                 IndexingStage.FileFullyIndexed => (IndexingStage?)null,

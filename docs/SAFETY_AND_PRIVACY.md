@@ -204,6 +204,29 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Ordinary diagnostics retain operational state and bounded counts/sizes, not
   full text, OCR, transcript, summaries, prompts, or evidence excerpts.
 
+### Explainable Smart Tags candidate
+
+- Unreleased v2.6 consumes already retained bounded evidence and persists
+  normalized Theme, Document Type, and explicit User Tag state in schema 6.
+  It does not re-open source files solely for classification, write embedded
+  file metadata, or require Ollama.
+- Generated assignments retain a confidence band, classifier/taxonomy version,
+  input fingerprint, state, and at most a few bounded reasons. Confidence bands
+  are evidence strength, not probabilities.
+- Explicit User Tags and accepted/rejected decisions are separate authority.
+  Generated reclassification, a taxonomy change, and file moves/renames do not
+  silently erase those choices. Clear Generated preserves User Tags, accepted
+  authority, and rejection decisions; Reset Decisions is explicit.
+- Tag values, User Tags, classification evidence, and entities are treated as
+  content-sensitive. Ordinary diagnostics retain only safe counts, timings,
+  classifier/taxonomy identifiers, confidence bands, fingerprints, and failure
+  categories—not labels, evidence excerpts, extracted content, or provider
+  prompt/response bodies.
+- Strong deterministic and accepted/User Tag evidence may participate in local
+  Search. Moderate unaccepted and rejected assignments do not. Classification
+  adds no telemetry, hidden network access, cloud classification, biometric
+  identification, or autonomous file mutation.
+
 ### Explorer Protocol v1
 
 - The v2.4 protocol is an on-demand local named pipe (Unix-domain-backed on
@@ -272,7 +295,7 @@ a competing profile merely because its visible name changed.
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
-| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 adds one nullable bounded content-intelligence JSON field and an indexed, at-most-64-term-per-file relationship-candidate projection as schema 5 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 added bounded Content Intelligence and relationship terms as schema 5. Unreleased v2.6 adds normalized Smart Tag definitions, assignments, decisions, and status as schema 6 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |
 | Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
 | Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |

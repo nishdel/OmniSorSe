@@ -5,6 +5,8 @@ using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Executor.Models;
@@ -37,6 +39,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<ResultTagRow> _userTags = [];
     private readonly ObservableCollection<ExtractedMetadataField> _contentMetadata = [];
     private readonly IContentStore? _contentStore;
+    private readonly ISmartTagService? _smartTagService;
     private readonly IConfigurationService _configurationService;
     private readonly SemaphoreSlim _panelPreferenceSaveGate = new(1, 1);
     private readonly Dictionary<string, IReadOnlyList<TagAssociation>> _tagsByFile = new(StringComparer.Ordinal);
@@ -56,6 +59,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private bool _isLoading;
     private ResultsDisplayMode _displayMode = ResultsDisplayMode.Explorer;
     private string _contentDetailsStatus = "Select a result to inspect local extracted metadata.";
+    private string? _selectedSmartTagFileId;
     private bool _areFiltersVisible;
     private double _detailsPanelWidthRatio;
 
@@ -63,7 +67,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// Initializes the result explorer and its non-mutating navigation commands.
     /// </summary>
     public ResultsViewModel()
-        : this(new PreviewConfigurationService(), null, null, null)
+        : this(new PreviewConfigurationService(), null, null, null, null, null)
     {
     }
 
@@ -73,7 +77,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <param name="configurationService">The centralized configuration source used only by the optional suggestion workflow.</param>
     /// <param name="aiSuggestionService">The optional application-owned suggestion service.</param>
     public ResultsViewModel(IConfigurationService configurationService, IAiSuggestionService? aiSuggestionService)
-        : this(configurationService, aiSuggestionService, null, null)
+        : this(configurationService, aiSuggestionService, null, null, null, null)
     {
     }
 
@@ -85,7 +89,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         IAiSuggestionService? aiSuggestionService,
         IExternalFileLauncher? externalFileLauncher,
         IContentStore? contentStore = null,
-        ISuggestionChangePlanFactory? changePlanFactory = null)
+        ISuggestionChangePlanFactory? changePlanFactory = null,
+        ISmartTagService? smartTagService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         _configurationService = configurationService;
@@ -99,6 +104,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         UserTags = new ReadOnlyObservableCollection<ResultTagRow>(_userTags);
         ContentMetadata = new ReadOnlyObservableCollection<ExtractedMetadataField>(_contentMetadata);
         _contentStore = contentStore;
+        _smartTagService = smartTagService;
         DuplicateReview = new DuplicateReviewViewModel(
             externalFileLauncher,
             changePlanFactory as IDuplicateRemovalPlanFactory);
@@ -128,6 +134,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         RejectSuggestedTagCommand = new AsyncRelayCommand(
             RejectSuggestedTagAsync,
             () => SelectedUserTag?.CanReject == true);
+        ResetTagDecisionsCommand = new AsyncRelayCommand(ResetTagDecisionsAsync, () => _selectedSmartTagFileId is not null);
+        ClearGeneratedSmartTagsCommand = new AsyncRelayCommand(ClearGeneratedSmartTagsAsync, () => _selectedSmartTagFileId is not null);
+        ViewFilesWithTagCommand = new RelayCommand(ViewFilesWithSelectedTag, () => SelectedUserTag?.TagType is not null);
         NarrowDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(-0.05));
         WidenDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(0.05));
         ResetDetailsPanelWidthCommand = new AsyncRelayCommand(
@@ -135,7 +144,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Raised after accepted non-deterministic tags change for the loaded snapshot.
+    /// Raised after authoritative local tag state changes for the loaded snapshot.
     /// </summary>
     public event EventHandler? PersistedTagsChanged;
 
@@ -168,6 +177,15 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets accepted application-owned tags for the selected result file.</summary>
     public ReadOnlyObservableCollection<ResultTagRow> UserTags { get; }
+
+    /// <summary>Gets at most three compact rows for the selected-file summary.</summary>
+    public IReadOnlyList<ResultTagRow> SmartTagPreview => UserTags.Take(3).ToArray();
+
+    /// <summary>Gets whether the compact summary omits additional rows.</summary>
+    public bool HasAdditionalSmartTags => UserTags.Count > 3;
+
+    /// <summary>Gets the number of additional rows behind the full review list.</summary>
+    public string AdditionalSmartTagText => $"+{Math.Max(0, UserTags.Count - 3)}";
 
     /// <summary>Gets provenance-aware local metadata for the selected known result.</summary>
     public ReadOnlyObservableCollection<ExtractedMetadataField> ContentMetadata { get; }
@@ -376,6 +394,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 RemoveSelectedTagCommand.NotifyCanExecuteChanged();
                 AcceptSuggestedTagCommand.NotifyCanExecuteChanged();
                 RejectSuggestedTagCommand.NotifyCanExecuteChanged();
+                ViewFilesWithTagCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -537,6 +556,18 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that explicitly rejects one generated candidate tag.</summary>
     public IAsyncRelayCommand RejectSuggestedTagCommand { get; }
+
+    /// <summary>Gets the command that clears explicit accept/reject overrides for this file.</summary>
+    public IAsyncRelayCommand ResetTagDecisionsCommand { get; }
+
+    /// <summary>Gets the command that removes generated classifications without erasing user authority.</summary>
+    public IAsyncRelayCommand ClearGeneratedSmartTagsCommand { get; }
+
+    /// <summary>Gets the command that opens Search with the selected canonical tag filter.</summary>
+    public IRelayCommand ViewFilesWithTagCommand { get; }
+
+    /// <summary>Raised when Files requests a canonical Smart Tag Search filter.</summary>
+    public event Action<SearchFilter>? SmartTagFilterRequested;
 
     /// <summary>Gets the keyboard-accessible command that narrows selected-file details.</summary>
     public IAsyncRelayCommand NarrowDetailsPanelCommand { get; }
@@ -924,16 +955,17 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         previous?.Dispose();
         var cancellation = _contentDetailsCancellation!;
         _contentMetadata.Clear();
+        _selectedSmartTagFileId = null;
+        if (_smartTagService is not null)
+        {
+            _userTags.Clear();
+            RefreshSmartTagSummary();
+        }
+        NotifySmartTagCommands();
         OnPropertyChanged(nameof(HasContentMetadata));
         if (SelectedRow is null || Snapshot is null)
         {
             ContentDetailsStatus = "Select a result to inspect local extracted metadata.";
-            return;
-        }
-
-        if (_contentStore is null)
-        {
-            ContentDetailsStatus = "Local extracted metadata is unavailable in this application context.";
             return;
         }
 
@@ -946,7 +978,19 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
         try
         {
-            var record = await _contentStore.GetAsync(selected.FullPath, cancellation.Token);
+            IReadOnlyList<FileSmartTag> smartTags = [];
+            if (_smartTagService is not null)
+            {
+                _selectedSmartTagFileId = await _smartTagService.ResolveActiveFileIdAsync(selected.FullPath, cancellation.Token);
+                if (_selectedSmartTagFileId is not null)
+                {
+                    smartTags = await _smartTagService.GetFileTagsAsync(_selectedSmartTagFileId, cancellation.Token);
+                }
+            }
+
+            var record = _contentStore is null
+                ? null
+                : await _contentStore.GetAsync(selected.FullPath, cancellation.Token);
             if (!ReferenceEquals(_contentDetailsCancellation, cancellation))
             {
                 return;
@@ -957,7 +1001,11 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 _contentMetadata.Add(field);
             }
 
-            if (record is not null && SelectedRow is not null)
+            if (_smartTagService is not null)
+            {
+                RebuildSmartTagRows(smartTags);
+            }
+            else if (record is not null && SelectedRow is not null)
             {
                 var existing = GetTags(SelectedRow.FileId)
                     .Where(tag => tag.Source is
@@ -975,8 +1023,11 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             }
 
             ContentDetailsStatus = record is null
-                ? "No extracted metadata is cached for this result."
-                : $"OCR state: {record.OcrStatus}. {record.Metadata.Count} provenance-aware field(s).";
+                ? smartTags.Count > 0
+                    ? $"{smartTags.Count} local Smart Tag(s). No extracted metadata is cached for this result."
+                    : "No extracted metadata or Smart Tags are cached for this result."
+                : $"OCR state: {record.OcrStatus}. {record.Metadata.Count} provenance-aware field(s). {smartTags.Count} Smart Tag(s).";
+            NotifySmartTagCommands();
             OnPropertyChanged(nameof(HasContentMetadata));
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
@@ -1000,6 +1051,49 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
         var values = (UserTagText ?? string.Empty)
             .Split([',', ';', '\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (_smartTagService is not null)
+        {
+            if (_selectedSmartTagFileId is null)
+            {
+                UserTagStatusText = "This file is not currently present in the durable index.";
+                return;
+            }
+
+            if (values.Length == 0 || values.Length > SmartTagLimits.MaximumUserTagsPerFile)
+            {
+                UserTagStatusText = $"Add between 1 and {SmartTagLimits.MaximumUserTagsPerFile} local tags at a time.";
+                return;
+            }
+
+            try
+            {
+                foreach (var value in values)
+                {
+                    _ = SmartTagUserInput.NormalizeCanonicalKey(value);
+                }
+            }
+            catch (ArgumentException exception)
+            {
+                UserTagStatusText = exception.Message;
+                return;
+            }
+
+            var affected = 0;
+            foreach (var value in values.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var result = await _smartTagService.AddUserTagAsync(_selectedSmartTagFileId, value);
+                affected += result.AffectedCount;
+            }
+
+            UserTagText = null;
+            await LoadContentDetailsAsync();
+            PersistedTagsChanged?.Invoke(this, EventArgs.Empty);
+            UserTagStatusText = affected > 0
+                ? "User tag metadata saved locally. The source file was not changed."
+                : "Those user tags are already associated with this file.";
+            return;
+        }
+
         if (!UserTagFactory.TryCreate(SelectedRow.FileId, values, DateTimeOffset.UtcNow, out var candidates, out var error))
         {
             UserTagStatusText = error;
@@ -1042,6 +1136,22 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        if (_smartTagService is not null)
+        {
+            if (_selectedSmartTagFileId is null)
+            {
+                UserTagStatusText = "This file is not currently present in the durable index.";
+                return;
+            }
+
+            var result = await _smartTagService.RemoveAsync(_selectedSmartTagFileId, SelectedUserTag.TagId);
+            SelectedUserTag = null;
+            await LoadContentDetailsAsync();
+            PersistedTagsChanged?.Invoke(this, EventArgs.Empty);
+            UserTagStatusText = result.Message;
+            return;
+        }
+
         var existing = GetTags(SelectedRow.FileId);
         var remaining = existing.Where(tag => !string.Equals(tag.TagId, SelectedUserTag.TagId, StringComparison.Ordinal) || tag.Source == TagSource.Deterministic).ToArray();
         if (remaining.Length == existing.Count)
@@ -1064,6 +1174,23 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     private async Task UpdateGeneratedTagStateAsync(TagAcceptanceState state)
     {
+        if (_smartTagService is not null)
+        {
+            if (_selectedSmartTagFileId is null || SelectedUserTag is null)
+            {
+                return;
+            }
+
+            var decision = state == TagAcceptanceState.Accepted ? SmartTagDecision.Accepted : SmartTagDecision.Rejected;
+            var smartTagId = SelectedUserTag.TagId;
+            var result = await _smartTagService.DecideAsync(_selectedSmartTagFileId, smartTagId, decision);
+            await LoadContentDetailsAsync();
+            SelectedUserTag = UserTags.FirstOrDefault(tag => string.Equals(tag.TagId, smartTagId, StringComparison.Ordinal));
+            PersistedTagsChanged?.Invoke(this, EventArgs.Empty);
+            UserTagStatusText = result.Message;
+            return;
+        }
+
         if (_contentStore is null ||
             SelectedRow is null ||
             SelectedUserTag is null ||
@@ -1118,6 +1245,10 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     private void RebuildSelectedTagRows(string? fileId)
     {
+        if (_smartTagService is not null)
+        {
+            return;
+        }
         var selectedTagId = SelectedUserTag?.TagId;
         _userTags.Clear();
         if (fileId is not null)
@@ -1131,6 +1262,86 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         SelectedUserTag = selectedTagId is null
             ? null
             : UserTags.FirstOrDefault(tag => string.Equals(tag.TagId, selectedTagId, StringComparison.Ordinal));
+        RefreshSmartTagSummary();
+    }
+
+    private void RebuildSmartTagRows(IReadOnlyList<FileSmartTag> tags)
+    {
+        var selectedTagId = SelectedUserTag?.TagId;
+        _userTags.Clear();
+        foreach (var tag in tags
+                     .Where(tag => tag.Decision != SmartTagDecision.Rejected)
+                     .OrderBy(tag => tag.Definition.Type)
+                     .ThenBy(tag => tag.State)
+                     .ThenBy(tag => tag.Definition.DisplayName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            _userTags.Add(ResultTagRow.FromSmartTag(tag));
+        }
+
+        SelectedUserTag = selectedTagId is null
+            ? null
+            : UserTags.FirstOrDefault(tag => string.Equals(tag.TagId, selectedTagId, StringComparison.Ordinal));
+        RefreshSmartTagSummary();
+    }
+
+    private void RefreshSmartTagSummary()
+    {
+        OnPropertyChanged(nameof(SmartTagPreview));
+        OnPropertyChanged(nameof(HasAdditionalSmartTags));
+        OnPropertyChanged(nameof(AdditionalSmartTagText));
+    }
+
+    private async Task ResetTagDecisionsAsync()
+    {
+        if (_smartTagService is null || _selectedSmartTagFileId is null)
+        {
+            return;
+        }
+
+        var result = await _smartTagService.ResetDecisionsAsync(_selectedSmartTagFileId);
+        await LoadContentDetailsAsync();
+        PersistedTagsChanged?.Invoke(this, EventArgs.Empty);
+        UserTagStatusText = result.Message;
+    }
+
+    private async Task ClearGeneratedSmartTagsAsync()
+    {
+        if (_smartTagService is null || _selectedSmartTagFileId is null)
+        {
+            return;
+        }
+
+        var result = await _smartTagService.ClearGeneratedAsync(_selectedSmartTagFileId);
+        await LoadContentDetailsAsync();
+        PersistedTagsChanged?.Invoke(this, EventArgs.Empty);
+        UserTagStatusText = result.Message;
+    }
+
+    private void ViewFilesWithSelectedTag()
+    {
+        if (SelectedUserTag?.TagType is not { } type)
+        {
+            return;
+        }
+
+        var kind = type switch
+        {
+            SmartTagType.Theme => SearchFilterKind.SmartTagTheme,
+            SmartTagType.DocumentType => SearchFilterKind.SmartTagDocumentType,
+            _ => SearchFilterKind.SmartTagUser,
+        };
+        SmartTagFilterRequested?.Invoke(new SearchFilter(
+            $"smart-tag:{SelectedUserTag.TagId}",
+            kind,
+            SelectedUserTag.TagId,
+            $"{type}: {SelectedUserTag.DisplayName}"));
+    }
+
+    private void NotifySmartTagCommands()
+    {
+        ResetTagDecisionsCommand.NotifyCanExecuteChanged();
+        ClearGeneratedSmartTagsCommand.NotifyCanExecuteChanged();
+        ViewFilesWithTagCommand.NotifyCanExecuteChanged();
     }
 
     private bool HasActiveFilters() => Query != ResultsQuery.Default;

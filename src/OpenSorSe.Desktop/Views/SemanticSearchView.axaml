@@ -83,8 +83,56 @@
                 <Border IsVisible="{Binding AreFiltersVisible}"
                         Classes="subtle-card"
                         Padding="8">
-                    <TextBlock Text="Search recognises conservative file type, extension, date, size, source, folder, tag, indexing, OCR, and related-concept filters. Uncertain phrases stay as topic words."
-                               TextWrapping="Wrap" />
+                    <StackPanel Spacing="7">
+                        <TextBlock Text="Search recognises conservative file type, extension, date, size, source, folder, tag, indexing, OCR, and related-concept filters. Uncertain phrases stay as topic words."
+                                   TextWrapping="Wrap" />
+                        <StackPanel IsVisible="{Binding HasSmartTagFilterChoices}" Spacing="5">
+                            <TextBlock Text="Smart Tag filters"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="Choose one or more values. Values within the same type are OR; different types are combined with AND."
+                                       Classes="page-subtitle"
+                                       TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="7">
+                                <ComboBox ItemsSource="{Binding ThemeTagChoices}"
+                                          SelectedItem="{Binding SelectedThemeTag, Mode=TwoWay}"
+                                          PlaceholderText="Theme"
+                                          AutomationProperties.Name="Select a Theme Smart Tag filter">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SmartTagFilterChoice">
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding DocumentTypeTagChoices}"
+                                          SelectedItem="{Binding SelectedDocumentTypeTag, Mode=TwoWay}"
+                                          PlaceholderText="Document Type"
+                                          AutomationProperties.Name="Select a Document Type Smart Tag filter">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SmartTagFilterChoice">
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <ComboBox Grid.Column="2"
+                                          ItemsSource="{Binding UserTagChoices}"
+                                          SelectedItem="{Binding SelectedUserTag, Mode=TwoWay}"
+                                          PlaceholderText="User Tag"
+                                          AutomationProperties.Name="Select a User Tag filter">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SmartTagFilterChoice">
+                                            <TextBlock Text="{Binding DisplayName}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+                            <Button Classes="secondary"
+                                    HorizontalAlignment="Left"
+                                    Content="Add selected tag filters"
+                                    Command="{Binding AddSmartTagFiltersCommand}"
+                                    AutomationProperties.Name="Add selected Smart Tag filters to Search" />
+                        </StackPanel>
+                    </StackPanel>
                 </Border>
                 <StackPanel IsVisible="{Binding HasActiveFilters}" Spacing="5">
                     <Grid ColumnDefinitions="*,Auto">

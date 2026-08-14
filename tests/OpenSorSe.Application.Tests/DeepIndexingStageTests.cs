@@ -3,6 +3,7 @@ using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Scanner;
@@ -42,6 +43,37 @@ public sealed class DeepIndexingStageTests
 
         Assert.Equal(IndexingStageStatus.Complete, output.Status);
         Assert.Equal("abc123", output.ContentHash);
+    }
+
+    /// <summary>Smart Tag classification consumes retained bounded evidence without reopening extraction providers.</summary>
+    [Fact]
+    public async Task SmartTagStageClassifiesRetainedEvidenceAndFingerprintsDependencies()
+    {
+        var classifier = new DeterministicSmartTagClassifier(SmartTagTaxonomy.LoadBuiltIn());
+        var processor = CreateProcessor(smartTagClassifier: classifier);
+        var work = Work(IndexingStage.SmartTagsClassified) with
+        {
+            ContentHash = "content-hash",
+            ExtractedText = "INVOICE number 44. Amount due for software configuration services.",
+            ContentIntelligence = new IndexedContentIntelligence
+            {
+                Topics = [],
+                Entities = [],
+                Keywords = ["invoice", "software"],
+                Provider = "test",
+                ProviderVersion = "1",
+                ProcessingFingerprint = "intelligence-fingerprint",
+            },
+        };
+
+        var output = await processor.ProcessAsync(work, new DeepIndexingSettings());
+
+        var result = Assert.IsType<SmartTagClassificationResult>(output.SmartTagClassification);
+        Assert.Equal(SmartTagClassificationState.Classified, result.State);
+        Assert.Contains(result.Candidates, candidate => candidate.TagId == "document-type.invoice");
+        Assert.Contains(result.Candidates, candidate => candidate.TagId == "theme.technology");
+        Assert.Equal(classifier.Version, result.ClassifierVersion);
+        Assert.NotEqual("content-hash", result.InputFingerprint);
     }
 
     /// <summary>Verifies Basic indexing persists deterministic media metadata with the content fingerprint.</summary>
@@ -482,7 +514,8 @@ public sealed class DeepIndexingStageTests
         IMediaIntelligenceService? media = null,
         MediaIntelligenceSettings? mediaSettings = null,
         IContentIntelligenceProvider? contentIntelligence = null,
-        ContentIntelligenceSettings? contentSettings = null)
+        ContentIntelligenceSettings? contentSettings = null,
+        ISmartTagClassifier? smartTagClassifier = null)
     {
         var store = contentStore ?? new FakeContentStore(Record());
         return new DefaultIndexingStageProcessor(
@@ -493,7 +526,8 @@ public sealed class DeepIndexingStageTests
             new FakeEmbedding(),
             enrichment,
             mediaIntelligenceService: media,
-            contentIntelligenceProvider: contentIntelligence);
+            contentIntelligenceProvider: contentIntelligence,
+            smartTagClassifier: smartTagClassifier);
     }
 
     private static IndexingWorkItem Work(IndexingStage stage, string? path = null)

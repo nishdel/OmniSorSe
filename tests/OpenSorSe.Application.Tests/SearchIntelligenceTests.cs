@@ -1,6 +1,8 @@
 using System.Globalization;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Tests;
@@ -384,6 +386,91 @@ public sealed class SearchIntelligenceTests
         Assert.Equal(filters.Length, result[0].Components.Count(item => item.Kind == SearchRankingSignalKind.Filter));
     }
 
+    /// <summary>Eligible Smart Tags explain matches without outranking an exact filename.</summary>
+    [Fact]
+    public void Ranker_ProtectsExactFilenameOverSmartTagEvidence()
+    {
+        var exact = Candidate("exact", "finance.txt", @"C:\finance.txt");
+        var classified = Candidate("classified", "scan-0042.pdf", @"C:\scan-0042.pdf") with
+        {
+            SmartTags = [SmartTag("theme.finance", SmartTagType.Theme, "Finance", ContentIntelligenceConfidence.Strong, SmartTagAssignmentState.Automatic)],
+        };
+
+        var results = Rank("finance", classified, exact);
+
+        Assert.Equal("exact", results[0].Document.FileId);
+        Assert.Equal("classified", results[1].Document.FileId);
+        Assert.Contains(results[1].Components, component =>
+            component.Kind == SearchRankingSignalKind.SmartTagTheme &&
+            component.Explanation == "Theme: Finance — Strong");
+    }
+
+    /// <summary>Moderate suggestions stay outside ordinary Search until explicitly accepted.</summary>
+    [Fact]
+    public void Ranker_ExcludesModerateSuggestionUntilAccepted()
+    {
+        var suggested = SmartTag(
+            "theme.finance",
+            SmartTagType.Theme,
+            "Finance",
+            ContentIntelligenceConfidence.Moderate,
+            SmartTagAssignmentState.Suggested);
+        var candidate = Candidate("candidate", "scan.pdf", @"C:\scan.pdf") with { SmartTags = [suggested] };
+
+        Assert.Empty(Rank("finance", candidate));
+
+        var accepted = candidate with
+        {
+            SmartTags = [suggested with { State = SmartTagAssignmentState.Accepted, Decision = SmartTagDecision.Accepted }],
+        };
+        var result = Assert.Single(Rank("finance", accepted));
+        Assert.Contains(result.Components, component => component.Explanation == "Theme: Finance — Accepted");
+    }
+
+    /// <summary>Canonical Smart Tag filters are OR within type and AND across populated types.</summary>
+    [Fact]
+    public void Ranker_ComposesTypedSmartTagFiltersByApprovedSemantics()
+    {
+        var financeInvoice = Candidate("finance-invoice", "one.pdf", @"C:\one.pdf") with
+        {
+            SmartTags =
+            [
+                SmartTag("theme.finance", SmartTagType.Theme, "Finance"),
+                SmartTag("document-type.invoice", SmartTagType.DocumentType, "Invoice"),
+            ],
+        };
+        var legalInvoice = Candidate("legal-invoice", "two.pdf", @"C:\two.pdf") with
+        {
+            SmartTags =
+            [
+                SmartTag("theme.legal", SmartTagType.Theme, "Legal"),
+                SmartTag("document-type.invoice", SmartTagType.DocumentType, "Invoice"),
+            ],
+        };
+        var financeReport = Candidate("finance-report", "three.pdf", @"C:\three.pdf") with
+        {
+            SmartTags =
+            [
+                SmartTag("theme.finance", SmartTagType.Theme, "Finance"),
+                SmartTag("document-type.report", SmartTagType.DocumentType, "Report"),
+            ],
+        };
+        SearchFilter[] filters =
+        [
+            Filter(SearchFilterKind.SmartTagTheme, "theme.finance"),
+            Filter(SearchFilterKind.SmartTagTheme, "theme.legal"),
+            Filter(SearchFilterKind.SmartTagDocumentType, "document-type.invoice"),
+        ];
+
+        var results = CreateRanker().Rank(
+            new SearchInterpretation(string.Empty, string.Empty, [], filters),
+            [financeInvoice, legalInvoice, financeReport],
+            10,
+            CancellationToken.None);
+
+        Assert.Equal(["finance-invoice", "legal-invoice"], results.Select(result => result.Document.FileId).OrderBy(value => value, StringComparer.Ordinal));
+    }
+
     /// <summary>Verifies diacritics, punctuation, underscores, dashes, and separators normalize predictably.</summary>
     [Theory]
     [InlineData("München", "munchen")]
@@ -519,6 +606,31 @@ public sealed class SearchIntelligenceTests
 
     private static SearchFilter Filter(SearchFilterKind kind, string value) =>
         new($"{kind}:{value}", kind, value, $"{kind}: {value}");
+
+    private static FileSmartTag SmartTag(
+        string tagId,
+        SmartTagType type,
+        string display,
+        ContentIntelligenceConfidence confidence = ContentIntelligenceConfidence.Strong,
+        SmartTagAssignmentState state = SmartTagAssignmentState.Automatic) => new()
+        {
+            FileId = "test-file",
+            Definition = new SmartTagDefinition
+            {
+                TagId = tagId,
+                Type = type,
+                CanonicalKey = tagId[(tagId.IndexOf('.') + 1)..],
+                DisplayName = display,
+                TaxonomyVersion = "1.0",
+                Origin = SmartTagOrigin.BuiltInTaxonomy,
+                IsBuiltIn = true,
+            },
+            Confidence = confidence,
+            Origin = SmartTagOrigin.DeterministicClassifier,
+            State = state,
+            Decision = SmartTagDecision.None,
+            UpdatedAtUtc = DateTimeOffset.UnixEpoch,
+        };
 
     private static SearchQualityCase Quality(string query, string id) =>
         new(query, new HashSet<string>([id], StringComparer.Ordinal), id);

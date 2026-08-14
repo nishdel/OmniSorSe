@@ -6,6 +6,7 @@ using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 
@@ -14,7 +15,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IRelationshipStore, IDisposable
+public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -90,6 +91,11 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                             ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
                         }
 
+                        if (version < 6)
+                        {
+                            ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
+                        }
+
                         ExecuteNonQuery(
                             connection,
                             transaction,
@@ -98,6 +104,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                         ExecuteNonQuery(connection, transaction, $"PRAGMA user_version = {DeepIndexingVersion.SchemaVersion};");
                         transaction.Commit();
                     }
+
+                    SeedBuiltInSmartTagTaxonomy(connection, SmartTagTaxonomy.LoadBuiltIn());
 
                     EnsureIntegrity(connection);
                     return 0;
@@ -1461,12 +1469,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 reader.Close();
                 var chunks = ReadChunks(connection, hashes.Values.Distinct(StringComparer.Ordinal));
+                var smartTags = ReadEffectiveSmartTags(connection, documents.Select(document => document.FileId).ToArray());
                 return documents
-                    .Select(document =>
-                        hashes.TryGetValue(document.FileId, out var hash) &&
-                        chunks.TryGetValue(hash, out var selected)
-                            ? document with { SelectedChunks = selected }
-                            : document)
+                    .Select(document => ApplySearchProjection(document, hashes, chunks, smartTags))
                     .ToArray();
             },
             cancellationToken);
@@ -1611,12 +1616,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 reader.Close();
                 var chunks = ReadChunks(connection, hashes.Values.Distinct(StringComparer.Ordinal));
+                var smartTags = ReadEffectiveSmartTags(connection, documents.Select(document => document.FileId).ToArray());
                 return documents
-                    .Select(document =>
-                        hashes.TryGetValue(document.FileId, out var hash) &&
-                        chunks.TryGetValue(hash, out var selected)
-                            ? document with { SelectedChunks = selected }
-                            : document)
+                    .Select(document => ApplySearchProjection(document, hashes, chunks, smartTags))
                     .ToArray();
             },
             cancellationToken);
@@ -2290,6 +2292,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFourIndexes);
                 EnsureColumn(connection, transaction, "index_content", "content_intelligence_json", "TEXT");
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
+                ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -2300,6 +2303,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     transaction,
                     $"PRAGMA user_version = {DeepIndexingVersion.SchemaVersion};");
                 transaction.Commit();
+                SeedBuiltInSmartTagTaxonomy(connection, SmartTagTaxonomy.LoadBuiltIn());
                 EnsureIntegrity(connection);
                 PruneBackups(backupDirectory);
                 return recoveryPath;
@@ -2670,6 +2674,11 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ("$now", completedAtUtc.UtcTicks));
         }
 
+        if (output.SmartTagClassification is not null)
+        {
+            PersistGeneratedSmartTags(connection, transaction, work.FileId, output.SmartTagClassification, completedAtUtc);
+        }
+
         if (output.SelectedChunks is not null)
         {
             ExecuteNonQuery(
@@ -3026,6 +3035,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         var contentIntelligence = ScalarInt64(
             connection,
             "SELECT COALESCE(SUM(LENGTH(content_intelligence_json)), 0) FROM index_content;");
+        var smartTags = ScalarInt64(
+            connection,
+            "SELECT COALESCE(SUM(LENGTH(tag_id) + LENGTH(canonical_key) + LENGTH(display_name) + 64), 0) FROM smart_tag_definitions;") +
+            ScalarInt64(
+                connection,
+                "SELECT COALESCE(SUM(LENGTH(file_id) + LENGTH(tag_id) + LENGTH(evidence_json) + 96), 0) FROM file_smart_tag_assignments;") +
+            ScalarInt64(connection, "SELECT COALESCE(COUNT(*) * 64, 0) FROM file_smart_tag_decisions;");
         var summaries = ScalarInt64(
             connection,
             "SELECT COALESCE(SUM(LENGTH(summary) + LENGTH(keywords_json)), 0) FROM index_content;");
@@ -3063,6 +3079,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         {
             MediaDerivedDataBytes = media,
             ContentIntelligenceBytes = contentIntelligence,
+            SmartTagBytes = smartTags,
         };
     }
 
@@ -3101,7 +3118,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                    (SELECT COUNT(*) FROM index_relationships r
                     WHERE r.first_file_id = f.id OR r.second_file_id = f.id),
                    (SELECT COUNT(*) FROM smart_collection_members m WHERE m.file_id = f.id)
-                   , mc.evidence_json, c.content_intelligence_json
+                   , mc.evidence_json, c.content_intelligence_json,
+                   (SELECT COUNT(*) FROM file_smart_tag_assignments ta
+                    WHERE ta.file_id = f.id AND ta.active = 1)
             FROM index_files f
             JOIN index_sources s ON s.id = f.source_id
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -3157,6 +3176,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 HasContentIntelligence = contentIntelligence is not null,
                 ContentTopicCount = contentIntelligence?.Topics.Count ?? 0,
                 ContentEntityCount = contentIntelligence?.Entities.Count ?? 0,
+                SmartTagCount = reader.GetInt32(30),
                 IsFullyIndexed = reader.GetBoolean(18),
                 LastIndexedUtc = new DateTimeOffset(reader.GetInt64(19), TimeSpan.Zero),
                 ProcessorVersion = DeepIndexingVersion.ProcessorVersion,
@@ -3421,6 +3441,27 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ("$file", fileId));
         }
 
+        if (data.HasFlag(IndexedDataKind.SmartTags))
+        {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                """
+                DELETE FROM file_smart_tag_assignments
+                WHERE file_id = $file AND origin <> $user
+                  AND NOT EXISTS (
+                      SELECT 1 FROM file_smart_tag_decisions d
+                      WHERE d.file_id = file_smart_tag_assignments.file_id
+                        AND d.tag_id = file_smart_tag_assignments.tag_id
+                        AND d.decision = $accepted
+                  );
+                DELETE FROM file_smart_tag_status WHERE file_id = $file;
+                """,
+                ("$file", fileId),
+                ("$user", (int)SmartTagOrigin.User),
+                ("$accepted", (int)SmartTagDecision.Accepted));
+        }
+
         if (data.HasFlag(IndexedDataKind.Relationships))
         {
             DeleteFileRelationshipData(connection, transaction, fileId, keepManualRelationships: false);
@@ -3455,7 +3496,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks;
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.OcrText))
@@ -3463,22 +3505,23 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
             data |= IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks;
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.SummaryAndKeywords))
         {
-            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks | IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.MediaDerived))
         {
-            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks | IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.ContentIntelligence))
         {
-            data |= IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+            data |= IndexedDataKind.SemanticData | IndexedDataKind.Chunks | IndexedDataKind.SmartTags;
         }
 
         return data;
@@ -3603,18 +3646,21 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks,
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags,
             IndexingStage.OcrProcessed =>
                 IndexedDataKind.OcrText |
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks,
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags,
             IndexingStage.SummaryKeywordsGenerated =>
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks,
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags,
             IndexingStage.SemanticRepresentationGenerated =>
                 IndexedDataKind.SemanticData | IndexedDataKind.Chunks,
             _ => IndexedDataKind.ProcessingHistory,

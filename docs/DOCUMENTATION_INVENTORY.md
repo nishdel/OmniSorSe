@@ -112,6 +112,8 @@ These files describe current product/project policy or the current source tree:
 - `docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md`
 - `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`
 - `docs/MANUAL_TESTING_v2.5.md`
+- `docs/EXPLAINABLE_SMART_TAGS_v2.6.md`
+- `docs/MANUAL_TESTING_v2.6.md`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`

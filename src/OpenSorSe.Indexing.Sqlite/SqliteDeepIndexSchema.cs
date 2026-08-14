@@ -351,4 +351,75 @@ internal static class SqliteDeepIndexSchema
         CREATE INDEX IF NOT EXISTS ix_relationship_feature_terms_term
             ON index_relationship_feature_terms(term, file_id);
         """;
+
+    public const string CreateVersionSix = """
+        CREATE TABLE IF NOT EXISTS smart_tag_definitions (
+            tag_id TEXT PRIMARY KEY,
+            tag_type INTEGER NOT NULL,
+            canonical_key TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            parent_tag_id TEXT,
+            taxonomy_version TEXT NOT NULL,
+            origin INTEGER NOT NULL,
+            is_builtin INTEGER NOT NULL DEFAULT 0,
+            is_hidden INTEGER NOT NULL DEFAULT 0,
+            created_utc_ticks INTEGER NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            UNIQUE(tag_type, canonical_key),
+            FOREIGN KEY(parent_tag_id) REFERENCES smart_tag_definitions(tag_id) ON DELETE SET NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS ix_smart_tag_definitions_type
+            ON smart_tag_definitions(tag_type, is_hidden, canonical_key);
+
+        CREATE TABLE IF NOT EXISTS file_smart_tag_assignments (
+            file_id TEXT NOT NULL,
+            tag_id TEXT NOT NULL,
+            confidence INTEGER NOT NULL,
+            evidence_score REAL,
+            origin INTEGER NOT NULL,
+            classifier TEXT NOT NULL,
+            classifier_version TEXT NOT NULL,
+            taxonomy_version TEXT NOT NULL,
+            input_fingerprint TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            assignment_state INTEGER NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_utc_ticks INTEGER NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY(file_id, tag_id),
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE,
+            FOREIGN KEY(tag_id) REFERENCES smart_tag_definitions(tag_id) ON DELETE CASCADE
+        ) WITHOUT ROWID;
+
+        CREATE INDEX IF NOT EXISTS ix_file_smart_tags_tag
+            ON file_smart_tag_assignments(tag_id, active, file_id);
+        CREATE INDEX IF NOT EXISTS ix_file_smart_tags_file
+            ON file_smart_tag_assignments(file_id, active, assignment_state);
+
+        CREATE TABLE IF NOT EXISTS file_smart_tag_decisions (
+            file_id TEXT NOT NULL,
+            tag_id TEXT NOT NULL,
+            decision INTEGER NOT NULL,
+            reset_generation INTEGER NOT NULL DEFAULT 0,
+            changed_utc_ticks INTEGER NOT NULL,
+            PRIMARY KEY(file_id, tag_id),
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE,
+            FOREIGN KEY(tag_id) REFERENCES smart_tag_definitions(tag_id) ON DELETE CASCADE
+        ) WITHOUT ROWID;
+
+        CREATE INDEX IF NOT EXISTS ix_file_smart_tag_decisions_state
+            ON file_smart_tag_decisions(decision, file_id);
+
+        CREATE TABLE IF NOT EXISTS file_smart_tag_status (
+            file_id TEXT PRIMARY KEY,
+            classification_state INTEGER NOT NULL,
+            classifier TEXT NOT NULL,
+            classifier_version TEXT NOT NULL,
+            taxonomy_version TEXT NOT NULL,
+            input_fingerprint TEXT NOT NULL,
+            updated_utc_ticks INTEGER NOT NULL,
+            FOREIGN KEY(file_id) REFERENCES index_files(id) ON DELETE CASCADE
+        );
+        """;
 }

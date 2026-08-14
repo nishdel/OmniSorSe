@@ -3,6 +3,7 @@ using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Semantic;
@@ -64,6 +65,12 @@ public enum SearchFilterKind
     SemanticAvailability,
     /// <summary>Filters by retained indexing failure state.</summary>
     FailureState,
+    /// <summary>Filters by an exact canonical Theme Smart Tag identifier.</summary>
+    SmartTagTheme,
+    /// <summary>Filters by an exact canonical Document Type Smart Tag identifier.</summary>
+    SmartTagDocumentType,
+    /// <summary>Filters by an exact canonical User Tag identifier.</summary>
+    SmartTagUser,
 }
 
 /// <summary>Describes one visible, removable interpreted Search filter.</summary>
@@ -175,6 +182,12 @@ public enum SearchRankingSignalKind
     ContentEntity,
     /// <summary>A source-grounded bounded content-intelligence summary matched.</summary>
     ContentIntelligenceSummary,
+    /// <summary>An eligible Theme Smart Tag matched.</summary>
+    SmartTagTheme,
+    /// <summary>An eligible Document Type Smart Tag matched.</summary>
+    SmartTagDocumentType,
+    /// <summary>An explicit User Tag matched.</summary>
+    SmartTagUser,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -305,6 +318,9 @@ public sealed record SearchCandidateDocument
 
     /// <summary>Gets accepted user or system tags.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
+
+    /// <summary>Gets typed effective Smart Tags used by exact canonical filters and explanations.</summary>
+    public IReadOnlyList<FileSmartTag> SmartTags { get; init; } = [];
 
     /// <summary>Gets bounded searchable metadata.</summary>
     public string MetadataText { get; init; } = string.Empty;

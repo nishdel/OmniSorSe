@@ -1,6 +1,7 @@
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 
 namespace OpenSorSe.Application.Indexing;
 
@@ -8,10 +9,10 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
-    public const string ProcessorVersion = "2.3.0";
+    public const string ProcessorVersion = "2.6.0";
 }
 
 /// <summary>Identifies a durable stage in the background-indexing pipeline.</summary>
@@ -46,6 +47,9 @@ public enum IndexingStage
 
     /// <summary>All applicable stages for the selected policy completed.</summary>
     FileFullyIndexed,
+
+    /// <summary>Bounded explainable Smart Tags were classified from already-indexed evidence.</summary>
+    SmartTagsClassified,
 }
 
 /// <summary>Identifies the durable state of one stage or queued file.</summary>
@@ -278,6 +282,9 @@ public sealed record IndexingWorkItem
     /// <summary>Gets bounded structured topics, textual entities, and source-grounded summary evidence.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
+    /// <summary>Gets regenerated bounded Smart Tag candidates for this stable file identity.</summary>
+    public SmartTagClassificationResult? SmartTagClassification { get; init; }
+
     /// <summary>Gets whether per-file policy disables OCR processing.</summary>
     public bool SuppressOcr { get; init; }
 
@@ -314,6 +321,9 @@ public sealed record IndexingStageOutput
 
     /// <summary>Gets bounded provider-neutral content intelligence produced or reused by this stage.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
+
+    /// <summary>Gets regenerated bounded Smart Tag candidates produced by the classification stage.</summary>
+    public SmartTagClassificationResult? SmartTagClassification { get; init; }
 
     /// <summary>Gets a bounded non-sensitive summary when one was produced.</summary>
     public string? Summary { get; init; }
@@ -392,6 +402,9 @@ public sealed record IndexStorageBreakdown(
 
     /// <summary>Gets the logical bytes retained for bounded content-intelligence evidence.</summary>
     public long ContentIntelligenceBytes { get; init; }
+
+    /// <summary>Gets logical bytes retained for Smart Tag definitions, assignments, decisions, and bounded evidence.</summary>
+    public long SmartTagBytes { get; init; }
 }
 
 /// <summary>Describes current persistent progress suitable for UI binding.</summary>
@@ -554,6 +567,9 @@ public sealed record ProgressiveSearchDocument
 
     /// <summary>Gets bounded topics, textual entities, and summary provenance retained by local indexing.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
+
+    /// <summary>Gets effective user-authoritative Smart Tags projected from schema-6 storage.</summary>
+    public IReadOnlyList<FileSmartTag> SmartTags { get; init; } = [];
 
     /// <summary>Gets bounded tags or generated keywords.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];

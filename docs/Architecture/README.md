@@ -36,6 +36,8 @@ compatibility, and recovery.
 - `../OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`: current rename,
   compatibility-in-place, public protocol, transport, authorization, scope,
   threat-model, and future companion boundary.
+- `../EXPLAINABLE_SMART_TAGS_v2.6.md`: unreleased schema-6 Smart Tag authority,
+  taxonomy, classifier, deferred-stage, Search/filter, privacy, and UI boundary.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.

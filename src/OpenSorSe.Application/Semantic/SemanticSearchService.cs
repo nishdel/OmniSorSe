@@ -6,6 +6,7 @@ using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 
@@ -23,6 +24,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly ISemanticIndexStore _indexStore;
     private readonly IProgressiveSearchSource? _progressiveSearchSource;
     private readonly IProgressiveSearchDocumentLookup? _searchDocumentLookup;
+    private readonly IProgressiveSmartTagSearchSource? _smartTagSearchSource;
     private readonly IAiSearchAssistant? _aiSearchAssistant;
     private readonly IRelationshipSearchSource? _relationshipSearchSource;
     private readonly IGraphSearchSource? _graphSearchSource;
@@ -56,6 +58,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
         _relationshipSearchSource = relationshipSearchSource;
         _graphSearchSource = graphSearchSource;
         _searchDocumentLookup = searchDocumentLookup ?? progressiveSearchSource as IProgressiveSearchDocumentLookup;
+        _smartTagSearchSource = progressiveSearchSource as IProgressiveSmartTagSearchSource;
         _aiSearchAssistant = aiSearchAssistant;
     }
 
@@ -126,6 +129,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 var legacyTask = LoadLegacySafelyAsync(cancellationToken);
                 var progressiveTask = LoadProgressiveSafelyAsync(
                     settings.MaximumDocumentCount,
+                    CreateSmartTagFilter(interpretation.Filters),
                     cancellationToken);
                 await Task.WhenAll(legacyTask, progressiveTask).ConfigureAwait(false);
                 var progressive = await progressiveTask.ConfigureAwait(false);
@@ -376,6 +380,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
 
     private async Task<ProgressiveLoad> LoadProgressiveSafelyAsync(
         int maximumDocuments,
+        SmartTagFilter? smartTagFilter,
         CancellationToken cancellationToken)
     {
         if (_progressiveSearchSource is null)
@@ -385,9 +390,12 @@ public sealed class SemanticSearchService : ISemanticSearchService
 
         try
         {
-            var documentsTask = _progressiveSearchSource.GetDocumentsAsync(
-                maximumDocuments,
-                cancellationToken);
+            var documentsTask = smartTagFilter is not null && _smartTagSearchSource is not null
+                ? _smartTagSearchSource.GetDocumentsBySmartTagsAsync(
+                    smartTagFilter,
+                    maximumDocuments,
+                    cancellationToken)
+                : _progressiveSearchSource.GetDocumentsAsync(maximumDocuments, cancellationToken);
             var coverageTask = _progressiveSearchSource.GetCoverageAsync(cancellationToken);
             var exclusionsTask = _progressiveSearchSource.GetExcludedPathsAsync(
                 maximumDocuments,
@@ -417,6 +425,16 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 EmptyCoverage with { IsAvailable = false },
                 []);
         }
+    }
+
+    private static SmartTagFilter? CreateSmartTagFilter(IReadOnlyList<SearchFilter> filters)
+    {
+        var themes = filters.Where(filter => filter.Kind == SearchFilterKind.SmartTagTheme).Select(filter => filter.Value).ToArray();
+        var documentTypes = filters.Where(filter => filter.Kind == SearchFilterKind.SmartTagDocumentType).Select(filter => filter.Value).ToArray();
+        var userTags = filters.Where(filter => filter.Kind == SearchFilterKind.SmartTagUser).Select(filter => filter.Value).ToArray();
+        return themes.Length + documentTypes.Length + userTags.Length == 0
+            ? null
+            : new SmartTagFilter(themes, documentTypes, userTags);
     }
 
     private async Task<IReadOnlyList<RelationshipSearchExpansion>> LoadRelationshipExpansionsSafelyAsync(
@@ -603,7 +621,11 @@ public sealed class SemanticSearchService : ISemanticSearchService
             {
                 progressive = progressive with
                 {
-                    Tags = legacy.Tags,
+                    Tags = Array.AsReadOnly(
+                        progressive.Tags
+                            .Concat(legacy.Tags)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToArray()),
                     SemanticRepresentation = progressive.SemanticRepresentation is { Count: > 0 }
                         ? progressive.SemanticRepresentation
                         : legacy.SemanticRepresentation,
@@ -676,6 +698,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
             ModifiedTimeUtc = document.ModifiedTimeUtc,
             IndexingLevel = document.IndexingLevel,
             Tags = document.Tags,
+            SmartTags = document.SmartTags,
             MetadataText = document.MetadataText,
             ExtractedText = document.ExtractedText,
             OcrText = document.OcrText,
@@ -711,6 +734,16 @@ public sealed class SemanticSearchService : ISemanticSearchService
                         component.Kind == SearchRankingSignalKind.Tag &&
                         (component.MatchedText is null ||
                          tag.Contains(component.MatchedText, StringComparison.OrdinalIgnoreCase))))
+                    .Concat(candidate.Document.SmartTags
+                        .Where(tag => tag.Decision != SmartTagDecision.Rejected &&
+                            (tag.State is SmartTagAssignmentState.Accepted or SmartTagAssignmentState.Automatic) &&
+                            components.Any(component => (component.Kind is
+                                SearchRankingSignalKind.SmartTagTheme or
+                                SearchRankingSignalKind.SmartTagDocumentType or
+                                SearchRankingSignalKind.SmartTagUser) &&
+                                string.Equals(component.MatchedText, tag.Definition.DisplayName, StringComparison.OrdinalIgnoreCase)))
+                        .Select(tag => tag.Definition.DisplayName))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray()),
             components.Any(component => component.Kind is SearchRankingSignalKind.Metadata or SearchRankingSignalKind.MediaMetadata),
             components.Any(component => component.Kind is SearchRankingSignalKind.ExtractedText or SearchRankingSignalKind.MediaTranscript),

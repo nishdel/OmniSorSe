@@ -299,10 +299,36 @@
                             </StackPanel>
                             <Border Classes="separator" />
                             <StackPanel Spacing="5">
-                                <TextBlock Text="Tags" FontWeight="SemiBold" />
+                                <TextBlock Text="Smart Tags" FontWeight="SemiBold" />
+                                <WrapPanel AutomationProperties.Name="Selected file Smart Tag summary">
+                                    <ItemsControl ItemsSource="{Binding SmartTagPreview}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ResultTagRow">
+                                                <Border Classes="tag-chip"
+                                                        Margin="0,0,5,5"
+                                                        ToolTip.Tip="{Binding Explanation}"
+                                                        AutomationProperties.Name="{Binding AccessibleName}">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Border Classes="tag-chip"
+                                            Margin="0,0,5,5"
+                                            IsVisible="{Binding HasAdditionalSmartTags}"
+                                            AutomationProperties.Name="Additional Smart Tags are available in the review list">
+                                        <TextBlock Text="{Binding AdditionalSmartTagText}" />
+                                    </Border>
+                                </WrapPanel>
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                                     <TextBox Text="{Binding UserTagText, Mode=TwoWay}"
-                                             PlaceholderText="Add local tags" />
+                                             PlaceholderText="Add your local tags"
+                                             AutomationProperties.Name="Add user tags" />
                                     <Button Grid.Column="1"
                                             Classes="secondary"
                                             Content="Add"
@@ -313,8 +339,14 @@
                                          MaxHeight="110">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate x:DataType="vm:ResultTagRow">
-                                            <TextBlock Text="{Binding DisplayName}"
-                                                       ToolTip.Tip="{Binding Explanation}" />
+                                            <StackPanel Margin="0,2"
+                                                        AutomationProperties.Name="{Binding AccessibleName}">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontWeight="SemiBold"
+                                                           ToolTip.Tip="{Binding Explanation}" />
+                                                <TextBlock Text="{Binding Category}"
+                                                           Classes="page-subtitle" />
+                                            </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
@@ -330,6 +362,22 @@
                                     <Button Classes="secondary"
                                             Content="Dismiss suggested tag"
                                             Command="{Binding RejectSuggestedTagCommand}" />
+                                </WrapPanel>
+                                <WrapPanel>
+                                    <Button Margin="0,0,6,6"
+                                            Classes="secondary"
+                                            Content="View files with this tag"
+                                            Command="{Binding ViewFilesWithTagCommand}" />
+                                    <Button Margin="0,0,6,6"
+                                            Classes="secondary"
+                                            Content="Reset tag decisions"
+                                            Command="{Binding ResetTagDecisionsCommand}"
+                                            ToolTip.Tip="Allow local classifiers to reconsider accepted or dismissed Smart Tags." />
+                                    <Button Margin="0,0,0,6"
+                                            Classes="secondary"
+                                            Content="Clear generated Smart Tags"
+                                            Command="{Binding ClearGeneratedSmartTagsCommand}"
+                                            ToolTip.Tip="Remove generated classifications while preserving your tags and decisions." />
                                 </WrapPanel>
                                 <TextBlock Text="{Binding UserTagStatusText}"
                                            Classes="page-subtitle"

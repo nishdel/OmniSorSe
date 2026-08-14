@@ -2,6 +2,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
@@ -12,6 +13,34 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies Semantic Search Beta presentation state, confirmation, cancellation, and safe shell opening.</summary>
 public sealed class SemanticSearchViewModelTests
 {
+    /// <summary>Canonical picker filters are reachable and compose by type without display-string matching.</summary>
+    [Fact]
+    public async Task SmartTagPickerAddsCanonicalOrWithinAndAcrossFilters()
+    {
+        var search = new InterpretingSearch([]);
+        var smartTags = new SmartTags();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher(),
+            smartTagService: smartTags);
+        await viewModel.RefreshSmartTagFiltersAsync();
+
+        viewModel.SelectedThemeTag = Assert.Single(viewModel.ThemeTagChoices, choice => choice.TagId == "theme.finance");
+        viewModel.SelectedDocumentTypeTag = Assert.Single(viewModel.DocumentTypeTagChoices);
+        await viewModel.AddSmartTagFiltersCommand.ExecuteAsync(null);
+        viewModel.SelectedThemeTag = Assert.Single(viewModel.ThemeTagChoices, choice => choice.TagId == "theme.legal");
+        await viewModel.AddSmartTagFiltersCommand.ExecuteAsync(null);
+
+        var filters = Assert.IsType<SearchRequest>(search.LastRequest).ActiveFilters!;
+        Assert.Equal(3, filters.Count);
+        Assert.Equal(2, filters.Count(filter => filter.Kind == SearchFilterKind.SmartTagTheme));
+        Assert.Contains(filters, filter => filter.Kind == SearchFilterKind.SmartTagDocumentType && filter.Value == "document-type.invoice");
+        Assert.All(filters, filter => Assert.Contains('.', filter.Value));
+    }
+
     /// <summary>Verifies explained local results are published without exposing vectors.</summary>
     [Fact]
     public async Task Search_Enabled_PublishesExplainedHits()
@@ -800,6 +829,44 @@ public sealed class SemanticSearchViewModelTests
             ClearCount++;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class SmartTags : ISmartTagService
+    {
+        private static readonly IReadOnlyList<SmartTagDefinition> Definitions =
+        [
+            Definition("theme.finance", SmartTagType.Theme, "Finance"),
+            Definition("theme.legal", SmartTagType.Theme, "Legal"),
+            Definition("document-type.invoice", SmartTagType.DocumentType, "Invoice"),
+            Definition("user.review", SmartTagType.UserTag, "Review", builtIn: false),
+        ];
+
+        public Task<SmartTagOperationResult> InitializeAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SmartTagOperationResult(false, 0, "Ready"));
+        public Task<IReadOnlyList<SmartTagDefinition>> GetDefinitionsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Definitions);
+        public Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+        public Task<IReadOnlyList<FileSmartTag>> GetFileTagsAsync(string fileId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<FileSmartTag>>([]);
+        public Task<SmartTagOperationResult> AddUserTagAsync(string fileId, string displayName, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> DecideAsync(string fileId, string tagId, SmartTagDecision decision, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> RemoveAsync(string fileId, string tagId, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> ResetDecisionsAsync(string? fileId, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> ClearGeneratedAsync(string? fileId, CancellationToken cancellationToken = default) => Operation();
+        public Task<IReadOnlyList<string>> FilterAsync(SmartTagFilter filter, int maximumCount, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<string>>([]);
+
+        private static Task<SmartTagOperationResult> Operation() =>
+            Task.FromResult(new SmartTagOperationResult(true, 1, "Applied"));
+
+        private static SmartTagDefinition Definition(string id, SmartTagType type, string display, bool builtIn = true) => new()
+        {
+            TagId = id,
+            Type = type,
+            CanonicalKey = id[(id.IndexOf('.') + 1)..],
+            DisplayName = display,
+            TaxonomyVersion = builtIn ? "1.0" : "user",
+            Origin = builtIn ? SmartTagOrigin.BuiltInTaxonomy : SmartTagOrigin.User,
+            IsBuiltIn = builtIn,
+        };
     }
 
     private sealed class Launcher : IExternalFileLauncher

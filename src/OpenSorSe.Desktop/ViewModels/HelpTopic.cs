@@ -49,6 +49,8 @@ public enum HelpTopicId
     MediaIntelligence,
     /// <summary>Bounded local topics, textual entities, summaries, and transcription guidance.</summary>
     ContentIntelligence,
+    /// <summary>Durable explainable Theme, Document Type, and User Tag guidance.</summary>
+    SmartTags,
     /// <summary>Common recovery and troubleshooting guidance.</summary>
     Troubleshooting,
     /// <summary>Advanced-interface guidance.</summary>
@@ -147,7 +149,7 @@ public static class HelpCatalog
             ["Open Search from primary navigation.", "Enable Search in Settings if it was disabled.", "Build or refresh the existing local index.", "With Fast — searchable first, names, paths, and inexpensive evidence become searchable before enabled deeper analysis finishes.", "Enter a natural-language or exact query.", "Review why each result matched and expect evidence labels to improve as deeper stages arrive.", "Optionally enable AI assistance to rerank only a bounded set of results already found by local Search.", "Pause, resume, retry, maintain, or rebuild when needed."],
             ["Build / refresh index", "Pause", "Resume", "Cancel safely", "Retry failed items", "Prioritize source", "Remove source", "Rebuild", "Maintain storage", "Search", "Open selected result"],
             "An empty index is normal until files have been discovered.", "Files searchable means base coverage is usable; deeper analysis may still be continuing. Interrupted work resumes from durable stage state. Missing files are retained temporarily, and corrupt data requires an explicit backup restore or rebuild.",
-            "An empty result is not definitive while coverage is incomplete. Deterministic Search works without Ollama; AI cannot introduce files Search did not find. Review diagnostics before exporting them.", [HelpTopicId.Results, HelpTopicId.Settings, HelpTopicId.AiSetup, HelpTopicId.MediaIntelligence, HelpTopicId.ContentIntelligence]),
+            "An empty result is not definitive while coverage is incomplete. Deterministic Search works without Ollama; AI cannot introduce files Search did not find. Review diagnostics before exporting them.", [HelpTopicId.Results, HelpTopicId.Settings, HelpTopicId.AiSetup, HelpTopicId.MediaIntelligence, HelpTopicId.ContentIntelligence, HelpTopicId.SmartTags]),
         Topic(HelpTopicId.StructureHistory, "Structure history", "Reviews folder restructuring proposals, applied outcomes, repeat protection, and historical structures.",
             "Bounded relative paths, sizes, timestamps, fingerprints, and application-owned structure history.", "Preview/history records; only an exact separately confirmed proposal may move listed in-root files.",
             "File contents. Diagrams, comparisons, refresh, filters, and preview do not modify files.",
@@ -241,7 +243,17 @@ public static class HelpCatalog
             "No topics or entities is valid when the retained evidence is short, generic, disabled, or excluded. Transcription distinguishes a missing model, unavailable runtime, invalid configuration, ready capability, and safe operation failure.",
             "Malformed provider output, timeout, cancellation, missing tools, and corrupted cached evidence fail per item and remain retryable or repairable without disabling ordinary Search.",
             "Deterministic extraction uses no network. A remote Ollama-compatible endpoint is used only by separately enabled AI features; Media Intelligence never sends images or recordings to it silently. Person entities come only from text and are not face recognition.",
-            [HelpTopicId.SemanticSearch, HelpTopicId.MediaIntelligence, HelpTopicId.Settings, HelpTopicId.Privacy, HelpTopicId.Diagnostics]),
+            [HelpTopicId.SemanticSearch, HelpTopicId.SmartTags, HelpTopicId.MediaIntelligence, HelpTopicId.Settings, HelpTopicId.Privacy, HelpTopicId.Diagnostics]),
+        Topic(HelpTopicId.SmartTags, "Explainable Smart Tags", "Classifies indexed evidence into a small Theme and Document Type taxonomy while keeping freeform User Tags and explicit decisions under your control.",
+            "Already retained bounded document text, OCR, transcripts, metadata, topics, keywords, entities, summaries, filenames, and paths. Correlated derivatives are grouped so one text source is not counted repeatedly.",
+            "Application-owned schema-6 Smart Tag definitions, generated assignments, bounded explanations, classifier/taxonomy fingerprints, and explicit accept/reject decisions. It never writes tags into source-file metadata.",
+            "Source files, embedded PDF/Office/image/media metadata, Explorer Protocol v1, or OmniBrille. Classification does not rename, move, or organize files.",
+            ["Select a file in Files.", "Review Classifications, Suggestions, and Your tags.", "Keep or dismiss a suggestion, or add a local User Tag.", "Open evidence details when you need the reason and confidence band.", "Choose View files with this tag for an exact canonical filter.", "Use Reset tag decisions only when you want dismissed suggestions reconsidered."],
+            ["Keep", "Dismiss", "Add user tag", "Remove", "View files with this tag", "Reset tag decisions", "Clear generated Smart Tags"],
+            "No classification is valid when evidence is absent, insufficient, or conflicting. Limited evidence stays out of the ordinary interface, and Moderate suggestions do not affect Search until accepted.",
+            "A failed or cancelled deferred classification remains retryable without blocking base Search. Taxonomy/classifier changes reclassify only this stage and reuse compatible extraction, OCR, transcript, and Content Intelligence evidence.",
+            "Strong is an explainable evidence band, not a probability. User tags and accepted/rejected decisions outrank generated evidence and survive normal reindexing and file moves. Forget and clear-index remove corresponding local classification state without touching source files.",
+            [HelpTopicId.Results, HelpTopicId.SemanticSearch, HelpTopicId.ContentIntelligence, HelpTopicId.Privacy, HelpTopicId.Settings]),
         Topic(HelpTopicId.Troubleshooting, "Troubleshooting", "Provides safe recovery steps for scanning, Search, AI, OCR, and file-operation failures.",
             "User-safe status, notifications, Advanced Diagnostics, and Operation History.", "Only explicit retry, repair, rebuild, or dismissal state.",
             "Original files unless the user separately confirms a valid Change Plan.",

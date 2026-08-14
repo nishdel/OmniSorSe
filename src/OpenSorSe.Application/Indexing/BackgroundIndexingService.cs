@@ -10,13 +10,18 @@ using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Relationships;
 
 namespace OpenSorSe.Application.Indexing;
 
 /// <summary>
 /// Coordinates durable discovery and staged work while keeping Views, ViewModels, and search logic provider independent.
 /// </summary>
-public sealed partial class BackgroundIndexingService : IBackgroundIndexingService, IIndexPrivacyService
+public sealed partial class BackgroundIndexingService :
+    IBackgroundIndexingService,
+    IProgressiveSmartTagSearchSource,
+    IIndexPrivacyService
 {
     private static readonly HashSet<string> ArchiveExtensions = new(
         [".zip", ".7z", ".rar", ".tar", ".gz", ".bz2", ".xz"],
@@ -538,6 +543,40 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsBySmartTagsAsync(
+        SmartTagFilter filter,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        EnsureInitialized();
+        if (_initializationFailure is not null || _deepIndexStore is not ISmartTagStore smartTagStore)
+        {
+            return [];
+        }
+
+        var fileIds = await smartTagStore
+            .FilterFileIdsBySmartTagsAsync(filter, maximumCount, cancellationToken)
+            .ConfigureAwait(false);
+        if (fileIds.Count == 0)
+        {
+            return [];
+        }
+
+        var documents = new List<ProgressiveSearchDocument>(fileIds.Count);
+        foreach (var batch in fileIds.Chunk(RelationshipLimits.MaximumSearchExpansions))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var resolved = await _deepIndexStore
+                .GetSearchDocumentsByIdsAsync(batch, cancellationToken)
+                .ConfigureAwait(false);
+            documents.AddRange(resolved);
+        }
+
+        return documents;
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<string>> GetExcludedPathsAsync(
         int maximumCount,
         CancellationToken cancellationToken = default)
@@ -1020,7 +1059,10 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
                             work,
                             output.ContentHash,
                             reusable.Value,
-                            IndexingStage.SearchIndexUpdated,
+                            reusable.Value < IndexingStage.SemanticRepresentationGenerated &&
+                            settings.SemanticProcessingEnabled && !work.SuppressSemantic
+                                ? IndexingStage.SemanticRepresentationGenerated
+                                : IndexingStage.SmartTagsClassified,
                             completedAt,
                             stageCancellation.Token)
                         .ConfigureAwait(false);
@@ -1185,9 +1227,10 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
             IndexingStage.OcrProcessed => IndexingStage.SummaryKeywordsGenerated,
             IndexingStage.SummaryKeywordsGenerated =>
                 !settings.SemanticProcessingEnabled || work.SuppressSemantic
-                ? IndexingStage.SearchIndexUpdated
+                ? IndexingStage.SmartTagsClassified
                 : IndexingStage.SemanticRepresentationGenerated,
-            IndexingStage.SemanticRepresentationGenerated => IndexingStage.SearchIndexUpdated,
+            IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+            IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
             IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
             IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
             IndexingStage.FileFullyIndexed => null,

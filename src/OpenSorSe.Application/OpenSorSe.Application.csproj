@@ -15,4 +15,7 @@
     <ProjectReference Include="..\OpenSorSe.Scanner\OpenSorSe.Scanner.csproj" />
     <ProjectReference Include="..\OpenSorSe.Rules\OpenSorSe.Rules.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SmartTags\Resources\smart-tags.en.v1.json" />
+  </ItemGroup>
 </Project>

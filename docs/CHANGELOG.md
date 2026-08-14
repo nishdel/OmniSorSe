@@ -7,6 +7,36 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.6 Explainable Smart Tags
+
+Implementation branch: `v2.6-explainable-smart-tags`. This work is not a
+published release and builds on the committed v2.5 release candidate.
+
+### Added and changed
+
+- Add schema-6 normalized Smart Tag definitions, file assignments, user
+  decisions, classification status, indexed canonical filters, transactional
+  schema-5 migration, and conservative legacy authority import.
+- Add small versioned English-first Theme and Document Type taxonomies plus
+  bounded freeform local User Tags.
+- Add deterministic grouped-evidence classification with Strong, Moderate, and
+  Limited bands; no-evidence/conflict states; bounded reasons; and protection
+  against filename dominance and correlated-evidence double counting.
+- Add a durable deferred Smart Tag stage that reuses retained document, OCR,
+  transcript, metadata, and Content Intelligence evidence without delaying
+  v2.5 Fast/searchable-first coverage.
+- Add exact Smart Tag Search evidence and typed canonical filters with OR within
+  one type and AND across types while preserving filename-first ranking.
+- Add Files details actions for accepting/rejecting suggestions, User Tags,
+  decision reset, generated-tag clearing, and View files with this tag.
+- Add bounded native `.txt`, `.md`, `.markdown`, and `.text` extraction.
+
+### Boundaries
+
+- No source metadata writeback, embeddings/vector database, cloud classifier,
+  automatic file mutation, Smart Tags dashboard, OmniBrille modification, or
+  Explorer Protocol v1 change is included.
+
 ## Unreleased — OmniSorSe v2.5 Workflow Completion & Indexing Quality
 
 Implementation branch: `v2.5-workflow-indexing-quality`. This work is not a

@@ -421,6 +421,31 @@ See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 
 ## In progress
 
+### v2.6 — Explainable Smart Tags
+
+**Branch:** `v2.6-explainable-smart-tags`, created from the committed v2.5
+release candidate because v2.5 has not yet been merged.
+
+**Merged status:** Implementation and validation in progress. It is not
+released and does not alter Explorer Protocol v1.
+
+v2.6 consolidates generated classifications, existing user tags, and explicit
+accept/reject authority in schema 6. A small versioned Theme and Document Type
+taxonomy consumes already retained local text, OCR, transcript, metadata, and
+Content Intelligence evidence. Deterministic classification is deferred so
+v2.5 Fast/searchable-first coverage remains available first. Strong generated,
+accepted, and User Tag evidence can enrich deterministic Search; Moderate
+suggestions require review, and typed filters use OR within one type and AND
+across types.
+
+The release adds bounded native `.txt`/`.md` extraction, explainable evidence,
+user-controlled decisions, clearing/forget semantics, and compact Files details.
+It does not write file metadata, add embeddings/cloud classification, mutate
+files automatically, modify OmniBrille, or change Explorer Protocol v1.
+
+See [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) and the
+[v2.6 manual checklist](docs/MANUAL_TESTING_v2.6.md).
+
 ### v2.5 — Workflow Completion & Indexing Quality
 
 **Branch:** `v2.5-workflow-indexing-quality`, created from released v2.4.0.
@@ -485,7 +510,7 @@ selective local retention.
 **Conceptual dependencies:** provider protocol and threat-model research,
 identity/conflict semantics, encryption/authentication, and migration policy.
 
-### v2.6 — Collaboration
+### Future collaboration
 
 **Branch:** None; no branch exists.
 

@@ -14,6 +14,7 @@ using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
@@ -293,7 +294,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IRelationshipService? relationshipService = null,
         KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
-        IMediaThumbnailProvider? mediaThumbnailProvider = null)
+        IMediaThumbnailProvider? mediaThumbnailProvider = null,
+        ISmartTagService? smartTagService = null)
         : this(
             configurationService,
             loggingService,
@@ -340,7 +342,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             relationshipService,
             knowledgeGraphViewModel,
             mediaIntelligenceService,
-            mediaThumbnailProvider)
+            mediaThumbnailProvider,
+            smartTagService)
     {
     }
 
@@ -390,7 +393,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IRelationshipService? relationshipService = null,
         KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
-        IMediaThumbnailProvider? mediaThumbnailProvider = null)
+        IMediaThumbnailProvider? mediaThumbnailProvider = null,
+        ISmartTagService? smartTagService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -412,7 +416,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             aiSuggestionService,
             externalFileLauncher,
             contentStore,
-            suggestionChangePlanFactory);
+            suggestionChangePlanFactory,
+            smartTagService);
         ReviewChanges = new ChangePlanReviewViewModel(
             changePlanValidator,
             changePlanExecutionService,
@@ -438,7 +443,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             backgroundIndexingService,
             advancedDiagnosticsWindowService,
             clipboard: clipboardService,
-            mediaThumbnailProvider: mediaThumbnailProvider);
+            mediaThumbnailProvider: mediaThumbnailProvider,
+            smartTagService: smartTagService);
         Collections = new CollectionsViewModel(relationshipService);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
@@ -500,6 +506,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested += OnScanCancellationRequested;
         Results.PersistedTagsChanged += OnPersistedTagsChanged;
         Results.MeaningSearchRequested += OnMeaningSearchRequested;
+        Results.SmartTagFilterRequested += OnSmartTagFilterRequested;
         Results.ChangePlanCreated += OnChangePlanCreated;
         WatchedFolders.ReviewPlanRequested += OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested += OnWatchedFolderNotificationRequested;
@@ -1140,6 +1147,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested -= OnScanCancellationRequested;
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
+        Results.SmartTagFilterRequested -= OnSmartTagFilterRequested;
         Results.ChangePlanCreated -= OnChangePlanCreated;
         ReviewChanges.OperationCompleted -= OnChangePlanOperationCompleted;
         WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
@@ -1202,6 +1210,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
 
         Navigate(NavigationDestination.SemanticSearch);
+    }
+
+    private async void OnSmartTagFilterRequested(SearchFilter filter)
+    {
+        Navigate(NavigationDestination.SemanticSearch);
+        await SemanticSearch.ApplyExternalFilterAsync(filter);
     }
 
     private async void OnChangePlanCreated(object? sender, ChangePlan plan)
@@ -1859,6 +1873,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void OnPersistedTagsChanged(object? sender, EventArgs eventArgs)
     {
+        await SemanticSearch.RefreshSmartTagFiltersAsync();
         if (_currentCatalogEntryId is not null && _catalogStore is not null && _configurationService.Current.Catalog.Enabled)
         {
             await PersistAcceptedTagsAsync();

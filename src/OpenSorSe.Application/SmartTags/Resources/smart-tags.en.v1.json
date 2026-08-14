@@ -1,0 +1,34 @@
+{
+  "Version": "1.0",
+  "Locale": "en",
+  "Definitions": [
+    { "Id": "theme.administration", "Type": "theme", "Key": "administration", "Label": "Administration", "ParentId": null, "Aliases": ["administration", "administrative", "application process", "official form"], "StrongPhrases": ["administrative procedure", "official application"] },
+    { "Id": "theme.education", "Type": "theme", "Key": "education", "Label": "Education", "ParentId": null, "Aliases": ["education", "school", "university", "coursework", "curriculum"], "StrongPhrases": ["course syllabus", "student enrollment"] },
+    { "Id": "theme.finance", "Type": "theme", "Key": "finance", "Label": "Finance", "ParentId": null, "Aliases": ["finance", "financial", "payment", "banking", "accounting", "budget"], "StrongPhrases": ["amount due", "payment terms", "bank statement"] },
+    { "Id": "theme.health", "Type": "theme", "Key": "health", "Label": "Health", "ParentId": null, "Aliases": ["health", "medical", "patient", "clinic", "prescription"], "StrongPhrases": ["medical record", "patient information"] },
+    { "Id": "theme.housing", "Type": "theme", "Key": "housing", "Label": "Housing", "ParentId": null, "Aliases": ["housing", "property", "tenant", "landlord", "mortgage"], "StrongPhrases": ["rental property", "tenancy agreement"] },
+    { "Id": "theme.insurance", "Type": "theme", "Key": "insurance", "Label": "Insurance", "ParentId": null, "Aliases": ["insurance", "insurer", "policyholder", "premium", "coverage"], "StrongPhrases": ["insurance policy", "claim number"] },
+    { "Id": "theme.legal", "Type": "theme", "Key": "legal", "Label": "Legal", "ParentId": null, "Aliases": ["legal", "law", "court", "agreement", "liability"], "StrongPhrases": ["terms and conditions", "governing law"] },
+    { "Id": "theme.research", "Type": "theme", "Key": "research", "Label": "Research", "ParentId": null, "Aliases": ["research", "study", "experiment", "methodology", "dataset"], "StrongPhrases": ["research methodology", "experimental results"] },
+    { "Id": "theme.technology", "Type": "theme", "Key": "technology", "Label": "Technology", "ParentId": null, "Aliases": ["technology", "software", "network", "docker", "computer", "server"], "StrongPhrases": ["software configuration", "network architecture"] },
+    { "Id": "theme.travel", "Type": "theme", "Key": "travel", "Label": "Travel", "ParentId": null, "Aliases": ["travel", "flight", "hotel", "journey", "reservation"], "StrongPhrases": ["travel reservation", "flight confirmation"] },
+
+    { "Id": "document-type.booking", "Type": "document-type", "Key": "booking", "Label": "Booking", "ParentId": null, "Aliases": ["booking", "reservation confirmation", "confirmation number"], "StrongPhrases": ["booking confirmation", "reservation number"] },
+    { "Id": "document-type.budget", "Type": "document-type", "Key": "budget", "Label": "Budget", "ParentId": null, "Aliases": ["budget", "forecast", "planned expenditure"], "StrongPhrases": ["budget summary", "budget variance"] },
+    { "Id": "document-type.certificate", "Type": "document-type", "Key": "certificate", "Label": "Certificate", "ParentId": null, "Aliases": ["certificate", "certifies that", "certification"], "StrongPhrases": ["this is to certify", "certificate of completion"] },
+    { "Id": "document-type.contract", "Type": "document-type", "Key": "contract", "Label": "Contract", "ParentId": null, "Aliases": ["contract", "agreement", "party", "hereby"], "StrongPhrases": ["this agreement", "terms and conditions", "signed by"] },
+    { "Id": "document-type.form", "Type": "document-type", "Key": "form", "Label": "Form", "ParentId": null, "Aliases": ["form", "applicant", "please complete", "signature date"], "StrongPhrases": ["application form", "please complete all fields"] },
+    { "Id": "document-type.invoice", "Type": "document-type", "Key": "invoice", "Label": "Invoice", "ParentId": null, "Aliases": ["invoice", "invoice number", "bill to", "amount due"], "StrongPhrases": ["invoice number", "invoice date", "amount due"] },
+    { "Id": "document-type.itinerary", "Type": "document-type", "Key": "itinerary", "Label": "Itinerary", "ParentId": null, "Aliases": ["itinerary", "departure", "arrival", "travel plan"], "StrongPhrases": ["travel itinerary", "departure time"] },
+    { "Id": "document-type.letter", "Type": "document-type", "Key": "letter", "Label": "Letter", "ParentId": null, "Aliases": ["dear", "sincerely", "recipient", "letter"], "StrongPhrases": ["dear sir or madam", "yours sincerely"] },
+    { "Id": "document-type.manual", "Type": "document-type", "Key": "manual", "Label": "Manual", "ParentId": null, "Aliases": ["manual", "instructions", "installation", "troubleshooting"], "StrongPhrases": ["user manual", "installation instructions"] },
+    { "Id": "document-type.meeting-notes", "Type": "document-type", "Key": "meeting-notes", "Label": "Meeting Notes", "ParentId": null, "Aliases": ["meeting notes", "attendees", "agenda", "action items"], "StrongPhrases": ["meeting minutes", "action items"] },
+    { "Id": "document-type.notes", "Type": "document-type", "Key": "notes", "Label": "Notes", "ParentId": null, "Aliases": ["notes", "observations", "todo", "reminder"], "StrongPhrases": ["personal notes", "research notes"] },
+    { "Id": "document-type.presentation", "Type": "document-type", "Key": "presentation", "Label": "Presentation", "ParentId": null, "Aliases": ["presentation", "slide deck", "speaker notes"], "StrongPhrases": ["presentation agenda", "questions and answers"] },
+    { "Id": "document-type.receipt", "Type": "document-type", "Key": "receipt", "Label": "Receipt", "ParentId": null, "Aliases": ["receipt", "paid", "cashier", "change due"], "StrongPhrases": ["payment receipt", "total paid"] },
+    { "Id": "document-type.report", "Type": "document-type", "Key": "report", "Label": "Report", "ParentId": null, "Aliases": ["report", "findings", "executive summary", "recommendations"], "StrongPhrases": ["executive summary", "findings and recommendations"] },
+    { "Id": "document-type.research-paper", "Type": "document-type", "Key": "research-paper", "Label": "Research Paper", "ParentId": null, "Aliases": ["abstract", "references", "methodology", "research paper"], "StrongPhrases": ["abstract introduction", "methods and results"] },
+    { "Id": "document-type.resume", "Type": "document-type", "Key": "resume", "Label": "Resume / CV", "ParentId": null, "Aliases": ["resume", "curriculum vitae", "work experience", "education experience"], "StrongPhrases": ["curriculum vitae", "professional experience"] },
+    { "Id": "document-type.statement", "Type": "document-type", "Key": "statement", "Label": "Statement", "ParentId": null, "Aliases": ["statement", "opening balance", "closing balance", "account number"], "StrongPhrases": ["account statement", "statement period"] }
+  ]
+}

@@ -1,4 +1,5 @@
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Application.SmartTags;
 
 namespace OpenSorSe.Application.Indexing;
 
@@ -212,6 +213,20 @@ public interface IProgressiveSearchDocumentLookup
         IReadOnlyList<string> fileIds,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<ProgressiveSearchDocument>>([]);
+}
+
+/// <summary>
+/// Resolves progressive Search documents through indexed canonical Smart Tag filters.
+/// This additive contract keeps large-library filtering in durable storage instead of
+/// loading every tag association into the Search process.
+/// </summary>
+public interface IProgressiveSmartTagSearchSource
+{
+    /// <summary>Returns bounded visible Search documents using OR-within-type and AND-across-type semantics.</summary>
+    Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsBySmartTagsAsync(
+        SmartTagFilter filter,
+        int maximumCount,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Controls durable background indexing from application services and ViewModels.</summary>
