@@ -3,6 +3,7 @@ using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
@@ -13,6 +14,31 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies Semantic Search Beta presentation state, confirmation, cancellation, and safe shell opening.</summary>
 public sealed class SemanticSearchViewModelTests
 {
+    /// <summary>Search organization captures stable IDs and the canonical return context.</summary>
+    [Fact]
+    public async Task OrganizationSelection_SnapshotsStableIdsAndDiscoveryContext()
+    {
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([Hit("C:\\Docs\\one.pdf", "file:1"), Hit("C:\\Docs\\two.pdf", "file:2")]),
+            new Store(),
+            new Launcher());
+        viewModel.QueryText = "invoice";
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        OrganizationSelectionContext? request = null;
+        viewModel.OrganizationRequested += (_, value) => request = value;
+        viewModel.SetOrganizationSelection(viewModel.Hits);
+
+        viewModel.OrganizeSelectedFilesCommand.Execute(null);
+
+        Assert.NotNull(request);
+        Assert.Equal(OrganizationSelectionOrigin.Search, request.Origin);
+        Assert.Equal(["file:1", "file:2"], request.FileIds);
+        Assert.Equal("invoice", request.DiscoveryContext!.Query.QueryText);
+        Assert.Equal(["file:1", "file:2"], request.DiscoveryContext.ResultFileIds);
+    }
+
     /// <summary>Facet toggles share one query state and preserve OR-within-type canonical IDs.</summary>
     [Fact]
     public async Task FacetsComposeWithQueryAndPublishTruthfulCoverage()

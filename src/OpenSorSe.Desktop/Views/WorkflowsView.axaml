@@ -8,7 +8,7 @@
             <StackPanel Spacing="3">
                 <TextBlock Classes="page-title" Text="Workflows" />
                 <TextBlock Classes="page-subtitle"
-                           Text="Reusable profiles and declarative sorting recipes. Every file change still requires a reviewed Change Plan." />
+                           Text="Reusable profiles and deterministic Organization recipes. Every file change still requires a reviewed Change Plan." />
             </StackPanel>
             <Button Grid.Column="1" Classes="secondary" Content="Refresh" Command="{Binding RefreshCommand}" />
             <Button Grid.Column="2"
@@ -110,7 +110,7 @@
                             <TextBox PlaceholderText="AI-selected file types, for example .pdf, .jpg"
                                      Text="{Binding ProfileAiFileTypes}" />
 
-                            <TextBlock FontWeight="SemiBold" Text="Sorting recipes" />
+                            <TextBlock FontWeight="SemiBold" Text="Organization recipes" />
                             <ItemsControl ItemsSource="{Binding ProfileRecipeChoices}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:WorkflowRecipeSelectionRow">
@@ -162,7 +162,7 @@
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Sorting recipes">
+            <TabItem Header="Organization recipes">
                 <Grid ColumnDefinitions="0.9*,1.4*" ColumnSpacing="12" Margin="0,10,0,0">
                     <Grid RowDefinitions="*,Auto" RowSpacing="8">
                         <ListBox ItemsSource="{Binding Recipes}" SelectedItem="{Binding SelectedRecipe}">
@@ -183,7 +183,7 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
                         <WrapPanel Grid.Row="1">
-                            <Button Margin="0,0,6,6" Content="New sorting recipe" Command="{Binding NewRecipeCommand}" />
+                            <Button Margin="0,0,6,6" Content="New Organization recipe" Command="{Binding NewRecipeCommand}" />
                             <Button Margin="0,0,6,6" Content="Duplicate" Command="{Binding DuplicateRecipeCommand}" />
                             <Button Margin="0,0,6,6" Classes="secondary" Content="Export" Command="{Binding ExportRecipeCommand}" />
                         </WrapPanel>

@@ -118,6 +118,8 @@ These files describe current product/project policy or the current source tree:
 - `docs/MANUAL_TESTING_v2.7.md`
 - `docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md`
 - `docs/MANUAL_TESTING_v2.8.md`
+- `docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md`
+- `docs/MANUAL_TESTING_v2.9.md`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`

@@ -37,6 +37,13 @@ public sealed class ChangePlanFactory : IChangePlanFactory
         var root = _fileSystem.NormalizePath(request.RootPath);
         var planId = $"plan:{Guid.NewGuid():N}";
         var proposals = AddRequiredDirectoryProposals(root, request.Actions);
+        if (proposals.Count > ChangePlanSchema.MaximumActions)
+        {
+            throw new ArgumentException(
+                $"The proposed file operations and required destination folders exceed the {ChangePlanSchema.MaximumActions}-action Change Plan limit.",
+                nameof(request));
+        }
+
         var actions = new List<ProposedChangeAction>(proposals.Count);
         for (var index = 0; index < proposals.Count; index++)
         {

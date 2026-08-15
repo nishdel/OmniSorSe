@@ -6,6 +6,7 @@ using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
 
@@ -31,6 +32,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<IndexingFailure> _indexingFailures = [];
     private readonly ObservableCollection<DiscoveryFacetGroupRow> _facetGroups = [];
     private readonly ObservableCollection<SavedDiscoveryViewRow> _savedViews = [];
+    private readonly List<string> _organizationSelectedIds = [];
     private CancellationTokenSource? _operationCancellation;
     private string? _queryText;
     private bool _isBusy;
@@ -113,6 +115,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         OpenContainingFolderCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFolderAsync, CanOpenHit);
         CopyFullPathCommand = new AsyncRelayCommand<SemanticSearchHit>(CopyFullPathAsync, CanCopyHit);
         OpenInFilesCommand = new RelayCommand<SemanticSearchHit>(OpenInFiles, CanOpenInFiles);
+        OrganizeSelectedFilesCommand = new RelayCommand(
+            RequestOrganization,
+            () => _organizationSelectedIds.Count > 0 && !IsBusy);
         ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
         RemoveFilterCommand = new AsyncRelayCommand<SearchFilter>(RemoveFilterAsync, filter => filter is not null && !IsBusy);
         ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync, () => _activeFilters.Count > 0 && !IsBusy);
@@ -458,6 +463,13 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether at least one result is available.</summary>
     public bool HasHits => Hits.Count > 0;
 
+    /// <summary>Gets the number of explicit Search results selected for reviewed organization.</summary>
+    public int OrganizationSelectedCount => _organizationSelectedIds.Count;
+
+    /// <summary>Gets a truthful summary of the bounded organization snapshot.</summary>
+    public string OrganizationSelectionText =>
+        $"{OrganizationSelectedCount} result{(OrganizationSelectedCount == 1 ? string.Empty : "s")} selected for Organize (maximum {WorkflowLibraryLimits.MaximumOrganizationSelection}).";
+
     /// <summary>Gets the current operation state.</summary>
     public bool IsBusy
     {
@@ -653,6 +665,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the stable-ID handoff from Search into the richer Files surface.</summary>
     public IRelayCommand<SemanticSearchHit> OpenInFilesCommand { get; }
 
+    /// <summary>Gets the command that snapshots selected Search results for reviewed organization.</summary>
+    public IRelayCommand OrganizeSelectedFilesCommand { get; }
+
     /// <summary>Gets the command that expands or collapses contextual filters.</summary>
     public IRelayCommand ToggleFiltersCommand { get; }
 
@@ -778,6 +793,27 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Raised when Search requests a stable-ID transition into Files.</summary>
     public event EventHandler<DiscoveryFileOpenRequest>? OpenInFilesRequested;
+
+    /// <summary>Raised with an explicit stable-ID snapshot from Search or the current Saved View.</summary>
+    public event EventHandler<OrganizationSelectionContext>? OrganizationRequested;
+
+    /// <summary>Replaces the explicit bounded organization selection with visible Search hits.</summary>
+    public void SetOrganizationSelection(IEnumerable<SemanticSearchHit> hits)
+    {
+        ArgumentNullException.ThrowIfNull(hits);
+        _organizationSelectedIds.Clear();
+        foreach (var id in hits
+                     .Select(hit => hit.FileId)
+                     .Where(id => !string.IsNullOrWhiteSpace(id))
+                     .Cast<string>()
+                     .Distinct(StringComparer.Ordinal)
+                     .Take(WorkflowLibraryLimits.MaximumOrganizationSelection + 1))
+        {
+            _organizationSelectedIds.Add(id);
+        }
+
+        NotifyOrganizationSelectionChanged();
+    }
 
     /// <summary>Refreshes command availability after persisted feature settings change.</summary>
     public void RefreshFeatureAvailability()
@@ -1179,6 +1215,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                 _hits.Add(hit);
             }
 
+            _organizationSelectedIds.Clear();
+            NotifyOrganizationSelectionChanged();
+
             _activeFilters.Clear();
             foreach (var filter in result.Interpretation.Filters)
             {
@@ -1279,6 +1318,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     {
         QueryText = null;
         _hits.Clear();
+        _organizationSelectedIds.Clear();
+        NotifyOrganizationSelectionChanged();
         _activeFilters.Clear();
         _topicText = string.Empty;
         _filtersWereEdited = false;
@@ -1704,6 +1745,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         RemoveFilterCommand.NotifyCanExecuteChanged();
         ClearFiltersCommand.NotifyCanExecuteChanged();
         OpenInFilesCommand.NotifyCanExecuteChanged();
+        OrganizeSelectedFilesCommand.NotifyCanExecuteChanged();
         InspectIndexedDataCommand.NotifyCanExecuteChanged();
         ToggleFacetCommand.NotifyCanExecuteChanged();
         ShowModerateSuggestionsCommand.NotifyCanExecuteChanged();
@@ -1715,6 +1757,56 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         MaintainIndexCommand.NotifyCanExecuteChanged();
         NotifyPrivacyCommands();
         NotifyBackgroundCommands();
+    }
+
+    private void RequestOrganization()
+    {
+        if (_organizationSelectedIds.Count == 0)
+        {
+            return;
+        }
+
+        var selectedHits = Hits
+            .Where(hit => hit.FileId is not null && _organizationSelectedIds.Contains(hit.FileId))
+            .ToArray();
+        var first = selectedHits.FirstOrDefault();
+        if (first is null)
+        {
+            SetOrganizationSelection(Array.Empty<SemanticSearchHit>());
+            return;
+        }
+
+        var discovery = CaptureDiscoveryContext(first);
+        if (discovery is not null)
+        {
+            discovery = discovery with
+            {
+                ResultFileIds = Array.AsReadOnly(Hits
+                    .Select(hit => hit.FileId)
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Cast<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(SearchLimits.MaximumRankedResults)
+                    .ToArray()),
+            };
+        }
+
+        OrganizationRequested?.Invoke(this, new OrganizationSelectionContext(
+            SelectedSavedView is null ? OrganizationSelectionOrigin.Search : OrganizationSelectionOrigin.SavedView,
+            SelectedSavedView is null ? "Search" : $"Saved View {SelectedSavedView.Name}",
+            Array.AsReadOnly(selectedHits
+                .Select(hit => hit.FileId!)
+                .Distinct(StringComparer.Ordinal)
+                .Take(WorkflowLibraryLimits.MaximumOrganizationSelection + 1)
+                .ToArray()),
+            discovery));
+    }
+
+    private void NotifyOrganizationSelectionChanged()
+    {
+        OnPropertyChanged(nameof(OrganizationSelectedCount));
+        OnPropertyChanged(nameof(OrganizationSelectionText));
+        OrganizeSelectedFilesCommand.NotifyCanExecuteChanged();
     }
 
     private void NotifyPrivacyCommands()

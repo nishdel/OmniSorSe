@@ -68,6 +68,14 @@ change schema 6, Search ranking, Explorer Protocol v1, or OmniBrille. It is not
 released. See the
 [v2.8 design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
 
+The current implementation branch, **v2.9 Reviewed Intelligent Organization**,
+builds directly on the committed v2.8 candidate. It connects explicit bounded
+Files/Search/Saved View selections to the existing persistent recipe library,
+an ephemeral trusted-evidence preview, and the existing Change Plan,
+reconciliation, and Undo machinery. It adds no autonomous mutation, schema
+change, protocol change, or production dependency and is not released. See the
+[v2.9 design](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md).
+
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The
 [manual checklist](docs/MANUAL_TESTING_v2.4.md) separates genuine Windows
@@ -118,9 +126,10 @@ update, uninstall, application-data, and checksum guidance is in
 | Explainable Smart Tags (unreleased v2.6) | Classifies retained local evidence into bounded Theme and Document Type suggestions, preserves explicit User Tags and accept/reject authority, and adds canonical Search filters without requiring AI or writing file metadata. |
 | Scalable faceted discovery (unreleased v2.7) | Combines free text with database-backed Theme, Document Type, User Tag, file-type, filesystem-created-year, and filesystem-modified-year facets; shows contextual counts and truthful candidate coverage; and saves dynamic current-index query rules without copying membership. |
 | Guided workflows (unreleased v2.8) | Projects bounded durable library readiness on Home; connects Search results to Files by stable identity and back without losing canonical discovery state; provides continuous unresolved Smart Tag review; and lets accepted/Strong evidence inform editable, reviewed organization proposals. |
+| Reviewed intelligent organization (unreleased v2.9) | Applies existing deterministic Organization recipes to an explicit stable-ID selection, previews trusted token provenance, missing evidence, fallbacks, privacy, collisions, and combined action bounds, then revalidates into the existing reviewed Change Plan. |
 | Explorer Protocol v1 | Provides an on-demand current-user local named-pipe boundary for an optional separate explorer companion: authorized indexed roots, bounded Structure, grounded Search, Related/context, and safe details. It is read-only, session-scoped, dormant by default, and independent of SQLite schema. Unreleased v2.5 can launch separately installed OmniBrille through its established one-time current-user handoff pipe. |
 | Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
-| Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
+| Workflows and plugins | Provides typed Workflow Profiles, constrained persistent Organization recipes (internally compatible with Sorting Recipes), and a bounded local in-process plugin SDK with explicit capability grants. |
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
 | Persistence | The current unreleased source uses bounded local JSON, schema-6 embedded Search with shared media/content evidence, normalized Smart Tag authority, and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. v2.7 keeps schema 6 and stores Saved View rules in bounded atomic application-owned JSON. The established OpenSorSe profile locations remain authoritative. No database server is required. |

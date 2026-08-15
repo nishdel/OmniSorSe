@@ -39,7 +39,7 @@ public static class BuiltInWorkflowLibrary
         Profile(
             BuiltInWorkflowIds.Photos,
             "Photos",
-            "Metadata-first photo analysis with capture-date grouping and no AI or OCR by default.",
+            "Metadata-first photo analysis with no AI or OCR by default. Organization examples label filesystem dates explicitly.",
             [".jpg", ".jpeg", ".png", ".tif", ".tiff", ".heic", ".webp"],
             text: false,
             ocr: false,
@@ -89,20 +89,20 @@ public static class BuiltInWorkflowLibrary
             [".pdf", ".txt", ".md", ".docx", ".xlsx", ".pptx"]),
         Recipe(
             BuiltInWorkflowIds.InvoiceRecipe,
-            "Invoice date and vendor",
-            "Uses available invoice fields and explicit conservative fallbacks to propose a date/vendor filename and destination.",
-            ["date", "documentType"],
-            "{date:yyyy-MM-dd}_{vendor}_{documentType}_{amount}",
-            "Invoices/{date:yyyy}/{vendor}",
+            "Filesystem date and original name",
+            "Uses the explicit filesystem modified date and preserves the original name. It does not claim a document or invoice date.",
+            ["filesystemModifiedDate", "originalName"],
+            "{filesystemModifiedDate:yyyy-MM-dd}_{originalName}",
+            "Invoices/{filesystemModifiedDate:yyyy}",
             [".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff"],
-            optionalFields: ["vendor", "amount", "currency"]),
+            optionalFields: []),
         Recipe(
             BuiltInWorkflowIds.PhotoRecipe,
-            "Photo capture date",
-            "Groups photos by capture year and month while preserving the original name.",
-            ["createdDate", "originalName"],
-            "{createdDate:yyyy-MM-dd}_{originalName}",
-            "Photos/{createdDate:yyyy}/{createdDate:MM}",
+            "Filesystem-created photos",
+            "Groups photos by the explicit filesystem created timestamp while preserving the original name. It does not claim EXIF capture time.",
+            ["filesystemCreatedDate", "originalName"],
+            "{filesystemCreatedDate:yyyy-MM-dd}_{originalName}",
+            "Photos/{filesystemCreatedDate:yyyy}/{filesystemCreatedDate:MM}",
             [".jpg", ".jpeg", ".png", ".tif", ".tiff", ".heic", ".webp"]),
         Recipe(
             BuiltInWorkflowIds.DownloadsRecipe,
@@ -112,6 +112,14 @@ public static class BuiltInWorkflowLibrary
             "{originalName}",
             "Downloads/{category}",
             [".pdf", ".txt", ".docx", ".xlsx", ".pptx", ".zip", ".7z", ".rar", ".png", ".jpg", ".jpeg"]),
+        Recipe(
+            BuiltInWorkflowIds.TrustedClassificationRecipe,
+            "Theme and document type",
+            "Uses only accepted or uniquely usable Strong deterministic Theme and Document Type evidence during reviewed organization.",
+            ["originalName", "theme", "documentType"],
+            "{originalName}",
+            "{theme}/{documentType}",
+            [".pdf", ".txt", ".md", ".docx", ".xlsx", ".pptx", ".csv", ".tsv", ".png", ".jpg", ".jpeg"]),
     ]);
 
     private static WorkflowProfile Profile(
@@ -138,7 +146,7 @@ public static class BuiltInWorkflowLibrary
             true,
             false,
             true,
-            new WorkflowProfileOrigin(WorkflowOriginKind.BuiltIn, SourceApplicationVersion: "1.3.0"),
+            new WorkflowProfileOrigin(WorkflowOriginKind.BuiltIn, SourceApplicationVersion: "2.9.0"),
             new WorkflowFileSelectionOptions(
                 Array.AsReadOnly(extensions.ToArray()),
                 Array.AsReadOnly(new[] { ".tmp", ".part", ".crdownload", ".download" }),
@@ -173,7 +181,7 @@ public static class BuiltInWorkflowLibrary
             true,
             false,
             true,
-            new WorkflowProfileOrigin(WorkflowOriginKind.BuiltIn, SourceApplicationVersion: "1.3.0"),
+            new WorkflowProfileOrigin(WorkflowOriginKind.BuiltIn, SourceApplicationVersion: "2.9.0"),
             100,
             new RecipeApplicability(
                 Array.AsReadOnly(extensions.ToArray()),

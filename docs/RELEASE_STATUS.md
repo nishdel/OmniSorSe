@@ -185,6 +185,30 @@ documents, tags, releases, and validation records remain historical evidence.
 
 ## Current development
 
+OmniSorSe v2.9 **Reviewed Intelligent Organization** is implemented on
+`v2.9-reviewed-intelligent-organization` from the committed v2.8 release
+candidate. It is not released, merged, tagged, packaged, or published. Existing
+persistent recipes now preview an explicit bounded stable-ID selection from
+Files, Search, or current Saved View results with trusted evidence, action
+budgeting, collision/privacy/readiness explanations, and fresh validation before
+the existing Change Plan boundary. Schema remains 6, Explorer Protocol remains
+v1, and no production dependency or autonomous mutation is added. Interactive
+desktop, screen-reader, DPI, permissions/filesystem, partial-failure, and native
+platform execution remain manual release gates.
+
+Definitive Windows-host automated validation passed a forced restore,
+non-incremental Debug and Release builds with zero warnings/errors, and 1,795
+tests in each configuration with zero failures/skips. Focused Release reruns
+passed reviewed organization/workflow/Change Plan (72), Search/facet/Saved
+View/Smart Tag/index/content/media (404), Explorer/companion (48),
+migration/recovery/reconciliation/Undo (89), accessibility/layout (21),
+performance (24), and documentation/dependency policy (8). Formatting/style/
+analyzers, vulnerability audit, `git diff --check`, and `git fsck --full`
+passed. Release compilation passed for `win-x64`, `linux-x64`, `osx-x64`, and
+`osx-arm64`; this does not claim native Linux/macOS runtime validation. See
+[v2.9 Reviewed Intelligent Organization](REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
+and the [manual checklist](MANUAL_TESTING_v2.9.md).
+
 OmniSorSe v2.8 **Guided Workflows & Product Coherence** is implemented on
 `v2.8-guided-workflows-product-coherence` from the committed v2.7 release
 candidate. It is not released, merged, tagged, packaged, or published. It

@@ -299,7 +299,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
         ISmartTagService? smartTagService = null,
         ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
-        IProductReadinessService? productReadinessService = null)
+        IProductReadinessService? productReadinessService = null,
+        IReviewedOrganizationService? reviewedOrganizationService = null)
         : this(
             configurationService,
             loggingService,
@@ -349,7 +350,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             mediaThumbnailProvider,
             smartTagService,
             savedDiscoveryViewStore,
-            productReadinessService)
+            productReadinessService,
+            reviewedOrganizationService)
     {
     }
 
@@ -402,7 +404,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
         ISmartTagService? smartTagService = null,
         ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
-        IProductReadinessService? productReadinessService = null)
+        IProductReadinessService? productReadinessService = null,
+        IReviewedOrganizationService? reviewedOrganizationService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -425,7 +428,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             externalFileLauncher,
             contentStore,
             suggestionChangePlanFactory,
-            smartTagService);
+            smartTagService,
+            reviewedOrganizationService,
+            workflowLibrary);
         ReviewChanges = new ChangePlanReviewViewModel(
             changePlanValidator,
             changePlanExecutionService,
@@ -520,7 +525,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.ReturnToDiscoveryRequested += OnReturnToDiscoveryRequested;
         Results.ReviewNavigationRequested += OnReviewNavigationRequested;
         Results.SmartTagReviewCompleted += OnSmartTagReviewCompleted;
+        Results.ManageOrganizationRecipesRequested += OnManageOrganizationRecipesRequested;
         SemanticSearch.OpenInFilesRequested += OnOpenInFilesRequested;
+        SemanticSearch.OrganizationRequested += OnOrganizationRequested;
         Dashboard.UnderstandRequested += OnUnderstandRequested;
         Dashboard.ReviewRequested += OnDashboardReviewRequested;
         Dashboard.OrganizeRequested += OnOrganizeRequested;
@@ -1176,7 +1183,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.ReturnToDiscoveryRequested -= OnReturnToDiscoveryRequested;
         Results.ReviewNavigationRequested -= OnReviewNavigationRequested;
         Results.SmartTagReviewCompleted -= OnSmartTagReviewCompleted;
+        Results.ManageOrganizationRecipesRequested -= OnManageOrganizationRecipesRequested;
         SemanticSearch.OpenInFilesRequested -= OnOpenInFilesRequested;
+        SemanticSearch.OrganizationRequested -= OnOrganizationRequested;
         Dashboard.UnderstandRequested -= OnUnderstandRequested;
         Dashboard.ReviewRequested -= OnDashboardReviewRequested;
         Dashboard.OrganizeRequested -= OnOrganizeRequested;
@@ -1253,6 +1262,38 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void OnOpenInFilesRequested(object? sender, DiscoveryFileOpenRequest request) =>
         _ = await OpenDiscoveryFileAsync(request.Context, request.FileId);
+
+    private async void OnOrganizationRequested(object? sender, OrganizationSelectionContext selection)
+    {
+        var firstId = selection.FileIds.FirstOrDefault();
+        if (selection.DiscoveryContext is not null && firstId is not null)
+        {
+            if (!await OpenDiscoveryFileAsync(selection.DiscoveryContext, firstId))
+            {
+                return;
+            }
+        }
+        else
+        {
+            Navigate(NavigationDestination.Results);
+        }
+
+        try
+        {
+            await Results.OpenOrganizationAsync(selection);
+            StatusText = "Organization recipe preview is ready to configure. No files have changed.";
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            SemanticSearch.ReportWorkflowFailure(exception.Message);
+        }
+    }
+
+    private void OnManageOrganizationRecipesRequested(object? sender, EventArgs eventArgs)
+    {
+        Navigate(NavigationDestination.Workflows);
+        StatusText = "Manage persistent Organization recipes here, then return to Files to preview one.";
+    }
 
     private async Task<bool> OpenDiscoveryFileAsync(DiscoveryWorkflowContext context, string fileId)
     {

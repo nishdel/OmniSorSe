@@ -27,6 +27,9 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         "date",
         "createdDate",
         "modifiedDate",
+        "filesystemCreatedDate",
+        "filesystemModifiedDate",
+        "theme",
         "vendor",
         "documentType",
         "title",
@@ -42,7 +45,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
     ], StringComparer.OrdinalIgnoreCase);
 
     private static readonly IReadOnlySet<string> DateFields = new HashSet<string>(
-        ["date", "createdDate", "modifiedDate"],
+        ["date", "createdDate", "modifiedDate", "filesystemCreatedDate", "filesystemModifiedDate"],
         StringComparer.OrdinalIgnoreCase);
 
     [GeneratedRegex(@"\s+", RegexOptions.CultureInvariant)]
@@ -67,8 +70,17 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
     {
         ArgumentNullException.ThrowIfNull(recipe);
         var issues = new List<WorkflowValidationIssue>();
-        ValidateTemplate(recipe.NamingTemplate, destination: false, issues);
-        ValidateTemplate(recipe.DestinationTemplate, destination: true, issues);
+        if (string.IsNullOrWhiteSpace(recipe.NamingTemplate) &&
+            string.IsNullOrWhiteSpace(recipe.DestinationTemplate))
+        {
+            issues.Add(new WorkflowValidationIssue(
+                "template.no-operation",
+                "An organization recipe must define a naming pattern, a destination pattern, or both.",
+                true));
+        }
+
+        ValidateTemplate(recipe.NamingTemplate, destination: false, allowEmpty: true, issues);
+        ValidateTemplate(recipe.DestinationTemplate, destination: true, allowEmpty: true, issues);
         if (!IsValidDateFormat(recipe.DefaultDateFormat))
         {
             issues.Add(new WorkflowValidationIssue(
@@ -142,7 +154,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         var sanitization = new List<string>();
         var aiRequired = false;
         var name = ResolveTemplate(
-            recipe.NamingTemplate,
+            string.IsNullOrWhiteSpace(recipe.NamingTemplate) ? "{originalName}" : recipe.NamingTemplate,
             recipe,
             values,
             missing,
@@ -150,17 +162,20 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
             used,
             sanitization,
             ref aiRequired);
-        var relativeDestination = ResolveTemplate(
-            recipe.DestinationTemplate,
-            recipe,
-            values,
-            missing,
-            fallback,
-            used,
-            sanitization,
-            ref aiRequired);
+        var preserveCurrentDirectory = string.IsNullOrWhiteSpace(recipe.DestinationTemplate);
+        var relativeDestination = preserveCurrentDirectory
+            ? string.Empty
+            : ResolveTemplate(
+                recipe.DestinationTemplate,
+                recipe,
+                values,
+                missing,
+                fallback,
+                used,
+                sanitization,
+                ref aiRequired);
         var unresolvedRequired = recipe.RequiredFields
-            .Where(field => missing.Contains(field))
+            .Where(field => missing.Contains(field) && !fallback.Contains(field))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         if (unresolvedRequired.Length > 0)
@@ -191,7 +206,13 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         {
             var extension = Path.GetExtension(context.OriginalPath);
             if (!string.IsNullOrWhiteSpace(extension) &&
-                !sanitizedName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                sanitizedName.EndsWith(extension, StringComparison.OrdinalIgnoreCase) &&
+                !sanitizedName.EndsWith(extension, StringComparison.Ordinal))
+            {
+                sanitizedName = sanitizedName[..^extension.Length] + extension;
+            }
+            else if (!string.IsNullOrWhiteSpace(extension) &&
+                     !sanitizedName.EndsWith(extension, StringComparison.Ordinal))
             {
                 sanitizedName += extension;
             }
@@ -211,7 +232,20 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
         string? destinationPath = null;
         try
         {
-            if (CrossPlatformPath.IsRootedOnAnyPlatform(relativeDestination))
+            if (preserveCurrentDirectory)
+            {
+                destinationDirectory = Path.GetDirectoryName(context.OriginalPath);
+                if (string.IsNullOrWhiteSpace(destinationDirectory) ||
+                    !_pathSemantics.IsWithinRoot(root, destinationDirectory))
+                {
+                    conflicts.Add("The source file is outside the approved organization root.");
+                }
+                else
+                {
+                    destinationPath = Path.GetFullPath(Path.Combine(destinationDirectory, sanitizedName));
+                }
+            }
+            else if (CrossPlatformPath.IsRootedOnAnyPlatform(relativeDestination))
             {
                 conflicts.Add("The destination template produced a rooted path.");
             }
@@ -304,11 +338,24 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
     private static void ValidateTemplate(
         string template,
         bool destination,
+        bool allowEmpty,
         List<WorkflowValidationIssue> issues)
     {
         var label = destination ? "Destination" : "Filename";
-        if (string.IsNullOrWhiteSpace(template) ||
-            template.Length > WorkflowLibraryLimits.MaximumTemplateLength ||
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            if (!allowEmpty)
+            {
+                issues.Add(new WorkflowValidationIssue(
+                    "template.invalid",
+                    $"{label} template is empty.",
+                    true));
+            }
+
+            return;
+        }
+
+        if (template.Length > WorkflowLibraryLimits.MaximumTemplateLength ||
             template.Any(char.IsControl))
         {
             issues.Add(new WorkflowValidationIssue(
@@ -426,15 +473,18 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
             }
 
             var originalValue = fieldValue.Value;
-            var value = FormatValue(token.Field, originalValue, token.Format ?? recipe.DefaultDateFormat);
+            var formattedValue = FormatValue(token.Field, originalValue, token.Format ?? recipe.DefaultDateFormat);
+            var value = formattedValue;
             value = NormalizeValue(value, recipe.Normalization);
             value = ReplaceUnsafeTokenCharacters(
                 value,
                 recipe.Normalization.InvalidCharacterPolicy,
                 recipe.FileNamePortability);
-            if (!string.Equals(originalValue, value, StringComparison.Ordinal))
+            if (!string.Equals(originalValue, value, StringComparison.Ordinal) &&
+                (!DateFields.Contains(token.Field) ||
+                 !string.Equals(formattedValue, value, StringComparison.Ordinal)))
             {
-                sanitization.Add($"The value for \"{token.Field}\" was formatted, normalized, or sanitized.");
+                sanitization.Add($"The value for \"{token.Field}\" was normalized or sanitized.");
             }
 
             used[token.Field] = value;

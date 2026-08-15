@@ -389,7 +389,7 @@
         </Border>
 
         <Border Grid.Row="3" Classes="card">
-            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
                 <Expander Grid.Row="0"
                           IsVisible="{Binding HasPrivacyItem}"
                           IsExpanded="False"
@@ -501,7 +501,15 @@
                         </Expander>
                     </StackPanel>
                 </Expander>
-                <StackPanel Grid.Row="1"
+                <Grid Grid.Row="1" IsVisible="{Binding HasHits}" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="{Binding OrganizationSelectionText}"
+                               VerticalAlignment="Center"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <Button Grid.Column="1" Classes="primary" Content="Organize selected"
+                            Command="{Binding OrganizeSelectedFilesCommand}"
+                            AutomationProperties.Name="Preview selected Search results with an Organization recipe" />
+                </Grid>
+                <StackPanel Grid.Row="2"
                             IsVisible="{Binding !HasHits}"
                             Classes="empty-state"
                             Spacing="6"
@@ -519,12 +527,15 @@
                                Classes="page-subtitle"
                                TextAlignment="Center" />
                 </StackPanel>
-                <ScrollViewer Grid.Row="1"
+                <ScrollViewer Grid.Row="2"
                               IsVisible="{Binding HasHits}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Hits}">
-                        <ItemsControl.ItemTemplate>
+                    <ListBox ItemsSource="{Binding Hits}"
+                             SelectionMode="Multiple"
+                             SelectionChanged="OnSearchSelectionChanged"
+                             AutomationProperties.Name="Search results available for reviewed organization">
+                        <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="semantic:SemanticSearchHit">
                                 <Border Classes="result-row" Padding="0,9">
                                     <StackPanel Spacing="4">
@@ -610,8 +621,8 @@
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </ScrollViewer>
             </Grid>
         </Border>

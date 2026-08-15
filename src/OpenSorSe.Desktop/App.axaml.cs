@@ -369,6 +369,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IWorkflowConfigurationResolver, WorkflowConfigurationResolver>();
         services.AddSingleton<IWorkflowImportExportService, WorkflowImportExportService>();
         services.AddSingleton<IWorkflowRecipePlanService, WorkflowRecipePlanService>();
+        services.AddSingleton<IReviewedOrganizationEvidenceSource, ReviewedOrganizationEvidenceSource>();
+        services.AddSingleton<IReviewedOrganizationService, ReviewedOrganizationService>();
         services.AddSingleton<WorkflowSortingRecipeResolver>();
         services.AddSingleton<IWatchedFolderManager, WatchedFolderManager>();
         services.AddSingleton<IWatchedFileSystem, PhysicalWatchedFileSystem>();

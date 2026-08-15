@@ -1,9 +1,11 @@
 #pragma warning disable CS1591
 
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Plugins;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Executor;
 using OpenSorSe.Executor.Models;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
@@ -29,6 +31,8 @@ public static class WorkflowLibraryLimits
     public const int MaximumFileNameLength = 240;
     public const int MaximumPathLength = 32_767;
     public const int MaximumDiagnostics = 200;
+    public const int MaximumOrganizationSelection = ChangePlanSchema.MaximumActions;
+    public const int MaximumOrganizationPreviewRows = 100;
     public const long MaximumLibraryBytes = 8L * 1024 * 1024;
     public const long MaximumImportBytes = 2L * 1024 * 1024;
 }
@@ -44,6 +48,7 @@ public static class BuiltInWorkflowIds
     public const string InvoiceRecipe = "builtin:recipe:invoices";
     public const string PhotoRecipe = "builtin:recipe:photos";
     public const string DownloadsRecipe = "builtin:recipe:downloads";
+    public const string TrustedClassificationRecipe = "builtin:recipe:trusted-classification";
 }
 
 public enum WorkflowOriginKind
@@ -379,6 +384,110 @@ public sealed record WorkflowRecipePlanResult(
     IReadOnlyList<RecipeEvaluationResult> Evaluations,
     IReadOnlyList<string> Warnings);
 
+/// <summary>Describes whether one deterministic organization proposal is ready for Change Plan review.</summary>
+public enum OrganizationProposalReadiness
+{
+    /// <summary>Every required trusted value resolved without a warning or conflict.</summary>
+    Reliable,
+    /// <summary>An explicit fallback, sanitization, or other non-blocking warning requires attention.</summary>
+    NeedsReview,
+    /// <summary>The recipe cannot safely produce an operation for this file.</summary>
+    CannotPropose,
+}
+
+/// <summary>Maps one recipe token to bounded local evidence without retaining extracted content.</summary>
+public sealed record OrganizationEvidenceMapping(
+    string Token,
+    string Value,
+    string EvidenceSource,
+    bool IsSensitive);
+
+/// <summary>Contains one ephemeral, non-executable organization preview row.</summary>
+public sealed record OrganizationProposalRow(
+    string FileId,
+    string CurrentPath,
+    string? ProposedFileName,
+    string? ProposedRelativeDestination,
+    string? TargetPath,
+    OrganizationProposalReadiness Readiness,
+    IReadOnlyList<OrganizationEvidenceMapping> Evidence,
+    IReadOnlyList<string> MissingEvidence,
+    IReadOnlyList<string> Fallbacks,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> Conflicts,
+    long? SourceLength,
+    DateTimeOffset? SourceModifiedAtUtc)
+{
+    /// <summary>Gets whether this row can become an existing Change Plan action.</summary>
+    public bool IsEligible =>
+        Readiness != OrganizationProposalReadiness.CannotPropose &&
+        !string.IsNullOrWhiteSpace(TargetPath) &&
+        !string.Equals(CurrentPath, TargetPath, ChangePlanFactory.PathComparison);
+}
+
+/// <summary>Reports literal trusted-token availability over an explicit selection.</summary>
+public sealed record OrganizationEvidenceCoverage(
+    string Token,
+    string DisplayName,
+    int AvailableCount,
+    int SelectedCount);
+
+/// <summary>
+/// Contains one bounded, ephemeral organization preview. It is not executable state and is never persisted.
+/// </summary>
+public sealed record OrganizationProposalSet(
+    string ProposalId,
+    SortingRecipe Recipe,
+    string OrganizationRoot,
+    string SourceId,
+    IReadOnlyList<string> SelectedFileIds,
+    IReadOnlyList<OrganizationProposalRow> Rows,
+    IReadOnlyList<OrganizationEvidenceCoverage> Coverage,
+    int ProjectedFileActionCount,
+    int ProjectedDirectoryActionCount,
+    IReadOnlyList<string> Warnings,
+    bool HasSensitivePathEvidence,
+    string Fingerprint)
+{
+    /// <summary>Gets the total existing Change Plan actions represented by the preview.</summary>
+    public int ProjectedActionCount => checked(ProjectedFileActionCount + ProjectedDirectoryActionCount);
+
+    /// <summary>Gets whether every selected file has an eligible reviewed proposal within the action bound.</summary>
+    public bool CanCreateChangePlan =>
+        Rows.Count == SelectedFileIds.Count &&
+        Rows.Count > 0 &&
+        Rows.All(row => row.IsEligible) &&
+        ProjectedActionCount <= ChangePlanSchema.MaximumActions;
+}
+
+/// <summary>Requests a deterministic preview over one explicit stable-ID snapshot.</summary>
+public sealed record OrganizationPreviewRequest(
+    SortingRecipe Recipe,
+    IReadOnlyList<string> SelectedFileIds);
+
+/// <summary>Describes one closed, non-executable product-facing organization token.</summary>
+public sealed record OrganizationRecipeToken(
+    string Token,
+    string DisplayName,
+    string Description,
+    bool SupportsDateFormat = false,
+    bool IsSensitive = false);
+
+/// <summary>Owns the modern closed token picker; legacy fields remain parser-compatible but are not promoted.</summary>
+public static class OrganizationRecipeTokenCatalog
+{
+    public static IReadOnlyList<OrganizationRecipeToken> Tokens { get; } = Array.AsReadOnly(
+    new OrganizationRecipeToken[]
+    {
+        new("{originalName}", "Original name", "The current filename without its extension."),
+        new("{theme}", "Theme", "One accepted or uniquely usable Strong deterministic Theme.", IsSensitive: true),
+        new("{documentType}", "Document Type", "One accepted or uniquely usable Strong deterministic Document Type.", IsSensitive: true),
+        new("{filesystemCreatedDate:yyyy-MM-dd}", "Filesystem created date", "The filesystem-created timestamp; this is not a document or capture date.", SupportsDateFormat: true),
+        new("{filesystemModifiedDate:yyyy-MM-dd}", "Filesystem modified date", "The filesystem-modified timestamp; this is not a document date.", SupportsDateFormat: true),
+        new("{category}", "File category", "The normalized coarse file category."),
+    });
+}
+
 public sealed class WorkflowProfileUnavailableException : InvalidOperationException
 {
     public WorkflowProfileUnavailableException(string message)
@@ -479,4 +588,30 @@ public interface IWorkflowRecipePlanService
         string sourceScanId,
         IReadOnlyList<ResultFile> files,
         CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Resolves trusted indexed evidence into ephemeral recipe previews and converts only a fresh approved preview
+/// into the existing Change Plan safety boundary.
+/// </summary>
+public interface IReviewedOrganizationService
+{
+    Task<OrganizationProposalSet> PreviewAsync(
+        OrganizationPreviewRequest request,
+        CancellationToken cancellationToken);
+
+    Task<ChangePlan> CreateChangePlanAsync(
+        OrganizationProposalSet proposal,
+        string sourceContextId,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>Provides only the bounded durable evidence needed by reviewed organization.</summary>
+public interface IReviewedOrganizationEvidenceSource
+{
+    Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsByIdsAsync(
+        IReadOnlyList<string> fileIds,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<IndexingSource>> GetSourcesAsync(CancellationToken cancellationToken);
 }

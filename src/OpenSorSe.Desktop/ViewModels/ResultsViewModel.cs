@@ -8,6 +8,7 @@ using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
 using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Executor.Models;
@@ -39,6 +40,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<ResultsCategoryFilterOption> _categoryOptions = [];
     private readonly ObservableCollection<ResultTagRow> _userTags = [];
     private readonly ObservableCollection<ExtractedMetadataField> _contentMetadata = [];
+    private readonly List<string> _organizationSelectedIds = [];
     private readonly IContentStore? _contentStore;
     private readonly ISmartTagService? _smartTagService;
     private readonly IConfigurationService _configurationService;
@@ -95,7 +97,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         IExternalFileLauncher? externalFileLauncher,
         IContentStore? contentStore = null,
         ISuggestionChangePlanFactory? changePlanFactory = null,
-        ISmartTagService? smartTagService = null)
+        ISmartTagService? smartTagService = null,
+        IReviewedOrganizationService? reviewedOrganizationService = null,
+        IWorkflowLibraryService? workflowLibraryService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         _configurationService = configurationService;
@@ -122,6 +126,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             contentStore,
             changePlanFactory);
         AiSuggestions.ChangePlanCreated += OnChangePlanCreated;
+        Organization = new ReviewedOrganizationViewModel(reviewedOrganizationService, workflowLibraryService);
+        Organization.ChangePlanCreated += OnChangePlanCreated;
+        Organization.ManageRecipesRequested += OnManageRecipesRequested;
         ClearFiltersCommand = new RelayCommand(ClearFilters, CanClearFilters);
         ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
         PreviousPageCommand = new RelayCommand(GoToPreviousPage, () => CanGoPreviousPage);
@@ -155,6 +162,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         WidenDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(0.05));
         ResetDetailsPanelWidthCommand = new AsyncRelayCommand(
             () => SetDetailsPanelWidthRatioAsync(FeatureSettings.DefaultFilesPageDetailsPanelWidthRatio));
+        OrganizeSelectedFilesCommand = new AsyncRelayCommand(
+            RequestOrganizationAsync,
+            () => _organizationSelectedIds.Count > 0 && !IsLoading);
     }
 
     /// <summary>
@@ -177,11 +187,17 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Raised after an explicit accepted or rejected suggestion changes unresolved membership.</summary>
     public event EventHandler? SmartTagReviewCompleted;
 
+    /// <summary>Raised when Files requests that the shell open the existing Organization recipe library.</summary>
+    public event EventHandler? ManageOrganizationRecipesRequested;
+
     /// <summary>Gets the immutable snapshot currently owned by this review surface.</summary>
     public ResultsSnapshot? Snapshot => _snapshot;
 
     /// <summary>Gets bounded, display-safe file rows for the active page.</summary>
     public ReadOnlyObservableCollection<ResultsFileRow> PageRows { get; }
+
+    /// <summary>Gets the reviewed deterministic organization child workflow.</summary>
+    public ReviewedOrganizationViewModel Organization { get; }
 
     /// <summary>Gets display-safe directories from the current snapshot.</summary>
     public ReadOnlyObservableCollection<ResultDirectory> Directories { get; }
@@ -465,6 +481,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 RemoveSelectedTagCommand.NotifyCanExecuteChanged();
                 AcceptSuggestedTagCommand.NotifyCanExecuteChanged();
                 RejectSuggestedTagCommand.NotifyCanExecuteChanged();
+                OrganizeSelectedFilesCommand.NotifyCanExecuteChanged();
                 ViewFilesWithTagCommand.NotifyCanExecuteChanged();
             }
         }
@@ -589,6 +606,13 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         ? "All completed-scan results"
         : "Active filters are applied to this completed scan.";
 
+    /// <summary>Gets the explicit stable-ID selection size used by reviewed organization.</summary>
+    public int OrganizationSelectedCount => _organizationSelectedIds.Count;
+
+    /// <summary>Gets a truthful bounded selection summary.</summary>
+    public string OrganizationSelectionText =>
+        $"{OrganizationSelectedCount} file{(OrganizationSelectedCount == 1 ? string.Empty : "s")} selected for Organize (maximum {WorkflowLibraryLimits.MaximumOrganizationSelection}).";
+
     /// <summary>Gets the command that clears every non-default local filter.</summary>
     public IRelayCommand ClearFiltersCommand { get; }
 
@@ -657,6 +681,29 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that restores the default selected-file details width.</summary>
     public IAsyncRelayCommand ResetDetailsPanelWidthCommand { get; }
+
+    /// <summary>Gets the command that previews the explicit stable-ID selection with an Organization recipe.</summary>
+    public IAsyncRelayCommand OrganizeSelectedFilesCommand { get; }
+
+    /// <summary>Replaces the explicit bounded organization selection with visible Files rows.</summary>
+    public void SetOrganizationSelection(IEnumerable<ResultsFileRow> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        _organizationSelectedIds.Clear();
+        foreach (var id in rows
+                     .Select(row => row.FileId)
+                     .Where(id => !string.IsNullOrWhiteSpace(id))
+                     .Distinct(StringComparer.Ordinal)
+                     .Take(WorkflowLibraryLimits.MaximumOrganizationSelection + 1))
+        {
+            _organizationSelectedIds.Add(id);
+        }
+
+        NotifyOrganizationSelectionChanged();
+    }
+
+    /// <summary>Opens reviewed organization for an explicit Search or Saved View snapshot.</summary>
+    public Task OpenOrganizationAsync(OrganizationSelectionContext selection) => Organization.OpenAsync(selection);
 
     /// <summary>
     /// Validates and persists the selected-file details proportion without changing source files.
@@ -931,6 +978,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         contentCancellation?.Dispose();
         AiSuggestions.Dispose();
         AiSuggestions.ChangePlanCreated -= OnChangePlanCreated;
+        Organization.ChangePlanCreated -= OnChangePlanCreated;
+        Organization.ManageRecipesRequested -= OnManageRecipesRequested;
+        Organization.Dispose();
         _queryCancellation?.Cancel();
         _queryCancellation?.Dispose();
         _panelPreferenceSaveGate.Dispose();
@@ -1045,7 +1095,78 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         SelectedRow = null;
         StatusText = "No completed scan results are available.";
         IsLoading = false;
+        _organizationSelectedIds.Clear();
+        NotifyOrganizationSelectionChanged();
     }
+
+    private async Task RequestOrganizationAsync()
+    {
+        if (_organizationSelectedIds.Count == 0 || Snapshot is null)
+        {
+            return;
+        }
+
+        if (_smartTagService is null)
+        {
+            StatusText = "Reviewed organization requires the durable local index so Files rows can resolve to stable identities.";
+            return;
+        }
+
+        var filesById = Snapshot.Files.ToDictionary(file => file.Id, StringComparer.Ordinal);
+        var selectedFiles = _organizationSelectedIds
+            .Where(filesById.ContainsKey)
+            .Select(id => filesById[id])
+            .ToArray();
+        if (selectedFiles.Length != _organizationSelectedIds.Count)
+        {
+            StatusText = "One or more selected Files rows are stale. Refresh Files and select them again.";
+            return;
+        }
+
+        IReadOnlyDictionary<string, string> resolved;
+        try
+        {
+            resolved = await _smartTagService.ResolveActiveFileIdsAsync(
+                selectedFiles.Select(file => file.FullPath).ToArray(),
+                CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or InvalidOperationException)
+        {
+            StatusText = "The selected Files rows could not be resolved against the durable index. Refresh indexing and try again.";
+            return;
+        }
+
+        if (resolved.Count != selectedFiles.Length || selectedFiles.Any(file => !resolved.ContainsKey(file.FullPath)))
+        {
+            StatusText = "Every selected file must be present in the current durable index. Refresh indexing before Organize.";
+            return;
+        }
+
+        var context = new OrganizationSelectionContext(
+            OrganizationSelectionOrigin.Files,
+            IsDiscoveryContextActive ? "Files discovery" : "Files",
+            Array.AsReadOnly(selectedFiles.Select(file => resolved[file.FullPath]).ToArray()),
+            _discoveryContext);
+        try
+        {
+            await Organization.OpenAsync(context);
+            StatusText = "Organization recipe preview is ready to configure. No files have changed.";
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            StatusText = exception.Message;
+        }
+    }
+
+    private void NotifyOrganizationSelectionChanged()
+    {
+        OnPropertyChanged(nameof(OrganizationSelectedCount));
+        OnPropertyChanged(nameof(OrganizationSelectionText));
+        OrganizeSelectedFilesCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnManageRecipesRequested(object? sender, EventArgs eventArgs) =>
+        ManageOrganizationRecipesRequested?.Invoke(this, EventArgs.Empty);
 
     private CancellationTokenSource ReplaceQueryCancellation()
     {

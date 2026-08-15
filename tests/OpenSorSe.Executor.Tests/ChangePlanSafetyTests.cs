@@ -35,6 +35,27 @@ public sealed class ChangePlanSafetyTests
     }
 
     [Fact]
+    public async Task Factory_RejectsFileAndInferredDirectoryActionsAboveCombinedLimit()
+    {
+        using var directory = new TemporaryDirectory();
+        var context = Context(directory.Path);
+        var proposals = Enumerable.Range(0, ChangePlanSchema.MaximumActions)
+            .Select(index => Proposal(
+                ChangeActionType.MoveFile,
+                directory.PathOf($"source-{index:D4}.txt"),
+                Path.Combine(directory.PathOf($"folder-{index:D4}"), $"target-{index:D4}.txt")))
+            .ToArray();
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            context.Factory.CreateAsync(
+                new ChangePlanCreationRequest(directory.Path, "scan:combined-limit", proposals),
+                CancellationToken.None));
+
+        Assert.Contains("required destination folders", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(await context.PlanStore.ListAsync(CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Validator_RejectsInvalidNamesDuplicateDestinationsAndConflictingSources()
     {
         using var directory = new TemporaryDirectory();

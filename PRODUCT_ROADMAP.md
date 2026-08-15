@@ -522,6 +522,35 @@ OmniBrille separation, and mutation safety remain unchanged.
 See [v2.8 guided-workflow design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
 and [v2.8 manual testing](docs/MANUAL_TESTING_v2.8.md).
 
+### v2.9 — Reviewed Intelligent Organization
+
+**Branch:** `v2.9-reviewed-intelligent-organization`, created directly from
+the committed v2.8 release candidate.
+
+**Merged status:** Implementation branch for review; it is not released and
+does not rewrite the v2.5–v2.8 candidate chain.
+
+v2.9 consolidates existing organization infrastructure. Files, Search, and a
+current Saved View can contribute an explicit bounded stable-ID selection to an
+existing persistent Organization recipe. A cancellable ephemeral preview shows
+trusted Smart Tag/filesystem evidence, literal coverage, fallbacks, readiness,
+privacy externalization, conflicts, and the combined file/directory action
+budget before the user explicitly creates the existing Change Plan.
+
+At most 1,000 files and 1,000 total Change Plan actions are permitted. One
+proposal remains inside one selected registered source. Original extensions are
+preserved; ambiguous date aliases, entities, and User Tags are not promoted as
+trusted path tokens. Existing journalling, rollback, reconciliation, and Undo
+remain the only mutation path.
+
+Schema 6, progressive indexing, Search/facet/Saved View semantics, Smart Tag
+authority, Explorer Protocol v1, OmniBrille separation, and the workflow-library
+JSON authority remain unchanged. No new AI, dependency, automatic watched-folder
+action, cross-root organization, or autonomous mutation is included.
+
+See [v2.9 Reviewed Intelligent Organization](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
+and [v2.9 manual testing](docs/MANUAL_TESTING_v2.9.md).
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.

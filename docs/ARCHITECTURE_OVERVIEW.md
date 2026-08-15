@@ -459,6 +459,34 @@ never be committed.
 - Executor cancellation is checked at safe action boundaries so a partially
   applied operation remains journalled and recoverable.
 
+## v2.9 reviewed-organization boundary
+
+Unreleased v2.9 introduces no durable authority. `SortingRecipe` and the
+versioned atomic workflow-library JSON store remain the single recipe model;
+the desktop consistently calls it an Organization recipe. A small application
+service batch-loads current indexed documents by stable file ID, resolves only
+trusted Smart Tag and explicit filesystem evidence, evaluates the existing
+closed template language, and creates an ephemeral `OrganizationProposalSet`.
+Search already supplies durable IDs. Files resolves its immutable scan-row
+paths to current schema-6 identities through one bounded, chunked SQLite query
+before opening the same workflow; unresolved rows fail closed rather than
+falling back to scan-local IDs.
+
+The proposal records selected IDs/order, recipe revision, current and proposed
+paths, bounded token provenance, readiness, missing/fallback/conflict facts,
+literal evidence coverage, and projected file plus deduplicated directory
+actions. It is cancellable, capped at 1,000 selected files and 1,000 total
+actions, constrained to one registered source root, and never persisted or
+executed. Editing the recipe or changing source/evidence/target facts requires a
+fresh preview.
+
+Only explicit **Review Changes** re-resolves and fingerprints the proposal and
+calls `IChangePlanFactory`. Directory creation, mutation validation, journalling,
+rollback, reconciliation, and Undo remain existing executor/application
+responsibilities. Search supplies selected IDs only; Saved Views never become
+mutation rules; watched folders never auto-apply recipes. Schema 6 and Explorer
+Protocol v1 are unchanged.
+
 ## Architectural risks and technical debt
 
 - `MainViewModel`, several feature ViewModels, watcher services, AI parsing, and

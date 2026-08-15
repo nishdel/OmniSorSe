@@ -35,6 +35,54 @@ public sealed partial class SqliteDeepIndexStore
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, string>> ResolveActiveFileIdsAsync(
+        IReadOnlyList<string> fullPaths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fullPaths);
+        if (fullPaths.Count > OpenSorSe.Executor.Models.ChangePlanSchema.MaximumActions)
+        {
+            throw new ArgumentOutOfRangeException(nameof(fullPaths));
+        }
+
+        var distinct = fullPaths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.Ordinal)
+            .Select(path => (Original: path, Key: PathKey(path)))
+            .ToArray();
+        return RunExclusiveAsync<IReadOnlyDictionary<string, string>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                var fileIdsByKey = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var chunk in distinct.Chunk(400))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using var command = connection.CreateCommand();
+                    var parameterNames = new string[chunk.Length];
+                    for (var index = 0; index < chunk.Length; index++)
+                    {
+                        parameterNames[index] = $"$path{index}";
+                        command.Parameters.AddWithValue(parameterNames[index], chunk[index].Key);
+                    }
+
+                    command.CommandText =
+                        $"SELECT path_key, id FROM index_files WHERE deleted_utc_ticks IS NULL AND path_key IN ({string.Join(",", parameterNames)});";
+                    using var reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        fileIdsByKey[reader.GetString(0)] = reader.GetString(1);
+                    }
+                }
+
+                return distinct
+                    .Where(item => fileIdsByKey.ContainsKey(item.Key))
+                    .ToDictionary(item => item.Original, item => fileIdsByKey[item.Key], StringComparer.Ordinal);
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<int> PrepareStaleClassificationsAsync(
         string classifierVersion,
         string taxonomyVersion,

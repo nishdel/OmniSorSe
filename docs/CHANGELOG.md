@@ -7,6 +7,41 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.9 Reviewed Intelligent Organization
+
+Implementation branch: `v2.9-reviewed-intelligent-organization`. This work is
+not a published release and builds directly on the committed v2.8 release
+candidate.
+
+### Added and changed
+
+- Connect explicit bounded Files, Search, and current Saved View selections to
+  the existing persistent recipe authority using stable indexed file IDs.
+- Add a cancellable ephemeral Organization recipe preview with trusted evidence
+  mappings, literal coverage, Reliable/Needs review/Cannot propose states,
+  fallbacks, privacy warnings, and conflict-first bounded rows.
+- Promote a small modern token picker for original name, accepted/uniquely
+  Strong deterministic Theme and Document Type, explicit filesystem-created and
+  filesystem-modified dates, and coarse file category.
+- Preserve naming and destination as independent patterns and always retain the
+  exact original extension in the reviewed Organization workflow.
+- Budget file and deduplicated directory-creation actions together before Change
+  Plan creation, with a hard 1,000-file and 1,000-total-action limit.
+- Re-resolve stable IDs, evidence, targets, collisions, and bounds before
+  handing the explicit request to the existing Change Plan.
+- Use **Organization recipe** as the user-facing name for the compatible
+  `SortingRecipe` library and add safe built-in examples with honest date
+  semantics.
+
+### Boundaries
+
+- Schema 6, the atomic workflow-library JSON store, Search/facets/Saved Views,
+  Smart Tag authority, Change Plan execution/journal/reconciliation/Undo,
+  Explorer Protocol v1, and OmniBrille remain unchanged.
+- No autonomous/watched-folder recipe execution, cross-root moves, metadata
+  writeback, new AI behavior, cloud service, schema migration, protocol field,
+  mutation engine, or production dependency is included.
+
 ## Unreleased — OmniSorSe v2.8 Guided Workflows & Product Coherence
 
 Implementation branch: `v2.8-guided-workflows-product-coherence`. This work is

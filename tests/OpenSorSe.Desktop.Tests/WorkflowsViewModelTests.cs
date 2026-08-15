@@ -31,7 +31,7 @@ public sealed class WorkflowsViewModelTests : IDisposable
         await viewModel.RefreshAsync();
 
         Assert.Equal(5, viewModel.Profiles.Count);
-        Assert.Equal(4, viewModel.Recipes.Count);
+        Assert.Equal(5, viewModel.Recipes.Count);
         Assert.All(viewModel.Profiles, row => Assert.True(row.Profile.IsBuiltIn));
 
         viewModel.SearchText = "photo";

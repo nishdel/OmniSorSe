@@ -18,6 +18,38 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class ResultsViewModelTests
 {
+    /// <summary>Files rows resolve through their current paths to bounded durable organization identities.</summary>
+    [Fact]
+    public async Task OrganizationSelection_ResolvesScanRowsToExplicitDurableFileIds()
+    {
+        var paths = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["C:\\Selected\\one.pdf"] = "index:durable:one",
+            ["C:\\Selected\\two.pdf"] = "index:durable:two",
+        };
+        using var viewModel = new ResultsViewModel(
+            new Configuration(),
+            null,
+            null,
+            null,
+            null,
+            new SmartTags([], paths));
+        await viewModel.LoadSnapshotAsync(CreateSnapshot(files:
+        [
+            CreateFile("scan:row:1", "C:\\Selected\\one.pdf", DuplicateStatus.Unique, null),
+            CreateFile("scan:row:2", "C:\\Selected\\two.pdf", DuplicateStatus.Unique, null),
+        ]));
+
+        viewModel.SetOrganizationSelection(viewModel.PageRows.Reverse());
+        await viewModel.OrganizeSelectedFilesCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.OrganizationSelectedCount);
+        Assert.True(viewModel.OrganizeSelectedFilesCommand.CanExecute(null));
+        Assert.Contains("maximum 1000", viewModel.OrganizationSelectionText, StringComparison.Ordinal);
+        Assert.Equal(["index:durable:two", "index:durable:one"], viewModel.Organization.SelectedFileIds);
+        Assert.DoesNotContain(viewModel.Organization.SelectedFileIds, id => id.StartsWith("scan:", StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies divider commands persist a bounded preference without changing other settings.</summary>
     [Fact]
     public async Task DetailsPanelResizeCommands_PersistBoundedRatioAndResetDefault()
@@ -657,14 +689,22 @@ public sealed class ResultsViewModelTests
         public Task ClearAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
-    private sealed class SmartTags(IReadOnlyList<FileSmartTag> tags) : ISmartTagService
+    private sealed class SmartTags(
+        IReadOnlyList<FileSmartTag> tags,
+        IReadOnlyDictionary<string, string>? fileIdsByPath = null) : ISmartTagService
     {
         public Task<SmartTagOperationResult> InitializeAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new SmartTagOperationResult(false, 0, "Ready"));
         public Task<IReadOnlyList<SmartTagDefinition>> GetDefinitionsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<SmartTagDefinition>>(tags.Select(tag => tag.Definition).ToArray());
         public Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<string?>(tags.FirstOrDefault()?.FileId);
+            Task.FromResult<string?>(fileIdsByPath?.GetValueOrDefault(fullPath) ?? tags.FirstOrDefault()?.FileId);
+        public Task<IReadOnlyDictionary<string, string>> ResolveActiveFileIdsAsync(
+            IReadOnlyList<string> fullPaths,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(fullPaths
+                .Where(path => fileIdsByPath?.ContainsKey(path) == true)
+                .ToDictionary(path => path, path => fileIdsByPath![path], StringComparer.Ordinal));
         public Task<IReadOnlyList<FileSmartTag>> GetFileTagsAsync(string fileId, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<FileSmartTag>>(tags.Where(tag => tag.FileId == fileId).ToArray());
         public Task<SmartTagOperationResult> AddUserTagAsync(string fileId, string displayName, CancellationToken cancellationToken = default) => Operation();

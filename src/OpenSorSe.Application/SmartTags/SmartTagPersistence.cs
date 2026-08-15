@@ -28,6 +28,25 @@ public interface ISmartTagStore
 {
     /// <summary>Resolves one active durable file identity from its current path.</summary>
     Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default);
+    /// <summary>Resolves bounded current paths to active durable identities without requiring callers to issue N+1 queries.</summary>
+    async Task<IReadOnlyDictionary<string, string>> ResolveActiveFileIdsAsync(
+        IReadOnlyList<string> fullPaths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fullPaths);
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var path in fullPaths.Distinct(StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var fileId = await ResolveActiveFileIdAsync(path, cancellationToken).ConfigureAwait(false);
+            if (fileId is not null)
+            {
+                result[path] = fileId;
+            }
+        }
+
+        return result;
+    }
     /// <summary>Marks only stale Smart Tag stages for deferred reclassification.</summary>
     Task<int> PrepareStaleClassificationsAsync(
         string classifierVersion,
@@ -94,6 +113,25 @@ public interface ISmartTagService
     Task<IReadOnlyList<SmartTagDefinition>> GetDefinitionsAsync(CancellationToken cancellationToken = default);
     /// <summary>Resolves one active durable file identity from its current path.</summary>
     Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default);
+    /// <summary>Resolves bounded current paths to active durable identities in one provider operation.</summary>
+    async Task<IReadOnlyDictionary<string, string>> ResolveActiveFileIdsAsync(
+        IReadOnlyList<string> fullPaths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fullPaths);
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var path in fullPaths.Distinct(StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var fileId = await ResolveActiveFileIdAsync(path, cancellationToken).ConfigureAwait(false);
+            if (fileId is not null)
+            {
+                result[path] = fileId;
+            }
+        }
+
+        return result;
+    }
     /// <summary>Returns effective assignments for one stable file.</summary>
     Task<IReadOnlyList<FileSmartTag>> GetFileTagsAsync(string fileId, CancellationToken cancellationToken = default);
     /// <summary>Adds one explicit local user tag.</summary>
@@ -241,6 +279,22 @@ public sealed class SmartTagService : ISmartTagService
     /// <inheritdoc />
     public Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default) =>
         _store.ResolveActiveFileIdAsync(fullPath, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, string>> ResolveActiveFileIdsAsync(
+        IReadOnlyList<string> fullPaths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fullPaths);
+        if (fullPaths.Count > OpenSorSe.Executor.Models.ChangePlanSchema.MaximumActions)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(fullPaths),
+                $"At most {OpenSorSe.Executor.Models.ChangePlanSchema.MaximumActions} current paths can be resolved at once.");
+        }
+
+        return _store.ResolveActiveFileIdsAsync(fullPaths, cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task<SmartTagOperationResult> AddUserTagAsync(string fileId, string displayName, CancellationToken cancellationToken = default) =>

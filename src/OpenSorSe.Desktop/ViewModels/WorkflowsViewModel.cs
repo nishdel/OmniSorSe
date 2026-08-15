@@ -398,7 +398,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
     public bool PreserveUnchangedAnalysis { get; set; } = true;
     public bool FullScanEnabled { get; set; } = true;
 
-    public string RecipeName { get; set; } = "New sorting recipe";
+    public string RecipeName { get; set; } = "New Organization recipe";
     public string RecipeDescription { get; set; } = string.Empty;
     public string RecipeFileTypes { get; set; } = string.Empty;
     public string RecipeCategories { get; set; } = string.Empty;
@@ -665,7 +665,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
         LoadRecipeEditor(BuiltInWorkflowLibrary.Recipes[0] with
         {
             Id = string.Empty,
-            Name = "New sorting recipe",
+            Name = "New Organization recipe",
             Description = null,
             IsBuiltIn = false,
         });
@@ -749,7 +749,7 @@ public sealed class WorkflowsViewModel : ViewModelBase
                 : await _library.UpdateRecipeAsync(edited, CancellationToken.None);
             LibraryChanged?.Invoke(this, saved.Id);
             await RefreshCoreAsync(null, saved.Id);
-            StatusText = $"Sorting recipe revision {saved.Revision} saved after validation.";
+            StatusText = $"Organization recipe revision {saved.Revision} saved after validation.";
         });
     }
 

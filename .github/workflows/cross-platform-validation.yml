@@ -14,6 +14,10 @@ on:
       - v2.3-content-intelligence
       - v2.4-omnisorse-transition
       - v2.5-workflow-indexing-quality
+      - v2.6-explainable-smart-tags
+      - v2.7-scalable-faceted-discovery
+      - v2.8-guided-workflows-product-coherence
+      - v2.9-reviewed-intelligent-organization
   pull_request:
 
 permissions:

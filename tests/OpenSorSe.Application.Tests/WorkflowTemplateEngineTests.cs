@@ -69,6 +69,27 @@ public sealed class WorkflowTemplateEngineTests : IDisposable
         Assert.Null(result.ProposedDestinationPath);
     }
 
+    [Fact]
+    public void Evaluate_ExplicitFallbackForRequiredValueProducesReviewableProposal()
+    {
+        var recipe = Recipe() with
+        {
+            NamingTemplate = "{documentType}_{originalName}",
+            RequiredFields = ["documentType"],
+            FallbackValues = new Dictionary<string, string> { ["documentType"] = "Unclassified" },
+            Normalization = Recipe().Normalization with
+            {
+                MissingValuePolicy = WorkflowMissingValuePolicy.UseFallback,
+            },
+        };
+
+        var result = Evaluate(recipe);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("Unclassified_sample.pdf", result.ProposedFileName);
+        Assert.Contains("documentType", result.FallbackValues, StringComparer.OrdinalIgnoreCase);
+    }
+
     [Theory]
     [InlineData("../Outside", "travers")]
     [InlineData("C:\\Outside", "relative")]
@@ -205,6 +226,76 @@ public sealed class WorkflowTemplateEngineTests : IDisposable
         Assert.True(result.RequiresAiDerivedValues);
         Assert.True(ChangePlanRootContains(_root, result.ProposedDestinationPath!));
         Assert.Contains("{date", result.ProposedFileName, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Evaluate_EmptyNamingPatternPreservesOriginalNameAndExtension()
+    {
+        var result = Evaluate(Recipe() with
+        {
+            NamingTemplate = string.Empty,
+            DestinationTemplate = "Organized",
+        });
+
+        Assert.True(result.IsValid);
+        Assert.Equal("sample.pdf", result.ProposedFileName);
+        Assert.EndsWith(Path.Combine("Organized", "sample.pdf"), result.ProposedDestinationPath);
+    }
+
+    [Fact]
+    public void Evaluate_EmptyDestinationPatternPreservesCurrentFolder()
+    {
+        var result = Evaluate(Recipe() with
+        {
+            NamingTemplate = "{originalName}_reviewed",
+            DestinationTemplate = string.Empty,
+        });
+
+        Assert.True(result.IsValid);
+        Assert.Equal(Path.Combine(_root, "sample_reviewed.pdf"), result.ProposedDestinationPath);
+    }
+
+    [Fact]
+    public void ValidateRecipeTemplates_RejectsRecipeWithNoNamingOrDestinationChange()
+    {
+        var validation = _engine.ValidateRecipeTemplates(Recipe() with
+        {
+            NamingTemplate = string.Empty,
+            DestinationTemplate = string.Empty,
+        });
+
+        Assert.False(validation.IsValid);
+        Assert.Contains(validation.Issues, issue => issue.Code == "template.no-operation");
+    }
+
+    [Fact]
+    public void Evaluate_ExplicitFilesystemDateFormatsAreSupported()
+    {
+        var result = Evaluate(
+            Recipe() with
+            {
+                NamingTemplate = "{filesystemCreatedDate:yyyy-MM-dd}_{originalName}",
+                RequiredFields = ["filesystemCreatedDate", "originalName"],
+            },
+            ("filesystemCreatedDate", "2026-05-03T10:00:00Z"));
+
+        Assert.True(result.IsValid);
+        Assert.Equal("2026-05-03_sample.pdf", result.ProposedFileName);
+    }
+
+    [Fact]
+    public void Evaluate_PreservesOriginalExtensionCasingExactly()
+    {
+        var original = Path.Combine(_root, "sample.PdF");
+        var context = new RecipeEvaluationContext(
+            _root,
+            original,
+            new Dictionary<string, RecipeFieldValue>());
+
+        var result = _engine.Evaluate(Recipe() with { NamingTemplate = "review.PDF" }, context);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("review.PdF", result.ProposedFileName);
     }
 
     private RecipeEvaluationResult Evaluate(

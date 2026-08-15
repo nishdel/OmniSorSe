@@ -3,6 +3,7 @@
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
              xmlns:ai="using:OpenSorSe.Application.AI"
              xmlns:content="using:OpenSorSe.Application.Content"
+             xmlns:workflows="using:OpenSorSe.Application.Workflows"
              xmlns:views="using:OpenSorSe.Desktop.Views"
              x:Class="OpenSorSe.Desktop.Views.ResultsView"
              x:DataType="vm:ResultsViewModel">
@@ -157,7 +158,7 @@
                             </StackPanel>
                             <Grid IsVisible="{Binding HasSnapshot}"
                                   Grid.IsSharedSizeScope="True"
-                                  RowDefinitions="Auto,*"
+                                  RowDefinitions="Auto,Auto,*"
                                   RowSpacing="6">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -213,10 +214,22 @@
                                                   AutomationProperties.Name="Resize size and tags columns" />
                                     <TextBlock Grid.Column="8" Margin="6,0" Text="Tags" FontWeight="SemiBold" />
                                 </Grid>
-                                <ListBox Grid.Row="1"
+                                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBlock Text="{Binding OrganizationSelectionText}"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                    <Button Grid.Column="1"
+                                            Classes="primary"
+                                            Content="Organize selected"
+                                            Command="{Binding OrganizeSelectedFilesCommand}"
+                                            AutomationProperties.Name="Preview selected files with an Organization recipe" />
+                                </Grid>
+                                <ListBox Grid.Row="2"
                                          Classes="files-table"
                                          ItemsSource="{Binding PageRows}"
                                          SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                                         SelectionMode="Multiple"
+                                         SelectionChanged="OnFilesSelectionChanged"
                                          AutomationProperties.Name="Files">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate x:DataType="vm:ResultsFileRow">
@@ -436,6 +449,105 @@
                                     </ItemsControl>
                                 </StackPanel>
                             </Expander>
+                            <Border IsVisible="{Binding Organization.IsVisible}"
+                                    Classes="card">
+                                <StackPanel DataContext="{Binding Organization}"
+                                            x:DataType="vm:ReviewedOrganizationViewModel"
+                                            Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="2">
+                                            <TextBlock Text="Organization recipe" FontSize="17" FontWeight="SemiBold" />
+                                            <TextBlock Text="Deterministic preview → Review Changes → existing Change Plan"
+                                                       Classes="page-subtitle" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Classes="secondary" Content="Close"
+                                                Command="{Binding CloseCommand}"
+                                                AutomationProperties.Name="Close Organization recipe preview" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding SelectedCountText}" />
+                                    <ComboBox ItemsSource="{Binding AvailableRecipes}"
+                                              SelectedItem="{Binding SelectedRecipe, Mode=TwoWay}"
+                                              AutomationProperties.Name="Organization recipe" />
+                                    <TextBlock Text="Naming pattern" FontWeight="SemiBold" />
+                                    <TextBox Text="{Binding NamingPattern, Mode=TwoWay}"
+                                             AutomationProperties.Name="Organization recipe naming pattern" />
+                                    <TextBlock Text="Destination pattern inside the indexed source" FontWeight="SemiBold" />
+                                    <TextBox Text="{Binding DestinationPattern, Mode=TwoWay}"
+                                             AutomationProperties.Name="Organization recipe relative destination pattern" />
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                        <ComboBox ItemsSource="{Binding TokenTargets}"
+                                                  SelectedItem="{Binding TokenTarget, Mode=TwoWay}"
+                                                  AutomationProperties.Name="Recipe token insertion target" />
+                                        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto"
+                                                      VerticalScrollBarVisibility="Disabled">
+                                            <ItemsControl ItemsSource="{Binding AvailableTokens}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="workflows:OrganizationRecipeToken">
+                                                        <Button Margin="0,0,6,0" Classes="secondary"
+                                                                Content="{Binding DisplayName}"
+                                                                ToolTip.Tip="{Binding Description}"
+                                                                Command="{Binding DataContext.Organization.InsertTokenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                AutomationProperties.Name="{Binding AccessibleName}"
+                                                                x:CompileBindings="False" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Grid>
+                                    <WrapPanel>
+                                        <Button Margin="0,0,6,6" Classes="primary" Content="Preview recipe"
+                                                Command="{Binding PreviewCommand}" />
+                                        <Button Margin="0,0,6,6" Classes="secondary" Content="Cancel preview"
+                                                IsVisible="{Binding IsBusy}" Command="{Binding CancelPreviewCommand}" />
+                                        <Button Margin="0,0,6,6" Classes="secondary" Content="Manage recipes"
+                                                Command="{Binding ManageRecipesCommand}" />
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                    <TextBlock Text="{Binding CoverageText}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding ActionCountText}" TextWrapping="Wrap" />
+                                    <Border IsVisible="{Binding HasSensitivePathWarning}" Classes="subtle-card">
+                                        <TextBlock Text="{Binding PrivacyWarningText}" TextWrapping="Wrap"
+                                                   AutomationProperties.Name="Classification externalization warning" />
+                                    </Border>
+                                    <StackPanel IsVisible="{Binding HasProposal}" Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <TextBlock Text="{Binding PreviewRangeText}" TextWrapping="Wrap" />
+                                            <ComboBox Grid.Column="1" ItemsSource="{Binding PreviewFilters}"
+                                                      SelectedItem="{Binding PreviewFilter, Mode=TwoWay}"
+                                                      AutomationProperties.Name="Organization preview readiness filter" />
+                                        </Grid>
+                                        <ListBox ItemsSource="{Binding VisibleRows}" MaxHeight="360"
+                                                 AutomationProperties.Name="Bounded Organization proposal preview">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:OrganizationProposalRowViewModel">
+                                                    <Border Classes="result-row" Padding="0,7">
+                                                        <StackPanel Spacing="3">
+                                                            <TextBlock Text="{Binding Readiness}" FontWeight="SemiBold" />
+                                                            <TextBlock Text="{Binding CurrentPath, StringFormat='Current: {0}'}" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding TargetPath, StringFormat='Proposed: {0}'}" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding EvidenceText}" Classes="page-subtitle" TextWrapping="Wrap" />
+                                                            <TextBlock Text="{Binding DetailText}" TextWrapping="Wrap" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <TextBlock Text="{Binding RecommendationText}" Classes="page-subtitle" TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <Button Margin="0,0,6,0" Classes="secondary" Content="Exclude files that cannot be proposed"
+                                                    Command="{Binding RemoveUnreadyCommand}" />
+                                            <Button Classes="primary" Content="Review Changes"
+                                                    Command="{Binding ReviewChangesCommand}"
+                                                    AutomationProperties.HelpText="Revalidates this preview, then creates the existing Change Plan. No file operation runs yet." />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                             <Border IsVisible="{Binding AiSuggestions.IsVisible}"
                                     Classes="ai-card">
                                 <StackPanel Spacing="7"

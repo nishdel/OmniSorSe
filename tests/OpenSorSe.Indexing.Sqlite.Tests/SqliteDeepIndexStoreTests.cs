@@ -466,6 +466,29 @@ public sealed class SqliteDeepIndexStoreTests
         Assert.DoesNotContain(await store.GetFileSmartTagsAsync(fileId), tag => tag.Definition.TagId == "theme.finance");
     }
 
+    /// <summary>Files projections resolve current paths to durable IDs in bounded SQL chunks.</summary>
+    [Fact]
+    public async Task ResolveActiveFileIds_BatchesCurrentPathsWithoutNPlusOneIdentityLoss()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var observations = Enumerable.Range(0, 405)
+            .Select(index => fixture.Observation($"batch/{index:D4}.txt", $"stable:{index:D4}"))
+            .ToArray();
+        await QueueAsync(store, fixture.Source(), observations);
+        var indexed = await store.GetSearchDocumentsAsync(1000);
+        var expected = indexed.ToDictionary(document => document.FullPath, document => document.FileId, StringComparer.Ordinal);
+        var requested = observations.Select(item => item.FullPath)
+            .Append(Path.Combine(fixture.Root, "missing.txt"))
+            .ToArray();
+
+        var resolved = await store.ResolveActiveFileIdsAsync(requested);
+
+        Assert.Equal(405, resolved.Count);
+        Assert.All(observations, observation => Assert.Equal(expected[observation.FullPath], resolved[observation.FullPath]));
+        Assert.DoesNotContain(Path.Combine(fixture.Root, "missing.txt"), resolved.Keys);
+    }
+
     /// <summary>Verifies structured media evidence round-trips without being flattened into generic metadata.</summary>
     [Fact]
     public async Task MediaEvidenceRoundTripsThroughSearchAndPrivacyInspection()

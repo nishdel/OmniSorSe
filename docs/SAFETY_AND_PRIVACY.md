@@ -55,6 +55,15 @@ Resolved settings are conjunctive: application safety/capability gates are ceili
 
 Recipe output is stored as a pending v1.1 Change Plan with profile/recipe revision, field values, evidence, deterministic/AI status, warnings, and unresolved fields. No workflow service approves or applies it. Existing preflight, explicit Apply, non-overwrite, journal, recovery, rollback, history, and Undo rules remain the sole mutation path.
 
+Unreleased v2.9 presents the same persistent definitions as **Organization
+recipes** and adds only an ephemeral reviewed preview over an explicit stable-ID
+selection. The preview remains inside one registered source root, budgets file
+and directory actions together, and is re-resolved before Change Plan creation.
+When Theme or Document Type is written into a filesystem-visible name, the UI
+warns that the classification may become visible through shared folders,
+backups, sync, or attachments. Ordinary diagnostics omit raw tag/evidence and
+expanded path values.
+
 Workflow export excludes document contents, AI endpoint/model/provider configuration, credentials, and secrets. Diagnostic export contains library lifecycle/status data and may include the local path of a preserved corrupt workflow file; inspect it before sharing.
 
 The mutation workflow requires:

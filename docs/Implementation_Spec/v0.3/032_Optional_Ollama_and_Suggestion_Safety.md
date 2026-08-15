@@ -45,7 +45,7 @@ sequenceDiagram
 
 ## Request privacy
 
-File-organization requests include only opaque result ID, display filename, extension, deterministic category, up to 30 selected folder names, and up to five values in each local preference signal. Folder-structure requests include the same bounded fields for up to 25 files. Full source paths, file hashes, file bytes, extracted text, and all scan output are excluded.
+File-organization requests include only opaque result ID, display filename, extension, deterministic category, up to 30 selected folder names, and up to five values in each local preference signal. The original v0.3 proposal described folder-structure requests for up to 25 files; the implemented current bound is 12 (`AiPromptLimits.MaximumFolderStructureFiles`). Full source paths, file hashes, file bytes, extracted text, and all scan output are excluded.
 
 When the configured endpoint is not local, Settings warns that this bounded metadata may be transmitted to the endpoint. OpenSorSe adds no hidden network calls, telemetry, analytics, cloud account, or automatic sharing.
 
