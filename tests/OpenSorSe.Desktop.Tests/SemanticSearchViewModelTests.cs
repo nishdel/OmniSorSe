@@ -73,32 +73,88 @@ public sealed class SemanticSearchViewModelTests
         Assert.Empty(store.Items);
     }
 
-    /// <summary>Canonical picker filters are reachable and compose by type without display-string matching.</summary>
+    /// <summary>Search captures one bounded canonical context for stable-ID navigation into Files.</summary>
     [Fact]
-    public async Task SmartTagPickerAddsCanonicalOrWithinAndAcrossFilters()
+    public async Task DiscoveryContextCapturesQueryFiltersAndStableResultOrder()
     {
-        var search = new InterpretingSearch([]);
-        var smartTags = new SmartTags();
+        var hit = Hit("C:\\Docs\\invoice.pdf", "file:invoice");
+        var search = new Search([hit]);
         using var viewModel = new SemanticSearchViewModel(
             new Configuration(true),
             new Indexer(),
             search,
             new Store(),
+            new Launcher());
+        viewModel.QueryText = "invoice";
+
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        var context = viewModel.CaptureDiscoveryContext(Assert.Single(viewModel.Hits));
+
+        Assert.NotNull(context);
+        Assert.Equal("invoice", context.Query.QueryText);
+        Assert.Equal("file:invoice", context.SelectedFileId);
+        Assert.Equal(["file:invoice"], context.ResultFileIds);
+    }
+
+    /// <summary>Open in Files emits one stable-ID request and never opens a raw path directly.</summary>
+    [Fact]
+    public async Task OpenInFiles_EmitsStableDiscoveryRequest()
+    {
+        var hit = Hit("C:\\Docs\\invoice.pdf", "file:invoice");
+        var launcher = new Launcher();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
+            launcher)
+        {
+            QueryText = "invoice",
+        };
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        DiscoveryFileOpenRequest? request = null;
+        viewModel.OpenInFilesRequested += (_, value) => request = value;
+
+        viewModel.OpenInFilesCommand.Execute(hit);
+
+        Assert.NotNull(request);
+        Assert.Equal("file:invoice", request!.FileId);
+        Assert.Equal("invoice", request.Context.Query.QueryText);
+        Assert.Empty(launcher.Opened);
+    }
+
+    /// <summary>Returning from Files restores query, canonical facets, and the selected Saved View rule.</summary>
+    [Fact]
+    public async Task RestoreDiscoveryContext_RestoresCanonicalQueryFiltersAndSavedView()
+    {
+        var hit = Hit("C:\\Docs\\invoice.pdf", "file:invoice");
+        var saved = new SavedDiscoveryView(
+            "view:finance",
+            "Finance",
+            new DiscoveryQueryState(
+                "invoice",
+                [new SearchFilter("theme.finance", SearchFilterKind.SmartTagTheme, "theme.finance", "Finance")]),
+            1,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch);
+        var views = new SavedViews();
+        views.Items.Add(saved);
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
             new Launcher(),
-            smartTagService: smartTags);
-        await viewModel.RefreshSmartTagFiltersAsync();
+            savedViewStore: views);
+        await viewModel.RefreshAsync();
+        var context = new DiscoveryWorkflowContext(saved.Query, saved.Id, hit.FileId!, false, null, [hit.FileId!]);
 
-        viewModel.SelectedThemeTag = Assert.Single(viewModel.ThemeTagChoices, choice => choice.TagId == "theme.finance");
-        viewModel.SelectedDocumentTypeTag = Assert.Single(viewModel.DocumentTypeTagChoices);
-        await viewModel.AddSmartTagFiltersCommand.ExecuteAsync(null);
-        viewModel.SelectedThemeTag = Assert.Single(viewModel.ThemeTagChoices, choice => choice.TagId == "theme.legal");
-        await viewModel.AddSmartTagFiltersCommand.ExecuteAsync(null);
+        await viewModel.RestoreDiscoveryContextAsync(context);
 
-        var filters = Assert.IsType<SearchRequest>(search.LastRequest).ActiveFilters!;
-        Assert.Equal(3, filters.Count);
-        Assert.Equal(2, filters.Count(filter => filter.Kind == SearchFilterKind.SmartTagTheme));
-        Assert.Contains(filters, filter => filter.Kind == SearchFilterKind.SmartTagDocumentType && filter.Value == "document-type.invoice");
-        Assert.All(filters, filter => Assert.Contains('.', filter.Value));
+        Assert.Equal("invoice", viewModel.QueryText);
+        Assert.Equal("view:finance", viewModel.SelectedSavedView?.Id);
+        Assert.Contains(viewModel.ActiveFilters, filter => filter.Kind == SearchFilterKind.SmartTagTheme && filter.Value == "theme.finance");
+        Assert.Single(viewModel.Hits);
     }
 
     /// <summary>Verifies explained local results are published without exposing vectors.</summary>

@@ -124,6 +124,15 @@ public sealed class AiPromptBuilder : IAiPromptBuilder
         var maximumStemLength = Math.Min(
             AiSuggestionValidator.MaximumFileStemLength,
             Math.Max(1, 255 - extension.Length));
+        var groundedEvidence = request.GroundedEvidence
+            .Take(4)
+            .Select(item => new
+            {
+                type = Bound(item.Type, 32),
+                value = Bound(item.DisplayName, 64),
+                authority = Bound(item.Authority, 32),
+            })
+            .ToArray();
         var prompt = new
         {
             promptVersion = AiPromptTemplates.FileRenamePromptVersion,
@@ -136,6 +145,7 @@ public sealed class AiPromptBuilder : IAiPromptBuilder
                 preservedExtension = extension,
                 documentType = Bound(request.File.ClassificationDisplay, 64),
                 nearbyNameStems = nearbyStems.Values,
+                groundedClassificationEvidence = groundedEvidence,
                 rejectedStems = rejectedStems.Values,
                 maximumStemLength,
                 separator = "-",

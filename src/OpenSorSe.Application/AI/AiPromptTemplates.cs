@@ -4,7 +4,7 @@ namespace OpenSorSe.Application.AI;
 public static class AiPromptTemplates
 {
     /// <summary>Gets the file-rename prompt-template version.</summary>
-    public const string FileRenamePromptVersion = "2.0";
+    public const string FileRenamePromptVersion = "2.1";
 
     /// <summary>Gets the folder-structure prompt-template version.</summary>
     public const string FolderStructurePromptVersion = "2.0";

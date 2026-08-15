@@ -21,6 +21,12 @@ public sealed record ResultTagRow(
     /// <summary>Gets the canonical Smart Tag type when this row comes from schema-6 authority.</summary>
     public SmartTagType? TagType { get; init; }
 
+    /// <summary>Gets the evidence-strength band when this row comes from schema-6 classification.</summary>
+    public ContentIntelligenceConfidence? Confidence { get; init; }
+
+    /// <summary>Gets the effective schema-6 assignment state.</summary>
+    public SmartTagAssignmentState? SmartTagState { get; init; }
+
     /// <summary>Gets an accessible description that does not rely on color.</summary>
     public string AccessibleName { get; init; } = DisplayName;
 
@@ -81,6 +87,8 @@ public sealed record ResultTagRow(
             !isUser)
         {
             TagType = tag.Definition.Type,
+            Confidence = tag.Confidence,
+            SmartTagState = tag.State,
             AccessibleName = $"{(suggestion ? "Suggested " : string.Empty)}{kind} {tag.Definition.DisplayName}{confidence}, {category}",
         };
     }

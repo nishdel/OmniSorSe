@@ -11,7 +11,7 @@
     </UserControl.KeyBindings>
 
     <Grid>
-        <Grid IsVisible="{Binding IsExplorerVisible}" RowDefinitions="Auto,Auto,*" RowSpacing="10">
+        <Grid IsVisible="{Binding IsExplorerVisible}" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="3">
                     <TextBlock Classes="page-title" Text="Files" />
@@ -32,7 +32,32 @@
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="1" Classes="card" AutomationProperties.Name="Files search and filters">
+            <Border Grid.Row="1"
+                    IsVisible="{Binding IsDiscoveryContextActive}"
+                    Classes="subtle-card"
+                    AutomationProperties.Name="Preserved discovery context">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="Discovery context preserved" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding DiscoveryContextText}" TextWrapping="Wrap" Classes="page-subtitle" />
+                        <TextBlock IsVisible="{Binding IsContinuousReviewActive}"
+                                   Text="{Binding ReviewPositionText}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </StackPanel>
+                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Button Margin="0,0,6,0" IsVisible="{Binding IsContinuousReviewActive}"
+                                Classes="secondary" Content="Previous" Command="{Binding PreviousReviewItemCommand}"
+                                AutomationProperties.Name="Previous unresolved Smart Tag review item" />
+                        <Button Margin="0,0,6,0" IsVisible="{Binding IsContinuousReviewActive}"
+                                Classes="secondary" Content="Next" Command="{Binding NextReviewItemCommand}"
+                                AutomationProperties.Name="Next unresolved Smart Tag review item" />
+                        <Button Classes="primary" Content="Return to discovery" Command="{Binding ReturnToDiscoveryCommand}"
+                                AutomationProperties.Name="Return to preserved Search, facets, and Saved View" />
+                    </WrapPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Classes="card" AutomationProperties.Name="Files search and filters">
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
                     <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
                         <TextBox PlaceholderText="Search file names, folders, types, or tags"
@@ -92,7 +117,7 @@
             </Border>
 
             <Grid x:Name="FilesSplitGrid"
-                  Grid.Row="2">
+                  Grid.Row="3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MinWidth="450" />
                     <ColumnDefinition Width="0" />
@@ -350,6 +375,16 @@
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
+                                <Expander IsVisible="{Binding SelectedUserTag}"
+                                          Header="Why this classification?"
+                                          AutomationProperties.Name="Smart Tag confidence and bounded evidence">
+                                    <StackPanel Margin="0,6,0,0" Spacing="3">
+                                        <TextBlock Text="{Binding SelectedUserTag.Source, StringFormat='State: {0}'}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding SelectedUserTag.Explanation}" TextWrapping="Wrap" />
+                                        <TextBlock Text="Evidence is bounded to the strongest local reasons. Confidence bands are not probabilities."
+                                                   Classes="page-subtitle" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Expander>
                                  <Button Classes="secondary"
                                          Content="Remove selected tag"
                                          Command="{Binding RemoveSelectedTagCommand}"
@@ -357,11 +392,13 @@
                                 <WrapPanel>
                                     <Button Margin="0,0,6,0"
                                             Classes="secondary"
-                                            Content="Keep suggested tag"
-                                            Command="{Binding AcceptSuggestedTagCommand}" />
+                                            Content="Accept suggestion"
+                                            Command="{Binding AcceptSuggestedTagCommand}"
+                                            AutomationProperties.Name="Accept selected Smart Tag suggestion and keep this user decision" />
                                     <Button Classes="secondary"
-                                            Content="Dismiss suggested tag"
-                                            Command="{Binding RejectSuggestedTagCommand}" />
+                                            Content="Reject suggestion"
+                                            Command="{Binding RejectSuggestedTagCommand}"
+                                            AutomationProperties.Name="Reject selected Smart Tag suggestion and continue review" />
                                 </WrapPanel>
                                 <WrapPanel>
                                     <Button Margin="0,0,6,6"
@@ -430,6 +467,10 @@
                                             <TextBlock Text="{Binding RenameActionAvailabilityText}"
                                                        Classes="page-subtitle"
                                                        TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding OrganizationEvidenceText}"
+                                                       Classes="page-subtitle"
+                                                       TextWrapping="Wrap"
+                                                       AutomationProperties.Name="Grounded classification evidence permitted for the rename suggestion" />
                                             <StackPanel IsVisible="{Binding HasRenameSuggestion}" Spacing="4">
                                                 <TextBox Text="{Binding ProposedFileName, Mode=TwoWay}" />
                                                 <TextBlock Text="{Binding RenameReason}" TextWrapping="Wrap" />

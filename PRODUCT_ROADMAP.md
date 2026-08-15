@@ -494,6 +494,34 @@ OmniBrille separation, and Protocol v1 remain unchanged.
 See [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md)
 and [v2.7 manual testing](docs/MANUAL_TESTING_v2.7.md).
 
+### v2.8 — Guided Workflows & Product Coherence
+
+**Branch:** `v2.8-guided-workflows-product-coherence`, created directly from
+the committed v2.7 release candidate.
+
+**Merged status:** Implementation branch for review; it is not released and
+does not rewrite the v2.5–v2.7 candidate chain.
+
+v2.8 is a consolidation release. A small explicit discovery context connects
+Search and Files by stable file identity, preserves canonical query/facet/Saved
+View state, and supports return to discovery. Unresolved Moderate Smart Tag
+results become a continuous keyboard-accessible review sequence using the
+existing schema-6 authority.
+
+Home summarizes bounded durable library/readiness state after restart and
+routes Find, Understand, Review, and Organize into existing surfaces. Optional
+capabilities are summarized without eager provider/tool execution. Duplicate
+legacy Smart Tag selectors are retired in favor of the v2.7 facet model, while
+accepted or Strong deterministic classification can inform an editable rename
+proposal without bypassing Change Plans.
+
+Schema 6, deterministic Search ranking/candidate retrieval, progressive
+indexing, Saved View persistence, Smart Tag authority, Explorer Protocol v1,
+OmniBrille separation, and mutation safety remain unchanged.
+
+See [v2.8 guided-workflow design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
+and [v2.8 manual testing](docs/MANUAL_TESTING_v2.8.md).
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.

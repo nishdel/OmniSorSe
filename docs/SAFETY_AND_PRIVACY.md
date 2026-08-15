@@ -240,6 +240,26 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Filesystem-created and filesystem-modified dates remain explicitly separate;
   v2.7 does not infer or expose a generic ambiguous year.
 
+### Guided workflow candidate
+
+- Unreleased v2.8 moves between Search and Files using stable durable file IDs
+  and bounded canonical query/filter state. It never treats a stale path as
+  authority or opens an unavailable source file merely to complete navigation.
+- Home uses local counts, readiness facts, at most three Saved View definitions,
+  and existing bounded capability discovery. It does not execute Saved Views,
+  contact Ollama, invoke external tools, launch OmniBrille, or retain a file/tag graph.
+- Continuous Smart Tag review calls the existing schema-6 decision authority.
+  Evidence presentation remains bounded, and raw evidence is not copied into
+  ordinary navigation state or diagnostics.
+- Organization prompts may contain at most a few accepted/User-owned or Strong
+  deterministic labels and authority descriptions after an explicit request.
+  Unresolved Moderate, Limited, and rejected classifications are excluded. A
+  non-local configured AI endpoint remains the previously documented explicit
+  privacy boundary.
+- Ordinary diagnostics do not retain raw discovery queries, User Tags, Saved
+  View rules, classification evidence excerpts, provider secrets, or sensitive
+  configured executable/model paths.
+
 ### Explorer Protocol v1
 
 - The v2.4 protocol is an on-demand local named pipe (Unix-domain-backed on

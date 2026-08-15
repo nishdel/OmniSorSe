@@ -53,12 +53,20 @@ Tag authority in schema 6, reuses retained Content/Media Intelligence evidence,
 and preserves base-first Search. It is not released. See the
 [v2.6 design](docs/EXPLAINABLE_SMART_TAGS_v2.6.md).
 
-The active implementation branch, **v2.7 Scalable Faceted Discovery**, builds
+The v2.7 release-candidate branch, **v2.7 Scalable Faceted Discovery**, builds
 on the committed v2.6 candidate. It restores complete-library candidate
 eligibility beyond the former 10,000-document projection, adds database-backed
 typed facets/counts and dynamic Saved Views, and keeps the established ranker,
 schema 6, progressive indexing, and Explorer Protocol v1. It is not released.
 See the [v2.7 design](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md).
+
+The current consolidation branch, **v2.8 Guided Workflows & Product
+Coherence**, builds on the committed v2.7 candidate. It connects durable Home
+readiness, Search, canonical facets/Saved Views, Files details, continuous Smart
+Tag review, and reviewed organization through stable file identity. It does not
+change schema 6, Search ranking, Explorer Protocol v1, or OmniBrille. It is not
+released. See the
+[v2.8 design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
 
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The
@@ -109,6 +117,7 @@ update, uninstall, application-data, and checksum guidance is in
 | Content Intelligence | Derives bounded normalized topics, textual entities, keywords, and a one-sentence extractive summary from already indexed local evidence, retaining provider/version and source provenance. These remain optional clues rather than facts. |
 | Explainable Smart Tags (unreleased v2.6) | Classifies retained local evidence into bounded Theme and Document Type suggestions, preserves explicit User Tags and accept/reject authority, and adds canonical Search filters without requiring AI or writing file metadata. |
 | Scalable faceted discovery (unreleased v2.7) | Combines free text with database-backed Theme, Document Type, User Tag, file-type, filesystem-created-year, and filesystem-modified-year facets; shows contextual counts and truthful candidate coverage; and saves dynamic current-index query rules without copying membership. |
+| Guided workflows (unreleased v2.8) | Projects bounded durable library readiness on Home; connects Search results to Files by stable identity and back without losing canonical discovery state; provides continuous unresolved Smart Tag review; and lets accepted/Strong evidence inform editable, reviewed organization proposals. |
 | Explorer Protocol v1 | Provides an on-demand current-user local named-pipe boundary for an optional separate explorer companion: authorized indexed roots, bounded Structure, grounded Search, Related/context, and safe details. It is read-only, session-scoped, dormant by default, and independent of SQLite schema. Unreleased v2.5 can launch separately installed OmniBrille through its established one-time current-user handoff pipe. |
 | Optional AI | Uses an explicitly configured Ollama-compatible endpoint for separately enabled, bounded, validated suggestions and same-tier reranking of files already found by Search. Ordinary Search and OCR do not require AI. Remote endpoints are labelled as a privacy boundary. |
 | Workflows and plugins | Provides typed Workflow Profiles, constrained Sorting Recipes, and a bounded local in-process plugin SDK with explicit capability grants. |
@@ -223,6 +232,7 @@ documents are:
 | [OmniBrille companion handoff](docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md) | Unreleased v2.5 local bootstrap, lifecycle, scope, failure, and threat-model contract; Explorer Protocol v1 remains unchanged. |
 | [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) | Unreleased schema-6 taxonomy, authority, classifier, Search/filter, progressive-indexing, privacy, and UI contract. |
 | [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md) | Unreleased complete-library candidate selection, database-backed facets/counts, dynamic Saved Views, bounded extraction, privacy, and UI contract. |
+| [v2.8 Guided Workflows](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md) | Unreleased durable Home, Search-to-Files context, continuous Smart Tag review, capability readiness, organization evidence, privacy, and architecture contract. |
 | [v2.3.0 Release Notes](docs/RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence and local-transcription release snapshot. |
 | [v2.2.0 Release Notes](docs/RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence and UX release snapshot. |
 | [v2.1.0 Release Notes](docs/RELEASE_NOTES_v2.1.0.md) | Historical Search/AI quality release snapshot. |

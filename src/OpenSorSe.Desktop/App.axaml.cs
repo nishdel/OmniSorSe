@@ -21,6 +21,7 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Explorer;
+using OpenSorSe.Application.Guidance;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
@@ -318,6 +319,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IExplorerProtocolHost, NamedPipeExplorerProtocolHost>();
         services.AddSingleton<IExplorerCompanionLocator, ExplorerCompanionLocator>();
         services.AddSingleton<IExplorerCompanionLaunchService, ExplorerCompanionLaunchService>();
+        services.AddSingleton<IProductReadinessService, ProductReadinessService>();
         services.AddSingleton<IFolderStructureSnapshotService, FolderStructureSnapshotService>();
         services.AddSingleton<IStructureComparisonService, StructureComparisonService>();
         services.AddSingleton<IStructureHistoryStore>(serviceProvider =>

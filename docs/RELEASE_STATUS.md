@@ -185,6 +185,17 @@ documents, tags, releases, and validation records remain historical evidence.
 
 ## Current development
 
+OmniSorSe v2.8 **Guided Workflows & Product Coherence** is implemented on
+`v2.8-guided-workflows-product-coherence` from the committed v2.7 release
+candidate. It is not released, merged, tagged, packaged, or published. It
+connects Search, Files, Smart Tag review, durable Home readiness, Saved Views,
+and reviewed organization through stable-identity navigation while preserving
+schema 6, Search/facet semantics, Smart Tag authority, progressive indexing,
+Explorer Protocol v1, and OmniBrille separation. Interactive desktop,
+screen-reader, DPI, optional-tool, and native-platform execution remain manual
+release gates. See [v2.8 Guided Workflows](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
+and the [manual checklist](MANUAL_TESTING_v2.8.md).
+
 OmniSorSe v2.7 **Scalable Faceted Discovery** is implemented and locally
 validated on
 `v2.7-scalable-faceted-discovery` from the committed v2.6 release candidate. It

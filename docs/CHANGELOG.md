@@ -7,6 +7,39 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.8 Guided Workflows & Product Coherence
+
+Implementation branch: `v2.8-guided-workflows-product-coherence`. This work is
+not a published release and builds directly on the committed v2.7 release
+candidate.
+
+### Added and changed
+
+- Add a bounded discovery context that opens a Search result in Files by stable
+  file ID and restores query, canonical facets, Saved View, and review mode.
+- Add continuous unresolved Moderate Smart Tag review with bounded evidence,
+  previous/next navigation, and automatic current-membership refresh after an
+  explicit Keep or Dismiss decision.
+- Replace session-only Home status with bounded durable library, readiness,
+  pending-review, Saved View, and optional-capability projections.
+- Add Find, Understand, Review, and Organize entry points into existing product
+  surfaces without adding destinations or bypassing prerequisites.
+- Retire redundant legacy Smart Tag Search selectors; v2.7 facets remain the
+  sole canonical Theme, Document Type, and User Tag filter model.
+- Allow accepted, explicit User Tag, and Strong deterministic classification
+  evidence to inform bounded editable rename suggestions with visible authority.
+- Move ordinary Search maintenance and repair actions behind collapsed advanced
+  disclosure while retaining critical readiness and safety information.
+
+### Boundaries
+
+- Schema 6, deterministic Search ranking/candidate selection, facet SQL, Saved
+  View rules, progressive indexing, Smart Tag taxonomy/authority, Change
+  Plans/Undo, Explorer Protocol v1, and OmniBrille remain unchanged.
+- No cloud service, new production dependency, automatic organization,
+  protocol field, schema migration, classifier redesign, or metadata writeback
+  is included.
+
 ## Unreleased — OmniSorSe v2.7 Scalable Faceted Discovery
 
 Implementation branch: `v2.7-scalable-faceted-discovery`. This work is not a

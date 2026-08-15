@@ -24,15 +24,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private readonly IIndexPrivacyService? _privacyService;
     private readonly IAdvancedDiagnosticsWindowService? _advancedDiagnosticsWindowService;
     private readonly IMediaThumbnailProvider? _mediaThumbnailProvider;
-    private readonly ISmartTagService? _smartTagService;
     private readonly ISavedDiscoveryViewStore? _savedViewStore;
     private readonly ObservableCollection<SemanticSearchHit> _hits = [];
     private readonly ObservableCollection<SearchFilter> _activeFilters = [];
     private readonly ObservableCollection<IndexingSource> _sources = [];
     private readonly ObservableCollection<IndexingFailure> _indexingFailures = [];
-    private readonly ObservableCollection<SmartTagFilterChoice> _themeTagChoices = [];
-    private readonly ObservableCollection<SmartTagFilterChoice> _documentTypeTagChoices = [];
-    private readonly ObservableCollection<SmartTagFilterChoice> _userTagChoices = [];
     private readonly ObservableCollection<DiscoveryFacetGroupRow> _facetGroups = [];
     private readonly ObservableCollection<SavedDiscoveryViewRow> _savedViews = [];
     private CancellationTokenSource? _operationCancellation;
@@ -62,9 +58,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     private string _aiAssistanceText = "Deterministic local Search is active.";
     private string _graphCoverageText = "Knowledge Graph coverage has not been inspected for this query.";
     private long _queryVersion;
-    private SmartTagFilterChoice? _selectedThemeTag;
-    private SmartTagFilterChoice? _selectedDocumentTypeTag;
-    private SmartTagFilterChoice? _selectedUserTag;
     private string _candidateCoverageText = "Query candidate coverage has not been inspected.";
     private string? _savedViewName;
     private SavedDiscoveryViewRow? _selectedSavedView;
@@ -100,15 +93,12 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _privacyService = privacyService ?? backgroundIndexingService as IIndexPrivacyService;
         _advancedDiagnosticsWindowService = advancedDiagnosticsWindowService;
         _mediaThumbnailProvider = mediaThumbnailProvider;
-        _smartTagService = smartTagService;
+        _ = smartTagService; // Retained for binary/source-compatible composition while v2.8 removes duplicate selector state.
         _savedViewStore = savedViewStore;
         Hits = new ReadOnlyObservableCollection<SemanticSearchHit>(_hits);
         ActiveFilters = new ReadOnlyObservableCollection<SearchFilter>(_activeFilters);
         Sources = new ReadOnlyObservableCollection<IndexingSource>(_sources);
         IndexingFailures = new ReadOnlyObservableCollection<IndexingFailure>(_indexingFailures);
-        ThemeTagChoices = new ReadOnlyObservableCollection<SmartTagFilterChoice>(_themeTagChoices);
-        DocumentTypeTagChoices = new ReadOnlyObservableCollection<SmartTagFilterChoice>(_documentTypeTagChoices);
-        UserTagChoices = new ReadOnlyObservableCollection<SmartTagFilterChoice>(_userTagChoices);
         FacetGroups = new ReadOnlyObservableCollection<DiscoveryFacetGroupRow>(_facetGroups);
         SavedViews = new ReadOnlyObservableCollection<SavedDiscoveryViewRow>(_savedViews);
         SearchCommand = new AsyncRelayCommand(SearchAsync, CanSearch);
@@ -122,10 +112,10 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         OpenFileCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFileAsync, CanOpenHit);
         OpenContainingFolderCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFolderAsync, CanOpenHit);
         CopyFullPathCommand = new AsyncRelayCommand<SemanticSearchHit>(CopyFullPathAsync, CanCopyHit);
+        OpenInFilesCommand = new RelayCommand<SemanticSearchHit>(OpenInFiles, CanOpenInFiles);
         ToggleFiltersCommand = new RelayCommand(() => AreFiltersVisible = !AreFiltersVisible);
         RemoveFilterCommand = new AsyncRelayCommand<SearchFilter>(RemoveFilterAsync, filter => filter is not null && !IsBusy);
         ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync, () => _activeFilters.Count > 0 && !IsBusy);
-        AddSmartTagFiltersCommand = new AsyncRelayCommand(AddSmartTagFiltersAsync, CanAddSmartTagFilters);
         ToggleFacetCommand = new AsyncRelayCommand<DiscoveryFacetValueRow>(ToggleFacetAsync, value => value is not null && !IsBusy);
         ShowModerateSuggestionsCommand = new AsyncRelayCommand(ShowModerateSuggestionsAsync, () => !IsBusy);
         SaveViewCommand = new AsyncRelayCommand(SaveViewAsync, CanSaveView);
@@ -197,10 +187,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             _backgroundIndexingService.ProgressChanged += OnBackgroundProgressChanged;
             _ = RefreshIndexingStatusAsync();
         }
-        if (_smartTagService is not null)
-        {
-            _ = LoadSmartTagFilterChoicesAsync();
-        }
         if (_savedViewStore is not null)
         {
             _ = LoadSavedViewsAsync();
@@ -237,15 +223,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets visible interpreted filters applied to the current Search.</summary>
     public ReadOnlyObservableCollection<SearchFilter> ActiveFilters { get; }
-
-    /// <summary>Gets canonical Theme choices from schema-6 authority.</summary>
-    public ReadOnlyObservableCollection<SmartTagFilterChoice> ThemeTagChoices { get; }
-
-    /// <summary>Gets canonical Document Type choices from schema-6 authority.</summary>
-    public ReadOnlyObservableCollection<SmartTagFilterChoice> DocumentTypeTagChoices { get; }
-
-    /// <summary>Gets canonical User Tag choices from schema-6 authority.</summary>
-    public ReadOnlyObservableCollection<SmartTagFilterChoice> UserTagChoices { get; }
 
     /// <summary>Gets compact database-backed facet groups for the current canonical query.</summary>
     public ReadOnlyObservableCollection<DiscoveryFacetGroupRow> FacetGroups { get; }
@@ -296,48 +273,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             }
         }
     }
-
-    /// <summary>Gets or sets the Theme to add to the active filter set.</summary>
-    public SmartTagFilterChoice? SelectedThemeTag
-    {
-        get => _selectedThemeTag;
-        set
-        {
-            if (SetProperty(ref _selectedThemeTag, value))
-            {
-                AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the Document Type to add to the active filter set.</summary>
-    public SmartTagFilterChoice? SelectedDocumentTypeTag
-    {
-        get => _selectedDocumentTypeTag;
-        set
-        {
-            if (SetProperty(ref _selectedDocumentTypeTag, value))
-            {
-                AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>Gets or sets the explicit User Tag to add to the active filter set.</summary>
-    public SmartTagFilterChoice? SelectedUserTag
-    {
-        get => _selectedUserTag;
-        set
-        {
-            if (SetProperty(ref _selectedUserTag, value))
-            {
-                AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>Gets whether canonical Smart Tag definitions are available.</summary>
-    public bool HasSmartTagFilterChoices => ThemeTagChoices.Count + DocumentTypeTagChoices.Count + UserTagChoices.Count > 0;
 
     /// <summary>Gets whether any visible interpreted filter is active.</summary>
     public bool HasActiveFilters => ActiveFilters.Count > 0;
@@ -715,6 +650,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the cross-platform clipboard command for one known result path.</summary>
     public IAsyncRelayCommand<SemanticSearchHit> CopyFullPathCommand { get; }
 
+    /// <summary>Gets the stable-ID handoff from Search into the richer Files surface.</summary>
+    public IRelayCommand<SemanticSearchHit> OpenInFilesCommand { get; }
+
     /// <summary>Gets the command that expands or collapses contextual filters.</summary>
     public IRelayCommand ToggleFiltersCommand { get; }
 
@@ -723,9 +661,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that removes every visible filter while retaining topic terms.</summary>
     public IAsyncRelayCommand ClearFiltersCommand { get; }
-
-    /// <summary>Gets the command that adds selected canonical Smart Tag filters.</summary>
-    public IAsyncRelayCommand AddSmartTagFiltersCommand { get; }
 
     /// <summary>Gets the command that toggles one canonical facet value.</summary>
     public IAsyncRelayCommand<DiscoveryFacetValueRow> ToggleFacetCommand { get; }
@@ -841,6 +776,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that opens shared redacted diagnostics for indexing runs.</summary>
     public IRelayCommand OpenIndexingDiagnosticsCommand { get; }
 
+    /// <summary>Raised when Search requests a stable-ID transition into Files.</summary>
+    public event EventHandler<DiscoveryFileOpenRequest>? OpenInFilesRequested;
+
     /// <summary>Refreshes command availability after persisted feature settings change.</summary>
     public void RefreshFeatureAvailability()
     {
@@ -859,11 +797,61 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     public async Task RefreshAsync()
     {
         await RefreshIndexingStatusAsync();
-        await RefreshSmartTagFiltersAsync();
+        await LoadSavedViewsAsync(SelectedSavedView?.Id);
     }
 
-    /// <summary>Refreshes canonical Smart Tag choices without affecting the active query.</summary>
-    public Task RefreshSmartTagFiltersAsync() => LoadSmartTagFilterChoicesAsync();
+    /// <summary>Captures one bounded canonical discovery context for a stable Search hit.</summary>
+    public DiscoveryWorkflowContext? CaptureDiscoveryContext(SemanticSearchHit? hit)
+    {
+        if (hit is not { FileId.Length: > 0 } || !Hits.Contains(hit))
+        {
+            return null;
+        }
+
+        var resultIds = Hits
+            .Select(item => item.FileId)
+            .Where(fileId => !string.IsNullOrWhiteSpace(fileId))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .Take(SearchLimits.MaximumRankedResults)
+            .ToArray();
+        return new DiscoveryWorkflowContext(
+            new DiscoveryQueryState(QueryText?.Trim() ?? string.Empty, _activeFilters.ToArray()),
+            SelectedSavedView?.Id,
+            hit.FileId,
+            _activeFilters.Any(filter => filter.Kind == SearchFilterKind.UnresolvedModerateSmartTag),
+            _activeFilters.FirstOrDefault(filter => filter.Kind == SearchFilterKind.Source)?.Value,
+            resultIds);
+    }
+
+    /// <summary>Restores the exact canonical Search, facet, Saved View, and review state after Files.</summary>
+    public async Task RestoreDiscoveryContextAsync(DiscoveryWorkflowContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        _filtersWereEdited = true;
+        QueryText = context.Query.QueryText;
+        _activeFilters.Clear();
+        foreach (var filter in context.Query.Filters.Take(SearchLimits.MaximumFilters))
+        {
+            _activeFilters.Add(filter);
+        }
+
+        _topicText = context.Query.QueryText;
+        AreFiltersVisible = _activeFilters.Count > 0;
+        SelectedSavedView = context.SavedViewId is null
+            ? null
+            : _savedViews.FirstOrDefault(view => string.Equals(view.Id, context.SavedViewId, StringComparison.Ordinal));
+        OnPropertyChanged(nameof(HasActiveFilters));
+        ClearFiltersCommand.NotifyCanExecuteChanged();
+        SearchCommand.NotifyCanExecuteChanged();
+        if (CanSearch())
+        {
+            await SearchAsync();
+        }
+    }
+
+    /// <summary>Reports a bounded workflow-navigation failure without losing Search state.</summary>
+    public void ReportWorkflowFailure(string message) => Status = StatusPresentation.Warning(message);
 
     /// <summary>Runs a filter-only Search from another first-party surface using a canonical filter.</summary>
     public async Task ApplyExternalFilterAsync(SearchFilter filter)
@@ -879,30 +867,38 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         await SearchAsync();
     }
 
-    private async Task LoadSmartTagFilterChoicesAsync()
+    /// <summary>Opens the canonical unresolved Moderate suggestion discovery state.</summary>
+    public Task OpenModerateReviewAsync() => ShowModerateSuggestionsAsync();
+
+    /// <summary>Evaluates one durable Saved View shortcut by stable identifier.</summary>
+    public async Task<bool> OpenSavedViewByIdAsync(string savedViewId)
     {
-        if (_smartTagService is null)
+        if (string.IsNullOrWhiteSpace(savedViewId))
         {
-            return;
+            return false;
         }
 
-        try
+        await LoadSavedViewsAsync(savedViewId);
+        if (SelectedSavedView is null)
         {
-            var definitions = await _smartTagService.GetDefinitionsAsync();
-            await ApplyOnUiThreadAsync(() =>
-            {
-                ReplaceChoices(_themeTagChoices, definitions, SmartTagType.Theme);
-                ReplaceChoices(_documentTypeTagChoices, definitions, SmartTagType.DocumentType);
-                ReplaceChoices(_userTagChoices, definitions, SmartTagType.UserTag);
-                OnPropertyChanged(nameof(HasSmartTagFilterChoices));
-            });
+            ReportWorkflowFailure("The Saved View is no longer available. No Search state was changed.");
+            return false;
         }
-        catch (OperationCanceledException)
+
+        await OpenSavedViewAsync();
+        return true;
+    }
+
+    /// <summary>Re-evaluates the current canonical query after authoritative indexed metadata changes.</summary>
+    public async Task RefreshCurrentQueryAsync()
+    {
+        if (CanSearch())
         {
+            await SearchAsync();
         }
-        catch
+        else
         {
-            // Optional classification/filter availability must never disable ordinary Search.
+            await RefreshAsync();
         }
     }
 
@@ -1137,57 +1133,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(HasFacetGroups));
     }
 
-    private bool CanAddSmartTagFilters() => !IsBusy &&
-        (SelectedThemeTag is not null || SelectedDocumentTypeTag is not null || SelectedUserTag is not null);
-
-    private async Task AddSmartTagFiltersAsync()
-    {
-        var choices = new[] { SelectedThemeTag, SelectedDocumentTypeTag, SelectedUserTag }
-            .Where(item => item is not null)
-            .Cast<SmartTagFilterChoice>()
-            .ToArray();
-        foreach (var choice in choices)
-        {
-            var kind = choice.Type switch
-            {
-                SmartTagType.Theme => SearchFilterKind.SmartTagTheme,
-                SmartTagType.DocumentType => SearchFilterKind.SmartTagDocumentType,
-                _ => SearchFilterKind.SmartTagUser,
-            };
-            if (!_activeFilters.Any(filter => filter.Kind == kind && string.Equals(filter.Value, choice.TagId, StringComparison.Ordinal)))
-            {
-                _activeFilters.Add(new SearchFilter(
-                    $"{kind}:{choice.TagId}",
-                    kind,
-                    choice.TagId,
-                    $"{choice.TypeLabel}: {choice.DisplayName}"));
-            }
-        }
-
-        SelectedThemeTag = null;
-        SelectedDocumentTypeTag = null;
-        SelectedUserTag = null;
-        _filtersWereEdited = true;
-        AreFiltersVisible = true;
-        OnPropertyChanged(nameof(HasActiveFilters));
-        ClearFiltersCommand.NotifyCanExecuteChanged();
-        await SearchAsync();
-    }
-
-    private static void ReplaceChoices(
-        ObservableCollection<SmartTagFilterChoice> target,
-        IReadOnlyList<SmartTagDefinition> definitions,
-        SmartTagType type)
-    {
-        target.Clear();
-        foreach (var definition in definitions
-                     .Where(item => item.Type == type && !item.IsHidden)
-                     .OrderBy(item => item.DisplayName, StringComparer.CurrentCultureIgnoreCase))
-        {
-            target.Add(new SmartTagFilterChoice(definition.TagId, definition.DisplayName, definition.Type));
-        }
-    }
-
     private bool CanSearch() =>
         _searchService is not null &&
         _configurationService.Current.SemanticSearch.Enabled &&
@@ -1280,7 +1225,6 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _filtersWereEdited = true;
         OnPropertyChanged(nameof(HasActiveFilters));
         ClearFiltersCommand.NotifyCanExecuteChanged();
-        AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
         ToggleFacetCommand.NotifyCanExecuteChanged();
         ShowModerateSuggestionsCommand.NotifyCanExecuteChanged();
         SaveViewCommand.NotifyCanExecuteChanged();
@@ -1422,6 +1366,20 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         Hits.Any(candidate =>
             string.Equals(candidate.FullPath, hit.FullPath, StringComparison.Ordinal) &&
             string.Equals(candidate.FileName, hit.FileName, StringComparison.Ordinal));
+
+    private bool CanOpenInFiles(SemanticSearchHit? hit) =>
+        !IsBusy && CaptureDiscoveryContext(hit) is not null;
+
+    private void OpenInFiles(SemanticSearchHit? hit)
+    {
+        var context = CaptureDiscoveryContext(hit);
+        if (hit?.FileId is not { Length: > 0 } fileId || context is null)
+        {
+            return;
+        }
+
+        OpenInFilesRequested?.Invoke(this, new DiscoveryFileOpenRequest(fileId, context));
+    }
 
     private Task OpenFileAsync(SemanticSearchHit? hit) => OpenAsync(hit, false);
 
@@ -1745,7 +1703,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         CopyFullPathCommand.NotifyCanExecuteChanged();
         RemoveFilterCommand.NotifyCanExecuteChanged();
         ClearFiltersCommand.NotifyCanExecuteChanged();
-        AddSmartTagFiltersCommand.NotifyCanExecuteChanged();
+        OpenInFilesCommand.NotifyCanExecuteChanged();
         InspectIndexedDataCommand.NotifyCanExecuteChanged();
         ToggleFacetCommand.NotifyCanExecuteChanged();
         ShowModerateSuggestionsCommand.NotifyCanExecuteChanged();

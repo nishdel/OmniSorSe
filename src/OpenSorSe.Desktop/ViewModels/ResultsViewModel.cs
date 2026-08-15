@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ChangePlans;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Tags;
 using OpenSorSe.Application.SmartTags;
@@ -62,6 +63,10 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private string? _selectedSmartTagFileId;
     private bool _areFiltersVisible;
     private double _detailsPanelWidthRatio;
+    private DiscoveryWorkflowContext? _discoveryContext;
+    private ResultsSnapshot? _preDiscoverySnapshot;
+    private ResultsQuery _preDiscoveryQuery = ResultsQuery.Default;
+    private IReadOnlyDictionary<string, IReadOnlyList<TagAssociation>>? _preDiscoveryTags;
 
     /// <summary>
     /// Initializes the result explorer and its non-mutating navigation commands.
@@ -137,6 +142,15 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         ResetTagDecisionsCommand = new AsyncRelayCommand(ResetTagDecisionsAsync, () => _selectedSmartTagFileId is not null);
         ClearGeneratedSmartTagsCommand = new AsyncRelayCommand(ClearGeneratedSmartTagsAsync, () => _selectedSmartTagFileId is not null);
         ViewFilesWithTagCommand = new RelayCommand(ViewFilesWithSelectedTag, () => SelectedUserTag?.TagType is not null);
+        ReturnToDiscoveryCommand = new RelayCommand(
+            () => ReturnToDiscoveryRequested?.Invoke(this, EventArgs.Empty),
+            () => IsDiscoveryContextActive);
+        PreviousReviewItemCommand = new RelayCommand(
+            () => ReviewNavigationRequested?.Invoke(this, DiscoveryReviewDirection.Previous),
+            () => CanMoveToPreviousReviewItem);
+        NextReviewItemCommand = new RelayCommand(
+            () => ReviewNavigationRequested?.Invoke(this, DiscoveryReviewDirection.Next),
+            () => CanMoveToNextReviewItem);
         NarrowDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(-0.05));
         WidenDetailsPanelCommand = new AsyncRelayCommand(() => AdjustDetailsPanelWidthAsync(0.05));
         ResetDetailsPanelWidthCommand = new AsyncRelayCommand(
@@ -153,6 +167,15 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Occurs when a reviewed suggestion becomes a Change Plan.</summary>
     public event EventHandler<ChangePlan>? ChangePlanCreated;
+
+    /// <summary>Raised when Files should restore the captured Search/facet context.</summary>
+    public event EventHandler? ReturnToDiscoveryRequested;
+
+    /// <summary>Raised for bounded previous/next movement within a captured review sequence.</summary>
+    public event EventHandler<DiscoveryReviewDirection>? ReviewNavigationRequested;
+
+    /// <summary>Raised after an explicit accepted or rejected suggestion changes unresolved membership.</summary>
+    public event EventHandler? SmartTagReviewCompleted;
 
     /// <summary>Gets the immutable snapshot currently owned by this review surface.</summary>
     public ResultsSnapshot? Snapshot => _snapshot;
@@ -363,6 +386,54 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>Gets whether Files currently hosts one stable-ID result opened from discovery.</summary>
+    public bool IsDiscoveryContextActive => _discoveryContext is not null;
+
+    /// <summary>Gets whether the active discovery context is the unresolved Moderate review workflow.</summary>
+    public bool IsContinuousReviewActive => _discoveryContext?.IsUnresolvedReview == true;
+
+    /// <summary>Gets a concise description of the discovery state that Files can restore.</summary>
+    public string DiscoveryContextText => _discoveryContext is null
+        ? string.Empty
+        : $"Opened from {_discoveryContext.DisplayName}. Your query, facets, and Saved View are preserved.";
+
+    /// <summary>Gets the selected position within the bounded captured result order.</summary>
+    public string ReviewPositionText
+    {
+        get
+        {
+            var context = _discoveryContext;
+            if (context is null)
+            {
+                return string.Empty;
+            }
+
+            var index = FindDiscoveryPosition(context);
+            return index < 0
+                ? "Current file is no longer in the captured result sequence."
+                : $"Result {index + 1:N0} of {context.ResultFileIds.Count:N0}";
+        }
+    }
+
+    /// <summary>Gets whether bounded review can move to the preceding captured result.</summary>
+    public bool CanMoveToPreviousReviewItem =>
+        IsContinuousReviewActive && FindDiscoveryPosition(_discoveryContext!) > 0;
+
+    /// <summary>Gets whether bounded review can move to the following captured result.</summary>
+    public bool CanMoveToNextReviewItem
+    {
+        get
+        {
+            if (!IsContinuousReviewActive)
+            {
+                return false;
+            }
+
+            var index = FindDiscoveryPosition(_discoveryContext!);
+            return index >= 0 && index + 1 < _discoveryContext!.ResultFileIds.Count;
+        }
+    }
+
     /// <summary>Gets or sets comma-, semicolon-, or line-separated tags to add to the selected result.</summary>
     public string? UserTagText
     {
@@ -566,6 +637,15 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that opens Search with the selected canonical tag filter.</summary>
     public IRelayCommand ViewFilesWithTagCommand { get; }
 
+    /// <summary>Gets the command that restores the exact discovery context captured by Search.</summary>
+    public IRelayCommand ReturnToDiscoveryCommand { get; }
+
+    /// <summary>Gets the command that opens the preceding result in the bounded review sequence.</summary>
+    public IRelayCommand PreviousReviewItemCommand { get; }
+
+    /// <summary>Gets the command that opens the following result in the bounded review sequence.</summary>
+    public IRelayCommand NextReviewItemCommand { get; }
+
     /// <summary>Raised when Files requests a canonical Smart Tag Search filter.</summary>
     public event Action<SearchFilter>? SmartTagFilterRequested;
 
@@ -627,6 +707,63 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <param name="persistedTags">Accepted non-deterministic tags previously stored for this exact snapshot.</param>
     /// <returns>A task that completes once the initial bounded page has been published.</returns>
     public Task LoadSnapshotAsync(ResultsSnapshot snapshot, IReadOnlyList<TagAssociation>? persistedTags)
+    {
+        ClearDiscoveryContext();
+        return LoadSnapshotCoreAsync(snapshot, persistedTags);
+    }
+
+    /// <summary>Opens one current durable index record in Files without replacing the user's ordinary scan state.</summary>
+    public async Task OpenDiscoveryDocumentAsync(
+        ProgressiveSearchDocument document,
+        DiscoveryWorkflowContext context)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(context);
+        if (!string.Equals(document.FileId, context.SelectedFileId, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("The discovery context does not identify the supplied indexed file.", nameof(context));
+        }
+
+        if (_discoveryContext is null)
+        {
+            _preDiscoverySnapshot = _snapshot;
+            _preDiscoveryQuery = Query;
+            _preDiscoveryTags = _tagsByFile.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value,
+                StringComparer.Ordinal);
+        }
+
+        _discoveryContext = context;
+        await LoadSnapshotCoreAsync(CreateDiscoverySnapshot(document), null);
+        SelectedRow = PageRows.FirstOrDefault(row => string.Equals(row.FileId, document.FileId, StringComparison.Ordinal));
+        StatusText = File.Exists(document.FullPath)
+            ? "Opened the current indexed file in Files. Return to discovery restores the preserved query and filters."
+            : "The indexed record opened, but the source file is currently unavailable. Return to discovery or refresh the affected source.";
+        NotifyDiscoveryStateChanged();
+    }
+
+    /// <summary>Restores the ordinary Files snapshot after the shell has returned to discovery.</summary>
+    public async Task EndDiscoveryDocumentAsync()
+    {
+        var snapshot = _preDiscoverySnapshot;
+        var query = _preDiscoveryQuery;
+        var tags = _preDiscoveryTags;
+        ClearDiscoveryContext();
+        if (snapshot is null)
+        {
+            _snapshot = null;
+            ResetPageForNoSnapshot();
+            OnSnapshotStateChanged();
+            return;
+        }
+
+        await LoadSnapshotCoreAsync(snapshot, tags?.SelectMany(pair => pair.Value).ToArray());
+        Query = query;
+        await RefreshAsync();
+    }
+
+    private Task LoadSnapshotCoreAsync(ResultsSnapshot snapshot, IReadOnlyList<TagAssociation>? persistedTags)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         _snapshot = snapshot;
@@ -751,7 +888,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             AiSuggestions.SetContext(
                 SelectedRow is null ? null : snapshot.Files.FirstOrDefault(file => file.Id == SelectedRow.FileId),
                 snapshot,
-                Page.Items);
+                Page.Items,
+                BuildOrganizationEvidence());
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
         {
@@ -942,8 +1080,32 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 ? null
                 : snapshot.Files.FirstOrDefault(file => file.Id == SelectedRow.FileId),
             snapshot,
-            Page.Items);
+            Page.Items,
+            BuildOrganizationEvidence());
     }
+
+    private IReadOnlyList<AiOrganizationEvidence> BuildOrganizationEvidence() => _userTags
+        .Where(tag => tag.TagType is SmartTagType.Theme or SmartTagType.DocumentType or SmartTagType.UserTag)
+        .Where(tag =>
+            tag.TagType == SmartTagType.UserTag ||
+            tag.SmartTagState == SmartTagAssignmentState.Accepted ||
+            tag.SmartTagState == SmartTagAssignmentState.Automatic &&
+            tag.Confidence == OpenSorSe.Application.ContentIntelligence.ContentIntelligenceConfidence.Strong)
+        .Take(4)
+        .Select(tag => new AiOrganizationEvidence(
+            tag.TagType switch
+            {
+                SmartTagType.Theme => "Theme",
+                SmartTagType.DocumentType => "Document Type",
+                _ => "User Tag",
+            },
+            tag.DisplayName,
+            tag.TagType == SmartTagType.UserTag
+                ? "User-created"
+                : tag.SmartTagState == SmartTagAssignmentState.Accepted
+                    ? "Accepted"
+                    : "Strong deterministic"))
+        .ToArray();
 
     private void OnChangePlanCreated(object? sender, ChangePlan plan) =>
         ChangePlanCreated?.Invoke(this, plan);
@@ -1027,6 +1189,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                     ? $"{smartTags.Count} local Smart Tag(s). No extracted metadata is cached for this result."
                     : "No extracted metadata or Smart Tags are cached for this result."
                 : $"OCR state: {record.OcrStatus}. {record.Metadata.Count} provenance-aware field(s). {smartTags.Count} Smart Tag(s).";
+            UpdateAiSuggestionContext();
             NotifySmartTagCommands();
             OnPropertyChanged(nameof(HasContentMetadata));
         }
@@ -1188,6 +1351,10 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             SelectedUserTag = UserTags.FirstOrDefault(tag => string.Equals(tag.TagId, smartTagId, StringComparison.Ordinal));
             PersistedTagsChanged?.Invoke(this, EventArgs.Empty);
             UserTagStatusText = result.Message;
+            if (result.Applied && IsContinuousReviewActive)
+            {
+                SmartTagReviewCompleted?.Invoke(this, EventArgs.Empty);
+            }
             return;
         }
 
@@ -1233,6 +1400,10 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         UserTagStatusText = state == TagAcceptanceState.Accepted
             ? "Generated tag accepted as local OmniSorSe metadata."
             : "Generated tag rejected until source content changes or generated tags are reset.";
+        if (IsContinuousReviewActive)
+        {
+            SmartTagReviewCompleted?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private async Task PublishTagChangeAsync(string status)
@@ -1391,6 +1562,74 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     }
 
     private void OnBackToExplorerRequested(object? sender, EventArgs eventArgs) => BackToExplorer();
+
+    private static ResultsSnapshot CreateDiscoverySnapshot(ProgressiveSearchDocument document)
+    {
+        var category = Enum.TryParse<FileCategory>(document.FileType, true, out var parsed)
+            ? parsed
+            : FileCategory.Unknown;
+        var file = new ResultFile(
+            document.FileId,
+            document.FullPath,
+            document.FileName,
+            document.Extension.Trim().ToLowerInvariant(),
+            document.Length,
+            document.ModifiedTimeUtc,
+            category,
+            string.IsNullOrWhiteSpace(document.FileType) ? "Unknown" : document.FileType,
+            DuplicateStatus.Unique,
+            null,
+            false)
+        {
+            CreationTimeUtc = document.CreationTimeUtc,
+        };
+        return new ResultsSnapshot(
+            $"discovery:{document.FileId}",
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            [file],
+            [],
+            [],
+            [],
+            [],
+            new ResultsSnapshotStatistics(1, 0, 0, 0, 0, 0, 0),
+            false);
+    }
+
+    private static int FindDiscoveryPosition(DiscoveryWorkflowContext context)
+    {
+        for (var index = 0; index < context.ResultFileIds.Count; index++)
+        {
+            if (string.Equals(context.ResultFileIds[index], context.SelectedFileId, StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private void ClearDiscoveryContext()
+    {
+        _discoveryContext = null;
+        _preDiscoverySnapshot = null;
+        _preDiscoveryQuery = ResultsQuery.Default;
+        _preDiscoveryTags = null;
+        NotifyDiscoveryStateChanged();
+    }
+
+    private void NotifyDiscoveryStateChanged()
+    {
+        OnPropertyChanged(nameof(IsDiscoveryContextActive));
+        OnPropertyChanged(nameof(IsContinuousReviewActive));
+        OnPropertyChanged(nameof(DiscoveryContextText));
+        OnPropertyChanged(nameof(ReviewPositionText));
+        OnPropertyChanged(nameof(CanMoveToPreviousReviewItem));
+        OnPropertyChanged(nameof(CanMoveToNextReviewItem));
+        ReturnToDiscoveryCommand.NotifyCanExecuteChanged();
+        PreviousReviewItemCommand.NotifyCanExecuteChanged();
+        NextReviewItemCommand.NotifyCanExecuteChanged();
+    }
 
     private IReadOnlyList<TagAssociation> GetTags(string fileId) => _tagsByFile.TryGetValue(fileId, out var tags)
         ? tags

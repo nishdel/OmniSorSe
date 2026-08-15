@@ -273,6 +273,54 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
     }
 
+    /// <summary>Guided workflow surfaces expose one canonical discovery model and named keyboard actions.</summary>
+    [Fact]
+    public void GuidedWorkflows_AreScrollableAccessibleAndDoNotRetainDuplicateTagFilters()
+    {
+        var views = Path.Combine(FindRepositoryRoot(), "src", "OpenSorSe.Desktop", "Views");
+        var home = File.ReadAllText(Path.Combine(views, "DashboardView.axaml"));
+        var search = File.ReadAllText(Path.Combine(views, "SemanticSearchView.axaml"));
+        var files = File.ReadAllText(Path.Combine(views, "ResultsView.axaml"));
+
+        Assert.Contains("AutomationProperties.Name=\"Home durable library overview\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Find files with Search, facets, and Saved Views\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Understand a file using details, Smart Tags, evidence, and Related Files\"", home, StringComparison.Ordinal);
+        Assert.Contains("StringFormat='Review {0} unresolved Smart Tag suggestion files'", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Organize selected files through a reviewed Change Plan\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", home, StringComparison.Ordinal);
+
+        Assert.Contains("Content=\"Open in Files\"", search, StringComparison.Ordinal);
+        Assert.Contains("StringFormat='Open {0} in Files with discovery context preserved'", search, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Advanced Search index maintenance\"", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("ThemeTagChoices", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("DocumentTypeTagChoices", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserTagChoices", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddSmartTagFiltersCommand", search, StringComparison.Ordinal);
+
+        Assert.Contains("AutomationProperties.Name=\"Return to preserved Search, facets, and Saved View\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Previous unresolved Smart Tag review item\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Next unresolved Smart Tag review item\"", files, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Why this classification?\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", files, StringComparison.Ordinal);
+    }
+
+    /// <summary>Built-in Help distinguishes durable discovery, historical snapshots, and relationship projections.</summary>
+    [Fact]
+    public void GuidedWorkflowHelp_ExplainsTasksAndPreservedBoundaries()
+    {
+        var home = HelpCatalog.Get(HelpTopicId.Dashboard);
+        var search = HelpCatalog.Get(HelpTopicId.SemanticSearch);
+        var files = HelpCatalog.Get(HelpTopicId.Results);
+        var tags = HelpCatalog.Get(HelpTopicId.SmartTags);
+
+        Assert.Contains("durable", home.Reads, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(home.Workflow, step => step.Contains("Find", StringComparison.Ordinal));
+        Assert.Contains(search.Workflow, step => step.Contains("Open in Files", StringComparison.Ordinal));
+        Assert.Contains("Saved scans remain historical", search.SafetyNotes, StringComparison.Ordinal);
+        Assert.Contains("stable file ID", files.SafetyNotes, StringComparison.Ordinal);
+        Assert.Contains(tags.Workflow, step => step.Contains("next current unresolved", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

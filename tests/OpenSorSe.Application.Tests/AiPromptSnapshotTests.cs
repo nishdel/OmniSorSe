@@ -60,7 +60,7 @@ public sealed class AiPromptSnapshotTests
         Assert.Equal(
             """
             rename-system=ad22f4a306503643cd79b7d380902fa8fd50688cba7acabaa24586c0c52edbf2
-            rename-prompt=b4e53df15624faefc849bdb40dc9f9d471cfdd36a90396956d0ba1d7463a5787
+            rename-prompt=17a2a47d9d4d2cb710775e86da24562960ac6c157e38f126b4d4b2974cbb41cc
             rename-schema=c2d5f07b2a52a7454a842b99a03d660cc5d8efdab9f1c6948e576518d12757f9
             folder-system=89ffe06c709de3787f18ad4620fb46fb34902b2f3fc86503064ee553f8e75d86
             folder-prompt=730869fbc34adeb3f3287aec078382b633017550f790a76c4e1ba1f324f3d9df

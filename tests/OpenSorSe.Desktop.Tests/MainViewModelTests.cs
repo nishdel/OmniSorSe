@@ -4,7 +4,10 @@ using OpenSorSe.Application;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogSearch;
+using OpenSorSe.Application.Guidance;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Models;
+using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Desktop.ViewModels;
@@ -365,6 +368,47 @@ public sealed class MainViewModelTests
         Assert.True(viewModel.Dashboard.HasCompletedScan);
     }
 
+    /// <summary>Verifies Home reflects durable state after restart without needing an in-session scan projection.</summary>
+    [Fact]
+    public async Task DashboardRefresh_UsesDurableCountsAndBoundedShortcuts()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var readiness = new ProductReadinessSnapshot
+        {
+            SourceCount = 2,
+            KnownFileCount = 20_000,
+            IsBaseSearchReady = true,
+            Phase = IndexingProgressPhase.DeeperAnalysis,
+            PendingReviewCount = 7,
+            SavedViewCount = 4,
+            SavedViewShortcuts =
+            [
+                new SavedDiscoveryView("view:1", "Invoices", new DiscoveryQueryState("", []), 1, now, now),
+                new SavedDiscoveryView("view:2", "Review", new DiscoveryQueryState("", []), 1, now, now),
+            ],
+            Capabilities =
+            [
+                new OptionalCapabilityReadiness("ocr", "Tesseract OCR", OptionalCapabilityState.NotConfigured, "OCR is unavailable."),
+            ],
+        };
+        var viewModel = new DashboardViewModel(_ => { }, new Readiness(readiness));
+        string? openedView = null;
+        viewModel.SavedViewRequested += (_, id) => openedView = id;
+
+        await viewModel.RefreshAsync();
+
+        Assert.True(viewModel.HasIndexedLibrary);
+        Assert.False(viewModel.IsAwaitingFirstScan);
+        Assert.False(viewModel.HasCompletedScan);
+        Assert.Equal(20_000, viewModel.KnownFileCount);
+        Assert.Equal(7, viewModel.PendingReviewCount);
+        Assert.Contains("deeper", viewModel.ReadinessText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, viewModel.SavedViewShortcuts.Count);
+        Assert.Single(viewModel.Capabilities);
+        viewModel.OpenSavedViewCommand.Execute(viewModel.SavedViewShortcuts[0]);
+        Assert.Equal("view:1", openedView);
+    }
+
     /// <summary>
     /// Verifies the shell converts a selected-folder request into a controller request and presents read-only results.
     /// </summary>
@@ -679,6 +723,12 @@ public sealed class MainViewModelTests
         public Task<AiDecisionResult> RecordDecisionAsync(AiSuggestionDecision decision, AiSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiDecisionResult(AiAvailabilityState.Disabled, "Disabled"));
 
         public Task<AiDecisionResult> ResetDecisionHistoryAsync(ApplicationSettings settings, CancellationToken cancellationToken) => Task.FromResult(new AiDecisionResult(AiAvailabilityState.Disabled, "Disabled"));
+    }
+
+    private sealed class Readiness(ProductReadinessSnapshot snapshot) : IProductReadinessService
+    {
+        public Task<ProductReadinessSnapshot> GetSnapshotAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(snapshot);
     }
 
     private sealed class RecordingSavedSearchStore : ISavedCatalogSearchStore

@@ -195,6 +195,28 @@ atomic JSON Saved View rules. Saved Views are current-index rules; Saved scans
 remain historical catalog snapshots. See
 [Scalable Faceted Discovery v2.7](SCALABLE_FACETED_DISCOVERY_v2.7.md).
 
+## v2.8 guided-workflow boundary
+
+Unreleased v2.8 adds no durable authority or schema. A small immutable
+`DiscoveryWorkflowContext` carries canonical query/filter state, an optional
+Saved View ID, stable selected file ID, optional source, review mode, and a
+bounded identity order between `SemanticSearchViewModel`, the shell, and
+`ResultsViewModel`. Search remains the query authority. The shell resolves the
+current durable record by ID before Files presents it; path strings are not used
+as navigation authority.
+
+`IProductReadinessService` projects Home from durable counts and existing local
+capability discovery. It requests at most a few Saved View definitions and one
+unresolved-review candidate for counting; it does not hydrate the library,
+execute Saved Views, contact providers, or launch tools. The Dashboard remains
+presentation-only and owns no index or optional-provider logic.
+
+Rename suggestions may receive a bounded `AiOrganizationEvidence` list from
+accepted/User-owned or Strong deterministic classification. The prompt version
+records this additive input. Unresolved Moderate, Limited, and rejected
+classifications are excluded, and the existing suggestion-to-Change-Plan
+boundary is unchanged. See [Guided Workflows v2.8](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
+
 ## v1.9 relationships and context boundary
 
 `IRelationshipEngine` compares only bounded retained index projections and

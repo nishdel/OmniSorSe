@@ -86,52 +86,6 @@
                     <StackPanel Spacing="7">
                         <TextBlock Text="Search recognises conservative file type, extension, date, size, source, folder, tag, indexing, OCR, and related-concept filters. Uncertain phrases stay as topic words."
                                    TextWrapping="Wrap" />
-                        <StackPanel IsVisible="{Binding HasSmartTagFilterChoices}" Spacing="5">
-                            <TextBlock Text="Smart Tag filters"
-                                       FontWeight="SemiBold" />
-                            <TextBlock Text="Choose one or more values. Values within the same type are OR; different types are combined with AND."
-                                       Classes="page-subtitle"
-                                       TextWrapping="Wrap" />
-                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="7">
-                                <ComboBox ItemsSource="{Binding ThemeTagChoices}"
-                                          SelectedItem="{Binding SelectedThemeTag, Mode=TwoWay}"
-                                          PlaceholderText="Theme"
-                                          AutomationProperties.Name="Select a Theme Smart Tag filter">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:SmartTagFilterChoice">
-                                            <TextBlock Text="{Binding DisplayName}" />
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <ComboBox Grid.Column="1"
-                                          ItemsSource="{Binding DocumentTypeTagChoices}"
-                                          SelectedItem="{Binding SelectedDocumentTypeTag, Mode=TwoWay}"
-                                          PlaceholderText="Document Type"
-                                          AutomationProperties.Name="Select a Document Type Smart Tag filter">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:SmartTagFilterChoice">
-                                            <TextBlock Text="{Binding DisplayName}" />
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <ComboBox Grid.Column="2"
-                                          ItemsSource="{Binding UserTagChoices}"
-                                          SelectedItem="{Binding SelectedUserTag, Mode=TwoWay}"
-                                          PlaceholderText="User Tag"
-                                          AutomationProperties.Name="Select a User Tag filter">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:SmartTagFilterChoice">
-                                            <TextBlock Text="{Binding DisplayName}" />
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                            </Grid>
-                            <Button Classes="secondary"
-                                    HorizontalAlignment="Left"
-                                    Content="Add selected tag filters"
-                                    Command="{Binding AddSmartTagFiltersCommand}"
-                                    AutomationProperties.Name="Add selected Smart Tag filters to Search" />
-                        </StackPanel>
                         <StackPanel Spacing="6">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                 <StackPanel>
@@ -267,35 +221,20 @@
                         </WrapPanel>
                     </StackPanel>
                 </Border>
-                <WrapPanel>
-                    <Button Margin="0,0,8,0"
-                            Classes="secondary"
-                            Content="Build or refresh existing index"
-                            Command="{Binding BuildIndexCommand}" />
-                    <Button Margin="0,0,8,0"
-                            Classes="secondary"
-                            Content="Rebuild index"
-                            Command="{Binding RebuildIndexCommand}" />
-                    <Button Margin="0,0,8,0"
-                            IsVisible="{Binding IsBusy}"
-                            Classes="secondary"
-                            Content="Cancel"
-                            Command="{Binding CancelCommand}" />
-                    <Button Classes="secondary"
-                            Content="Clear generated Search data"
-                            Command="{Binding RequestClearIndexCommand}"
-                            AutomationProperties.HelpText="Clears application-owned generated Search data after confirmation. Indexed sources and original files remain unchanged." />
-                    <Button Margin="8,0,0,0"
-                            IsVisible="{Binding IsClearPending}"
-                            Classes="danger"
-                            Content="Confirm clear"
-                            Command="{Binding ConfirmClearIndexCommand}" />
-                    <Button Margin="8,0,0,0"
-                            IsVisible="{Binding IsClearPending}"
-                            Classes="secondary"
-                            Content="Keep index"
-                            Command="{Binding CancelClearIndexCommand}" />
-                </WrapPanel>
+                <Expander Header="Advanced Search index maintenance"
+                          IsExpanded="False"
+                          AutomationProperties.Name="Advanced Search index maintenance actions">
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Build or refresh existing index" Command="{Binding BuildIndexCommand}" />
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Rebuild index" Command="{Binding RebuildIndexCommand}" />
+                        <Button Margin="0,0,8,8" IsVisible="{Binding IsBusy}" Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Clear generated Search data"
+                                Command="{Binding RequestClearIndexCommand}"
+                                AutomationProperties.HelpText="Clears application-owned generated Search data after confirmation. Indexed sources and original files remain unchanged." />
+                        <Button Margin="0,0,8,8" IsVisible="{Binding IsClearPending}" Classes="danger" Content="Confirm clear" Command="{Binding ConfirmClearIndexCommand}" />
+                        <Button Margin="0,0,8,8" IsVisible="{Binding IsClearPending}" Classes="secondary" Content="Keep index" Command="{Binding CancelClearIndexCommand}" />
+                    </WrapPanel>
+                </Expander>
                 <ProgressBar Minimum="0"
                              Maximum="1"
                              Value="{Binding ProgressValue}"
@@ -311,7 +250,10 @@
         </Border>
 
         <Border Grid.Row="2" Classes="card">
-            <StackPanel Spacing="9">
+            <Expander Header="Background indexing status and maintenance"
+                      IsExpanded="False"
+                      AutomationProperties.Name="Background indexing status and advanced maintenance">
+            <StackPanel Spacing="9" Margin="0,8,0,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <StackPanel Spacing="3">
                         <TextBlock Text="Background indexing"
@@ -443,14 +385,15 @@
                     </ItemsControl>
                 </Expander>
             </StackPanel>
+            </Expander>
         </Border>
 
         <Border Grid.Row="3" Classes="card">
             <Grid RowDefinitions="Auto,*" RowSpacing="8">
                 <Expander Grid.Row="0"
                           IsVisible="{Binding HasPrivacyItem}"
-                          IsExpanded="True"
-                          Header="Indexed data inspection"
+                          IsExpanded="False"
+                          Header="Advanced indexed data inspection"
                           AutomationProperties.Name="Indexed data inspection and privacy actions">
                     <StackPanel Spacing="8">
                         <Border IsVisible="{Binding HasSelectedMediaThumbnail}"
@@ -630,6 +573,14 @@
                                             </StackPanel>
                                         </Expander>
                                         <WrapPanel>
+                                            <Button Margin="0,0,8,0"
+                                                    Classes="primary"
+                                                    Content="Open in Files"
+                                                    Command="{Binding DataContext.OpenInFilesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.HelpText="Opens the same stable indexed file in Files and preserves the current Search, facets, and Saved View for return."
+                                                    AutomationProperties.Name="{Binding FileName, StringFormat='Open {0} in Files with discovery context preserved'}"
+                                                    x:CompileBindings="False" />
                                             <Button Margin="0,0,8,0"
                                                     Classes="secondary"
                                                     Content="Open file"
