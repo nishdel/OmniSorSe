@@ -20,8 +20,12 @@ public sealed class JsonChangePlanStore : IChangePlanStore
     private readonly string _filePath;
     private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
+    private readonly IRecoverySafetyState _recoverySafety;
 
-    public JsonChangePlanStore(string filePath, ILoggingService loggingService)
+    public JsonChangePlanStore(
+        string filePath,
+        ILoggingService loggingService,
+        IRecoverySafetyState? recoverySafety = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
@@ -32,6 +36,7 @@ public sealed class JsonChangePlanStore : IChangePlanStore
         _fileAccess = new ApplicationFileAccessCoordinator(_filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonChangePlanStore));
+        _recoverySafety = recoverySafety ?? RecoverySafetyState.Unmanaged;
     }
 
     /// <inheritdoc />
@@ -109,7 +114,13 @@ public sealed class JsonChangePlanStore : IChangePlanStore
         catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException)
         {
             _logger.LogWarning(exception, "The Change Plan store is malformed or unsupported.");
-            return [];
+            var corruption = JsonStoreCorruption.Preserve(
+                "Change Plan store",
+                _filePath,
+                JsonStoreAuthority.MutationRecovery,
+                exception);
+            _recoverySafety.Block(corruption);
+            throw corruption;
         }
     }
 

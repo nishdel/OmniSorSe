@@ -5,10 +5,18 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Version>2.4.0</Version>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
-    <FileVersion>2.4.0.0</FileVersion>
-    <InformationalVersion>2.4.0</InformationalVersion>
+    <OmniSorSeVersion Condition="'$(OmniSorSeVersion)' == ''">2.10.0-rc</OmniSorSeVersion>
+    <OmniSorSeFileVersion Condition="'$(OmniSorSeFileVersion)' == ''">2.10.0.0</OmniSorSeFileVersion>
+    <SourceRevisionId Condition="'$(SourceRevisionId)' == ''">unversioned</SourceRevisionId>
+    <Version>$(OmniSorSeVersion)</Version>
+    <AssemblyVersion>$(OmniSorSeFileVersion)</AssemblyVersion>
+    <FileVersion>$(OmniSorSeFileVersion)</FileVersion>
+    <InformationalVersion>$(OmniSorSeVersion)+$(SourceRevisionId)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="SourceRevision" Value="$(SourceRevisionId)" />
+    <AssemblyMetadata Include="BuildConfiguration" Value="$(Configuration)" />
+  </ItemGroup>
 </Project>

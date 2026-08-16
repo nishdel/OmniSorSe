@@ -1,6 +1,7 @@
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.ViewModels;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -157,6 +158,26 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.DoesNotContain("BaseFirst makes", settings, StringComparison.Ordinal);
         Assert.Contains(help.Workflow, step => step.Contains("searchable first", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("deeper analysis", help.CommonErrors, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies health and reviewed state transfer remain keyboard/assistive-technology discoverable.</summary>
+    [Fact]
+    public void SettingsHealthAndStateTransfer_ExposeAccessibleScrollableActions()
+    {
+        var settings = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "SettingsView.axaml"));
+
+        Assert.Contains("x:Name=\"SettingsScrollViewer\"", settings, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Data &amp; Index Health\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Check Data and Index Health\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Export OmniSorSe state\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Preview OmniSorSe state restore\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Confirm reviewed OmniSorSe state restore\"", settings, StringComparison.Ordinal);
+        Assert.True(Regex.Matches(settings, "AutomationProperties.LiveSetting=\"Polite\"").Count >= 2);
     }
 
     /// <summary>Verifies Search naming and help remain plain-language and available beyond pointer hover.</summary>

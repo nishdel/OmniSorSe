@@ -71,7 +71,7 @@ public sealed class SavedDiscoveryViewStoreTests
 
     /// <summary>Malformed or obsolete rule data fails closed without exposing partial state.</summary>
     [Fact]
-    public async Task InvalidSavedViewStoreIsIgnoredSafely()
+    public async Task InvalidSavedViewStoreIsPreservedAndFailsClosed()
     {
         using var fixture = new StoreFixture();
         await File.WriteAllTextAsync(fixture.Path, JsonSerializer.Serialize(new
@@ -80,7 +80,11 @@ public sealed class SavedDiscoveryViewStoreTests
             Views = Array.Empty<object>(),
         }));
 
-        Assert.Empty(await fixture.CreateStore().ListAsync());
+        var exception = await Assert.ThrowsAsync<OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException>(
+            () => fixture.CreateStore().ListAsync());
+        Assert.True(File.Exists(fixture.Path));
+        Assert.NotNull(exception.PreservedCopyPath);
+        Assert.True(File.Exists(exception.PreservedCopyPath));
     }
 
     private sealed class StoreFixture : IDisposable

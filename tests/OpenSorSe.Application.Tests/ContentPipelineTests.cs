@@ -37,6 +37,99 @@ public sealed class ContentPipelineTests
         Assert.Equal(1, result.PageCount);
     }
 
+    /// <summary>Verifies the hard PDF limit cannot be relaxed by a larger caller setting.</summary>
+    [Fact]
+    public async Task PdfExtractor_OverHardLimit_FailsBeforeParsing()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("oversized.pdf");
+        await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            stream.SetLength(PdfMetadataExtractor.HardMaximumInputBytes + 1);
+        }
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(
+            Entry(path),
+            long.MaxValue,
+            500,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.Contains(result.Warnings, warning => warning.Contains("safety limit", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies a large malformed file does not trigger the legacy whole-file fallback.</summary>
+    [Fact]
+    public async Task PdfExtractor_LargeMalformedFile_SkipsCompatibilityAmplification()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("malformed.pdf");
+        await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            stream.SetLength(PdfMetadataExtractor.MaximumFallbackPrefixBytes + 1L);
+        }
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(
+            Entry(path),
+            PdfMetadataExtractor.HardMaximumInputBytes,
+            500,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.Contains(result.Warnings, warning => warning.Contains("bounded prefix", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies malformed compatibility output is bounded and cancellable.</summary>
+    [Fact]
+    public async Task PdfExtractor_CompatibilityText_IsBounded()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("expanded.pdf");
+        var repeated = string.Concat(Enumerable.Repeat("(A long but untrusted embedded value) Tj ", 20_000));
+        await File.WriteAllTextAsync(path, $"%PDF-broken /Type /Page {repeated}");
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(
+            Entry(path),
+            PdfMetadataExtractor.HardMaximumInputBytes,
+            500,
+            CancellationToken.None);
+
+        Assert.NotNull(result.NativeText);
+        Assert.True(result.NativeText.Length <= ContentText.MaximumTextCharacters);
+        Assert.True(result.RawNativeText?.Length <= ContentText.MaximumTextCharacters);
+    }
+
+    /// <summary>Verifies excessive page declarations do not produce unbounded page work.</summary>
+    [Fact]
+    public async Task PdfExtractor_CompatibilityPageCount_StopsTextExtractionBeyondBound()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("many-pages.pdf");
+        await File.WriteAllTextAsync(
+            path,
+            "%PDF-broken " + string.Concat(Enumerable.Repeat("/Type /Page ", 501)) + "(hidden) Tj");
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(Entry(path), 1024 * 1024, 25, CancellationToken.None);
+
+        Assert.Equal(501, result.PageCount);
+        Assert.Null(result.NativeText);
+        Assert.Contains(result.Warnings, warning => warning.Contains("page count", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies cancellation is observed before a PDF parser is entered.</summary>
+    [Fact]
+    public async Task PdfExtractor_PreCancelled_StopsBeforeParsing()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("cancelled.pdf");
+        await File.WriteAllTextAsync(path, "%PDF-1.4 /Type /Page");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new PdfMetadataExtractor().ExtractAsync(Entry(path), 1024 * 1024, 25, cancellation.Token));
+    }
+
     /// <summary>Verifies DOCX properties and text are read from selected XML parts without macro execution.</summary>
     [Fact]
     public async Task OpenXmlExtractor_Docx_ReadsCoreAndDocumentPartsOnly()

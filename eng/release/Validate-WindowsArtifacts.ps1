@@ -5,7 +5,10 @@ param(
     [string]$Version,
 
     [Parameter(Mandatory)]
-    [string]$ArtifactDirectory
+    [string]$ArtifactDirectory,
+    [Parameter(Mandatory)]
+    [ValidatePattern('^[0-9a-fA-F]{40}$')]
+    [string]$SourceRevision
 )
 
 Set-StrictMode -Version Latest
@@ -56,6 +59,17 @@ if (-not (Test-Path -LiteralPath $portableExecutable -PathType Leaf)) {
 $versionInfo = (Get-Item -LiteralPath $portableExecutable).VersionInfo
 if ($versionInfo.FileVersion -ne "$Version.0" -or $versionInfo.ProductVersion -notlike "$Version*") {
     throw "OmniSorSe.exe version metadata is inconsistent: file '$($versionInfo.FileVersion)', product '$($versionInfo.ProductVersion)'."
+}
+$provenancePath = Join-Path $portableRoot 'OmniSorSe.build.json'
+if (-not (Test-Path -LiteralPath $provenancePath -PathType Leaf)) {
+    throw 'The portable package is missing its build provenance manifest.'
+}
+$provenance = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json
+if ($provenance.productVersion -ne $Version -or
+    $provenance.sourceRevision -ne $SourceRevision -or
+    $provenance.configuration -ne 'Release' -or
+    $versionInfo.ProductVersion -notlike "$Version+$SourceRevision*") {
+    throw 'Package filename, binary metadata, and build provenance do not identify the same source.'
 }
 
 $forbidden = Get-ChildItem -LiteralPath $portableRoot -Recurse -Force -File | Where-Object {

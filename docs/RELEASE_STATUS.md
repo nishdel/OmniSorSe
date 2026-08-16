@@ -185,6 +185,32 @@ documents, tags, releases, and validation records remain historical evidence.
 
 ## Current development
 
+OmniSorSe v2.10 **Production Hardening & Operational Resilience** is implemented
+on `v2.10-production-hardening-operational-resilience` from the committed v2.9
+release candidate. It is not released, merged, tagged, packaged, or published.
+It adds single-writer profile ownership, fail-closed mutation/recovery stores,
+bounded hostile-PDF handling, reviewed logical state export/restore, complete
+Forget coordination, bounded health/lifecycle checks, and exact build
+provenance. Schema remains 6, Explorer Protocol remains v1, OmniBrille is not
+modified, and no production dependency or new product capability is added.
+Automated results are recorded only after definitive validation; every item in
+the [master manual checklist](MANUAL_TESTING_v2.10.md) remains unchecked. See
+[v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md) and the
+[operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md).
+
+Definitive Windows-host automated validation passed a forced no-cache restore,
+non-incremental Debug and Release builds with zero warnings/errors, and 1,829
+tests in each configuration with zero failures/skips. Focused Release reruns
+passed profile/configuration/policy (34), mutation/recovery (66), parser/prompt/
+health/Explorer/workflow (144), SQLite backup/indexing/performance (92),
+discovery/Smart Tag/workflow (165), desktop accessibility/navigation (111),
+SQLite Smart Tag authority (7), migration/recovery/Forget (31), and performance
+(24). Formatting/style/analyzers, the direct/transitive vulnerability audit,
+release-script syntax, and diff validation passed. Release compilation passed
+for `win-x64`, `linux-x64`, `osx-x64`, and `osx-arm64`, with injected 2.10.0
+version/source metadata verified on the Windows artifact. This does not claim
+native Linux/macOS runtime or interactive desktop validation.
+
 OmniSorSe v2.9 **Reviewed Intelligent Organization** is implemented on
 `v2.9-reviewed-intelligent-organization` from the committed v2.8 release
 candidate. It is not released, merged, tagged, packaged, or published. Existing

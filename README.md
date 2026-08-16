@@ -60,7 +60,7 @@ typed facets/counts and dynamic Saved Views, and keeps the established ranker,
 schema 6, progressive indexing, and Explorer Protocol v1. It is not released.
 See the [v2.7 design](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md).
 
-The current consolidation branch, **v2.8 Guided Workflows & Product
+The v2.8 candidate, **Guided Workflows & Product
 Coherence**, builds on the committed v2.7 candidate. It connects durable Home
 readiness, Search, canonical facets/Saved Views, Files details, continuous Smart
 Tag review, and reviewed organization through stable file identity. It does not
@@ -68,13 +68,22 @@ change schema 6, Search ranking, Explorer Protocol v1, or OmniBrille. It is not
 released. See the
 [v2.8 design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
 
-The current implementation branch, **v2.9 Reviewed Intelligent Organization**,
+The v2.9 candidate, **Reviewed Intelligent Organization**,
 builds directly on the committed v2.8 candidate. It connects explicit bounded
 Files/Search/Saved View selections to the existing persistent recipe library,
 an ephemeral trusted-evidence preview, and the existing Change Plan,
 reconciliation, and Undo machinery. It adds no autonomous mutation, schema
 change, protocol change, or production dependency and is not released. See the
 [v2.9 design](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md).
+
+The current implementation branch, **v2.10 Production Hardening & Operational
+Resilience**, builds directly on the committed v2.9 candidate. It adds
+single-writer profile ownership, fail-closed recovery stores, bounded hostile
+PDF handling, logical user-state export/restore, complete Forget coordination,
+bounded health checks, and traceable release provenance. It preserves schema 6,
+Explorer Protocol v1, OmniBrille separation, and all reviewed feature
+boundaries. It is not released. See the
+[v2.10 hardening record](docs/PRODUCTION_HARDENING_v2.10.md).
 
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The

@@ -20,8 +20,12 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
     private readonly string _filePath;
     private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
+    private readonly IRecoverySafetyState _recoverySafety;
 
-    public JsonOperationJournalStore(string filePath, ILoggingService loggingService)
+    public JsonOperationJournalStore(
+        string filePath,
+        ILoggingService loggingService,
+        IRecoverySafetyState? recoverySafety = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
@@ -32,6 +36,7 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
         _fileAccess = new ApplicationFileAccessCoordinator(_filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonOperationJournalStore));
+        _recoverySafety = recoverySafety ?? RecoverySafetyState.Unmanaged;
     }
 
     /// <inheritdoc />
@@ -141,7 +146,13 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
         catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException)
         {
             _logger.LogWarning(exception, "The Operation Journal is malformed or unsupported.");
-            return [];
+            var corruption = JsonStoreCorruption.Preserve(
+                "Operation Journal",
+                _filePath,
+                JsonStoreAuthority.MutationRecovery,
+                exception);
+            _recoverySafety.Block(corruption);
+            throw corruption;
         }
     }
 
@@ -203,10 +214,26 @@ public sealed class JsonOperationJournalStore : IOperationJournalStore
                 action.WarningDetails.Any(warning =>
                     warning is null || warning.Length > OperationJournalSchema.MaximumMessageLength)) ||
             operation.Summary is null ||
-            operation.Summary.Length > OperationJournalSchema.MaximumMessageLength)
+            operation.Summary.Length > OperationJournalSchema.MaximumMessageLength ||
+            !HasConsistentLifecycle(operation))
         {
             throw new InvalidDataException("An Operation Journal record is invalid.");
         }
+    }
+
+    private static bool HasConsistentLifecycle(OperationJournalRecord operation)
+    {
+        var inProgress = operation.Status is OperationStatus.Pending or OperationStatus.Running;
+        if (inProgress != (operation.CompletedAtUtc is null))
+        {
+            return false;
+        }
+
+        return operation.Actions.All(action =>
+            action.WasSkipped == (action.ExecutionResult == JournalActionResult.Skipped) &&
+            (!action.RollbackAttempted || action.RollbackResult != JournalRollbackResult.NotRequired) &&
+            (!action.UndoAvailable || action.UndoStatus != JournalUndoStatus.NotAvailable) &&
+            (action.UndoTimestampUtc is null || action.UndoTimestampUtc.Value.Offset == TimeSpan.Zero));
     }
 
     private sealed record Envelope(

@@ -9,6 +9,240 @@ namespace OpenSorSe.Indexing.Sqlite;
 public sealed partial class SqliteDeepIndexStore
 {
     /// <inheritdoc />
+    public Task<IReadOnlyList<RelationshipUserAuthority>> ExportRelationshipUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (maximumCount is < 1 or > 100_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        }
+
+        return RunExclusiveAsync<IReadOnlyList<RelationshipUserAuthority>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT o.first_file_id, o.second_file_id, o.decision,
+                           o.relationship_type, o.custom_type,
+                           CASE WHEN EXISTS (
+                               SELECT 1 FROM index_relationships r
+                               WHERE r.first_file_id = o.first_file_id
+                                 AND r.second_file_id = o.second_file_id
+                                 AND r.is_manual = 1
+                           ) THEN 1 ELSE 0 END
+                    FROM relationship_pair_overrides o
+                    JOIN index_files first ON first.id = o.first_file_id AND first.deleted_utc_ticks IS NULL
+                    JOIN index_files second ON second.id = o.second_file_id AND second.deleted_utc_ticks IS NULL
+                    ORDER BY o.first_file_id, o.second_file_id
+                    LIMIT $maximum;
+                    """;
+                command.Parameters.AddWithValue("$maximum", maximumCount);
+                var result = new List<RelationshipUserAuthority>();
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    result.Add(new RelationshipUserAuthority(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        (RelationshipDecision)reader.GetInt32(2),
+                        (RelationshipType)reader.GetInt32(3),
+                        reader.IsDBNull(4) ? null : reader.GetString(4),
+                        reader.GetInt32(5) == 1));
+                }
+
+                return result.AsReadOnly();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<RelationshipAuthorityRestoreResult> RestoreRelationshipUserAuthorityAsync(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRelationshipAuthority(authority, changedAtUtc);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var applied = 0;
+                var skipped = 0;
+                foreach (var item in authority)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var available = Convert.ToInt32(ExecuteScalar(
+                        connection,
+                        transaction,
+                        "SELECT COUNT(*) FROM index_files WHERE id IN ($first, $second) AND deleted_utc_ticks IS NULL;",
+                        ("$first", item.FirstFileId),
+                        ("$second", item.SecondFileId)), CultureInfo.InvariantCulture) == 2;
+                    if (!available)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    UpsertPairOverride(
+                        connection,
+                        transaction,
+                        item.FirstFileId,
+                        item.SecondFileId,
+                        item.Decision,
+                        item.Type,
+                        item.CustomType,
+                        changedAtUtc);
+                    if (item.IsManualRelationship)
+                    {
+                        var type = item.Type;
+                        var id = "rel:manual:" + StableRelationshipKey(
+                            $"{item.FirstFileId}|{item.SecondFileId}|{type}|{item.CustomType}");
+                        var relationship = new FileRelationship
+                        {
+                            Id = id,
+                            FirstFileId = item.FirstFileId,
+                            SecondFileId = item.SecondFileId,
+                            Type = type,
+                            CustomType = type == RelationshipType.Custom ? BoundOrNull(item.CustomType, 64) : null,
+                            Confidence = RelationshipConfidence.Confirmed,
+                            Evidence = [new RelationshipEvidence(RelationshipEvidenceKind.Manual, "user-link", "Linked by you")],
+                            Algorithm = "user",
+                            AlgorithmVersion = "1",
+                            CreatedAtUtc = changedAtUtc,
+                            LastValidatedAtUtc = changedAtUtc,
+                            Decision = item.Decision,
+                            IsManual = true,
+                        };
+                        UpsertRelationship(connection, transaction, relationship, null);
+                        ReplaceEvidence(connection, transaction, relationship);
+                    }
+                    else
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            UPDATE index_relationships
+                            SET decision = $decision,
+                                confidence = CASE WHEN $decision IN ($confirmed, $always)
+                                                  THEN $confirmedConfidence ELSE confidence END,
+                                validated_utc_ticks = $now
+                            WHERE first_file_id = $first AND second_file_id = $second;
+                            """,
+                            ("$decision", (int)item.Decision),
+                            ("$confirmed", (int)RelationshipDecision.Confirmed),
+                            ("$always", (int)RelationshipDecision.AlwaysRelate),
+                            ("$confirmedConfidence", (int)RelationshipConfidence.Confirmed),
+                            ("$now", changedAtUtc.UtcTicks),
+                            ("$first", item.FirstFileId),
+                            ("$second", item.SecondFileId));
+                        if (item.Decision is RelationshipDecision.Rejected or RelationshipDecision.NeverRelate)
+                        {
+                            ExecuteNonQuery(
+                                connection,
+                                transaction,
+                                """
+                                DELETE FROM smart_collection_members
+                                WHERE membership_source = $automatic
+                                  AND relationship_id IN (
+                                      SELECT id FROM index_relationships
+                                      WHERE first_file_id = $first AND second_file_id = $second
+                                  );
+                                """,
+                                ("$automatic", (int)CollectionMembershipSource.Automatic),
+                                ("$first", item.FirstFileId),
+                                ("$second", item.SecondFileId));
+                        }
+                    }
+
+                    applied++;
+                }
+
+                CleanupAutomaticCollections(connection, transaction);
+                transaction.Commit();
+                return new RelationshipAuthorityRestoreResult(applied, skipped);
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task RemoveRelationshipUserAuthorityAsync(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRelationshipAuthority(authority, DateTimeOffset.UnixEpoch);
+        return RunExclusiveAsync<int>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                foreach (var item in authority)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ExecuteNonQuery(
+                        connection,
+                        transaction,
+                        "DELETE FROM relationship_pair_overrides WHERE first_file_id = $first AND second_file_id = $second;",
+                        ("$first", item.FirstFileId),
+                        ("$second", item.SecondFileId));
+                    if (item.IsManualRelationship)
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            "DELETE FROM index_relationships WHERE first_file_id = $first AND second_file_id = $second AND is_manual = 1;",
+                            ("$first", item.FirstFileId),
+                            ("$second", item.SecondFileId));
+                    }
+                    else
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            "UPDATE index_relationships SET decision = $none WHERE first_file_id = $first AND second_file_id = $second;",
+                            ("$none", (int)RelationshipDecision.None),
+                            ("$first", item.FirstFileId),
+                            ("$second", item.SecondFileId));
+                    }
+                }
+
+                CleanupAutomaticCollections(connection, transaction);
+                transaction.Commit();
+                return 0;
+            },
+            cancellationToken);
+    }
+
+    private static void ValidateRelationshipAuthority(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        DateTimeOffset changedAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(authority.Count, 100_000);
+        if (changedAtUtc.Offset != TimeSpan.Zero ||
+            authority.Any(item => item is null) ||
+            authority.Select(item => $"{item.FirstFileId}\n{item.SecondFileId}")
+                .Distinct(StringComparer.Ordinal).Count() != authority.Count ||
+            authority.Any(item =>
+                string.IsNullOrWhiteSpace(item.FirstFileId) ||
+                string.IsNullOrWhiteSpace(item.SecondFileId) ||
+                string.CompareOrdinal(item.FirstFileId, item.SecondFileId) >= 0 ||
+                item.FirstFileId.Length > 256 || item.SecondFileId.Length > 256 ||
+                item.Decision == RelationshipDecision.None || !Enum.IsDefined(item.Decision) ||
+                !Enum.IsDefined(item.Type) ||
+                item.CustomType?.Length > 64 || item.CustomType?.Any(char.IsControl) == true ||
+                item.Type == RelationshipType.Custom && string.IsNullOrWhiteSpace(item.CustomType)))
+        {
+            throw new InvalidDataException("Relationship restore authority is malformed, duplicated, or out of bounds.");
+        }
+    }
+
+    /// <inheritdoc />
     public Task<RelationshipOperationResult> LinkFilesAsync(
         string firstFileId,
         string secondFileId,

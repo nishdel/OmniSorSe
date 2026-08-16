@@ -15,7 +15,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IDisposable
+public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHealthProbe, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -34,6 +34,33 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
     /// <summary>Gets the fully qualified application-owned database path.</summary>
     public string DatabasePath => _databasePath;
+
+    /// <inheritdoc />
+    public Task<DeepIndexHealthSnapshot> CheckHealthAsync(CancellationToken cancellationToken = default) =>
+        RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                EnsureIntegrity(connection);
+                var schemaVersion = Convert.ToInt32(ExecuteScalar(connection, "PRAGMA user_version;"), CultureInfo.InvariantCulture);
+                var requiredCount = Convert.ToInt32(ExecuteScalar(
+                    connection,
+                    """
+                    SELECT COUNT(*) FROM sqlite_master
+                    WHERE name IN (
+                        'index_meta', 'index_sources', 'index_files', 'index_stage_states',
+                        'smart_tag_definitions', 'file_smart_tag_assignments', 'file_smart_tag_decisions',
+                        'ix_index_files_deleted', 'ix_file_smart_tags_tag');
+                    """), CultureInfo.InvariantCulture);
+                var requiredObjectsPresent = requiredCount == 9;
+                var healthy = schemaVersion == DeepIndexingVersion.SchemaVersion && requiredObjectsPresent;
+                return new DeepIndexHealthSnapshot(
+                    healthy,
+                    schemaVersion,
+                    requiredObjectsPresent,
+                    healthy ? "The schema and bounded SQLite quick check are healthy." : "The index schema or required objects need recovery.");
+            },
+            cancellationToken);
 
     /// <inheritdoc />
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>

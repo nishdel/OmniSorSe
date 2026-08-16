@@ -18,6 +18,160 @@ public sealed partial class SqliteDeepIndexStore
     private const string LegacySmartTagImportMetaKey = "smart_tags_legacy_import_complete";
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<SmartTagUserAuthority>> ExportUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (maximumCount is < 1 or > 100_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        }
+
+        return RunExclusiveAsync<IReadOnlyList<SmartTagUserAuthority>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT f.id, f.source_id, f.relative_path, d.tag_id, d.display_name, d.tag_type,
+                           CASE WHEN a.origin = $user THEN $accepted ELSE COALESCE(x.decision, 0) END,
+                           CASE WHEN a.origin = $user THEN 1 ELSE 0 END
+                    FROM file_smart_tag_assignments a
+                    JOIN index_files f ON f.id = a.file_id AND f.deleted_utc_ticks IS NULL
+                    JOIN smart_tag_definitions d ON d.tag_id = a.tag_id
+                    LEFT JOIN file_smart_tag_decisions x ON x.file_id = a.file_id AND x.tag_id = a.tag_id
+                    WHERE a.origin = $user OR COALESCE(x.decision, 0) IN ($accepted, $rejected)
+                    ORDER BY f.source_id, f.relative_path_key, d.tag_type, d.canonical_key
+                    LIMIT $maximum;
+                    """;
+                command.Parameters.AddWithValue("$user", (int)SmartTagOrigin.User);
+                command.Parameters.AddWithValue("$accepted", (int)SmartTagDecision.Accepted);
+                command.Parameters.AddWithValue("$rejected", (int)SmartTagDecision.Rejected);
+                command.Parameters.AddWithValue("$maximum", maximumCount);
+                var result = new List<SmartTagUserAuthority>();
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    result.Add(new SmartTagUserAuthority(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        reader.GetString(3),
+                        reader.GetString(4),
+                        (SmartTagType)reader.GetInt32(5),
+                        (SmartTagDecision)reader.GetInt32(6),
+                        reader.GetInt32(7) == 1));
+                }
+
+                return result.AsReadOnly();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<SmartTagAuthorityRestoreResult> RestoreUserAuthorityAsync(
+        IReadOnlyList<SmartTagUserAuthority> authority,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(authority.Count, 100_000);
+        if (changedAtUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(changedAtUtc), "The restore timestamp must use UTC.");
+        }
+
+        if (authority.Any(item => item is null) ||
+            authority.Where(item => item.IsUserTag)
+                .GroupBy(item => item.FileId, StringComparer.Ordinal)
+                .Any(group => group.Count() > SmartTagLimits.MaximumUserTagsPerFile) ||
+            authority.Select(item => $"{item.FileId}\n{item.TagId}")
+                .Distinct(StringComparer.Ordinal)
+                .Count() != authority.Count ||
+            authority.Any(item =>
+                item.IsUserTag
+                    ? item.Type != SmartTagType.UserTag || item.Decision != SmartTagDecision.Accepted
+                    : item.Type is not (SmartTagType.Theme or SmartTagType.DocumentType) ||
+                      item.Decision is not (SmartTagDecision.Accepted or SmartTagDecision.Rejected)))
+        {
+            throw new InvalidDataException("Smart Tag restore authority is invalid, duplicated, or exceeds the per-file user-tag bound.");
+        }
+
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var applied = 0;
+                var skipped = 0;
+                foreach (var item in authority)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ValidateFileId(item.FileId);
+                    ValidateTagId(item.TagId);
+                    var fileExists = Convert.ToInt32(ExecuteScalar(
+                        connection,
+                        transaction,
+                        "SELECT COUNT(*) FROM index_files WHERE id = $file AND deleted_utc_ticks IS NULL;",
+                        ("$file", item.FileId)), CultureInfo.InvariantCulture) == 1;
+                    if (!fileExists)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    if (item.IsUserTag)
+                    {
+                        var display = SmartTagUserInput.NormalizeDisplayName(item.DisplayName);
+                        var canonical = SmartTagUserInput.NormalizeCanonicalKey(display);
+                        var tagId = UserTagId(canonical);
+                        UpsertUserDefinition(connection, transaction, tagId, canonical, display, changedAtUtc);
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            INSERT INTO file_smart_tag_assignments(
+                                file_id, tag_id, confidence, evidence_score, origin, classifier,
+                                classifier_version, taxonomy_version, input_fingerprint, evidence_json,
+                                assignment_state, active, created_utc_ticks, updated_utc_ticks)
+                            VALUES($file, $tag, $confidence, NULL, $origin, 'User', '1', 'user', 'user', '[]', $state, 1, $now, $now)
+                            ON CONFLICT(file_id, tag_id) DO UPDATE SET active = 1, assignment_state = $state, updated_utc_ticks = $now;
+                            """,
+                            ("$file", item.FileId),
+                            ("$tag", tagId),
+                            ("$confidence", (int)ContentIntelligenceConfidence.Strong),
+                            ("$origin", (int)SmartTagOrigin.User),
+                            ("$state", (int)SmartTagAssignmentState.Accepted),
+                            ("$now", changedAtUtc.UtcTicks));
+                        applied++;
+                        continue;
+                    }
+
+                    var assignmentExists = Convert.ToInt32(ExecuteScalar(
+                        connection,
+                        transaction,
+                        "SELECT COUNT(*) FROM file_smart_tag_assignments WHERE file_id = $file AND tag_id = $tag;",
+                        ("$file", item.FileId),
+                        ("$tag", item.TagId)), CultureInfo.InvariantCulture) == 1;
+                    if (!assignmentExists || item.Decision is not (SmartTagDecision.Accepted or SmartTagDecision.Rejected))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    UpsertDecision(connection, transaction, item.FileId, item.TagId, item.Decision, changedAtUtc);
+                    applied++;
+                }
+
+                transaction.Commit();
+                return new SmartTagAuthorityRestoreResult(applied, skipped);
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fullPath);

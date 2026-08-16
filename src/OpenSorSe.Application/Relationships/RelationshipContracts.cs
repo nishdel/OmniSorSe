@@ -1,5 +1,17 @@
 namespace OpenSorSe.Application.Relationships;
 
+/// <summary>Contains one exact-file-pair manual relationship decision for logical state backup.</summary>
+public sealed record RelationshipUserAuthority(
+    string FirstFileId,
+    string SecondFileId,
+    RelationshipDecision Decision,
+    RelationshipType Type,
+    string? CustomType,
+    bool IsManualRelationship);
+
+/// <summary>Reports exact-file-pair relationship authority restoration without path guessing.</summary>
+public sealed record RelationshipAuthorityRestoreResult(int AppliedCount, int SkippedCount);
+
 /// <summary>Discovers deterministic, evidence-backed file relationships.</summary>
 public interface IRelationshipEngine
 {
@@ -23,6 +35,25 @@ public interface IRelationshipEngine
 /// <summary>Persists relationships and collections without exposing provider-specific APIs.</summary>
 public interface IRelationshipStore
 {
+    /// <summary>Exports bounded user-created relationships and persistent pair corrections.</summary>
+    Task<IReadOnlyList<RelationshipUserAuthority>> ExportRelationshipUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured relationship store does not support logical authority export.");
+
+    /// <summary>Restores authority only when both exact stable file identities still exist.</summary>
+    Task<RelationshipAuthorityRestoreResult> RestoreRelationshipUserAuthorityAsync(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured relationship store does not support logical authority restore.");
+
+    /// <summary>Removes only the supplied pair authority during failed-restore compensation.</summary>
+    Task RemoveRelationshipUserAuthorityAsync(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured relationship store does not support logical authority compensation.");
+
     /// <summary>Returns one bounded indexed file document for relationship analysis.</summary>
     Task<RelationshipFileDocument?> GetRelationshipFileAsync(string fileId, CancellationToken cancellationToken = default);
 

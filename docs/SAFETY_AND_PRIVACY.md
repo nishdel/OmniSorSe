@@ -331,6 +331,7 @@ a competing profile merely because its visible name changed.
 | Data | File/location | Bound and behavior |
 | --- | --- | --- |
 | Settings | `settings.json` | At most 1 MiB, validated, backward compatible, atomically replaced. |
+| Profile ownership/run state | OS profile mutex plus `profile.owner.lock` and `application-run-state.json` | One current-user writer per profile; the OS releases ownership after process death. The bounded atomic marker distinguishes first/clean startup from a prior run that did not complete orderly shutdown. |
 | Diagnostic logs | `Logs/opensorse-owned-YYYY-MM-DD.log` | Bounded daily files with ownership markers and retention. |
 | AI decisions | `decision-history.json` | Up to 1,000 bounded metadata-only review records. |
 | Saved catalog | `catalog.json` | Opt-in bounded historical display metadata, names, source roots, and accepted tags. |
@@ -342,14 +343,15 @@ a competing profile merely because its visible name changed.
 | Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
 | Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
-| Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
-| Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
+| Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. Corruption is preserved and blocks mutation. |
+| Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. Invalid lifecycle/version/JSON is preserved and blocks execution and Undo rather than becoming empty history. |
 | Watched-folder configurations | `watched-folders.json` | Up to 64 schema-versioned roots with scope, ignore, analysis, notification, quiet-period, lifecycle, and catalogue settings; atomically replaced. |
 | Watched catalogues | `watched-catalogues.json` | Up to 250,000 files per catalogue and 256 MiB total; stores metadata, stable/best-effort identity, derived results, AI retry state, directories, and reconciliation facts without file contents. |
 | Watched activity | `watched-activity.json` | Up to 1,000 grouped lifecycle/batch/scan/error/plan activities and 16 MiB total; raw watcher events are not persisted individually. |
 | Workflow Profiles and Sorting Recipes | `workflow-library.json` | Bounded schema-versioned user items with atomic replacement; canonical built-ins are application-owned and corrupt user data is preserved where possible before safe recovery. |
 | Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
 | Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
+| Logical state backups | User-selected `.oms-state` plus application-created pre-restore recovery archives | Bounded format-1 archives contain settings, source definitions, recipes, Saved Views, User Tags, explicit tag decisions, and exact-pair manual relationship decisions. They exclude document contents, derived indexes, generated tags, jobs, Change Plans, journals, and the separately journalled Knowledge Graph decision sidecar. Archives contain sensitive authored values/paths, are not encrypted, and are never removed automatically. |
 
 Content and Search stores can contain sensitive words extracted from selected
 documents and media, transcripts, OCR, optional descriptions, camera/device
@@ -364,7 +366,18 @@ queries, result snippets, extracted paragraphs, transcripts, descriptions,
 vectors, precise GPS, source-derived evidence text, or absolute paths. An
 export remains user-initiated and reviewable before sharing.
 
-Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
+Atomic stores use temporary sibling files and replace only their own target.
+Rebuildable content/semantic/history stores may fail to empty/rebuildable state;
+user-authored stores preserve corrupt input until reviewed replacement; and
+mutation/recovery stores preserve evidence and fail closed. No corruption path
+triggers a source-file operation.
+
+Forget is coordinated through schema-6 SQLite and the compatibility content,
+semantic, and thumbnail caches. Whole compatibility-cache clearing is used
+where old path-keyed records cannot prove complete stable-ID ownership. This is
+distinct from Clear Generated Intelligence and Clear Index/Rebuild. A logical
+state backup can restore reviewed authored state but never restores source-file
+contents.
 
 ## Knowledge Graph privacy and authority
 
@@ -450,7 +463,7 @@ Unsafe actions are marked blocked; they do not overwrite or destroy newer data. 
 
 ## Recovery
 
-Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, v1.3 workflow-library, and v1.4 plugin-state stores are valid empty states. Corrupt workflow data preserves the original and attempts a diagnostic copy before built-ins-only recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Invalid plugin state or installed content cannot activate an external contribution. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
+Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, v1.3 workflow-library, and v1.4 plugin-state stores are valid empty states. Corrupt workflow data preserves the original and exposes safe built-ins but cannot overwrite the user library without reviewed recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Invalid plugin state or installed content cannot activate an external contribution. Legacy raw-array journal data is normalized to the current schema; corrupt, unsupported, or lifecycle-invalid Change Plan/Operation Journal data is preserved, copied for recovery, surfaced, and fences all new mutation and Undo until reviewed recovery.
 
 At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 

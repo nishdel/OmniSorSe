@@ -7,6 +7,36 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.10 Production Hardening & Operational Resilience
+
+Implementation branch: `v2.10-production-hardening-operational-resilience`.
+This work is not a published release and builds directly on the committed v2.9
+release candidate.
+
+### Added and changed
+
+- Enforce one current-user writer per profile and record abnormal shutdowns.
+- Preserve and fail closed on corrupt Change Plan or Operation Journal state.
+- Add bounded schema/store/profile/source/job/storage health inspection.
+- Bound managed PDF extraction and PDFium rasterization inputs and work.
+- Add reviewed logical export/restore for difficult-to-reconstruct user state,
+  including exact-pair manual relationship decisions.
+- Coordinate Forget across schema-6 SQLite and rebuildable compatibility caches.
+- Centralize product version/source provenance and validate packaged metadata.
+- Preserve all unrelated configuration during logging/diagnostic normalization.
+- Harden Ollama prompts against instructions embedded in untrusted file data.
+- Add high-blast-radius corruption, rollback, deletion, parser, profile-lock,
+  configuration, provenance, and backup/restore regression coverage.
+
+### Boundaries
+
+- Schema remains 6 and Explorer Protocol remains v1.
+- No Search, classifier, organization, graph, OmniBrille, cloud, autonomous,
+  mutation-engine, protocol, or production-dependency expansion is included.
+- PdfPig extraction and PDFium rasterization remain in process behind strict
+  bounds; parser-internal allocation and native crash/hang risk are not claimed
+  eliminated and remain manual/native validation gates.
+
 ## Unreleased — OmniSorSe v2.9 Reviewed Intelligent Organization
 
 Implementation branch: `v2.9-reviewed-intelligent-organization`. This work is

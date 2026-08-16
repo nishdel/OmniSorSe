@@ -160,6 +160,10 @@ public sealed partial class RepositoryDocumentationTests
             "RELEASE_NOTES_v2.3.0.md",
             "OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md",
             "MANUAL_TESTING_v2.4.md",
+            "PRODUCTION_HARDENING_v2.10.md",
+            "OPERATIONAL_RUNBOOKS_v2.10.md",
+            "MANUAL_TESTING_v2.10.md",
+            "RELEASE_NOTES_v2.10.0.md",
             "SEARCH_AND_AI_QUALITY_v2.1.md",
             "MANUAL_TESTING_v2.1.md",
             "RELEASE_PACKAGING_v2.0.md",
@@ -310,6 +314,58 @@ public sealed partial class RepositoryDocumentationTests
                 actual.SetEquals(allowed!),
                 $"{project} references [{string.Join(", ", actual.Order())}] but policy expects [{string.Join(", ", allowed!.Order())}].");
         }
+    }
+
+    /// <summary>Guards high-value hardening boundaries against accidental architectural expansion.</summary>
+    [Fact]
+    public void ProductionHardeningBoundaries_RemainExplicit()
+    {
+        var productionSources = Directory.EnumerateFiles(
+                Path.Combine(RepositoryRoot, "src"),
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !IsExcluded(path))
+            .Select(File.ReadAllText)
+            .ToArray();
+        var combined = string.Join('\n', productionSources);
+        Assert.DoesNotContain("new TcpListener", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain("new HttpListener", combined, StringComparison.Ordinal);
+
+        var desktopSources = Directory.EnumerateFiles(
+                Path.Combine(RepositoryRoot, "src", "OpenSorSe.Desktop"),
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !IsExcluded(path))
+            .Select(File.ReadAllText);
+        Assert.DoesNotContain(desktopSources, source =>
+            source.Contains("Microsoft.Data.Sqlite", StringComparison.Ordinal));
+
+        foreach (var relativePath in new[]
+                 {
+                     "src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs",
+                     "src/OpenSorSe.Application/Content/TesseractProcessRunner.cs",
+                     "src/OpenSorSe.Application/Media/ExternalMediaProcessRunner.cs",
+                 })
+        {
+            var source = File.ReadAllText(Path.Combine(
+                RepositoryRoot,
+                relativePath.Replace('/', Path.DirectorySeparatorChar)));
+            Assert.Contains("UseShellExecute = false", source, StringComparison.Ordinal);
+            Assert.Contains("ArgumentList.Add", source, StringComparison.Ordinal);
+        }
+
+        var buildProperties = File.ReadAllText(Path.Combine(RepositoryRoot, "Directory.Build.props"));
+        Assert.Contains("<OmniSorSeVersion", buildProperties, StringComparison.Ordinal);
+        Assert.Contains("<SourceRevisionId", buildProperties, StringComparison.Ordinal);
+        Assert.DoesNotContain(">2.4.0<", buildProperties, StringComparison.Ordinal);
+
+        var indexModels = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "src",
+            "OpenSorSe.Application",
+            "Indexing",
+            "DeepIndexingModels.cs"));
+        Assert.Contains("public const int SchemaVersion = 6;", indexModels, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies every public Extension SDK type remains discoverable through XML documentation.</summary>

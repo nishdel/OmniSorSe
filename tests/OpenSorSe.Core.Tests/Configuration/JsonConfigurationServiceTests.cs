@@ -34,6 +34,63 @@ public sealed class JsonConfigurationServiceTests
         }
     }
 
+    /// <summary>Verifies a logging-only environment override preserves every unrelated capability group.</summary>
+    [Fact]
+    public async Task InitializeAsync_LoggingOverride_PreservesUnrelatedSettings()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"opensorse-{Guid.NewGuid():N}");
+        var settingsFilePath = Path.Combine(directoryPath, "settings.json");
+        var companionPath = Path.Combine(directoryPath, "OmniBrille.exe");
+        var expected = new ApplicationSettings
+        {
+            Features = new FeatureSettings { ShowAdvancedFeatures = true },
+            Diagnostics = new DiagnosticsSettings { EnableDiagnostics = true, SearchAndIndexingDiagnostics = true },
+            Ai = new AiSettings { Enabled = true, SearchAssistanceEnabled = true },
+            Catalog = new CatalogSettings { Enabled = true },
+            Content = new ContentSettings { OcrEnabled = true, MaximumPagesPerDocument = 17 },
+            MediaIntelligence = new MediaIntelligenceSettings { Enabled = false, MaximumVideoFrames = 11 },
+            ContentIntelligence = new ContentIntelligenceSettings { Enabled = false, MaximumTopics = 9 },
+            SemanticSearch = new SemanticSearchSettings { Enabled = true, MaximumResultCount = 77 },
+            DeepIndexing = new DeepIndexingSettings { MaximumConcurrency = 3, MaximumRetryCount = 7 },
+            ExplorerCompanion = new ExplorerCompanionSettings { ExecutablePath = companionPath },
+            Logging = new LoggingSettings { MinimumLevel = LogLevel.Warning, RetainedFileCount = 4 },
+        };
+
+        try
+        {
+            var writer = new JsonConfigurationService(settingsFilePath, _ => null);
+            await writer.SaveAsync(expected, CancellationToken.None);
+            var reader = new JsonConfigurationService(
+                settingsFilePath,
+                variable => variable == "OPENSORSE_LOGGING__MINIMUMLEVEL" ? "Error" : null);
+
+            await reader.InitializeAsync(CancellationToken.None);
+
+            Assert.Equal(LogLevel.Error, reader.Current.Logging.MinimumLevel);
+            Assert.True(reader.Current.Features.ShowAdvancedFeatures);
+            Assert.True(reader.Current.Diagnostics.SearchAndIndexingDiagnostics);
+            Assert.True(reader.Current.Ai.SearchAssistanceEnabled);
+            Assert.True(reader.Current.Catalog.Enabled);
+            Assert.True(reader.Current.Content.OcrEnabled);
+            Assert.Equal(17, reader.Current.Content.MaximumPagesPerDocument);
+            Assert.False(reader.Current.MediaIntelligence.Enabled);
+            Assert.Equal(11, reader.Current.MediaIntelligence.MaximumVideoFrames);
+            Assert.False(reader.Current.ContentIntelligence.Enabled);
+            Assert.Equal(9, reader.Current.ContentIntelligence.MaximumTopics);
+            Assert.Equal(77, reader.Current.SemanticSearch.MaximumResultCount);
+            Assert.Equal(3, reader.Current.DeepIndexing.MaximumConcurrency);
+            Assert.Equal(7, reader.Current.DeepIndexing.MaximumRetryCount);
+            Assert.Equal(companionPath, reader.Current.ExplorerCompanion.ExecutablePath);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
     /// <summary>
     /// Verifies that missing user configuration uses safe defaults.
     /// </summary>

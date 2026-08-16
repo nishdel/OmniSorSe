@@ -82,4 +82,21 @@ public interface ISavedDiscoveryViewStore
 
     /// <summary>Deletes one Saved View without touching files or index membership.</summary>
     Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>Atomically replaces the library after an explicit validated state-restore review.</summary>
+    async Task ReplaceAllReviewedAsync(
+        IReadOnlyList<SavedDiscoveryView> views,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(views);
+        foreach (var current in await ListAsync(cancellationToken).ConfigureAwait(false))
+        {
+            await DeleteAsync(current.Id, cancellationToken).ConfigureAwait(false);
+        }
+
+        foreach (var view in views)
+        {
+            await SaveAsync(view, cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

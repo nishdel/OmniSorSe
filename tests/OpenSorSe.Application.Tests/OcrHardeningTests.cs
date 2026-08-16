@@ -222,6 +222,31 @@ public sealed class OcrHardeningTests
         }
     }
 
+    /// <summary>Verifies oversized PDFs are rejected before the in-process native renderer is called.</summary>
+    [Fact]
+    public async Task PdfRasterizer_OverHardLimit_RejectsBeforeNativeParsing()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"opensorse-pdf-bound-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var pdfPath = Path.Combine(root, "oversized.pdf");
+        try
+        {
+            await using (var stream = new FileStream(pdfPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                stream.SetLength(PdfPageRasterizer.HardMaximumRasterInputBytes + 1);
+            }
+
+            var rasterizer = new PdfPageRasterizer();
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(
+                () => rasterizer.GetPageCountAsync(pdfPath, CancellationToken.None));
+            Assert.Contains("safety limit", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static TesseractCliOcrEngine CreateEngine(
         IPdfPageRasterizer rasterizer,
         ITesseractProcessRunner runner) =>

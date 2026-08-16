@@ -4,6 +4,7 @@ set -euo pipefail
 version="${1:?A release version is required.}"
 rid="${2:?A macOS runtime identifier is required.}"
 artifact_directory="${3:?An artifact directory is required.}"
+source_revision="${4:?An exact source revision is required.}"
 
 case "$rid" in
   osx-x64) suffix="x64"; architecture="x86_64" ;;
@@ -30,6 +31,14 @@ test -x "$executable"
 plutil -lint "$app/Contents/Info.plist"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = 'io.github.nishdel.OpenSorSe'
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$version"
+python3 - "$app/Contents/Resources/OmniSorSe.build.json" "$version" "$source_revision" <<'PY'
+import json, sys
+path, version, revision = sys.argv[1:]
+with open(path, encoding="utf-8") as stream:
+    value = json.load(stream)
+if value != {"productVersion": version, "sourceRevision": revision, "configuration": "Release"}:
+    raise SystemExit("macOS package provenance does not match the requested source")
+PY
 file "$executable" | grep -q "$architecture"
 find "$app/Contents/MacOS" -type f -name 'libe_sqlite3.dylib' | grep -q .
 if find "$app" -type f \( -name '*.pdb' -o -name '*.trx' -o -name '*.db' -o -name '*.log' -o -name '*.cs' -o -name '*.csproj' -o -name '*.sln' \) | grep -q .; then

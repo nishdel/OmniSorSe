@@ -32,6 +32,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
     private readonly IWorkflowValidator _validator;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _corruptionDetected;
 
     public JsonWorkflowLibraryStore(
         string path,
@@ -58,6 +59,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
         {
             if (!File.Exists(_path))
             {
+                _corruptionDetected = false;
                 return Empty();
             }
 
@@ -84,6 +86,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
                 var recipes = envelope.Recipes.ToArray();
                 var profiles = envelope.Profiles.ToArray();
                 ValidateLibrary(profiles, recipes);
+                _corruptionDetected = false;
                 return new WorkflowLibraryLoadResult(
                     Array.AsReadOnly(profiles.Select(Clone).ToArray()),
                     Array.AsReadOnly(recipes.Select(Clone).ToArray()),
@@ -109,6 +112,29 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
     }
 
     public async Task SaveAsync(
+        IReadOnlyList<WorkflowProfile> profiles,
+        IReadOnlyList<SortingRecipe> recipes,
+        CancellationToken cancellationToken)
+    {
+        if (_corruptionDetected)
+        {
+            throw new InvalidOperationException("The preserved workflow library is corrupted. Use reviewed state restore or the documented recovery procedure before saving workflows.");
+        }
+
+        await SaveValidatedAsync(profiles, recipes, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task SaveReviewedRecoveryAsync(
+        IReadOnlyList<WorkflowProfile> profiles,
+        IReadOnlyList<SortingRecipe> recipes,
+        CancellationToken cancellationToken)
+    {
+        await SaveValidatedAsync(profiles, recipes, cancellationToken).ConfigureAwait(false);
+        _corruptionDetected = false;
+    }
+
+    private async Task SaveValidatedAsync(
         IReadOnlyList<WorkflowProfile> profiles,
         IReadOnlyList<SortingRecipe> recipes,
         CancellationToken cancellationToken)
@@ -190,6 +216,7 @@ public sealed class JsonWorkflowLibraryStore : IWorkflowLibraryStore
 
     private WorkflowLibraryLoadResult Recover(string message)
     {
+        _corruptionDetected = true;
         string? copyPath = null;
         try
         {

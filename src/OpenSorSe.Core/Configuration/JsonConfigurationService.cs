@@ -126,23 +126,13 @@ public sealed class JsonConfigurationService : IConfigurationService
                 $"{LoggingLevelEnvironmentVariable} must be a valid logging level.");
         }
 
-        return new ApplicationSettings
+        return settings.WithLogging(new LoggingSettings
         {
-            Features = settings.Features,
-            Diagnostics = settings.Diagnostics,
-            Logging = new LoggingSettings
-            {
-                MinimumLevel = minimumLevel,
-                FileLoggingEnabled = settings.Logging.FileLoggingEnabled,
-                LogDirectoryPath = settings.Logging.LogDirectoryPath,
-                RetainedFileCount = settings.Logging.RetainedFileCount,
-            },
-            Ai = settings.Ai,
-            Catalog = settings.Catalog,
-            Content = settings.Content,
-            SemanticSearch = settings.SemanticSearch,
-            DeepIndexing = settings.DeepIndexing,
-        };
+            MinimumLevel = minimumLevel,
+            FileLoggingEnabled = settings.Logging.FileLoggingEnabled,
+            LogDirectoryPath = settings.Logging.LogDirectoryPath,
+            RetainedFileCount = settings.Logging.RetainedFileCount,
+        });
     }
 
     private static ApplicationSettings UpgradeLegacyDiagnostics(ApplicationSettings settings)
@@ -157,34 +147,14 @@ public sealed class JsonConfigurationService : IConfigurationService
                 return settings;
             }
 
-            return new ApplicationSettings
-            {
-                Features = settings.Features,
-                Logging = settings.Logging,
-                Diagnostics = diagnostics,
-                Ai = settings.Ai,
-                Catalog = settings.Catalog,
-                Content = settings.Content,
-                SemanticSearch = settings.SemanticSearch,
-                DeepIndexing = settings.DeepIndexing,
-            };
+            return settings.WithDiagnostics(diagnostics);
         }
 
-        return new ApplicationSettings
+        return settings.WithDiagnostics(new DiagnosticsSettings
         {
-            Features = settings.Features,
-            Logging = settings.Logging,
-            Diagnostics = new DiagnosticsSettings
-            {
-                EnableDiagnostics = true,
-                AiDiagnostics = true,
-                ShowUnredactedDiagnosticContent = settings.Ai.ShowUnredactedDiagnosticContent,
-            },
-            Ai = settings.Ai,
-            Catalog = settings.Catalog,
-            Content = settings.Content,
-            SemanticSearch = settings.SemanticSearch,
-            DeepIndexing = settings.DeepIndexing,
-        };
+            EnableDiagnostics = true,
+            AiDiagnostics = true,
+            ShowUnredactedDiagnosticContent = settings.Ai.ShowUnredactedDiagnosticContent,
+        });
     }
 }

@@ -124,6 +124,10 @@ public interface ISemanticIndexStore
     /// <summary>Atomically replaces the complete local index.</summary>
     Task ReplaceAsync(IReadOnlyList<SemanticIndexEntry> entries, CancellationToken cancellationToken);
 
+    /// <summary>Removes exact path-keyed compatibility entries for an explicit privacy request.</summary>
+    Task RemoveAsync(IReadOnlyCollection<string> fullPaths, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("The configured semantic store does not support targeted privacy deletion.");
+
     /// <summary>Clears the application-owned index without changing source files.</summary>
     Task ClearAsync(CancellationToken cancellationToken);
 }

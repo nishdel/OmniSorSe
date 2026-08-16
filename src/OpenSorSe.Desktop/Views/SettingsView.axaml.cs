@@ -1,5 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using OpenSorSe.Core;
 using System.ComponentModel;
 using OpenSorSe.Desktop.ViewModels;
 
@@ -112,5 +115,43 @@ public partial class SettingsView : UserControl
         SettingsScrollViewer.Offset = new Avalonia.Vector(
             Math.Clamp(requested.X, 0, Math.Max(0, SettingsScrollViewer.Extent.Width - SettingsScrollViewer.Viewport.Width)),
             Math.Clamp(requested.Y, 0, maximumY));
+    }
+
+    private async void ExportStateClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (_viewModel is null || TopLevel.GetTopLevel(this)?.StorageProvider is not { CanSave: true } storage)
+        {
+            return;
+        }
+
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export OmniSorSe state",
+            SuggestedFileName = $"OmniSorSe-state-{ApplicationVersionInfo.Current}.oms-state",
+            FileTypeChoices = [new FilePickerFileType("OmniSorSe state archive") { Patterns = ["*.oms-state"] }],
+        });
+        if (file?.Path.IsFile == true)
+        {
+            await _viewModel.ExportStateAsync(file.Path.LocalPath);
+        }
+    }
+
+    private async void PreviewRestoreClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (_viewModel is null || TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage)
+        {
+            return;
+        }
+
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Preview OmniSorSe state restore",
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType("OmniSorSe state archive") { Patterns = ["*.oms-state"] }],
+        });
+        if (files.Count == 1 && files[0].Path.IsFile)
+        {
+            await _viewModel.PreviewStateRestoreAsync(files[0].Path.LocalPath);
+        }
     }
 }

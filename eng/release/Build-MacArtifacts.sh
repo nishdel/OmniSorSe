@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:-2.4.0}"
+version="${1:-2.10.0}"
 rid="${2:?A macOS runtime identifier is required.}"
 output_directory="${3:?A release output directory is required.}"
+source_revision="${4:-}"
 
 case "$rid" in
   osx-x64) architecture="x86_64" ;;
@@ -13,6 +14,13 @@ esac
 
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repository_root="$(cd "$script_directory/../.." && pwd)"
+if [[ -z "$source_revision" ]]; then
+  source_revision="$(git -C "$repository_root" rev-parse HEAD)"
+fi
+if [[ ! "$source_revision" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo 'An exact 40-character source revision is required for release packaging.' >&2
+  exit 2
+fi
 output_root="$(mkdir -p "$output_directory" && cd "$output_directory" && pwd)"
 staging_root="$output_root/staging/$rid"
 case "$staging_root" in
@@ -30,7 +38,11 @@ dotnet publish "$repository_root/src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj"
   --output "$staging_root/publish" \
   -p:DebugType=None \
   -p:DebugSymbols=false \
-  -p:PublishSingleFile=false
+  -p:PublishSingleFile=false \
+  -p:OmniSorSeVersion="$version" \
+  -p:OmniSorSeFileVersion="$version.0" \
+  -p:SourceRevisionId="$source_revision" \
+  -p:ContinuousIntegrationBuild=true
 
 app_bundle="$staging_root/OmniSorSe.app"
 contents="$app_bundle/Contents"
@@ -43,6 +55,8 @@ cp "$repository_root/LICENSE" "$resources_directory/LICENSE"
 cp "$repository_root/THIRD_PARTY_NOTICES.md" "$resources_directory/THIRD_PARTY_NOTICES.md"
 cp "$repository_root/docs/dependency-licenses.json" "$resources_directory/dependency-licenses.json"
 cp "$repository_root/docs/INSTALLATION.md" "$resources_directory/INSTALLATION.md"
+printf '{"productVersion":"%s","sourceRevision":"%s","configuration":"Release"}\n' \
+  "$version" "$source_revision" > "$resources_directory/OmniSorSe.build.json"
 release_notes="$repository_root/docs/RELEASE_NOTES_v$version.md"
 if [[ ! -f "$release_notes" ]]; then
   echo "Release notes for v$version are missing: $release_notes" >&2

@@ -18,6 +18,7 @@ on:
       - v2.7-scalable-faceted-discovery
       - v2.8-guided-workflows-product-coherence
       - v2.9-reviewed-intelligent-organization
+      - v2.10-production-hardening-operational-resilience
   pull_request:
 
 permissions:
@@ -41,6 +42,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Use repository .NET SDK
         uses: actions/setup-dotnet@v6
@@ -92,3 +95,13 @@ jobs:
 
       - name: Verify documentation and dependency policy
         run: dotnet test tests/OpenSorSe.Core.Tests/OpenSorSe.Core.Tests.csproj --configuration Release --no-build --no-restore --filter FullyQualifiedName~RepositoryDocumentationTests
+
+      - name: Audit direct and transitive NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          dotnet list OpenSorSe.sln package --vulnerable --include-transitive --format json | Set-Content -LiteralPath .artifacts/vulnerability-audit.json
+          $audit = Get-Content -Raw -LiteralPath .artifacts/vulnerability-audit.json | ConvertFrom-Json
+          $vulnerabilities = @($audit.projects.frameworks.topLevelPackages.vulnerabilities) + @($audit.projects.frameworks.transitivePackages.vulnerabilities)
+          if (@($vulnerabilities | Where-Object { $null -ne $_ }).Count -ne 0) {
+            throw 'NuGet vulnerability audit found one or more vulnerable packages.'
+          }

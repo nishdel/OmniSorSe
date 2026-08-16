@@ -504,6 +504,12 @@ public interface IWorkflowLibraryStore
         IReadOnlyList<WorkflowProfile> profiles,
         IReadOnlyList<SortingRecipe> recipes,
         CancellationToken cancellationToken);
+
+    /// <summary>Replaces corrupt or current user records only after an explicit validated state-restore review.</summary>
+    Task SaveReviewedRecoveryAsync(
+        IReadOnlyList<WorkflowProfile> profiles,
+        IReadOnlyList<SortingRecipe> recipes,
+        CancellationToken cancellationToken) => SaveAsync(profiles, recipes, cancellationToken);
 }
 
 /// <summary>Validates complete profiles and recipes independently of presentation input checks.</summary>

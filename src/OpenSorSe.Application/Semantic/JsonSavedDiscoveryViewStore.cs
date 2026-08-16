@@ -105,6 +105,31 @@ public sealed class JsonSavedDiscoveryViewStore : ISavedDiscoveryViewStore
         }
     }
 
+    /// <inheritdoc />
+    public async Task ReplaceAllReviewedAsync(
+        IReadOnlyList<SavedDiscoveryView> views,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(views);
+        var validated = views.Select(Validate).ToArray();
+        if (validated.Length > MaximumViewCount ||
+            validated.Select(view => view.Id).Distinct(StringComparer.Ordinal).Count() != validated.Length)
+        {
+            throw new InvalidDataException("The reviewed Saved View restore contains duplicate or excessive records.");
+        }
+
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await SaveCoreAsync(validated, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
     private async Task<IReadOnlyList<SavedDiscoveryView>> LoadCoreAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_filePath))
@@ -140,8 +165,12 @@ public sealed class JsonSavedDiscoveryViewStore : ISavedDiscoveryViewStore
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException)
         {
-            _logger.LogWarning(exception, "Saved View rules were invalid and were ignored without affecting the index or files.");
-            return [];
+            _logger.LogWarning(exception, "Saved View rules are invalid; the original was preserved and writes are blocked.");
+            throw JsonStoreCorruption.Preserve(
+                "Saved View store",
+                _filePath,
+                JsonStoreAuthority.UserAuthored,
+                exception);
         }
     }
 

@@ -20,6 +20,51 @@
             </Grid>
 
             <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Data &amp; Index Health" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Runs bounded schema, recovery, owned-store, source, and storage checks. It does not scan documents or repair anything automatically."
+                               TextWrapping="Wrap" />
+                    <Button Content="Check health"
+                            Command="{Binding RefreshOperationalHealthCommand}"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Check Data and Index Health" />
+                    <TextBlock Text="{Binding OperationalHealthText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Export or restore OmniSorSe state" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="The logical archive contains user-authored settings, source definitions, recipes, Saved Views, User Tags, and accept/reject decisions. It excludes extracted content, OCR, transcripts, generated intelligence, the Search index, and active operation journals. Treat the archive as sensitive."
+                               TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button Margin="0,0,8,8"
+                                Content="Export state…"
+                                Click="ExportStateClick"
+                                AutomationProperties.Name="Export OmniSorSe state" />
+                        <Button Margin="0,0,8,8"
+                                Content="Preview restore…"
+                                Click="PreviewRestoreClick"
+                                AutomationProperties.Name="Preview OmniSorSe state restore" />
+                        <Button Margin="0,0,8,8"
+                                Content="Confirm restore"
+                                Command="{Binding ConfirmStateRestoreCommand}"
+                                IsVisible="{Binding IsStateRestorePending}"
+                                AutomationProperties.Name="Confirm reviewed OmniSorSe state restore" />
+                        <Button Margin="0,0,8,8"
+                                Content="Cancel restore"
+                                Command="{Binding CancelStateRestoreCommand}"
+                                IsVisible="{Binding IsStateRestorePending}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding StateTransferStatusText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="Completed scan library" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Save completed scans in OmniSorSe's local library"

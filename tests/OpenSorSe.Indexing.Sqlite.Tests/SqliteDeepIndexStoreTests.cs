@@ -359,6 +359,52 @@ public sealed class SqliteDeepIndexStoreTests
             tag.Definition.TagId == "theme.finance" && tag.State == SmartTagAssignmentState.Automatic);
     }
 
+    /// <summary>Logical backup exports only user authority and restores it by exact stable file identity.</summary>
+    [Fact]
+    public async Task SmartTagUserAuthority_RoundTripsWithoutPathGuessing()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await QueueAsync(store, fixture.Source(IndexingLevel.Standard), [fixture.Observation("authority-backup.txt")]);
+        await CompleteStandardRunAsync(
+            store,
+            "authority-backup-hash",
+            Classification("theme.finance", "document-type.invoice"));
+        var fileId = Assert.Single(await store.GetSearchDocumentsAsync(10)).FileId;
+        await store.AddUserTagAsync(fileId, "Review", Epoch.AddDays(11));
+        await store.SetTagDecisionAsync(fileId, "document-type.invoice", SmartTagDecision.Accepted, Epoch.AddDays(12));
+        await store.SetTagDecisionAsync(fileId, "theme.finance", SmartTagDecision.Rejected, Epoch.AddDays(12));
+
+        var authority = await store.ExportUserAuthorityAsync(100);
+        var userTag = Assert.Single(authority, item => item.IsUserTag);
+        Assert.Contains(authority, item => item.TagId == "document-type.invoice" && item.Decision == SmartTagDecision.Accepted);
+        Assert.Contains(authority, item => item.TagId == "theme.finance" && item.Decision == SmartTagDecision.Rejected);
+        await store.RemoveTagAsync(fileId, userTag.TagId, Epoch.AddDays(13));
+        await store.ResetTagDecisionsAsync(fileId, Epoch.AddDays(13));
+
+        var restored = await store.RestoreUserAuthorityAsync(
+            authority.Concat(
+            [
+                new SmartTagUserAuthority(
+                    "file:missing",
+                    "source",
+                    "missing.txt",
+                    userTag.TagId,
+                    "Review",
+                    SmartTagType.UserTag,
+                    SmartTagDecision.Accepted,
+                    true),
+            ]).ToArray(),
+            Epoch.AddDays(14));
+
+        Assert.Equal(authority.Count, restored.AppliedCount);
+        Assert.Equal(1, restored.SkippedCount);
+        var tags = await store.GetFileSmartTagsAsync(fileId);
+        Assert.Contains(tags, item => item.Definition.Type == SmartTagType.UserTag && item.Definition.DisplayName == "Review");
+        Assert.Contains(tags, item => item.Definition.TagId == "document-type.invoice" && item.Decision == SmartTagDecision.Accepted);
+        Assert.DoesNotContain(tags, item => item.Definition.TagId == "theme.finance");
+    }
+
     /// <summary>No-evidence passes retain real fingerprints and are not needlessly queued again at startup.</summary>
     [Fact]
     public async Task NoEvidenceClassificationRetainsFingerprintAndAvoidsRequeue()

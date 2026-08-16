@@ -7,6 +7,12 @@ Use [Engineering Principles](../ENGINEERING_PRINCIPLES.md) for the reasoning
 behind these operational requirements and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for version/integration status.
 
+For current failure response use the
+[v2.10 operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md). For release sign-off
+use the deduplicated, entirely unchecked
+[v2.10 master manual matrix](MANUAL_TESTING_v2.10.md); historical version
+checklists remain evidence records rather than the current working checklist.
+
 ## Release checklist
 
 1. Confirm the release branch, base commit, upstream, worktrees, and absence of
@@ -39,10 +45,11 @@ passed-CI claim.
 
 | Location | Responsibility |
 | --- | --- |
-| `Directory.Build.props` | Product, informational, assembly, and file version defaults |
+| `Directory.Build.props` | Authoritative product, informational, assembly, file-version, source-revision, and build-configuration defaults |
 | `src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj` | Desktop package version |
 | `src/OpenSorSe.Desktop/app.manifest` | Windows assembly identity |
-| `src/OpenSorSe.Desktop/ViewModels/AboutViewModel.cs` | User-visible short version |
+| `src/OpenSorSe.Desktop/ViewModels/AboutViewModel.cs` | User-visible version and source provenance projection |
+| `eng/release/Build-*`, `Validate-*`, package build manifest | Inject and verify exact release version/commit/package agreement |
 | `README.md`, `docs/CHANGELOG.md`, `docs/VERSION_NOTES_v*.md` | User/release narrative |
 | `docs/RELEASE_STATUS.md` | Current integration, validation, package, tag, and publication readiness |
 | `PRODUCT_ROADMAP.md`, `RELEASE_HISTORY.md` | Planned direction and concise historical branch/date/merge index |

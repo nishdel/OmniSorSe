@@ -6,6 +6,11 @@ namespace OpenSorSe.Application.Content;
 /// <summary>Renders individual PDF pages through the bundled permissively licensed PDFium wrapper.</summary>
 public sealed class PdfPageRasterizer : IPdfPageRasterizer
 {
+    /// <summary>Hard bound applied before invoking the in-process PDFium wrapper.</summary>
+    public const long HardMaximumRasterInputBytes = PdfMetadataExtractor.HardMaximumInputBytes;
+
+    /// <summary>Hard pixel-dimension bound applied independently of configurable OCR settings.</summary>
+    public const int HardMaximumRasterDimension = 8192;
     private const string RasterizerIdentifier = "pdftoimage-pdfium";
     private const string WorkspacePrefix = "job-";
     private readonly string _temporaryRoot;
@@ -88,7 +93,7 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
         CancellationToken cancellationToken)
     {
         ValidatePdfPath(fullPath);
-        if (pageNumber < 1 || dpi is < 72 or > 600 || maximumDimension is < 256 or > 16_384)
+        if (pageNumber < 1 || dpi is < 72 or > 600 || maximumDimension is < 256 or > HardMaximumRasterDimension)
         {
             throw new ArgumentOutOfRangeException(nameof(pageNumber), "PDF rendering bounds are invalid.");
         }
@@ -201,6 +206,17 @@ public sealed class PdfPageRasterizer : IPdfPageRasterizer
             !string.Equals(Path.GetExtension(fullPath), ".pdf", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("An absolute PDF path is required.", nameof(fullPath));
+        }
+
+        var info = new FileInfo(fullPath);
+        if (!info.Exists)
+        {
+            throw new FileNotFoundException("The PDF is unavailable.", fullPath);
+        }
+
+        if (info.Length > HardMaximumRasterInputBytes)
+        {
+            throw new InvalidDataException("PDF page rendering was skipped because the file exceeds the bounded native-parser safety limit.");
         }
     }
 

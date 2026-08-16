@@ -4,6 +4,16 @@ using OpenSorSe.Application.Semantic;
 
 namespace OpenSorSe.Application.Indexing;
 
+/// <summary>Contains one bounded schema and integrity probe result.</summary>
+public sealed record DeepIndexHealthSnapshot(bool IsHealthy, int SchemaVersion, bool RequiredObjectsPresent, string Message);
+
+/// <summary>Provides an explicit bounded provider health probe.</summary>
+public interface IDeepIndexHealthProbe
+{
+    /// <summary>Runs schema/object and SQLite quick-check validation without scanning documents.</summary>
+    Task<DeepIndexHealthSnapshot> CheckHealthAsync(CancellationToken cancellationToken = default);
+}
+
 /// <summary>Provides durable indexing storage without exposing provider-specific APIs.</summary>
 public interface IDeepIndexStore : IAsyncDisposable
 {

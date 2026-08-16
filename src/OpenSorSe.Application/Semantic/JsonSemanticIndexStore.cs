@@ -83,6 +83,35 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
     }
 
     /// <inheritdoc />
+    public async Task RemoveAsync(
+        IReadOnlyCollection<string> fullPaths,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(fullPaths);
+        var removed = new HashSet<string>(fullPaths.Select(Path.GetFullPath), PathComparer);
+        if (removed.Count == 0)
+        {
+            return;
+        }
+
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
+            var remaining = entries.Where(entry => !removed.Contains(entry.FullPath)).ToArray();
+            if (remaining.Length != entries.Count)
+            {
+                await SaveCoreAsync(remaining, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
         using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
@@ -100,6 +129,18 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
             _mutex.Release();
         }
     }
+
+    private Task SaveCoreAsync(
+        IReadOnlyList<SemanticIndexEntry> entries,
+        CancellationToken cancellationToken) =>
+        AtomicJsonFile.WriteAsync(
+            _filePath,
+            new SemanticEnvelope(CurrentSchemaVersion, entries),
+            JsonOptions,
+            MaximumFileBytes,
+            cancellationToken,
+            static (_, _) => new InvalidDataException(
+                "The semantic index exceeds its supported encoded size."));
 
     private async Task<IReadOnlyList<SemanticIndexEntry>> LoadCoreAsync(
         CancellationToken cancellationToken)

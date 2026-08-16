@@ -23,9 +23,36 @@ public sealed record LegacySmartTagImport(
     bool IsUserOwned,
     string? BuiltInTagId);
 
+/// <summary>Contains only explicit user-authored Smart Tag authority for logical backup.</summary>
+public sealed record SmartTagUserAuthority(
+    string FileId,
+    string SourceId,
+    string RelativePath,
+    string TagId,
+    string DisplayName,
+    SmartTagType Type,
+    SmartTagDecision Decision,
+    bool IsUserTag);
+
+/// <summary>Reports exact-identity Smart Tag authority restoration without path guessing.</summary>
+public sealed record SmartTagAuthorityRestoreResult(int AppliedCount, int SkippedCount);
+
 /// <summary>Owns durable schema-6 Smart Tag state behind provider-neutral application contracts.</summary>
 public interface ISmartTagStore
 {
+    /// <summary>Exports bounded explicit user tags and accept/reject decisions without generated evidence.</summary>
+    Task<IReadOnlyList<SmartTagUserAuthority>> ExportUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured Smart Tag store does not support logical authority export.");
+
+    /// <summary>Restores authority only when the exact stable file and tag identities still resolve.</summary>
+    Task<SmartTagAuthorityRestoreResult> RestoreUserAuthorityAsync(
+        IReadOnlyList<SmartTagUserAuthority> authority,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured Smart Tag store does not support logical authority restore.");
+
     /// <summary>Resolves one active durable file identity from its current path.</summary>
     Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default);
     /// <summary>Resolves bounded current paths to active durable identities without requiring callers to issue N+1 queries.</summary>

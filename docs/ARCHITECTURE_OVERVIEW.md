@@ -1,8 +1,9 @@
 # OmniSorSe architecture overview
 
-This is the authoritative top-level architecture for the released OmniSorSe
-v2.4 implementation candidate. It extends the released OpenSorSe v2.3.0
-baseline without changing schema 5 or established profile locations.
+This is the authoritative top-level architecture for the OmniSorSe v2.10
+implementation candidate. It extends the released v2.4.0 baseline through the
+linear v2.5-v2.9 candidates while retaining established profile locations.
+The durable Search index is schema 6 and Explorer Protocol remains v1.
 The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
@@ -28,6 +29,25 @@ Scanner, Rules, Executor, content, workflow, watcher, plugin, catalog, semantic,
 and AI-policy services. `OpenSorSe.AI` provides the optional Ollama transport.
 The standalone Extension SDK exposes bounded contracts without exposing
 internal services.
+
+## v2.10 operational-resilience boundary
+
+The desktop owns one profile through a current-user, profile-specific operating
+system lock before profile services are composed. Mutation/recovery JSON fails
+closed: invalid Change Plan or journal state is preserved, surfaced, and fences
+execution and Undo while read-only discovery can remain available. An atomic
+run marker and bounded health service expose abnormal termination, schema/store
+health, job/source summaries, profile ownership, writability, and storage
+pressure without scanning document contents.
+
+Logical state export/restore covers reviewed user-authored settings, sources,
+recipes, Saved Views, User Tags, and tag decisions, not the rebuildable index or
+active mutation history. Schema-6 SQLite remains authoritative; Forget is
+coordinated across it and the legacy rebuildable content/semantic/thumbnail
+caches. Product version and source commit are centralized build inputs. PDF
+extraction and in-process rasterization have hard input/work/output bounds;
+native PDFium isolation remains a documented residual risk. See
+[v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md).
 
 ## Component view
 

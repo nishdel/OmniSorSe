@@ -1,6 +1,6 @@
-# OpenSorSe v2.0 native release packaging
+# OmniSorSe native release packaging
 
-This living maintainer guide defines how native v2.0 artifacts are produced and
+This living maintainer guide defines how current native artifacts are produced and
 validated. Generated binaries belong in ignored `.artifacts` staging or GitHub
 Actions artifacts, never normal Git history.
 
@@ -8,11 +8,11 @@ Actions artifacts, never normal Git history.
 
 The native packaging workflow produces exactly:
 
-- `OpenSorSe-v2.0.0-win-x64.zip`;
-- `OpenSorSe-v2.0.0-win-x64-setup.exe`;
-- `OpenSorSe-v2.0.0-macos-x64.dmg`;
-- `OpenSorSe-v2.0.0-macos-arm64.dmg`;
-- `OpenSorSe-v2.0.0-SHA256SUMS.txt`.
+- `OmniSorSe-v<version>-win-x64.zip`;
+- `OmniSorSe-v<version>-win-x64-setup.exe`;
+- `OmniSorSe-v<version>-macos-x64.dmg`;
+- `OmniSorSe-v<version>-macos-arm64.dmg`;
+- `OmniSorSe-v<version>-SHA256SUMS.txt`.
 
 No Linux installer is produced. Linux x64 remains a source-build preview.
 
@@ -48,9 +48,16 @@ and Apple Silicon packages run on native macOS runner families. The checksum
 job downloads only the native job outputs and publishes one complete release
 bundle.
 
-The regular validation workflow uses the maintained Node.js 24 action majors:
-`actions/checkout@v7` and `actions/setup-dotnet@v6`. Packaging uses current
-official `upload-artifact@v7` and `download-artifact@v7` majors.
+The regular and release-validation workflows use least-privilege read
+permissions, disable checkout credential persistence, force restore, audit
+vulnerabilities, and validate the exact requested ref/commit. Official action
+majors remain mutable references and are reviewed/updateable release
+infrastructure; immutable action-SHA pinning remains a documented future
+supply-chain improvement.
+
+Every release build receives an explicit semantic version and exact 40-character
+source commit. Binary product/file metadata, package filenames, app-bundle
+metadata, and `OmniSorSe.build.json` must agree before checksums are created.
 
 ## Installer and data policy
 
@@ -70,7 +77,7 @@ tokens, or machine-specific paths.
 ## Signing and notarization
 
 No established Windows code-signing or Apple Developer signing/notarization
-credentials exist in the repository infrastructure reviewed for v2.0.0.
+credentials exist in the repository infrastructure reviewed for v2.10.
 Artifacts are therefore produced unsigned and macOS packages are unnotarized.
 Do not add secrets to source, print secret values, create an improvised trust
 scheme, or describe checksum verification as publisher authentication.

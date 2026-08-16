@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.Resilience;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 
@@ -23,6 +25,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IContentStore? _contentStore;
     private readonly IOcrService? _ocrService;
     private readonly IMediaIntelligenceService? _mediaIntelligenceService;
+    private readonly IStateBackupService? _stateBackupService;
+    private readonly IOperationalHealthService? _healthService;
     private readonly ObservableCollection<string> _availableAiModels = [];
     private readonly HashSet<string> _installedAiModelIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, AiModelRuntimeState> _aiModelRuntimeStates = new(StringComparer.Ordinal);
@@ -43,6 +47,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private StatusPresentation _aiStatus = StatusPresentation.Information("AI assistance is disabled until enabled and configured.");
     private StatusPresentation _contentStatus = StatusPresentation.Information("OCR is disabled by default. Capability has not been checked.");
     private string _mediaCapabilityStatusText = "Media capabilities have not been checked. Image metadata is built in; audio/video tools are optional.";
+    private string _operationalHealthText = "Data and index health has not been checked.";
+    private string _stateTransferStatusText = "No state export or restore is active.";
+    private bool _isStateTransferBusy;
+    private StateRestorePreview? _pendingRestore;
+    private string? _pendingRestorePath;
 
     /// <summary>
     /// Initializes a settings editor over the already initialized configuration service.
@@ -57,6 +66,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="plugins">The optional local plugin-management presentation model.</param>
     /// <param name="platformDiagnostics">The optional platform capability and location presentation model.</param>
     /// <param name="mediaIntelligenceService">The optional provider-neutral media capability service.</param>
+    /// <param name="stateBackupService">The optional logical state export/restore service.</param>
+    /// <param name="healthService">The optional bounded operational-health service.</param>
     public SettingsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
@@ -67,7 +78,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IDiagnosticsCollector? diagnosticsCollector = null,
         PluginsViewModel? plugins = null,
         PlatformDiagnosticsViewModel? platformDiagnostics = null,
-        IMediaIntelligenceService? mediaIntelligenceService = null)
+        IMediaIntelligenceService? mediaIntelligenceService = null,
+        IStateBackupService? stateBackupService = null,
+        IOperationalHealthService? healthService = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _aiSuggestionService = aiSuggestionService;
@@ -77,6 +90,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _contentStore = contentStore;
         _ocrService = ocrService;
         _mediaIntelligenceService = mediaIntelligenceService;
+        _stateBackupService = stateBackupService;
+        _healthService = healthService;
         Plugins = plugins ?? new PluginsViewModel();
         PlatformDiagnostics = platformDiagnostics;
         ConfigureAdvancedDiagnostics(_configurationService.Current);
@@ -99,6 +114,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         RequestContentCacheResetCommand = new RelayCommand(RequestContentCacheReset, () => _contentStore is not null && !IsContentBusy && !IsContentCacheResetPending);
         ConfirmContentCacheResetCommand = new AsyncRelayCommand(ConfirmContentCacheResetAsync, () => _contentStore is not null && !IsContentBusy && IsContentCacheResetPending);
         CancelContentCacheResetCommand = new RelayCommand(CancelContentCacheReset, () => !IsContentBusy && IsContentCacheResetPending);
+        RefreshOperationalHealthCommand = new AsyncRelayCommand(RefreshOperationalHealthAsync, () => _healthService is not null && !IsStateTransferBusy);
+        ConfirmStateRestoreCommand = new AsyncRelayCommand(ConfirmStateRestoreAsync, () => _pendingRestore is not null && !IsStateTransferBusy);
+        CancelStateRestoreCommand = new RelayCommand(CancelStateRestore, () => _pendingRestore is not null && !IsStateTransferBusy);
     }
 
     /// <summary>
@@ -157,6 +175,38 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         get => _mediaCapabilityStatusText;
         private set => SetProperty(ref _mediaCapabilityStatusText, value);
+    }
+
+    /// <summary>Gets the latest bounded Data &amp; Index Health summary.</summary>
+    public string OperationalHealthText
+    {
+        get => _operationalHealthText;
+        private set => SetProperty(ref _operationalHealthText, value);
+    }
+
+    /// <summary>Gets the latest logical state export/restore status without exposing archive contents.</summary>
+    public string StateTransferStatusText
+    {
+        get => _stateTransferStatusText;
+        private set => SetProperty(ref _stateTransferStatusText, value);
+    }
+
+    /// <summary>Gets whether a validated restore awaits explicit confirmation.</summary>
+    public bool IsStateRestorePending => _pendingRestore is not null;
+
+    /// <summary>Gets whether logical state validation or application is active.</summary>
+    public bool IsStateTransferBusy
+    {
+        get => _isStateTransferBusy;
+        private set
+        {
+            if (SetProperty(ref _isStateTransferBusy, value))
+            {
+                RefreshOperationalHealthCommand.NotifyCanExecuteChanged();
+                ConfirmStateRestoreCommand.NotifyCanExecuteChanged();
+                CancelStateRestoreCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     /// <summary>Gets the supported durable indexing levels.</summary>
@@ -446,6 +496,69 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that cancels a local content-cache reset.</summary>
     public IRelayCommand CancelContentCacheResetCommand { get; }
 
+    /// <summary>Refreshes bounded non-destructive Data &amp; Index Health.</summary>
+    public IAsyncRelayCommand RefreshOperationalHealthCommand { get; }
+
+    /// <summary>Applies the unchanged validated logical-state archive.</summary>
+    public IAsyncRelayCommand ConfirmStateRestoreCommand { get; }
+
+    /// <summary>Discards the pending restore preview.</summary>
+    public IRelayCommand CancelStateRestoreCommand { get; }
+
+    /// <summary>Exports user-authored logical state to an explicitly selected archive.</summary>
+    public async Task ExportStateAsync(string destinationPath)
+    {
+        if (_stateBackupService is null || IsStateTransferBusy)
+        {
+            return;
+        }
+
+        IsStateTransferBusy = true;
+        try
+        {
+            await _stateBackupService.ExportAsync(destinationPath).ConfigureAwait(true);
+            StateTransferStatusText = "State export completed. Treat the archive as sensitive because it contains settings, source definitions, Saved Views, recipes, User Tags, and decisions.";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StateTransferStatusText = $"State export failed safely ({exception.GetType().Name}). Existing state was not changed.";
+        }
+        finally
+        {
+            IsStateTransferBusy = false;
+        }
+    }
+
+    /// <summary>Validates and previews an explicitly selected archive without applying it.</summary>
+    public async Task PreviewStateRestoreAsync(string backupPath)
+    {
+        if (_stateBackupService is null || IsStateTransferBusy)
+        {
+            return;
+        }
+
+        IsStateTransferBusy = true;
+        CancelStateRestore();
+        try
+        {
+            _pendingRestore = await _stateBackupService.PreviewRestoreAsync(backupPath).ConfigureAwait(true);
+            _pendingRestorePath = backupPath;
+            OnPropertyChanged(nameof(IsStateRestorePending));
+            ConfirmStateRestoreCommand.NotifyCanExecuteChanged();
+            CancelStateRestoreCommand.NotifyCanExecuteChanged();
+            StateTransferStatusText =
+                $"Reviewed archive: {_pendingRestore.SourceCount} sources, {_pendingRestore.RecipeCount} recipes, {_pendingRestore.SavedViewCount} Saved Views, {_pendingRestore.SmartTagAuthorityCount} Smart Tag authority records, and {_pendingRestore.RelationshipAuthorityCount} relationship authority records. {_pendingRestore.Conflicts.Count} conflict summary item(s). Confirm Restore to replace reviewed libraries and merge source and exact file-authority records.";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException)
+        {
+            StateTransferStatusText = $"Restore preview failed safely ({exception.GetType().Name}). The profile was not changed.";
+        }
+        finally
+        {
+            IsStateTransferBusy = false;
+        }
+    }
+
     /// <summary>
     /// Reloads the editable draft from the current persisted configuration.
     /// </summary>
@@ -466,6 +579,73 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                            string.IsNullOrWhiteSpace(_configurationService.Current.Ai.SelectedModel)
             ? AiReadinessState.NotConfigured
             : AiReadinessState.NotChecked;
+    }
+
+    private async Task RefreshOperationalHealthAsync()
+    {
+        if (_healthService is null)
+        {
+            return;
+        }
+
+        IsStateTransferBusy = true;
+        try
+        {
+            var health = await _healthService.CheckAsync().ConfigureAwait(true);
+            OperationalHealthText = health.Issues.Count == 0
+                ? "Healthy — schema, profile ownership, recovery state, stores, sources, and application-data storage passed bounded checks."
+                : $"{health.State} — {health.Issues.Count} issue(s). {string.Join(" ", health.Issues.Take(3).Select(issue => issue.Summary))}";
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            OperationalHealthText = $"Health check is unavailable ({exception.GetType().Name}). No repair was attempted.";
+        }
+        finally
+        {
+            IsStateTransferBusy = false;
+        }
+    }
+
+    private async Task ConfirmStateRestoreAsync()
+    {
+        if (_stateBackupService is null || _pendingRestore is null || _pendingRestorePath is null)
+        {
+            return;
+        }
+
+        IsStateTransferBusy = true;
+        try
+        {
+            var result = await _stateBackupService.RestoreAsync(
+                _pendingRestorePath,
+                _pendingRestore.Fingerprint,
+                StateRestoreMode.Replace,
+                new StateRestoreSelection()).ConfigureAwait(true);
+            StateTransferStatusText = result.Message + " Restart OmniSorSe before relying on restored runtime configuration.";
+            _pendingRestore = null;
+            _pendingRestorePath = null;
+            OnPropertyChanged(nameof(IsStateRestorePending));
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException)
+        {
+            StateTransferStatusText = $"Restore failed safely ({exception.GetType().Name}). A pre-restore recovery archive was retained when creation completed.";
+        }
+        finally
+        {
+            IsStateTransferBusy = false;
+            ConfirmStateRestoreCommand.NotifyCanExecuteChanged();
+            CancelStateRestoreCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void CancelStateRestore()
+    {
+        _pendingRestore = null;
+        _pendingRestorePath = null;
+        OnPropertyChanged(nameof(IsStateRestorePending));
+        StateTransferStatusText = "Restore preview cancelled. No profile state was changed.";
+        ConfirmStateRestoreCommand.NotifyCanExecuteChanged();
+        CancelStateRestoreCommand.NotifyCanExecuteChanged();
     }
 
     private async Task SaveAsync()

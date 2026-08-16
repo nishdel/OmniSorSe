@@ -49,6 +49,38 @@ public sealed class ApplicationSettings
     /// <summary>Gets or initializes optional local companion-discovery settings.</summary>
     public ExplorerCompanionSettings ExplorerCompanion { get; init; } = new();
 
+    /// <summary>Creates a snapshot changing only logging while preserving every unrelated capability.</summary>
+    public ApplicationSettings WithLogging(LoggingSettings logging) => new()
+    {
+        Features = Features,
+        Logging = logging ?? throw new ArgumentNullException(nameof(logging)),
+        Diagnostics = Diagnostics,
+        Ai = Ai,
+        Catalog = Catalog,
+        Content = Content,
+        MediaIntelligence = MediaIntelligence,
+        ContentIntelligence = ContentIntelligence,
+        SemanticSearch = SemanticSearch,
+        DeepIndexing = DeepIndexing,
+        ExplorerCompanion = ExplorerCompanion,
+    };
+
+    /// <summary>Creates a snapshot changing only diagnostics while preserving every unrelated capability.</summary>
+    public ApplicationSettings WithDiagnostics(DiagnosticsSettings diagnostics) => new()
+    {
+        Features = Features,
+        Logging = Logging,
+        Diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics)),
+        Ai = Ai,
+        Catalog = Catalog,
+        Content = Content,
+        MediaIntelligence = MediaIntelligence,
+        ContentIntelligence = ContentIntelligence,
+        SemanticSearch = SemanticSearch,
+        DeepIndexing = DeepIndexing,
+        ExplorerCompanion = ExplorerCompanion,
+    };
+
     /// <summary>
     /// Creates a settings snapshot with only the two shell-wide feature switches changed.
     /// All detailed provider, capability, catalog, and logging values are preserved.

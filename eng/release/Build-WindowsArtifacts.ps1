@@ -2,7 +2,11 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '2.4.0',
+    [string]$Version = '2.10.0',
+
+    [Parameter()]
+    [ValidatePattern('^[0-9a-fA-F]{40}$')]
+    [string]$SourceRevision = '',
 
     [Parameter()]
     [string]$OutputDirectory = '',
@@ -19,6 +23,12 @@ if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
 }
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+if ([string]::IsNullOrWhiteSpace($SourceRevision)) {
+    $SourceRevision = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or $SourceRevision -notmatch '^[0-9a-fA-F]{40}$') {
+        throw 'An exact 40-character source revision is required for release packaging.'
+    }
+}
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repositoryRoot '.artifacts\release'
 }
@@ -46,6 +56,10 @@ $publishArguments = @(
     '-p:DebugType=None',
     '-p:DebugSymbols=false',
     '-p:PublishSingleFile=false'
+    "-p:OmniSorSeVersion=$Version"
+    "-p:OmniSorSeFileVersion=$Version.0"
+    "-p:SourceRevisionId=$SourceRevision"
+    '-p:ContinuousIntegrationBuild=true'
 )
 & dotnet @publishArguments
 if ($LASTEXITCODE -ne 0) {
@@ -62,6 +76,10 @@ if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
 }
 Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $applicationDirectory 'RELEASE_NOTES.md')
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\OpenSorSe.Desktop\Assets\opensorse-app-icon.ico') -Destination (Join-Path $applicationDirectory 'OmniSorSe.ico')
+[IO.File]::WriteAllText(
+    (Join-Path $applicationDirectory 'OmniSorSe.build.json'),
+    (@{ productVersion = $Version; sourceRevision = $SourceRevision; configuration = 'Release' } | ConvertTo-Json -Compress),
+    [Text.UTF8Encoding]::new($false))
 
 Get-ChildItem -LiteralPath $applicationDirectory -Recurse -Force -File -Filter '*.pdb' |
     Remove-Item -Force

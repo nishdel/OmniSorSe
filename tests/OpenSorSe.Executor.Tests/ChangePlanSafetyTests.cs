@@ -752,7 +752,80 @@ public sealed class ChangePlanSafetyTests
         Assert.Equal(OperationJournalSchema.CurrentVersion, Assert.Single(migrated).SchemaVersion);
 
         await File.WriteAllTextAsync(path, "{broken");
-        Assert.Empty(await new JsonOperationJournalStore(path, logging).ListAsync(CancellationToken.None));
+        var safety = new RecoverySafetyState();
+        var exception = await Assert.ThrowsAsync<OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException>(
+            () => new JsonOperationJournalStore(path, logging, safety).ListAsync(CancellationToken.None));
+        Assert.True(safety.IsMutationBlocked);
+        Assert.Equal("Operation Journal", safety.StoreName);
+        Assert.True(File.Exists(path));
+        Assert.NotNull(exception.PreservedCopyPath);
+        Assert.True(File.Exists(exception.PreservedCopyPath));
+    }
+
+    [Fact]
+    public async Task ChangePlanStore_UnsupportedVersion_PreservesEvidenceAndBlocksMutation()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = directory.PathOf("plans.json");
+        await File.WriteAllTextAsync(path, "{\"schemaVersion\":999,\"plans\":[]}");
+        var safety = new RecoverySafetyState();
+
+        var exception = await Assert.ThrowsAsync<OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException>(
+            () => new JsonChangePlanStore(path, new TestLoggingService(), safety).ListAsync(CancellationToken.None));
+
+        Assert.True(safety.IsMutationBlocked);
+        Assert.Equal("Change Plan store", safety.StoreName);
+        Assert.Equal("{\"schemaVersion\":999,\"plans\":[]}", await File.ReadAllTextAsync(path));
+        Assert.True(File.Exists(exception.PreservedCopyPath));
+    }
+
+    [Fact]
+    public async Task Journal_InvalidLifecycle_FailsClosedInsteadOfBecomingEmpty()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = directory.PathOf("journal.json");
+        var invalid = SampleOperation(directory.Path) with
+        {
+            Status = OperationStatus.Succeeded,
+            CompletedAtUtc = null,
+        };
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() },
+        };
+        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(new[] { invalid }, options));
+        var safety = new RecoverySafetyState();
+
+        await Assert.ThrowsAsync<OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException>(
+            () => new JsonOperationJournalStore(path, new TestLoggingService(), safety).ListAsync(CancellationToken.None));
+
+        Assert.True(safety.IsMutationBlocked);
+        Assert.NotEmpty(Directory.EnumerateFiles(directory.Path, "journal.json.corrupt-*"));
+    }
+
+    [Fact]
+    public async Task RecoveryBlock_PreventsNewExecutionBeforeFilesystemAccess()
+    {
+        using var directory = new TemporaryDirectory();
+        var safety = new RecoverySafetyState();
+        var corruptPath = directory.File("journal.json", "{broken");
+        await Assert.ThrowsAsync<OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException>(
+            () => new JsonOperationJournalStore(corruptPath, new TestLoggingService(), safety)
+                .ListAsync(CancellationToken.None));
+        var gateway = new ControlledGateway();
+        var validator = CreateValidator(gateway);
+        var executor = new ChangePlanExecutionService(
+            gateway,
+            validator,
+            new InMemoryChangePlanStore(),
+            new InMemoryOperationJournalStore(),
+            new TestLoggingService(),
+            safety);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            executor.ExecuteAsync(null!, "test", null, CancellationToken.None));
+
+        Assert.Contains("recovery", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
