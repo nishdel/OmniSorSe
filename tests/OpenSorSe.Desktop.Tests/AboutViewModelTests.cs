@@ -1,4 +1,5 @@
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Core;
 using System.Reflection;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -15,16 +16,17 @@ public sealed class AboutViewModelTests
     public void Constructor_ExposesDeclaredApplicationMetadata()
     {
         var viewModel = new AboutViewModel();
+        var assembly = typeof(AboutViewModel).Assembly;
+        var informationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion;
 
         Assert.Equal("OmniSorSe", viewModel.ApplicationName);
-        Assert.Equal("2.10.0-rc", viewModel.Version);
-        Assert.Equal(new Version(2, 10, 0, 0), typeof(AboutViewModel).Assembly.GetName().Version);
-        Assert.Equal(
-            "2.10.0-rc+unversioned",
-            typeof(AboutViewModel).Assembly
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                .InformationalVersion);
-        Assert.Contains("unversioned", viewModel.Provenance, StringComparison.Ordinal);
+        Assert.Equal(ApplicationVersionInfo.Display, viewModel.Version);
+        Assert.Equal(new Version(2, 11, 0, 0), assembly.GetName().Version);
+        Assert.NotNull(informationalVersion);
+        Assert.StartsWith($"{viewModel.Version}+", informationalVersion, StringComparison.Ordinal);
+        Assert.Contains(ApplicationVersionInfo.SourceRevision, viewModel.Provenance, StringComparison.Ordinal);
         Assert.Equal("MIT License", viewModel.License);
         Assert.Equal("https://github.com/nishdel/OpenSorSe", viewModel.RepositoryAddress);
         Assert.Equal(

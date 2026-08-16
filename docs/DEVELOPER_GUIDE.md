@@ -18,7 +18,7 @@ dotnet --info
 
 Windows is the primary Desktop target. macOS Intel and Apple Silicon have
 native package paths for read-only and non-mutating functionality; Linux x64
-remains a source-build preview. The solution targets .NET 8 and the exact SDK
+remains a source-build preview. The solution targets .NET 10 LTS and the exact SDK
 selection is in `global.json`. Linux contributors should also read
 [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md), while release maintainers
 should read [Native Release Packaging](RELEASE_PACKAGING_v2.0.md).

@@ -154,12 +154,12 @@ public sealed record DiagnosticSession(
     /// <summary>Gets whether one or more detailed events were sampled or truncated.</summary>
     public bool WasTruncated => DroppedEventCount > 0 ||
         Operation.EndsWith(DiagnosticLimits.TruncationMarker, StringComparison.Ordinal) ||
-        Context.Any(field =>
-            field.Value.EndsWith(DiagnosticLimits.TruncationMarker, StringComparison.Ordinal)) ||
-        Events.SelectMany(item => item.Fields).Any(field =>
-            field.Value.EndsWith(DiagnosticLimits.TruncationMarker, StringComparison.Ordinal) ||
-            (field.Name.Contains("Truncated", StringComparison.OrdinalIgnoreCase) &&
-             bool.TryParse(field.Value, out var truncated) &&
+        Context.Any(diagnosticField =>
+            diagnosticField.Value.EndsWith(DiagnosticLimits.TruncationMarker, StringComparison.Ordinal)) ||
+        Events.SelectMany(item => item.Fields).Any(diagnosticField =>
+            diagnosticField.Value.EndsWith(DiagnosticLimits.TruncationMarker, StringComparison.Ordinal) ||
+            (diagnosticField.Name.Contains("Truncated", StringComparison.OrdinalIgnoreCase) &&
+             bool.TryParse(diagnosticField.Value, out var truncated) &&
              truncated)) ||
         Events.Any(item =>
             item.Stage.Contains("sampling", StringComparison.OrdinalIgnoreCase) ||

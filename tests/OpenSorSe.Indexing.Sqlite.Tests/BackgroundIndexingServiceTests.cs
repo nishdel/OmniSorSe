@@ -250,6 +250,13 @@ public sealed class BackgroundIndexingServiceTests
             CancellationToken.None);
         Assert.Equal(targetFileName, Assert.Single(rangeFiltered.Hits).FileName);
 
+        var createdRange = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest(
+                "",
+                [new SearchFilter("created-after", SearchFilterKind.CreatedOnOrAfter, "2025-01-01", "Created on or after 2025-01-01")],
+                10_000));
+        Assert.Equal(targetFileName, Assert.Single(createdRange.Documents).FileName);
+
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
@@ -323,12 +330,13 @@ public sealed class BackgroundIndexingServiceTests
                 attributes, metadata_fingerprint, content_hash, processor_fingerprint,
                 indexing_level, fully_indexed, updated_utc_ticks)
             VALUES($id, 'ceiling-source', $path, $path, $relative, $relative, NULL, NULL,
-                100, $ticks, $ticks, 0, $metadata, NULL, 'fixture', 0, 1, $ticks);
+                100, $ticks, $ticks, 0, $metadata, $hash, 'fixture', 0, 1, $ticks);
             """;
         var idParameter = command.Parameters.Add("$id", SqliteType.Text);
         var pathParameter = command.Parameters.Add("$path", SqliteType.Text);
         var relativeParameter = command.Parameters.Add("$relative", SqliteType.Text);
         var metadataParameter = command.Parameters.Add("$metadata", SqliteType.Text);
+        var hashParameter = command.Parameters.Add("$hash", SqliteType.Text);
         var ticksParameter = command.Parameters.Add("$ticks", SqliteType.Integer);
         command.Prepare();
         for (var index = 0; index < count; index++)
@@ -339,12 +347,38 @@ public sealed class BackgroundIndexingServiceTests
             pathParameter.Value = fullPath;
             relativeParameter.Value = relativePath;
             metadataParameter.Value = $"metadata-{index:D6}";
+            hashParameter.Value = index == count - 1 ? "target-content" : DBNull.Value;
             ticksParameter.Value = index == count - 1
                 ? new DateTimeOffset(2025, 6, 15, 0, 0, 0, TimeSpan.Zero).UtcTicks
                 : ticks;
             command.ExecuteNonQuery();
             if (index == count - 1)
             {
+                using (var content = connection.CreateCommand())
+                {
+                    content.Transaction = transaction;
+                    content.CommandText = """
+                        INSERT INTO index_content(
+                            content_hash, coverage_level, processor_fingerprint, updated_utc_ticks)
+                        VALUES('target-content', 0, 'fixture', $ticks);
+                        """;
+                    content.Parameters.AddWithValue("$ticks", ticks);
+                    content.ExecuteNonQuery();
+                }
+                using (var media = connection.CreateCommand())
+                {
+                    media.Transaction = transaction;
+                    media.CommandText = """
+                        INSERT INTO index_media_content(
+                            content_hash, media_kind, evidence_json, processing_fingerprint, updated_utc_ticks)
+                        VALUES(
+                            'target-content', 1,
+                            '{"Metadata":{"CapturedAtUtc":"2020-01-02T00:00:00+00:00"}}',
+                            'fixture', $ticks);
+                        """;
+                    media.Parameters.AddWithValue("$ticks", ticks);
+                    media.ExecuteNonQuery();
+                }
                 using var tag = connection.CreateCommand();
                 tag.Transaction = transaction;
                 tag.CommandText = """

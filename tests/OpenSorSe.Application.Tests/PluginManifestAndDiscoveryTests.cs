@@ -153,6 +153,18 @@ public sealed class PluginManifestTests
     }
 
     [Fact]
+    public void Parse_LegacyNet8Runtime_RemainsCompatibleWithNet10Host()
+    {
+        var result = _parser.Parse(Serialize(Manifest() with
+        {
+            RuntimeCompatibility = "net8.0",
+        }));
+
+        Assert.True(result.IsValid);
+        Assert.DoesNotContain(result.Issues, issue => issue.Code == "manifest.runtime");
+    }
+
+    [Fact]
     public void Parse_NativeDependenciesRequireBoundedRuntimeIdentifiers()
     {
         var missing = _parser.Parse(Serialize(Manifest() with
@@ -191,7 +203,7 @@ public sealed class PluginManifestTests
             "MIT",
             "1.4.0",
             "1.5.99",
-            "net8.0",
+            "net10.0",
             "plugin.dll",
             "Example.Plugin.EntryPoint",
             [

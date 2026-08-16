@@ -2,9 +2,10 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** released OmniSorSe v2.4.0 Transition & Explorer Foundation
+**Current source:** unreleased OmniSorSe v2.11 candidate on the v2.10 RC stack;
+v2.4.0 remains the latest published release
 
-**Last reviewed:** 2026-08-11
+**Last reviewed:** 2026-08-17
 
 OmniSorSe is a Windows-first desktop application with a conservative Linux x64
 source-build preview. v2.0.0 added native Intel/Apple Silicon macOS packages and
@@ -24,6 +25,23 @@ filesystem validation.
 
 Framework portability, target compilation, native CI, desktop startup, and safe
 file mutation are separate claims.
+
+## v2.11 evidence ledger
+
+The v2.11 source targets .NET 10 LTS. Evidence must be read by column; a build
+does not imply a native launch, and a package smoke does not imply broad desktop
+or filesystem validation.
+
+| Platform | Compiles/publishes | Full automated suite | Native bounded smoke | Package | Installer lifecycle | Mutation | Signing trust |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Windows x64 | Locally and in CI | Locally; CI configured | Locally/package workflow | Self-contained ZIP | Per-user Inno validation path; manual running-app/upgrade gate remains | Existing supported Change Plan boundary | Unsigned unless exact candidate signatures are recorded |
+| macOS x64 | Cross-target locally; native CI configured | Native CI configured | Native package workflow configured; no local-Windows execution claim | `.app`/DMG workflow | Copy-to-Applications/manual replacement | Disabled/conservative | Unsigned/unnotarized unless exact candidate evidence is recorded |
+| macOS arm64 | Cross-target locally; native CI configured | Native CI configured | Native package workflow configured; no local-Windows execution claim | `.app`/DMG workflow | Copy-to-Applications/manual replacement | Disabled/conservative | Unsigned/unnotarized unless exact candidate evidence is recorded |
+| Linux x64 | Cross-target locally; native CI configured | Native CI configured | Source-build smoke configured; no local-Windows execution claim | Publish output only | None | Existing preview boundary; no expansion in v2.11 | Not applicable—no released Linux package |
+
+Hosted workflow configuration becomes evidence only after an exact run result is
+reviewed and linked. Native/manual observations belong in the
+[v2.11 addendum](MANUAL_TESTING_v2.11.md).
 
 ## Evidence baseline
 

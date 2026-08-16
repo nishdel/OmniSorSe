@@ -1,6 +1,6 @@
 # OmniSorSe current system overview
 
-OmniSorSe (formerly OpenSorSe) is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
+OmniSorSe (formerly OpenSorSe) is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 10 LTS, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
 
 ## Product boundary
 

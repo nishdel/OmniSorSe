@@ -1,5 +1,6 @@
 using System.Globalization;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.ContentIntelligence;
@@ -400,6 +401,35 @@ public sealed class SearchIntelligenceTests
 
         Assert.Single(result);
         Assert.Equal(filters.Length, result[0].Components.Count(item => item.Kind == SearchRankingSignalKind.Filter));
+    }
+
+    /// <summary>Created date filters use filesystem-created provenance even when media capture evidence differs.</summary>
+    [Fact]
+    public void Ranker_CreatedDateFilterDoesNotSubstituteMediaCaptureDate()
+    {
+        var candidate = Candidate("created", "photo.jpg", @"C:\photos\photo.jpg") with
+        {
+            CreationTimeUtc = new DateTimeOffset(2025, 6, 15, 0, 0, 0, TimeSpan.Zero),
+            MediaEvidence = new IndexedMediaEvidence
+            {
+                Kind = MediaKind.Image,
+                Metadata = new MediaMetadata
+                {
+                    Kind = MediaKind.Image,
+                    CapturedAtUtc = new DateTimeOffset(2020, 1, 2, 0, 0, 0, TimeSpan.Zero),
+                },
+                ProcessingFingerprint = "fixture",
+            },
+        };
+        var interpretation = new SearchInterpretation(
+            string.Empty,
+            string.Empty,
+            [],
+            [Filter(SearchFilterKind.CreatedOnOrAfter, "2025-01-01")]);
+
+        var result = CreateRanker().Rank(interpretation, [candidate], 10, CancellationToken.None);
+
+        Assert.Single(result);
     }
 
     /// <summary>Verifies the fallback category is a real canonical facet value in the ranker.</summary>

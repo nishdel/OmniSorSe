@@ -1710,8 +1710,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                             alternatives,
                             name,
                             value,
-                            "COALESCE(CASE WHEN json_valid(m.evidence_json) THEN date(json_extract(m.evidence_json, '$.Metadata.CapturedAtUtc')) END, " +
-                            "date(((f.creation_utc_ticks - 621355968000000000) / 10000000), 'unixepoch'))",
+                            "date(((f.creation_utc_ticks - 621355968000000000) / 10000000), 'unixepoch')",
                             filter.Kind == SearchFilterKind.CreatedOnOrAfter);
                         break;
                     case SearchFilterKind.ModifiedOnOrAfter:

@@ -16,7 +16,8 @@ $names = @(
     "OmniSorSe-v$Version-win-x64.zip",
     "OmniSorSe-v$Version-win-x64-setup.exe",
     "OmniSorSe-v$Version-macos-x64.dmg",
-    "OmniSorSe-v$Version-macos-arm64.dmg"
+    "OmniSorSe-v$Version-macos-arm64.dmg",
+    "OmniSorSe-v$Version-sbom.cdx.json"
 )
 $lines = foreach ($name in $names) {
     $path = Join-Path $artifactRoot $name

@@ -551,6 +551,40 @@ action, cross-root organization, or autonomous mutation is included.
 See [v2.9 Reviewed Intelligent Organization](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
 and [v2.9 manual testing](docs/MANUAL_TESTING_v2.9.md).
 
+### v2.10 — Production Hardening & Operational Resilience
+
+**Branch:** `v2.10-production-hardening-operational-resilience`, created
+directly from the committed v2.9 release candidate.
+
+**Merged status:** Committed release candidate awaiting maintainer sign-off. It
+is not released and does not rewrite the v2.5–v2.9 candidate chain.
+
+v2.10 adds one-writer profile ownership, fail-closed mutation/recovery stores,
+bounded PDF handling, logical user-state backup/restore, coordinated Forget,
+bounded Data & Index Health, abnormal-shutdown evidence, release provenance,
+and high-blast-radius failure tests. Schema remains 6 and product workflows,
+Explorer Protocol v1, and OmniBrille separation remain intact.
+
+See [v2.10 Production Hardening](docs/PRODUCTION_HARDENING_v2.10.md) and the
+[v2.10 master manual matrix](docs/MANUAL_TESTING_v2.10.md).
+
+### v2.11 — Supported Runtime & Platform Readiness
+
+**Branch:** `v2.11-supported-runtime-platform-readiness`, created directly from
+the committed v2.10 release candidate.
+
+**Merged status:** Implementation candidate; automated and native/manual release
+evidence must be recorded before integration or publication.
+
+v2.11 moves all projects and package paths to .NET 10 LTS, strengthens
+version/source/RID/runtime provenance, pins critical CI Actions, and separates
+compile, native smoke, package, installer, signing, notarization, and manual
+support claims. It adds no schema, Search, classification, organization, AI,
+graph, protocol, updater, or Linux-package feature.
+
+See [v2.11 Supported Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md)
+and the [v2.11 manual addendum](docs/MANUAL_TESTING_v2.11.md).
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.

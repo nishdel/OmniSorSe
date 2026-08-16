@@ -68,6 +68,7 @@ public sealed class CsvMetadataExtractor : IMetadataExtractor
             var previousWasCarriageReturn = false;
             var rowCount = 0;
             var truncated = false;
+            var reachedEndOfStream = false;
             var buffer = new char[4096];
             while (rowCount < MaximumRows && output.Length < ContentText.MaximumTextCharacters)
             {
@@ -75,6 +76,7 @@ public sealed class CsvMetadataExtractor : IMetadataExtractor
                 var read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
                 if (read == 0)
                 {
+                    reachedEndOfStream = true;
                     break;
                 }
 
@@ -164,7 +166,7 @@ public sealed class CsvMetadataExtractor : IMetadataExtractor
             }
 
             var malformed = quoted;
-            truncated |= !reader.EndOfStream;
+            truncated |= !reachedEndOfStream;
             var raw = output.ToString();
             var normalized = ContentText.Normalize(raw);
             var warnings = new List<string>();

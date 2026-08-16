@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:-2.10.0}"
+version="${1:-2.11.0}"
 rid="${2:?A macOS runtime identifier is required.}"
 output_directory="${3:?A release output directory is required.}"
 source_revision="${4:-}"
@@ -55,8 +55,19 @@ cp "$repository_root/LICENSE" "$resources_directory/LICENSE"
 cp "$repository_root/THIRD_PARTY_NOTICES.md" "$resources_directory/THIRD_PARTY_NOTICES.md"
 cp "$repository_root/docs/dependency-licenses.json" "$resources_directory/dependency-licenses.json"
 cp "$repository_root/docs/INSTALLATION.md" "$resources_directory/INSTALLATION.md"
-printf '{"productVersion":"%s","sourceRevision":"%s","configuration":"Release"}\n' \
-  "$version" "$source_revision" > "$resources_directory/OmniSorSe.build.json"
+runtime_version="$(python3 - "$macos_directory/OmniSorSe.runtimeconfig.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as stream:
+    frameworks = json.load(stream).get("runtimeOptions", {}).get("includedFrameworks", [])
+matches = [item.get("version") for item in frameworks if item.get("name") == "Microsoft.NETCore.App"]
+if len(matches) != 1:
+    raise SystemExit("The self-contained publish does not identify exactly one bundled .NET runtime")
+print(matches[0])
+PY
+)"
+printf '{"productVersion":"%s","sourceRevision":"%s","configuration":"Release","targetFramework":"net10.0","runtimeIdentifier":"%s","runtimeVersion":"%s","selfContained":true}\n' \
+  "$version" "$source_revision" "$rid" "$runtime_version" > "$resources_directory/OmniSorSe.build.json"
 release_notes="$repository_root/docs/RELEASE_NOTES_v$version.md"
 if [[ ! -f "$release_notes" ]]; then
   echo "Release notes for v$version are missing: $release_notes" >&2
@@ -98,7 +109,7 @@ cat > "$contents/Info.plist" <<PLIST
 PLIST
 plutil -lint "$contents/Info.plist"
 
-if find "$app_bundle" -type f \( -name '*.pdb' -o -name '*.trx' -o -name '*.db' -o -name '*.log' -o -name '*.cs' -o -name '*.csproj' -o -name '*.sln' \) | grep -q .; then
+if find "$app_bundle" -type f \( -name '*.pdb' -o -name '*.trx' -o -name '*.db' -o -name '*.sqlite' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.log' -o -name '*.oms-state' -o -name '*.bak' -o -name '*.cs' -o -name '*.csproj' -o -name '*.sln' -o -name 'settings.json' -o -name 'operation-journal*.json' -o -name 'change-plan*.json' -o -name 'saved-view*.json' -o -name 'recipe*.json' \) | grep -q .; then
   echo 'The macOS app bundle contains a forbidden development or local-data artifact.' >&2
   exit 1
 fi
@@ -111,6 +122,12 @@ if ! find "$macos_directory" -type f -name 'libe_sqlite3.dylib' | grep -q .; the
   echo 'The macOS app bundle is missing the native SQLite library.' >&2
   exit 1
 fi
+for runtime_asset in libcoreclr.dylib libhostfxr.dylib libSkiaSharp.dylib; do
+  if [[ ! -f "$macos_directory/$runtime_asset" ]]; then
+    echo "The macOS app bundle is missing required runtime/native asset '$runtime_asset'." >&2
+    exit 1
+  fi
+done
 
 dmg_root="$staging_root/dmg-root"
 mkdir -p "$dmg_root"

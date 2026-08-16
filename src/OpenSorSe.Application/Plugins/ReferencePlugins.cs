@@ -68,7 +68,7 @@ public static class BuiltInPluginCatalog
                 "MIT",
                 "1.4.0",
                 "1.5.99",
-                "net8.0",
+                "net10.0",
                 "OpenSorSe.Application.dll",
                 entryType.FullName!,
                 [new PluginManifestContribution(contributionId, extensionPoint, contributionName)],

@@ -7,6 +7,35 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.11 Supported Runtime & Platform Readiness
+
+Implementation branch: `v2.11-supported-runtime-platform-readiness`. This work
+is not a published release and builds directly on the committed v2.10 candidate.
+
+### Added and changed
+
+- Move every solution project and package path to .NET 10 LTS (`net10.0`) using
+  one SDK/runtime authority.
+- Preserve the existing package set; remove only net8-specific transitive
+  compatibility entries that no longer resolve.
+- Record and validate target framework, RID, bundled runtime, self-contained
+  status, semantic version, configuration, and exact source commit in packages.
+- Add bounded native package-smoke validation to Windows, Ubuntu, and macOS CI
+  and pin critical Actions to immutable commits.
+- Make Created range filters use filesystem-created time consistently with the
+  Created Year facet while keeping media capture evidence distinct.
+- Preserve managed legacy `net8.0` plugin manifests while current manifests
+  advertise `net10.0`.
+
+### Boundaries
+
+- Schema remains 6 and Explorer Protocol remains v1.
+- No Search-ranker, classifier, Smart Tag, recipe, Change Plan, AI, graph,
+  OmniBrille, updater, Linux-package, or production-dependency expansion is
+  included.
+- macOS/Linux mutation support remains conservative; cross-target compilation
+  is not represented as native runtime or interactive evidence.
+
 ## Unreleased — OmniSorSe v2.10 Production Hardening & Operational Resilience
 
 Implementation branch: `v2.10-production-hardening-operational-resilience`.

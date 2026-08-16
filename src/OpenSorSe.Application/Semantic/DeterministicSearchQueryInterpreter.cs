@@ -115,7 +115,10 @@ public sealed class DeterministicSearchQueryInterpreter : ISearchQueryInterprete
         RegexOptions.IgnoreCase |
         RegexOptions.CultureInvariant |
         RegexOptions.NonBacktracking;
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
+    // Inputs are capped before interpretation and every expression uses the
+    // non-backtracking engine. Keep a bounded timeout without treating brief
+    // scheduler starvation during concurrent indexing as an invalid query.
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
     private static readonly Regex ExtensionPattern = Pattern(
         @"\b(?:extension|ext)\s*[:=]?\s*\.?(?<value>[\p{L}\p{N}]{1,16})\b");
     private static readonly Regex TagPattern = Pattern(

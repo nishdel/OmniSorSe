@@ -164,6 +164,9 @@ public sealed partial class RepositoryDocumentationTests
             "OPERATIONAL_RUNBOOKS_v2.10.md",
             "MANUAL_TESTING_v2.10.md",
             "RELEASE_NOTES_v2.10.0.md",
+            "SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md",
+            "MANUAL_TESTING_v2.11.md",
+            "RELEASE_NOTES_v2.11.0.md",
             "SEARCH_AND_AI_QUALITY_v2.1.md",
             "MANUAL_TESTING_v2.1.md",
             "RELEASE_PACKAGING_v2.0.md",
@@ -214,8 +217,14 @@ public sealed partial class RepositoryDocumentationTests
             "workflows",
             "release-packaging.yml"));
 
-        Assert.Contains("actions/checkout@v7", validationWorkflow, StringComparison.Ordinal);
-        Assert.Contains("actions/setup-dotnet@v6", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68", validationWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/checkout@v", validationWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/setup-dotnet@v", validationWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/checkout@v", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/setup-dotnet@v", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/upload-artifact@v", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/download-artifact@v", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("windows-latest", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("macos-15-intel", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("osx-x64", releaseWorkflow, StringComparison.Ordinal);
@@ -224,6 +233,7 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-macos-x64.dmg", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-macos-arm64.dmg", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-sbom.cdx.json", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-SHA256SUMS.txt", releaseWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain(".deb", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".rpm", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
@@ -236,6 +246,7 @@ public sealed partial class RepositoryDocumentationTests
                      "Build-MacArtifacts.sh",
                      "Validate-MacArtifact.sh",
                      "New-ReleaseChecksums.ps1",
+                     "New-ReleaseSbom.ps1",
                      "OpenSorSe.iss",
                  })
         {
@@ -263,7 +274,10 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("RELEASE_NOTES_v$version.md", macPackaging, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe.exe", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("targetFramework = 'net10.0'", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("runtimeIdentifier = 'win-x64'", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe.app", macPackaging, StringComparison.Ordinal);
+        Assert.Contains("\"targetFramework\":\"net10.0\"", macPackaging, StringComparison.Ordinal);
         Assert.Contains("io.github.nishdel.OpenSorSe", macPackaging, StringComparison.Ordinal);
         Assert.Contains("AppId={{3F3BCA7E-38A1-45D3-B068-B22D25BCECF4}", installer, StringComparison.Ordinal);
         Assert.Contains("DefaultDirName={localappdata}\\Programs\\OpenSorSe", installer, StringComparison.Ordinal);
@@ -272,6 +286,39 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("UsePreviousGroup=no", installer, StringComparison.Ordinal);
         Assert.Contains("{app}\\OpenSorSe.exe", installer, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", macPackaging, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies one repository authority selects .NET 10 for every project and release path.</summary>
+    [Fact]
+    public void RuntimeAuthority_TargetsNet10Everywhere()
+    {
+        var projects = Directory.EnumerateFiles(RepositoryRoot, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !IsExcluded(path))
+            .ToArray();
+        Assert.NotEmpty(projects);
+        foreach (var project in projects)
+        {
+            var document = XDocument.Load(project);
+            Assert.Empty(document.Descendants("TargetFramework"));
+            Assert.Empty(document.Descendants("TargetFrameworks"));
+        }
+
+        var globalJson = File.ReadAllText(Path.Combine(RepositoryRoot, "global.json"));
+        Assert.Contains("\"version\": \"10.0.400\"", globalJson, StringComparison.Ordinal);
+        var buildProperties = XDocument.Load(Path.Combine(RepositoryRoot, "Directory.Build.props"));
+        Assert.Equal("net10.0", buildProperties.Descendants("TargetFramework").Single().Value);
+        Assert.Equal("2.11.0-rc", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
+        Assert.Equal("2.11.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
+
+        var releaseWorkflow = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            ".github",
+            "workflows",
+            "release-packaging.yml"));
+        Assert.Contains("default: 2.11.0", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("global-json-file: global.json", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Build-WindowsArtifacts.ps1", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Build-MacArtifacts.sh", releaseWorkflow, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies production project references remain the documented acyclic dependency graph.</summary>

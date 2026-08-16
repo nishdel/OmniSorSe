@@ -76,7 +76,7 @@ reconciliation, and Undo machinery. It adds no autonomous mutation, schema
 change, protocol change, or production dependency and is not released. See the
 [v2.9 design](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md).
 
-The current implementation branch, **v2.10 Production Hardening & Operational
+The v2.10 candidate, **Production Hardening & Operational
 Resilience**, builds directly on the committed v2.9 candidate. It adds
 single-writer profile ownership, fail-closed recovery stores, bounded hostile
 PDF handling, logical user-state export/restore, complete Forget coordination,
@@ -84,6 +84,13 @@ bounded health checks, and traceable release provenance. It preserves schema 6,
 Explorer Protocol v1, OmniBrille separation, and all reviewed feature
 boundaries. It is not released. See the
 [v2.10 hardening record](docs/PRODUCTION_HARDENING_v2.10.md).
+
+The v2.11 candidate, **Supported Runtime & Platform Readiness**, builds directly
+on the committed v2.10 candidate. It moves every solution project and
+self-contained package path to .NET 10 LTS, strengthens runtime/RID/source
+provenance and native package smoke evidence, and leaves schema 6, product
+behavior, Explorer Protocol v1, and OmniBrille unchanged. It is not released.
+See the [v2.11 runtime record](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md).
 
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The
@@ -142,6 +149,8 @@ update, uninstall, application-data, and checksum guidance is in
 | Review and file operations | Converts supported proposals into persisted Change Plans. Rename, same-filesystem move, create-directory, and safe duplicate-recovery moves require review, validation, separate Apply confirmation, immediate preflight, journalling, and verification. |
 | Recovery and Undo | Records action-level Operation Journal facts, attempts safe rollback, inspects interrupted operations, and blocks Undo when external changes make reversal unsafe. |
 | Persistence | The current unreleased source uses bounded local JSON, schema-6 embedded Search with shared media/content evidence, normalized Smart Tag authority, and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. v2.7 keeps schema 6 and stores Saved View rules in bounded atomic application-owned JSON. The established OpenSorSe profile locations remain authoritative. No database server is required. |
+| Production resilience (unreleased v2.10) | Enforces one writer per profile; fails closed on corrupt mutation/recovery stores; provides bounded health, abnormal-shutdown evidence, logical user-state backup/restore, and coordinated Forget. |
+| Runtime/platform readiness (unreleased v2.11) | Targets .NET 10 LTS throughout and strengthens self-contained runtime/RID/source provenance plus native smoke evidence without changing schema or product behavior. |
 
 The current source does not implement cloud synchronization, collaboration,
 OmniSorSe Server, a conversational assistant, unrestricted
@@ -209,8 +218,8 @@ See the [Platform Compatibility Matrix](docs/PLATFORM_COMPATIBILITY_MATRIX.md),
 
 ## Build and test
 
-The SDK selected by [`global.json`](global.json) targets the .NET 8
-application.
+The SDK selected by [`global.json`](global.json) targets the .NET 10 LTS
+application (`net10.0`). Release packages are self-contained.
 
 ```powershell
 dotnet restore .\OpenSorSe.sln
@@ -244,6 +253,8 @@ documents are:
 | [v2.3 Manual Testing](docs/MANUAL_TESTING_v2.3.md) | Explicitly separated automated, provider-native, interactive, and native-platform release evidence. |
 | [v2.4 Transition and Explorer Protocol](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md) | Released branding/profile compatibility contract and bounded, authenticated, read-only Explorer Protocol v1 design. |
 | [v2.4 Manual Testing](docs/MANUAL_TESTING_v2.4.md) | Genuine Windows profile/installer and external two-process protocol evidence with explicit unchecked boundaries. |
+| [v2.11 Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md) | Unreleased .NET 10 migration, package provenance, platform evidence levels, and preserved architecture boundaries. |
+| [v2.11 Manual Addendum](docs/MANUAL_TESTING_v2.11.md) | Runtime/package/platform gates added to the v2.10 master matrix. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
 | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | OmniSorSe transition, profile compatibility, Explorer Protocol v1, package trust, limitations, and final validation boundary. |
 | [v2.5 Workflow & Indexing Quality](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) | Unreleased implementation contract for post-operation reconciliation and progressive base-first indexing. |

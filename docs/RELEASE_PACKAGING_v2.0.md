@@ -12,6 +12,7 @@ The native packaging workflow produces exactly:
 - `OmniSorSe-v<version>-win-x64-setup.exe`;
 - `OmniSorSe-v<version>-macos-x64.dmg`;
 - `OmniSorSe-v<version>-macos-arm64.dmg`;
+- `OmniSorSe-v<version>-sbom.cdx.json`;
 - `OmniSorSe-v<version>-SHA256SUMS.txt`.
 
 No Linux installer is produced. Linux x64 remains a source-build preview.
@@ -19,7 +20,9 @@ No Linux installer is produced. Linux x64 remains a source-build preview.
 ## Reproducible entry points
 
 - `eng/release/Build-WindowsArtifacts.ps1` creates the self-contained Windows
-  publish, portable ZIP, and per-user Inno Setup installer.
+  publish, portable ZIP, and per-user Inno Setup installer. A local
+  `-PortableOnly` validation path proves the ZIP/runtime without weakening the
+  release workflow's mandatory installer path.
 - `eng/release/Validate-WindowsArtifacts.ps1` inspects the ZIP, installs into a
   controlled directory, runs production composition through
   `--package-smoke-test <isolated-data-root>` with synthetic application data, uninstalls,
@@ -30,8 +33,16 @@ No Linux installer is produced. Linux x64 remains a source-build preview.
 - `eng/release/Validate-MacArtifact.sh` mounts the DMG, inspects bundle metadata,
   validates native dependencies, audits forbidden files, and runs the same
   non-interactive production-composition smoke probe.
-- `eng/release/New-ReleaseChecksums.ps1` requires all four distribution files,
-  creates the deterministic checksum list, then recomputes every checksum.
+- `eng/release/New-ReleaseChecksums.ps1` requires all four distribution files
+  plus the SBOM, creates the deterministic checksum list, then recomputes every
+  checksum.
+- `eng/release/New-ReleaseSbom.ps1` projects the reviewed dependency/license
+  inventory into a source-bound CycloneDX 1.6 release SBOM without adding a
+  production or build-time package dependency.
+
+v2.11 package manifests also record `net10.0`, the target RID, the exact bundled
+.NET runtime version, and `selfContained: true`. Validators require the .NET
+host/runtime, native SQLite, and native Skia assets before accepting a package.
 
 `--package-smoke-test` does not open a window. It composes and initializes the
 real services, persistence, watchers, indexing, and optional graph runtime,
@@ -50,10 +61,12 @@ bundle.
 
 The regular and release-validation workflows use least-privilege read
 permissions, disable checkout credential persistence, force restore, audit
-vulnerabilities, and validate the exact requested ref/commit. Official action
-majors remain mutable references and are reviewed/updateable release
-infrastructure; immutable action-SHA pinning remains a documented future
-supply-chain improvement.
+vulnerabilities, and validate the exact requested ref/commit. Critical official
+Actions are pinned to immutable full commit SHAs. The major release remains in
+an adjacent comment. To update a pin, resolve the reviewed official tag, inspect
+upstream release notes and its source diff, replace the SHA, and rerun ordinary
+plus release validation. Never expose release/signing secrets to pull-request
+code.
 
 Every release build receives an explicit semantic version and exact 40-character
 source commit. Binary product/file metadata, package filenames, app-bundle
@@ -77,7 +90,7 @@ tokens, or machine-specific paths.
 ## Signing and notarization
 
 No established Windows code-signing or Apple Developer signing/notarization
-credentials exist in the repository infrastructure reviewed for v2.10.
+credentials exist in the repository infrastructure reviewed for v2.11.
 Artifacts are therefore produced unsigned and macOS packages are unnotarized.
 Do not add secrets to source, print secret values, create an improvised trust
 scheme, or describe checksum verification as publisher authentication.
@@ -93,9 +106,9 @@ updated release documentation.
    history.
 2. Require exact-main Windows, Ubuntu, and macOS CI success.
 3. Dispatch native packaging for that exact main commit.
-4. Download and independently audit all five files and verify checksums.
-5. Create annotated tag `v2.0.0` at that exact commit and push it.
-6. Publish the GitHub Release with all five artifacts and the reviewed release
+4. Download and independently audit all six files and verify checksums.
+5. Create the reviewed annotated version tag at that exact commit and push it.
+6. Publish the GitHub Release with all six artifacts and the reviewed release
    notes.
 7. Re-download or query release assets to verify names, sizes, and checksums.
 8. Only then execute the reviewed, reachability-proven branch cleanup plan.

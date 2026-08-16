@@ -196,7 +196,7 @@ public sealed partial class PluginManifestParser : IPluginManifestParser
             Add(issues, "manifest.required-text", "Required plugin text is missing or excessive.");
         }
 
-        if (!string.Equals(manifest.RuntimeCompatibility, "net8.0", StringComparison.OrdinalIgnoreCase))
+        if (!PluginLimits.IsRuntimeCompatible(manifest.RuntimeCompatibility))
         {
             issues.Add(new PluginManifestIssue(
                 "manifest.runtime",

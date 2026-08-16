@@ -1,4 +1,5 @@
 using OmniSorSe.ExplorerProtocol;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using OpenSorSe.Application.Explorer;
 using OpenSorSe.Application.Indexing;
@@ -276,7 +277,7 @@ public sealed class ExplorerCompanionLaunchTests
         var transport = new CapturingBootstrapTransport(
             new NamedPipeExplorerCompanionBootstrapTransport(new SystemExplorerCompanionProcessStarter()));
         var locator = new FakeLocator(new ExplorerCompanionDiscoveryResult(
-            new ExplorerCompanionExecutable("dotnet", [harness], "test harness"),
+            new ExplorerCompanionExecutable(DotnetHostPath(), [harness], "test harness"),
             "available"));
         var service = new ExplorerCompanionLaunchService(
             locator,
@@ -333,8 +334,21 @@ public sealed class ExplorerCompanionLaunchTests
             "OmniSorSe.CompanionTestHarness",
             "bin",
             configuration,
-            "net8.0",
+            "net10.0",
             "OmniSorSe.CompanionTestHarness.dll");
+    }
+
+    private static string DotnetHostPath()
+    {
+        var executable = OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
+        var path = Path.GetFullPath(Path.Combine(
+            RuntimeEnvironment.GetRuntimeDirectory(),
+            "..",
+            "..",
+            "..",
+            executable));
+        Assert.True(File.Exists(path), $"The active test runtime host was not found at {path}.");
+        return path;
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)

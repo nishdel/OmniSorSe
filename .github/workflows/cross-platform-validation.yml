@@ -19,6 +19,7 @@ on:
       - v2.8-guided-workflows-product-coherence
       - v2.9-reviewed-intelligent-organization
       - v2.10-production-hardening-operational-resilience
+      - v2.11-supported-runtime-platform-readiness
   pull_request:
 
 permissions:
@@ -34,19 +35,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
-          - macos-latest
+        include:
+          - os: windows-latest
+            rid: win-x64
+            host: OmniSorSe.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            host: OmniSorSe
+          - os: macos-15-intel
+            rid: osx-x64
+            host: OmniSorSe
+          - os: macos-15
+            rid: osx-arm64
+            host: OmniSorSe
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Use repository .NET SDK
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: global.json
 
@@ -105,3 +115,18 @@ jobs:
           if (@($vulnerabilities | Where-Object { $null -ne $_ }).Count -ne 0) {
             throw 'NuGet vulnerability audit found one or more vulnerable packages.'
           }
+
+      - name: Restore native runtime graph
+        run: dotnet restore src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj --runtime '${{ matrix.rid }}' --force --no-cache
+
+      - name: Publish and run native package smoke
+        shell: pwsh
+        run: |
+          $publishRoot = ".artifacts/native-smoke/${{ matrix.rid }}/publish"
+          $dataRoot = ".artifacts/native-smoke/${{ matrix.rid }}/profile"
+          dotnet publish src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj --configuration Release --runtime '${{ matrix.rid }}' --self-contained true --no-restore --output $publishRoot -p:PublishSingleFile=false
+          if ($LASTEXITCODE -ne 0) { throw 'Native publish failed.' }
+          $hostPath = Join-Path $publishRoot '${{ matrix.host }}'
+          if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) { throw "Native host is missing: $hostPath" }
+          & $hostPath --package-smoke-test $dataRoot
+          if ($LASTEXITCODE -ne 0) { throw 'Native package smoke failed.' }

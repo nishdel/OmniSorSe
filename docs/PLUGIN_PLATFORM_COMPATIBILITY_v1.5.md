@@ -5,7 +5,7 @@ The v1.4 manifest schema remains readable. v1.5 adds optional
 
 ```json
 {
-  "runtimeCompatibility": "net8.0",
+  "runtimeCompatibility": "net10.0",
   "supportedRuntimeIdentifiers": ["win-x64", "linux-x64"],
   "containsNativeDependencies": true
 }
@@ -19,3 +19,6 @@ root-confined, traversal/reparse entries fail closed, and activation always
 requires explicit user state. Integrity hashing is stable over controlled
 content, but it is not publisher authentication. In-process load contexts are
 not a security sandbox.
+
+The v2.11 .NET 10 host continues accepting managed `net8.0` manifests to avoid
+breaking compatible existing plugins. New packages should declare `net10.0`.

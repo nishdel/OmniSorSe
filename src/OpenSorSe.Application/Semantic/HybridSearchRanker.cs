@@ -548,9 +548,9 @@ public sealed class HybridSearchRanker : ISearchRanker
             SearchFilterKind.Extension =>
                 EqualsNormalized(candidate.Extension.TrimStart('.'), filter.Value.TrimStart('.')),
             SearchFilterKind.CreatedOnOrAfter =>
-                CompareDate(candidate.MediaEvidence?.Metadata.CapturedAtUtc ?? candidate.CreationTimeUtc, filter.Value, onOrAfter: true),
+                CompareDate(candidate.CreationTimeUtc, filter.Value, onOrAfter: true),
             SearchFilterKind.CreatedBefore =>
-                CompareDate(candidate.MediaEvidence?.Metadata.CapturedAtUtc ?? candidate.CreationTimeUtc, filter.Value, onOrAfter: false),
+                CompareDate(candidate.CreationTimeUtc, filter.Value, onOrAfter: false),
             SearchFilterKind.ModifiedOnOrAfter =>
                 CompareDate(candidate.ModifiedTimeUtc, filter.Value, onOrAfter: true),
             SearchFilterKind.ModifiedBefore =>

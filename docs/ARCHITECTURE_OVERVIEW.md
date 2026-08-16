@@ -1,6 +1,6 @@
 # OmniSorSe architecture overview
 
-This is the authoritative top-level architecture for the OmniSorSe v2.10
+This is the authoritative top-level architecture for the OmniSorSe v2.11
 implementation candidate. It extends the released v2.4.0 baseline through the
 linear v2.5-v2.9 candidates while retaining established profile locations.
 The durable Search index is schema 6 and Explorer Protocol remains v1.
@@ -17,7 +17,7 @@ cross-cutting implementation and validation policy.
 ## Architectural shape
 
 OmniSorSe is a local-first cross-platform desktop application with a primary
-Windows target, native macOS distribution, and Linux source-build preview. It is built with .NET 8,
+Windows target, native macOS distribution, and Linux source-build preview. It is built with .NET 10 LTS,
 Avalonia, MVVM, dependency injection, asynchronous bounded services,
 user-local JSON persistence, an embedded provider-isolated SQLite Search index,
 and optional isolated Knowledge Graph sidecars. Most of the application analyses data or creates

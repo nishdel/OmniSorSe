@@ -31,17 +31,37 @@ test -x "$executable"
 plutil -lint "$app/Contents/Info.plist"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = 'io.github.nishdel.OpenSorSe'
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$version"
-python3 - "$app/Contents/Resources/OmniSorSe.build.json" "$version" "$source_revision" <<'PY'
+python3 - "$app/Contents/Resources/OmniSorSe.build.json" "$version" "$source_revision" "$rid" <<'PY'
 import json, sys
-path, version, revision = sys.argv[1:]
+path, version, revision, rid = sys.argv[1:]
 with open(path, encoding="utf-8") as stream:
     value = json.load(stream)
-if value != {"productVersion": version, "sourceRevision": revision, "configuration": "Release"}:
+expected = {
+    "productVersion": version,
+    "sourceRevision": revision,
+    "configuration": "Release",
+    "targetFramework": "net10.0",
+    "runtimeIdentifier": rid,
+    "selfContained": True,
+}
+if any(value.get(key) != expected_value for key, expected_value in expected.items()):
     raise SystemExit("macOS package provenance does not match the requested source")
+if not str(value.get("runtimeVersion", "")).startswith("10."):
+    raise SystemExit("macOS package does not identify a .NET 10 runtime")
 PY
 file "$executable" | grep -q "$architecture"
 find "$app/Contents/MacOS" -type f -name 'libe_sqlite3.dylib' | grep -q .
-if find "$app" -type f \( -name '*.pdb' -o -name '*.trx' -o -name '*.db' -o -name '*.log' -o -name '*.cs' -o -name '*.csproj' -o -name '*.sln' \) | grep -q .; then
+python3 - "$app/Contents/MacOS/OmniSorSe.runtimeconfig.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as stream:
+    value = json.load(stream)
+if value.get("runtimeOptions", {}).get("tfm") != "net10.0":
+    raise SystemExit("macOS package runtime configuration is not net10.0")
+PY
+for runtime_asset in libcoreclr.dylib libhostfxr.dylib libSkiaSharp.dylib; do
+  test -f "$app/Contents/MacOS/$runtime_asset"
+done
+if find "$app" -type f \( -name '*.pdb' -o -name '*.trx' -o -name '*.db' -o -name '*.sqlite' -o -name '*.db-wal' -o -name '*.db-shm' -o -name '*.log' -o -name '*.oms-state' -o -name '*.bak' -o -name '*.cs' -o -name '*.csproj' -o -name '*.sln' -o -name 'settings.json' -o -name 'operation-journal*.json' -o -name 'change-plan*.json' -o -name 'saved-view*.json' -o -name 'recipe*.json' \) | grep -q .; then
   echo 'The mounted macOS package contains a forbidden artifact.' >&2
   exit 1
 fi

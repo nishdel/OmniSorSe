@@ -2,6 +2,7 @@
 
 using System.Text.Json.Nodes;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Core;
 using OpenSorSe.Core.Logging;
 
 namespace OpenSorSe.Application.Tests;
@@ -43,7 +44,7 @@ public sealed class WorkflowImportExportTests : IDisposable
         Assert.False(imported.IsBuiltIn);
         Assert.Equal(WorkflowOriginKind.Imported, imported.Origin.Kind);
         Assert.Contains("\"ContentType\"", json, StringComparison.Ordinal);
-        Assert.Contains("\"ApplicationVersion\": \"2.10.0-rc\"", json, StringComparison.Ordinal);
+        Assert.Contains($"\"ApplicationVersion\": \"{ApplicationVersionInfo.Current}\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("SelectedModel", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Credential", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("ApiKey", json, StringComparison.OrdinalIgnoreCase);

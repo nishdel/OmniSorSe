@@ -9,7 +9,7 @@ on:
       version:
         description: Three-part product version
         required: true
-        default: 2.10.0
+        default: 2.11.0
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
       source_revision: ${{ steps.source.outputs.sha }}
     steps:
       - name: Check out exact release source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
@@ -38,7 +38,7 @@ jobs:
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Use repository .NET SDK
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: global.json
 
@@ -69,14 +69,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out exact release source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Use repository .NET SDK
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: global.json
 
@@ -108,7 +108,7 @@ jobs:
         run: ./eng/release/Validate-WindowsArtifacts.ps1 -Version '${{ inputs.version }}' -SourceRevision '${{ needs.release-validation.outputs.source_revision }}' -ArtifactDirectory '.artifacts/release'
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: windows-release
           path: |
@@ -133,14 +133,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out exact release source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Use repository .NET SDK
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: global.json
 
@@ -154,7 +154,7 @@ jobs:
         run: bash ./eng/release/Validate-MacArtifact.sh '${{ inputs.version }}' '${{ matrix.rid }}' '.artifacts/release' '${{ needs.release-validation.outputs.source_revision }}'
 
       - name: Upload macOS disk image
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: macos-${{ matrix.suffix }}-release
           path: .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}.dmg
@@ -170,24 +170,28 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out checksum tooling
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - name: Download native artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           pattern: '*-release'
           path: .artifacts/release
           merge-multiple: true
+
+      - name: Generate source-bound CycloneDX dependency SBOM
+        shell: pwsh
+        run: ./eng/release/New-ReleaseSbom.ps1 -Version '${{ inputs.version }}' -SourceRevision '${{ needs.release-validation.outputs.source_revision }}' -ArtifactDirectory '.artifacts/release'
 
       - name: Generate and independently verify SHA-256 checksums
         shell: pwsh
         run: ./eng/release/New-ReleaseChecksums.ps1 -Version '${{ inputs.version }}' -ArtifactDirectory '.artifacts/release'
 
       - name: Upload complete verified release bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: OmniSorSe-v${{ inputs.version }}-release-bundle
           path: |
@@ -195,6 +199,7 @@ jobs:
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-x64.dmg
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-arm64.dmg
+            .artifacts/release/OmniSorSe-v${{ inputs.version }}-sbom.cdx.json
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
