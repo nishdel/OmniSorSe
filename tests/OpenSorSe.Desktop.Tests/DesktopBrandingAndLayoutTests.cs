@@ -136,7 +136,9 @@ public sealed class DesktopBrandingAndLayoutTests
 
         Assert.Contains("RowDefinitions=\"Auto,*\"", collections, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Scrollable Smart Collections\"", collections, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Related Files\" IsVisible=\"False\"", collections, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Related Files\"", collections, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Related Files\" IsVisible=\"False\"", collections, StringComparison.Ordinal);
+        Assert.Contains("Use automatic result", collections, StringComparison.Ordinal);
         Assert.Contains("VerticalContentAlignment=\"Stretch\"", related, StringComparison.Ordinal);
         Assert.Contains("<ScrollViewer Grid.Column=\"1\">", related, StringComparison.Ordinal);
         Assert.Contains("<VirtualizingStackPanel", related, StringComparison.Ordinal);

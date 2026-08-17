@@ -31,7 +31,7 @@ public enum StateRestoreMode
 /// <param name="RecipesAndProfiles">Whether organization recipes and workflow profiles are restored.</param>
 /// <param name="SavedViews">Whether Saved Views are restored.</param>
 /// <param name="SmartTagAuthority">Whether exact-identity user tags and decisions are restored.</param>
-/// <param name="RelationshipAuthority">Whether exact-file-pair relationship decisions are restored.</param>
+/// <param name="RelationshipAuthority">Whether exact-file-pair decisions and authored Smart Collection state are restored.</param>
 public sealed record StateRestoreSelection(
     bool Settings = true,
     bool Sources = true,
@@ -66,7 +66,11 @@ public sealed record StateRestorePreview(
     int SmartTagAuthorityCount,
     int RelationshipAuthorityCount,
     IReadOnlyList<string> Conflicts,
-    string Fingerprint);
+    string Fingerprint)
+{
+    /// <summary>Gets authored Smart Collection record and tombstone count.</summary>
+    public int SmartCollectionAuthorityCount { get; init; }
+}
 
 /// <summary>Reports one explicit restore and its recovery point.</summary>
 /// <param name="Applied">Whether the reviewed operation completed.</param>
@@ -85,7 +89,14 @@ public sealed record StateRestoreResult(
     int RestoredRelationshipAuthorityCount,
     int SkippedRelationshipAuthorityCount,
     string PreRestoreBackupPath,
-    string Message);
+    string Message)
+{
+    /// <summary>Gets restored authored collection metadata, membership, overrides, and tombstones.</summary>
+    public int RestoredSmartCollectionAuthorityCount { get; init; }
+
+    /// <summary>Gets collection authority skipped because exact stable identities were unavailable.</summary>
+    public int SkippedSmartCollectionAuthorityCount { get; init; }
+}
 
 /// <summary>Provides a narrow deterministic fault seam for restore rollback testing.</summary>
 public interface IStateRestoreFaultInjector
@@ -120,7 +131,8 @@ public interface IStateBackupService
 /// <summary>Versioned ZIP-based logical state backup with fixed, non-extracting entries.</summary>
 public sealed class StateBackupService : IStateBackupService
 {
-    private const int FormatVersion = 1;
+    private const int FormatVersion = 2;
+    private const int MinimumReadableFormatVersion = 1;
     private const int SchemaVersion = 6;
     private const int MaximumSources = 1_000;
     private const int MaximumViews = 100;
@@ -223,7 +235,11 @@ public sealed class StateBackupService : IStateBackupService
             loaded.Payload.SmartTagAuthority.Length,
             loaded.Payload.RelationshipAuthority.Length,
             conflicts.AsReadOnly(),
-            loaded.Fingerprint);
+            loaded.Fingerprint)
+        {
+            SmartCollectionAuthorityCount = loaded.Payload.SmartCollectionAuthority!.Collections.Count +
+                loaded.Payload.SmartCollectionAuthority.ForgottenContextKeys.Count,
+        };
     }
 
     /// <inheritdoc />
@@ -262,7 +278,13 @@ public sealed class StateBackupService : IStateBackupService
             await WriteArchiveAsync(recoveryPath, previous, cancellationToken).ConfigureAwait(false);
             try
             {
-                var applied = await ApplyAsync(loaded.Payload, mode, selection, injectFaults: true, cancellationToken).ConfigureAwait(false);
+                var applied = await ApplyAsync(
+                    loaded.Payload,
+                    mode,
+                    selection,
+                    includeSmartCollectionAuthority: loaded.Manifest.FormatVersion >= 2,
+                    injectFaults: true,
+                    cancellationToken).ConfigureAwait(false);
                 return new StateRestoreResult(
                     true,
                     applied.Categories,
@@ -271,9 +293,13 @@ public sealed class StateBackupService : IStateBackupService
                     applied.RelationshipResult.AppliedCount,
                     applied.RelationshipResult.SkippedCount,
                     recoveryPath,
-                    applied.TagResult.SkippedCount + applied.RelationshipResult.SkippedCount == 0
+                    applied.TagResult.SkippedCount + applied.RelationshipResult.SkippedCount + applied.CollectionResult.SkippedCount == 0
                         ? "The reviewed OmniSorSe state was restored. No source files were changed."
-                        : $"The reviewed state was restored; {applied.TagResult.SkippedCount} Smart Tag and {applied.RelationshipResult.SkippedCount} relationship authority records were skipped because exact file identity was unavailable.");
+                        : $"The reviewed state was restored; {applied.TagResult.SkippedCount} Smart Tag, {applied.RelationshipResult.SkippedCount} relationship, and {applied.CollectionResult.SkippedCount} collection authority records were skipped because exact file identity was unavailable.")
+                {
+                    RestoredSmartCollectionAuthorityCount = applied.CollectionResult.AppliedCount,
+                    SkippedSmartCollectionAuthorityCount = applied.CollectionResult.SkippedCount,
+                };
             }
             catch
             {
@@ -325,19 +351,22 @@ public sealed class StateBackupService : IStateBackupService
             workflow.Recipes.ToArray(),
             views.ToArray(),
             (await _smartTags.ExportUserAuthorityAsync(MaximumAuthorityRecords, cancellationToken).ConfigureAwait(false)).ToArray(),
-            (await _relationships.ExportRelationshipUserAuthorityAsync(MaximumAuthorityRecords, cancellationToken).ConfigureAwait(false)).ToArray());
+            (await _relationships.ExportRelationshipUserAuthorityAsync(MaximumAuthorityRecords, cancellationToken).ConfigureAwait(false)).ToArray(),
+            await _relationships.ExportSmartCollectionUserAuthorityAsync(MaximumAuthorityRecords, cancellationToken).ConfigureAwait(false));
     }
 
-    private async Task<(int Categories, SmartTagAuthorityRestoreResult TagResult, RelationshipAuthorityRestoreResult RelationshipResult)> ApplyAsync(
+    private async Task<(int Categories, SmartTagAuthorityRestoreResult TagResult, RelationshipAuthorityRestoreResult RelationshipResult, SmartCollectionAuthorityRestoreResult CollectionResult)> ApplyAsync(
         StateBackupPayload payload,
         StateRestoreMode mode,
         StateRestoreSelection selection,
+        bool includeSmartCollectionAuthority,
         bool injectFaults,
         CancellationToken cancellationToken)
     {
         var categories = 0;
         var tagResult = new SmartTagAuthorityRestoreResult(0, 0);
         var relationshipResult = new RelationshipAuthorityRestoreResult(0, 0);
+        var collectionResult = new SmartCollectionAuthorityRestoreResult(0, 0);
         if (selection.Settings)
         {
             await BeforeCategoryAsync("settings", injectFaults, cancellationToken).ConfigureAwait(false);
@@ -414,10 +443,18 @@ public sealed class StateBackupService : IStateBackupService
                 payload.RelationshipAuthority,
                 DateTimeOffset.UtcNow,
                 cancellationToken).ConfigureAwait(false);
+            if (includeSmartCollectionAuthority)
+            {
+                collectionResult = await _relationships.RestoreSmartCollectionUserAuthorityAsync(
+                    payload.SmartCollectionAuthority!,
+                    mode == StateRestoreMode.Replace,
+                    DateTimeOffset.UtcNow,
+                    cancellationToken).ConfigureAwait(false);
+            }
             categories++;
         }
 
-        return (categories, tagResult, relationshipResult);
+        return (categories, tagResult, relationshipResult, collectionResult);
     }
 
     private Task BeforeCategoryAsync(string category, bool injectFaults, CancellationToken cancellationToken) =>
@@ -477,6 +514,7 @@ public sealed class StateBackupService : IStateBackupService
                 previous,
                 StateRestoreMode.Replace,
                 selection,
+                includeSmartCollectionAuthority: true,
                 injectFaults: false,
                 CancellationToken.None)
             .ConfigureAwait(false);
@@ -608,7 +646,7 @@ public sealed class StateBackupService : IStateBackupService
         var stateBytes = await ReadEntryAsync(archive.GetEntry(StateEntryName)!, MaximumStateBytes, cancellationToken).ConfigureAwait(false);
         var manifest = JsonSerializer.Deserialize<StateBackupManifest>(manifestBytes, JsonOptions)
             ?? throw new InvalidDataException("The state archive manifest is missing.");
-        if (manifest.FormatVersion != FormatVersion || manifest.SchemaVersion != SchemaVersion ||
+        if (manifest.FormatVersion is < MinimumReadableFormatVersion or > FormatVersion || manifest.SchemaVersion != SchemaVersion ||
             string.IsNullOrWhiteSpace(manifest.ApplicationVersion) || manifest.ApplicationVersion.Length > 64 ||
             string.IsNullOrWhiteSpace(manifest.SourceRevision) || manifest.SourceRevision.Length > 64 ||
             string.IsNullOrWhiteSpace(manifest.BuildConfiguration) || manifest.BuildConfiguration.Length > 32 ||
@@ -627,6 +665,10 @@ public sealed class StateBackupService : IStateBackupService
 
         var payload = JsonSerializer.Deserialize<StateBackupPayload>(stateBytes, JsonOptions)
             ?? throw new InvalidDataException("The state archive payload is missing.");
+        payload = payload with
+        {
+            SmartCollectionAuthority = payload.SmartCollectionAuthority ?? new SmartCollectionAuthorityBundle([], []),
+        };
         ValidatePayload(payload);
         return new LoadedBackup(manifest, payload, hash);
     }
@@ -672,7 +714,11 @@ public sealed class StateBackupService : IStateBackupService
             payload.Profiles is null || payload.Profiles.Length > MaximumWorkflows ||
             payload.Recipes is null || payload.Recipes.Length > MaximumWorkflows ||
             payload.SavedViews is null || payload.SavedViews.Length > MaximumViews ||
-            payload.SmartTagAuthority is null || payload.SmartTagAuthority.Length > MaximumAuthorityRecords)
+            payload.SmartTagAuthority is null || payload.SmartTagAuthority.Length > MaximumAuthorityRecords ||
+            payload.RelationshipAuthority is null || payload.RelationshipAuthority.Length > MaximumAuthorityRecords ||
+            payload.SmartCollectionAuthority is null ||
+            payload.SmartCollectionAuthority.Collections.Count > MaximumAuthorityRecords ||
+            payload.SmartCollectionAuthority.ForgottenContextKeys.Count > MaximumAuthorityRecords)
         {
             throw new InvalidDataException("The state archive payload exceeds a supported category bound.");
         }
@@ -710,7 +756,6 @@ public sealed class StateBackupService : IStateBackupService
                 !item.IsUserTag &&
                     (item.Type is not (SmartTagType.Theme or SmartTagType.DocumentType) ||
                      item.Decision is not (SmartTagDecision.Accepted or SmartTagDecision.Rejected))) ||
-            payload.RelationshipAuthority.Length > MaximumAuthorityRecords ||
             payload.RelationshipAuthority.Any(item => item is null) ||
             payload.RelationshipAuthority
                 .Select(item => $"{item.FirstFileId}\n{item.SecondFileId}")
@@ -722,7 +767,26 @@ public sealed class StateBackupService : IStateBackupService
                 item.Decision == RelationshipDecision.None || !Enum.IsDefined(item.Decision) ||
                 !Enum.IsDefined(item.Type) ||
                 item.CustomType?.Length > 64 || item.CustomType?.Any(char.IsControl) == true ||
-                item.Type == RelationshipType.Custom && string.IsNullOrWhiteSpace(item.CustomType)))
+                item.Type == RelationshipType.Custom && string.IsNullOrWhiteSpace(item.CustomType)) ||
+            payload.SmartCollectionAuthority.Collections.Any(item => item is null) ||
+            payload.SmartCollectionAuthority.Collections
+                .Select(item => item.CollectionId)
+                .Distinct(StringComparer.Ordinal).Count() != payload.SmartCollectionAuthority.Collections.Count ||
+            payload.SmartCollectionAuthority.Collections.Any(item =>
+                string.IsNullOrWhiteSpace(item.CollectionId) || item.CollectionId.Length > 256 ||
+                item.ContextKey?.Length > 256 ||
+                string.IsNullOrWhiteSpace(item.Title) || item.Title.Length > RelationshipLimits.MaximumCollectionTitleCharacters ||
+                item.Description.Length > 512 || item.RelationshipSummary.Length > 512 ||
+                !Enum.IsDefined(item.ContextType) || !Enum.IsDefined(item.CreationSource) ||
+                item.CreationSource == SmartCollectionCreationSource.Automatic && string.IsNullOrWhiteSpace(item.ContextKey) ||
+                item.ManualMemberFileIds is null || item.ExcludedMemberFileIds is null ||
+                item.ManualMemberFileIds.Count > RelationshipLimits.MaximumCollectionMembers ||
+                item.ExcludedMemberFileIds.Count > RelationshipLimits.MaximumCollectionMembers ||
+                item.ManualMemberFileIds.Concat(item.ExcludedMemberFileIds)
+                    .Any(id => string.IsNullOrWhiteSpace(id) || id.Length > 256)) ||
+            payload.SmartCollectionAuthority.ForgottenContextKeys
+                .Distinct(StringComparer.Ordinal).Count() != payload.SmartCollectionAuthority.ForgottenContextKeys.Count ||
+            payload.SmartCollectionAuthority.ForgottenContextKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length > 256))
         {
             throw new InvalidDataException("The state archive contains invalid or duplicate authority records.");
         }
@@ -767,7 +831,8 @@ public sealed class StateBackupService : IStateBackupService
         SortingRecipe[] Recipes,
         SavedDiscoveryView[] SavedViews,
         SmartTagUserAuthority[] SmartTagAuthority,
-        RelationshipUserAuthority[] RelationshipAuthority);
+        RelationshipUserAuthority[] RelationshipAuthority,
+        SmartCollectionAuthorityBundle? SmartCollectionAuthority = null);
 
     private sealed record LoadedBackup(StateBackupManifest Manifest, StateBackupPayload Payload, string Fingerprint);
 }

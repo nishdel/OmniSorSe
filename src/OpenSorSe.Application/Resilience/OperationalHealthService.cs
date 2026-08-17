@@ -1,4 +1,5 @@
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
@@ -69,6 +70,7 @@ public sealed class OperationalHealthService : IOperationalHealthService
     private readonly IApplicationPathProvider _paths;
     private readonly IProfileOwnershipState _profileOwnership;
     private readonly IRecoverySafetyState _recovery;
+    private readonly IRelationshipStore? _relationships;
     private readonly IApplicationRunState _runState;
     private readonly ISavedDiscoveryViewStore _savedViews;
     private readonly IWatchedFolderConfigurationStore _watchedFolders;
@@ -85,7 +87,8 @@ public sealed class OperationalHealthService : IOperationalHealthService
         IApplicationRunState runState,
         ISavedDiscoveryViewStore savedViews,
         IWatchedFolderConfigurationStore watchedFolders,
-        IWorkflowLibraryStore workflows)
+        IWorkflowLibraryStore workflows,
+        IRelationshipStore? relationships = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _indexing = indexing ?? throw new ArgumentNullException(nameof(indexing));
@@ -97,6 +100,7 @@ public sealed class OperationalHealthService : IOperationalHealthService
         _savedViews = savedViews ?? throw new ArgumentNullException(nameof(savedViews));
         _watchedFolders = watchedFolders ?? throw new ArgumentNullException(nameof(watchedFolders));
         _workflows = workflows ?? throw new ArgumentNullException(nameof(workflows));
+        _relationships = relationships;
     }
 
     /// <inheritdoc />
@@ -149,6 +153,26 @@ public sealed class OperationalHealthService : IOperationalHealthService
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
             issues.Add(StoreUnavailable("sqlite-integrity", "Derived index", exception));
+        }
+
+        if (_relationships is not null)
+        {
+            try
+            {
+                var relationships = await _relationships.GetRelationshipDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+                if (relationships.RepairNeeded)
+                {
+                    issues.Add(Issue(
+                        "relationship-reanalysis",
+                        OperationalHealthState.Attention,
+                        $"Relationship context needs bounded maintenance ({relationships.StaleRelationshipFileCount} stale file(s), {relationships.InvalidRecordCount} invalid record(s)).",
+                        "Allow relationship-only enrichment to finish or run explicit relationship repair."));
+                }
+            }
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                issues.Add(StoreUnavailable("relationship-health", "Relationship context", exception));
+            }
         }
 
         IReadOnlyList<IndexingSource> sources = [];

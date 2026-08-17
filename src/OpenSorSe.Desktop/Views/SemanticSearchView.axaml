@@ -594,6 +594,13 @@
                                                     x:CompileBindings="False" />
                                             <Button Margin="0,0,8,0"
                                                     Classes="secondary"
+                                                    Content="Related to this file"
+                                                    Command="{Binding DataContext.OpenRelatedFilesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding FileName, StringFormat='Show files related to {0}'}"
+                                                    x:CompileBindings="False" />
+                                            <Button Margin="0,0,8,0"
+                                                    Classes="secondary"
                                                     Content="Open file"
                                                     Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"

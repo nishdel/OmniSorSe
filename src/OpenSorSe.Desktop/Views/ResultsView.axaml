@@ -334,6 +334,11 @@
                                            TextWrapping="Wrap" />
                                 <TextBlock Text="{Binding SelectedDetails.Classification}" />
                                 <TextBlock Text="{Binding SelectedDetails.DuplicateStatus}" />
+                                <Button Classes="secondary"
+                                        HorizontalAlignment="Left"
+                                        Content="Related to this file"
+                                        Command="{Binding OpenRelatedFilesCommand}"
+                                        AutomationProperties.Name="Show Related Files for selected file" />
                             </StackPanel>
                             <Border Classes="separator" />
                             <StackPanel Spacing="5">

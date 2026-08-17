@@ -138,6 +138,15 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
         OpenMeaningSearchCommand = new RelayCommand(
             () => MeaningSearchRequested?.Invoke(this, EventArgs.Empty),
             () => IsMeaningSearchEnabled);
+        OpenRelatedFilesCommand = new RelayCommand(
+            () =>
+            {
+                if (SelectedRow?.FileId is { Length: > 0 } fileId)
+                {
+                    RelatedFilesRequested?.Invoke(this, fileId);
+                }
+            },
+            () => SelectedRow?.FileId is { Length: > 0 });
         AddUserTagsCommand = new AsyncRelayCommand(AddUserTagsAsync, CanAddUserTags);
         RemoveSelectedTagCommand = new AsyncRelayCommand(RemoveSelectedTagAsync, CanRemoveSelectedTag);
         AcceptSuggestedTagCommand = new AsyncRelayCommand(
@@ -174,6 +183,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Occurs when the user opens local Search.</summary>
     public event EventHandler? MeaningSearchRequested;
+
+    /// <summary>Occurs when Files requests direct context for the selected stable file identity.</summary>
+    public event EventHandler<string>? RelatedFilesRequested;
 
     /// <summary>Occurs when a reviewed suggestion becomes a Change Plan.</summary>
     public event EventHandler<ChangePlan>? ChangePlanCreated;
@@ -397,6 +409,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 SelectedUserTag = null;
                 UpdateSelectedDetails();
                 UpdateAiSuggestionContext();
+                OpenRelatedFilesCommand.NotifyCanExecuteChanged();
                 _ = LoadContentDetailsAsync();
             }
         }
@@ -633,6 +646,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that opens local Search.</summary>
     public IRelayCommand OpenMeaningSearchCommand { get; }
+
+    /// <summary>Gets the direct Related Files navigation command for the selected file.</summary>
+    public IRelayCommand OpenRelatedFilesCommand { get; }
 
     /// <summary>Shows the ordinary Files explorer.</summary>
     public void ShowFiles() => BackToExplorer();

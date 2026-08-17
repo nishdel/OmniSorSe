@@ -50,10 +50,10 @@ public sealed class KnowledgeGraphViewModelTests
         using var shell = new MainViewModel();
         await shell.NavigateAsync(NavigationDestination.KnowledgeGraph);
         Assert.Equal(NavigationDestination.KnowledgeGraph, shell.SelectedDestination);
-        Assert.Equal("Related Files", shell.CurrentPageTitle);
+        Assert.Equal("Knowledge Graph", shell.CurrentPageTitle);
         Assert.True(shell.IsKnowledgeGraphSelected);
         Assert.Contains(shell.NavigationItems, item =>
-            item.Destination == NavigationDestination.KnowledgeGraph && item.Label == "Related Files");
+            item.Destination == NavigationDestination.KnowledgeGraph && item.Label == "Knowledge Graph");
     }
 
     /// <summary>Verifies first enablement requires explicit consent before the coordinator is invoked.</summary>

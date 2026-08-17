@@ -169,7 +169,7 @@ public sealed class MainViewModelTests
             ["Home", "Scan", "Search", "Files", "Duplicates", "Related Files", "Review Changes"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
         Assert.Equal(
-            ["Collections", "Saved scans", "Watched Folders", "Workflows", "Operation History", "Settings"],
+            ["Knowledge Graph", "Saved scans", "Watched Folders", "Workflows", "Operation History", "Settings"],
             viewModel.SecondaryNavigationItems.Select(item => item.Label));
         Assert.Contains(
             viewModel.NavigationItems,

@@ -1,6 +1,9 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Resilience;
 using OpenSorSe.Application.Relationships;
@@ -50,6 +53,16 @@ public sealed class StateBackupServiceTests
     {
         await using var fixture = await BackupFixture.CreateAsync();
         await fixture.SeedUserStateAsync();
+        fixture.Execute(
+            $"""
+            INSERT INTO smart_collections(
+                id, context_key, title, description, relationship_summary, context_type,
+                confidence, creation_source, is_pinned, is_user_renamed, created_utc_ticks, updated_utc_ticks)
+            VALUES('collection:auto-export', 'topic:auto-export', 'Generated title',
+                   'DERIVED-COLLECTION-DESCRIPTION', 'DERIVED-COLLECTION-EVIDENCE',
+                   {(int)RelationshipType.SameTopic}, {(int)RelationshipConfidence.Medium},
+                   {(int)SmartCollectionCreationSource.Automatic}, 1, 0, 0, 0);
+            """);
         var archivePath = fixture.PathFor("bounded.oms-state");
 
         await fixture.Service.ExportAsync(archivePath);
@@ -60,8 +73,61 @@ public sealed class StateBackupServiceTests
         var state = await reader.ReadToEndAsync();
         using var document = JsonDocument.Parse(state);
         Assert.Equal(
-            ["profiles", "recipes", "relationshipAuthority", "savedViews", "settings", "smartTagAuthority", "sources", "watchedFolders"],
+            ["profiles", "recipes", "relationshipAuthority", "savedViews", "settings", "smartCollectionAuthority", "smartTagAuthority", "sources", "watchedFolders"],
             document.RootElement.EnumerateObject().Select(item => item.Name).OrderBy(value => value));
+        Assert.DoesNotContain("DERIVED-COLLECTION", state, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies an exact format-1 logical payload remains readable after the format-2 writer is introduced.</summary>
+    [Fact]
+    public async Task Preview_FormatOneBackup_RemainsSupported()
+    {
+        await using var fixture = await BackupFixture.CreateAsync();
+        await fixture.SeedUserStateAsync();
+        var current = fixture.PathFor("current.oms-state");
+        var legacy = fixture.PathFor("legacy-v1.oms-state");
+        await fixture.Service.ExportAsync(current);
+
+        JsonObject manifest;
+        JsonObject state;
+        using (var archive = ZipFile.OpenRead(current))
+        {
+            manifest = JsonNode.Parse(await ReadEntryTextAsync(archive, "manifest.json"))!.AsObject();
+            state = JsonNode.Parse(await ReadEntryTextAsync(archive, "state.json"))!.AsObject();
+        }
+
+        Assert.True(state.Remove("smartCollectionAuthority"));
+        var stateJson = state.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        manifest["formatVersion"] = 1;
+        manifest["stateSha256"] = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(stateJson)));
+        using (var archive = ZipFile.Open(legacy, ZipArchiveMode.Create))
+        {
+            await WriteEntryAsync(archive, "manifest.json", manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            await WriteEntryAsync(archive, "state.json", stateJson);
+        }
+
+        var preview = await fixture.Service.PreviewRestoreAsync(legacy);
+
+        Assert.Equal("1", preview.BackupVersion);
+        Assert.Equal(0, preview.SmartCollectionAuthorityCount);
+
+        fixture.Execute(
+            $"""
+            INSERT INTO smart_collections(
+                id, context_key, title, description, relationship_summary, context_type,
+                confidence, creation_source, is_pinned, is_user_renamed, created_utc_ticks, updated_utc_ticks)
+            VALUES('collection:current', NULL, 'Current authority', 'Current', 'Current',
+                   {(int)RelationshipType.SameProject}, {(int)RelationshipConfidence.Confirmed},
+                   {(int)SmartCollectionCreationSource.Manual}, 1, 1, 0, 0);
+            """);
+        var restored = await fixture.Service.RestoreAsync(
+            legacy,
+            preview.Fingerprint,
+            StateRestoreMode.Replace,
+            new StateRestoreSelection());
+
+        Assert.True(restored.Applied);
+        Assert.Equal("1", fixture.Scalar("SELECT COUNT(*) FROM smart_collections WHERE id = 'collection:current';"));
     }
 
     /// <summary>Verifies archive entries cannot escape the fixed, non-extracting format.</summary>
@@ -186,6 +252,60 @@ public sealed class StateBackupServiceTests
         Assert.Equal(RelationshipDecision.AlwaysRelate, restoredAuthority.Decision);
     }
 
+    /// <summary>Verifies format 2 restores authored Smart Collection state but not generated relationship edges.</summary>
+    [Fact]
+    public async Task Restore_FormatTwo_RoundTripsSmartCollectionAuthority()
+    {
+        await using var fixture = await BackupFixture.CreateAsync();
+        await fixture.SeedUserStateAsync();
+        var (first, second) = await fixture.SeedIndexedFilePairAsync();
+        await fixture.Store.LinkFilesAsync(
+            first,
+            second,
+            RelationshipType.SameProject,
+            null,
+            true,
+            DateTimeOffset.UnixEpoch);
+        fixture.Execute(
+            $"""
+            INSERT INTO smart_collections(
+                id, context_key, title, description, relationship_summary, context_type,
+                confidence, creation_source, is_pinned, is_user_renamed, created_utc_ticks, updated_utc_ticks)
+            VALUES('collection:user', NULL, 'My Project', 'User collection', 'Manual context',
+                   {(int)RelationshipType.SameProject}, {(int)RelationshipConfidence.Confirmed},
+                   {(int)SmartCollectionCreationSource.Merged}, 1, 1, 0, 0);
+            INSERT INTO smart_collection_members(collection_id, file_id, membership_source, relationship_id, added_utc_ticks)
+            VALUES('collection:user', '{first}', {(int)CollectionMembershipSource.Manual}, NULL, 0);
+            INSERT INTO smart_collection_member_overrides(collection_id, file_id, excluded, changed_utc_ticks)
+            VALUES('collection:user', '{second}', 1, 0);
+            INSERT INTO forgotten_smart_collections(context_key, forgotten_utc_ticks)
+            VALUES('project:forgotten-context', 0);
+            """);
+        var archive = fixture.PathFor("collection-authority.oms-state");
+        await fixture.Service.ExportAsync(archive);
+        fixture.Execute("DELETE FROM smart_collections WHERE id = 'collection:user';");
+        fixture.Execute("DELETE FROM forgotten_smart_collections;");
+
+        var preview = await fixture.Service.PreviewRestoreAsync(archive);
+        var restored = await fixture.Service.RestoreAsync(
+            archive,
+            preview.Fingerprint,
+            StateRestoreMode.Merge,
+            new StateRestoreSelection());
+
+        Assert.True(preview.SmartCollectionAuthorityCount > 0);
+        Assert.True(restored.RestoredSmartCollectionAuthorityCount >= 3);
+        var collection = Assert.IsType<SmartCollectionDetails>(
+            await fixture.Store.GetCollectionAsync("collection:user", 10));
+        Assert.True(collection.Collection.IsPinned);
+        Assert.Equal(SmartCollectionCreationSource.Merged, collection.Collection.CreationSource);
+        Assert.Contains(collection.Members, item => item.FileId == first && item.MembershipSource == CollectionMembershipSource.Manual);
+        Assert.DoesNotContain(collection.Members, item => item.FileId == second);
+        Assert.Equal("1", fixture.Scalar("SELECT COUNT(*) FROM forgotten_smart_collections WHERE context_key = 'project:forgotten-context';"));
+        Assert.Equal("1", fixture.Scalar("SELECT COUNT(*) FROM relationship_pair_overrides;"));
+        Assert.Equal("1", fixture.Scalar("SELECT COUNT(*) FROM index_relationships WHERE is_manual = 1;"));
+    }
+
     /// <summary>Verifies a mid-restore write failure rolls prior categories back and retains a recovery point.</summary>
     [Fact]
     public async Task Restore_MidApplyFailure_RollsBackCurrentState()
@@ -240,6 +360,12 @@ public sealed class StateBackupServiceTests
         var entry = archive.CreateEntry(name);
         await using var stream = entry.Open();
         await stream.WriteAsync(Encoding.UTF8.GetBytes(value));
+    }
+
+    private static async Task<string> ReadEntryTextAsync(ZipArchive archive, string name)
+    {
+        using var reader = new StreamReader(archive.GetEntry(name)!.Open(), Encoding.UTF8);
+        return await reader.ReadToEndAsync();
     }
 
     private sealed class FailOnceBeforeCategory(string category) : IStateRestoreFaultInjector
@@ -324,6 +450,24 @@ public sealed class StateBackupServiceTests
         }
 
         public string PathFor(string name) => Path.Combine(_root, name);
+
+        public void Execute(string sql)
+        {
+            using var connection = new SqliteConnection($"Data Source={Path.Combine(Paths.Paths.DataDirectory, "deep-index.db")};Pooling=False");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.ExecuteNonQuery();
+        }
+
+        public string Scalar(string sql)
+        {
+            using var connection = new SqliteConnection($"Data Source={Path.Combine(Paths.Paths.DataDirectory, "deep-index.db")};Mode=ReadOnly;Pooling=False");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return Convert.ToString(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture)!;
+        }
 
         public async Task SeedUserStateAsync()
         {

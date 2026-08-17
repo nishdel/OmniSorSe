@@ -14,12 +14,15 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<CollectionTimelineEvent> _timeline = [];
     private readonly ObservableCollection<RelationshipFileDocument> _files = [];
     private readonly ObservableCollection<RelatedFile> _relatedFiles = [];
+    private readonly ObservableCollection<RelationshipPairCorrection> _corrections = [];
     private CancellationTokenSource? _operation;
     private SmartCollection? _selectedCollection;
     private SmartCollection? _mergeCollection;
     private SmartCollectionMember? _selectedMember;
     private FileRelationship? _selectedRelationship;
     private RelationshipFileDocument? _selectedFile;
+    private RelatedFile? _selectedRelatedFile;
+    private RelationshipPairCorrection? _selectedCorrection;
     private RelationshipFileDocument? _firstLinkFile;
     private RelationshipFileDocument? _secondLinkFile;
     private RelationshipType _linkType = RelationshipType.Manual;
@@ -50,6 +53,7 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         Timeline = new ReadOnlyObservableCollection<CollectionTimelineEvent>(_timeline);
         Files = new ReadOnlyObservableCollection<RelationshipFileDocument>(_files);
         RelatedFiles = new ReadOnlyObservableCollection<RelatedFile>(_relatedFiles);
+        Corrections = new ReadOnlyObservableCollection<RelationshipPairCorrection>(_corrections);
         RelationshipTypes = Enum.GetValues<RelationshipType>();
         ConfidenceLevels = Enum.GetValues<RelationshipConfidence>();
         RelatedFileSorts = Enum.GetValues<RelatedFileSort>();
@@ -86,6 +90,16 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             ForgetSourceRelationshipsAsync,
             () => SelectedFile is not null && !IsBusy);
         RebuildFileRelationshipsCommand = new AsyncRelayCommand(RebuildFileRelationshipsAsync, () => SelectedFile is not null && !IsBusy);
+        MarkRelatedCommand = new AsyncRelayCommand(
+            () => SetRelatedFileDecisionAsync(RelationshipDecision.AlwaysRelate),
+            () => SelectedRelatedFile is not null && !IsBusy);
+        MarkNotRelatedCommand = new AsyncRelayCommand(
+            () => SetRelatedFileDecisionAsync(RelationshipDecision.NeverRelate),
+            () => SelectedRelatedFile is not null && !IsBusy);
+        UseAutomaticCommand = new AsyncRelayCommand(UseAutomaticAsync, () => SelectedRelatedFile is not null && !IsBusy);
+        UseAutomaticCorrectionCommand = new AsyncRelayCommand(
+            UseAutomaticCorrectionAsync,
+            () => SelectedCorrection is not null && !IsBusy);
         RepairCommand = new AsyncRelayCommand(RepairAsync, () => _service is not null && !IsBusy);
     }
 
@@ -106,6 +120,9 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets direct related files for the selected file.</summary>
     public ReadOnlyObservableCollection<RelatedFile> RelatedFiles { get; }
+
+    /// <summary>Gets bounded explicit pair corrections involving the selected file.</summary>
+    public ReadOnlyObservableCollection<RelationshipPairCorrection> Corrections { get; }
 
     /// <summary>Gets available relationship categories.</summary>
     public IReadOnlyList<RelationshipType> RelationshipTypes { get; }
@@ -181,6 +198,32 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             {
                 NotifyCommands();
                 _ = RefreshRelatedFilesAsync();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the direct pair selected for user authority.</summary>
+    public RelatedFile? SelectedRelatedFile
+    {
+        get => _selectedRelatedFile;
+        set
+        {
+            if (SetProperty(ref _selectedRelatedFile, value))
+            {
+                NotifyCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets a visible explicit correction, including hidden negative authority.</summary>
+    public RelationshipPairCorrection? SelectedCorrection
+    {
+        get => _selectedCorrection;
+        set
+        {
+            if (SetProperty(ref _selectedCorrection, value))
+            {
+                NotifyCommands();
             }
         }
     }
@@ -360,6 +403,14 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand ForgetSourceRelationshipsCommand { get; }
     /// <summary>Gets the targeted file relationship rebuild command.</summary>
     public IAsyncRelayCommand RebuildFileRelationshipsCommand { get; }
+    /// <summary>Gets the explicit Related pair-authority command.</summary>
+    public IAsyncRelayCommand MarkRelatedCommand { get; }
+    /// <summary>Gets the explicit Not Related pair-authority command.</summary>
+    public IAsyncRelayCommand MarkNotRelatedCommand { get; }
+    /// <summary>Gets the selected pair automatic-evidence reset command.</summary>
+    public IAsyncRelayCommand UseAutomaticCommand { get; }
+    /// <summary>Gets the hidden/visible correction automatic-evidence reset command.</summary>
+    public IAsyncRelayCommand UseAutomaticCorrectionCommand { get; }
     /// <summary>Gets the relationship storage repair command.</summary>
     public IAsyncRelayCommand RepairCommand { get; }
 
@@ -388,7 +439,8 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
                 $"Excluded files: {diagnostics.ExcludedFileCount:N0}. Last pass: {diagnostics.LastCandidateCount:N0} candidates, " +
                 $"{diagnostics.LastGeneratedRelationshipCount:N0} relationships, {diagnostics.LastGeneratedCollectionCount:N0} collections" +
                 (diagnostics.LastAnalysisDuration is { } duration ? $" in {duration.TotalMilliseconds:N0} ms" : string.Empty) +
-                $". Algorithm {diagnostics.AlgorithmVersion}; repairs {diagnostics.RepairOperationCount:N0}.";
+                $". Algorithm {diagnostics.AlgorithmVersion}; stale files {diagnostics.StaleRelationshipFileCount:N0}; " +
+                $"repairs {diagnostics.RepairOperationCount:N0}.";
             StatusText = collections.Count == 0
                 ? "No evidence-backed Smart Collections are available yet. Background analysis is incremental."
                 : $"Loaded {collections.Count:N0} virtual collections. Original files have not been moved.";
@@ -461,6 +513,7 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         if (_service is null || SelectedFile is null || IsBusy)
         {
             Replace(_relatedFiles, []);
+            Replace(_corrections, []);
             return;
         }
 
@@ -474,9 +527,16 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
                 MinimumConfidence,
                 RelatedFileSort,
                 cancellationToken: operation.Token);
+            var corrections = await _service.GetCorrectionsAsync(fileId, cancellationToken: operation.Token);
             if (string.Equals(SelectedFile?.FileId, fileId, StringComparison.Ordinal))
             {
                 Replace(_relatedFiles, related);
+                Replace(_corrections, corrections);
+                SelectedRelatedFile = _relatedFiles.FirstOrDefault(item =>
+                    string.Equals(item.FileId, SelectedRelatedFile?.FileId, StringComparison.Ordinal));
+                SelectedCorrection = _corrections.FirstOrDefault(item =>
+                    string.Equals(item.FirstFileId, SelectedCorrection?.FirstFileId, StringComparison.Ordinal) &&
+                    string.Equals(item.SecondFileId, SelectedCorrection?.SecondFileId, StringComparison.Ordinal));
                 StatusText = related.Count == 0
                     ? "No retained direct relationships match the current filters."
                     : $"Loaded {related.Count:N0} direct related files with retained evidence.";
@@ -538,6 +598,55 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         }
 
         await RunOperationAsync(token => _service.SetDecisionAsync(SelectedRelationship.Id, decision, token));
+    }
+
+    private async Task SetRelatedFileDecisionAsync(RelationshipDecision decision)
+    {
+        if (_service is null || SelectedRelatedFile is null)
+        {
+            return;
+        }
+
+        await RunOperationAsync(token =>
+            _service.SetDecisionAsync(SelectedRelatedFile.Relationship.Id, decision, token));
+    }
+
+    private async Task UseAutomaticAsync()
+    {
+        if (_service is null || SelectedFile is null || SelectedRelatedFile is null)
+        {
+            return;
+        }
+
+        await RunOperationAsync(token =>
+            _service.UseAutomaticAsync(SelectedFile.FileId, SelectedRelatedFile.FileId, token));
+    }
+
+    private async Task UseAutomaticCorrectionAsync()
+    {
+        if (_service is null || SelectedCorrection is null)
+        {
+            return;
+        }
+
+        await RunOperationAsync(token =>
+            _service.UseAutomaticAsync(SelectedCorrection.FirstFileId, SelectedCorrection.SecondFileId, token));
+    }
+
+    /// <summary>Selects one exact stable file identity as a direct Related Files entry point.</summary>
+    public async Task SelectFileAsync(string fileId)
+    {
+        if (string.IsNullOrWhiteSpace(fileId))
+        {
+            return;
+        }
+
+        if (_files.Count == 0)
+        {
+            await RefreshAsync();
+        }
+
+        SelectedFile = _files.FirstOrDefault(item => string.Equals(item.FileId, fileId, StringComparison.Ordinal));
     }
 
     private bool CanRenameCollection() =>
@@ -708,6 +817,10 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         ForgetFileRelationshipsCommand.NotifyCanExecuteChanged();
         ForgetSourceRelationshipsCommand.NotifyCanExecuteChanged();
         RebuildFileRelationshipsCommand.NotifyCanExecuteChanged();
+        MarkRelatedCommand.NotifyCanExecuteChanged();
+        MarkNotRelatedCommand.NotifyCanExecuteChanged();
+        UseAutomaticCommand.NotifyCanExecuteChanged();
+        UseAutomaticCorrectionCommand.NotifyCanExecuteChanged();
         RepairCommand.NotifyCanExecuteChanged();
     }
 

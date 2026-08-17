@@ -76,6 +76,27 @@ public sealed class CollectionsViewModelTests
         Assert.Equal(RelationshipDecision.AlwaysRelate, service.LastDecision);
     }
 
+    /// <summary>Verifies direct Related Files corrections work without any Knowledge Graph service.</summary>
+    [Fact]
+    public async Task DirectRelatedFiles_AuthorityIsVisibleAndReversibleWithoutGraph()
+    {
+        var service = new RelationshipServiceStub();
+        using var viewModel = new CollectionsViewModel(service);
+
+        await viewModel.RefreshAsync();
+        await viewModel.SelectFileAsync("first");
+        viewModel.SelectedRelatedFile = Assert.Single(viewModel.RelatedFiles);
+
+        await viewModel.MarkRelatedCommand.ExecuteAsync(null);
+        Assert.Equal(RelationshipDecision.AlwaysRelate, service.LastDecision);
+        await viewModel.MarkNotRelatedCommand.ExecuteAsync(null);
+        Assert.Equal(RelationshipDecision.NeverRelate, service.LastDecision);
+        await viewModel.UseAutomaticCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, service.AutomaticResetCount);
+        Assert.Single(viewModel.Corrections);
+    }
+
     private sealed class RelationshipServiceStub : IRelationshipService
     {
         private static readonly DateTimeOffset Now = new(2026, 8, 3, 12, 0, 0, TimeSpan.Zero);
@@ -112,6 +133,7 @@ public sealed class CollectionsViewModelTests
         public bool LastAlwaysRelate { get; private set; }
         public bool LastExcludeFuture { get; private set; }
         public RelationshipDecision? LastDecision { get; private set; }
+        public int AutomaticResetCount { get; private set; }
         public bool FailRepair { get; init; }
 
         public Task<RelationshipAnalysisResult> AnalyzeFileAsync(string fileId, CancellationToken cancellationToken = default) =>
@@ -136,6 +158,25 @@ public sealed class CollectionsViewModelTests
                     SourceName = Second.SourceName,
                     Relationship = Relationship,
                 },
+            ]);
+
+        public Task<IReadOnlyList<RelationshipPairCorrection>> GetCorrectionsAsync(
+            string fileId,
+            int maximumCount = 200,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RelationshipPairCorrection>>([
+                new RelationshipPairCorrection(
+                    First.FileId,
+                    Second.FileId,
+                    Second.FileId,
+                    Second.FileName,
+                    Second.FullPath,
+                    Second.SourceName,
+                    RelationshipDecision.NeverRelate,
+                    RelationshipType.SamePurchase,
+                    null,
+                    Now,
+                    true),
             ]);
 
         public Task<FileRelationship?> GetRelationshipAsync(string relationshipId, CancellationToken cancellationToken = default) =>
@@ -169,6 +210,14 @@ public sealed class CollectionsViewModelTests
         {
             LastDecision = decision;
             return Success("saved");
+        }
+        public Task<RelationshipOperationResult> UseAutomaticAsync(
+            string firstFileId,
+            string secondFileId,
+            CancellationToken cancellationToken = default)
+        {
+            AutomaticResetCount++;
+            return Success("automatic");
         }
         public Task<RelationshipOperationResult> RenameCollectionAsync(string collectionId, string title, CancellationToken cancellationToken = default) => Success("renamed");
         public Task<RelationshipOperationResult> SetCollectionPinnedAsync(string collectionId, bool pinned, CancellationToken cancellationToken = default) => Success("pinned");

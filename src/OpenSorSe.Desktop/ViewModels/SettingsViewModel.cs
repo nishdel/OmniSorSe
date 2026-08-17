@@ -547,7 +547,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             ConfirmStateRestoreCommand.NotifyCanExecuteChanged();
             CancelStateRestoreCommand.NotifyCanExecuteChanged();
             StateTransferStatusText =
-                $"Reviewed archive: {_pendingRestore.SourceCount} sources, {_pendingRestore.RecipeCount} recipes, {_pendingRestore.SavedViewCount} Saved Views, {_pendingRestore.SmartTagAuthorityCount} Smart Tag authority records, and {_pendingRestore.RelationshipAuthorityCount} relationship authority records. {_pendingRestore.Conflicts.Count} conflict summary item(s). Confirm Restore to replace reviewed libraries and merge source and exact file-authority records.";
+                $"Reviewed archive: {_pendingRestore.SourceCount} sources, {_pendingRestore.RecipeCount} recipes, {_pendingRestore.SavedViewCount} Saved Views, {_pendingRestore.SmartTagAuthorityCount} Smart Tag authority records, {_pendingRestore.RelationshipAuthorityCount} relationship authority records, and {_pendingRestore.SmartCollectionAuthorityCount} authored Smart Collection records. {_pendingRestore.Conflicts.Count} conflict summary item(s). Confirm Restore to replace reviewed libraries and merge source and exact file-authority records.";
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException)
         {

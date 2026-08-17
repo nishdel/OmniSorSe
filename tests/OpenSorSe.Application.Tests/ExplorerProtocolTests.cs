@@ -282,6 +282,53 @@ public sealed class ExplorerProtocolTests
             value.Contains("private", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>Verifies Protocol 1.0 emits one bounded node for a multi-edge pair and excludes negative authority.</summary>
+    [Fact]
+    public async Task RelatedFiles_AggregatesTypedPairAndHonorsNegativeAuthority()
+    {
+        var fixture = CreateFixture();
+        var root = Assert.Single((await fixture.Reads.GetAccessibleRootsAsync(fixture.Session, CancellationToken.None)).Nodes);
+        var children = await fixture.Reads.GetChildrenAsync(
+            fixture.Session,
+            new ExplorerChildrenRequest(root.Id),
+            CancellationToken.None);
+        var file = Assert.Single(children.Nodes, node => node.Kind == ExplorerNodeKind.File);
+        var first = Related("file-root", "file-nested", "Shared deterministic topic");
+        var second = Related("file-root", "file-nested", "Shared project identifier") with
+        {
+            Relationship = first.Relationship with
+            {
+                Id = "relationship-file-nested-project",
+                Type = RelationshipType.SameProject,
+                Decision = RelationshipDecision.AlwaysRelate,
+                Evidence = [new RelationshipEvidence(RelationshipEvidenceKind.Filename, "identity:deterministic:project-42", "Shared project identifier")],
+            },
+        };
+        var rejected = Related("file-root", "file-private", "Rejected relationship") with
+        {
+            Relationship = Related("file-root", "file-private", "Rejected relationship").Relationship with
+            {
+                Decision = RelationshipDecision.NeverRelate,
+            },
+        };
+        fixture.Source.Related = [first, second, rejected];
+
+        var result = await fixture.Reads.GetRelatedAsync(
+            fixture.Session,
+            new ExplorerRelatedRequest(file.Id, 10),
+            CancellationToken.None);
+
+        var node = Assert.Single(result.Nodes);
+        Assert.Equal("network.md", node.Name);
+        var edge = Assert.Single(result.Edges);
+        Assert.Equal(ExplorerEdgeKind.Related, edge.Kind);
+        Assert.Equal(ExplorerEvidenceClass.Deterministic, edge.EvidenceClass);
+        Assert.Contains("explicit user authority", edge.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("OmniSorSe user relationship authority", edge.Provenance);
+        Assert.False(result.IsTruncated);
+        Assert.Equal("1.0", ExplorerProtocolVersion.Display);
+    }
+
     /// <summary>Verifies details expose bounded facts but never full OCR, transcript, or precise GPS.</summary>
     [Fact]
     public async Task Details_DoNotLeakFullContentOrGps()

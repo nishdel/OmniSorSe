@@ -1,5 +1,6 @@
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Resilience;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
@@ -54,6 +55,24 @@ public sealed class OperationalHealthServiceTests
             Assert.Contains(snapshot.Issues, issue => issue.Code == "source-reachability");
             Assert.Contains(snapshot.Issues, issue => issue.Code == "failed-index-jobs");
             Assert.Equal(0, unhealthyIndexing.DocumentHydrationCount);
+
+            var relationshipAttention = CreateService(
+                root,
+                indexing,
+                new ProfileState(ProfileOwnershipStatus.Owned),
+                new RunState(false),
+                new IndexHealth(true),
+                new Relationships());
+
+            var relationshipSnapshot = await relationshipAttention.CheckAsync();
+
+            var relationshipIssue = Assert.Single(
+                relationshipSnapshot.Issues,
+                issue => issue.Code == "relationship-reanalysis");
+            Assert.Equal(OperationalHealthState.Attention, relationshipIssue.State);
+            Assert.Contains("7 stale file(s)", relationshipIssue.Summary, StringComparison.Ordinal);
+            Assert.Contains("2 invalid record(s)", relationshipIssue.Summary, StringComparison.Ordinal);
+            Assert.DoesNotContain("filename", relationshipIssue.Summary, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -66,7 +85,8 @@ public sealed class OperationalHealthServiceTests
         IBackgroundIndexingService indexing,
         IProfileOwnershipState ownership,
         IApplicationRunState runState,
-        IDeepIndexHealthProbe indexHealth) =>
+        IDeepIndexHealthProbe indexHealth,
+        IRelationshipStore? relationships = null) =>
         new(
             new Configuration(),
             indexing,
@@ -77,7 +97,41 @@ public sealed class OperationalHealthServiceTests
             runState,
             new SavedViews(),
             new WatchedFolders(),
-            new Workflows());
+            new Workflows(),
+            relationships);
+
+    private sealed class Relationships : IRelationshipStore
+    {
+        public Task<RelationshipFileDocument?> GetRelationshipFileAsync(string fileId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task UpsertRelationshipFeaturesAsync(RelationshipFeatureSet features, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<RelationshipFileDocument>> GetRelationshipCandidatesAsync(RelationshipFeatureSet target, int maximumCount, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task SaveRelationshipAnalysisAsync(RelationshipAnalysisBatch batch, int maximumCollectionMembers, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<RelationshipFileDocument>> GetRelationshipFilesAsync(int maximumCount, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<RelatedFile>> GetRelatedFilesAsync(string fileId, RelationshipType? type, RelationshipConfidence? minimumConfidence, RelatedFileSort sort, int maximumCount, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<FileRelationship?> GetRelationshipAsync(string relationshipId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<SmartCollection>> GetCollectionsAsync(int maximumCount, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<SmartCollectionDetails?> GetCollectionAsync(string collectionId, int maximumMembers, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> LinkFilesAsync(string firstFileId, string secondFileId, RelationshipType type, string? customType, bool alwaysRelate, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> UnlinkFilesAsync(string relationshipId, bool neverRelate, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> SetRelationshipDecisionAsync(string relationshipId, RelationshipDecision decision, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> RenameCollectionAsync(string collectionId, string title, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> SetCollectionPinnedAsync(string collectionId, bool pinned, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> MergeCollectionsAsync(string targetCollectionId, string sourceCollectionId, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> SplitCollectionMemberAsync(string collectionId, string fileId, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> ForgetCollectionAsync(string collectionId, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> ForgetFileRelationshipsAsync(string fileId, bool excludeFutureAnalysis, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> ForgetSourceRelationshipsAsync(string sourceId, bool excludeFutureAnalysis, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipOperationResult> PrepareRelationshipRebuildAsync(string fileId, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<RelationshipSearchExpansion>> GetSearchExpansionsAsync(IReadOnlyList<string> seedFileIds, int maximumCount, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RelationshipDiagnosticsSnapshot> GetRelationshipDiagnosticsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RelationshipDiagnosticsSnapshot(4, 1, 5, 0, 0, 0, DateTimeOffset.UtcNow, TimeSpan.Zero, 0, 0, 0, "3.0.0", 0)
+            {
+                StaleRelationshipFileCount = 7,
+                InvalidRecordCount = 2,
+                RepairNeeded = true,
+            });
+        public Task<RelationshipOperationResult> RepairRelationshipsAsync(DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 
     private sealed class Configuration : IConfigurationService
     {

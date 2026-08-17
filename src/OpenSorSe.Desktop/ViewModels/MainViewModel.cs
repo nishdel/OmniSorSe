@@ -49,9 +49,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.SemanticSearch, "Search", FeatureRequirement.Regular, NavigationGroup.Primary, "⌕"),
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
-        new(NavigationDestination.KnowledgeGraph, "Related Files", FeatureRequirement.Regular, NavigationGroup.Primary, "R"),
+        new(NavigationDestination.Collections, "Related Files", FeatureRequirement.Regular, NavigationGroup.Primary, "R"),
         new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
-        new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Secondary, "C"),
+        new(NavigationDestination.KnowledgeGraph, "Knowledge Graph", FeatureRequirement.Regular, NavigationGroup.Secondary, "G"),
         new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Secondary, "▣"),
         new(NavigationDestination.WatchedFolders, "Watched Folders", FeatureRequirement.Regular, NavigationGroup.Secondary, "W"),
         new(NavigationDestination.Workflows, "Workflows", FeatureRequirement.Regular, NavigationGroup.Secondary, "P"),
@@ -520,6 +520,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested += OnScanCancellationRequested;
         Results.PersistedTagsChanged += OnPersistedTagsChanged;
         Results.MeaningSearchRequested += OnMeaningSearchRequested;
+        Results.RelatedFilesRequested += OnRelatedFilesRequested;
         Results.SmartTagFilterRequested += OnSmartTagFilterRequested;
         Results.ChangePlanCreated += OnChangePlanCreated;
         Results.ReturnToDiscoveryRequested += OnReturnToDiscoveryRequested;
@@ -527,6 +528,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.SmartTagReviewCompleted += OnSmartTagReviewCompleted;
         Results.ManageOrganizationRecipesRequested += OnManageOrganizationRecipesRequested;
         SemanticSearch.OpenInFilesRequested += OnOpenInFilesRequested;
+        SemanticSearch.RelatedFilesRequested += OnRelatedFilesRequested;
         SemanticSearch.OrganizationRequested += OnOrganizationRequested;
         Dashboard.UnderstandRequested += OnUnderstandRequested;
         Dashboard.ReviewRequested += OnDashboardReviewRequested;
@@ -906,8 +908,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Catalog => "Saved scans",
         NavigationDestination.CatalogSearch => "Search saved scans",
         NavigationDestination.SemanticSearch => "Search",
-        NavigationDestination.Collections => "Collections",
-        NavigationDestination.KnowledgeGraph => "Related Files",
+        NavigationDestination.Collections => "Related Files",
+        NavigationDestination.KnowledgeGraph => "Knowledge Graph",
         NavigationDestination.CatalogComparison => "Compare scans",
         NavigationDestination.StructureHistory => "Folder plans",
         NavigationDestination.Rules => "Sorting rules",
@@ -1178,6 +1180,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested -= OnScanCancellationRequested;
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
+        Results.RelatedFilesRequested -= OnRelatedFilesRequested;
         Results.SmartTagFilterRequested -= OnSmartTagFilterRequested;
         Results.ChangePlanCreated -= OnChangePlanCreated;
         Results.ReturnToDiscoveryRequested -= OnReturnToDiscoveryRequested;
@@ -1185,6 +1188,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.SmartTagReviewCompleted -= OnSmartTagReviewCompleted;
         Results.ManageOrganizationRecipesRequested -= OnManageOrganizationRecipesRequested;
         SemanticSearch.OpenInFilesRequested -= OnOpenInFilesRequested;
+        SemanticSearch.RelatedFilesRequested -= OnRelatedFilesRequested;
         SemanticSearch.OrganizationRequested -= OnOrganizationRequested;
         Dashboard.UnderstandRequested -= OnUnderstandRequested;
         Dashboard.ReviewRequested -= OnDashboardReviewRequested;
@@ -1262,6 +1266,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void OnOpenInFilesRequested(object? sender, DiscoveryFileOpenRequest request) =>
         _ = await OpenDiscoveryFileAsync(request.Context, request.FileId);
+
+    private async void OnRelatedFilesRequested(object? sender, string fileId)
+    {
+        Navigate(NavigationDestination.Collections);
+        await Collections.SelectFileAsync(fileId);
+    }
 
     private async void OnOrganizationRequested(object? sender, OrganizationSelectionContext selection)
     {

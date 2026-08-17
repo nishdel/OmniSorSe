@@ -115,6 +115,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         OpenContainingFolderCommand = new AsyncRelayCommand<SemanticSearchHit>(OpenFolderAsync, CanOpenHit);
         CopyFullPathCommand = new AsyncRelayCommand<SemanticSearchHit>(CopyFullPathAsync, CanCopyHit);
         OpenInFilesCommand = new RelayCommand<SemanticSearchHit>(OpenInFiles, CanOpenInFiles);
+        OpenRelatedFilesCommand = new RelayCommand<SemanticSearchHit>(OpenRelatedFiles, CanOpenInFiles);
         OrganizeSelectedFilesCommand = new RelayCommand(
             RequestOrganization,
             () => _organizationSelectedIds.Count > 0 && !IsBusy);
@@ -665,6 +666,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the stable-ID handoff from Search into the richer Files surface.</summary>
     public IRelayCommand<SemanticSearchHit> OpenInFilesCommand { get; }
 
+    /// <summary>Gets the stable-ID handoff from Search into direct Related Files.</summary>
+    public IRelayCommand<SemanticSearchHit> OpenRelatedFilesCommand { get; }
+
     /// <summary>Gets the command that snapshots selected Search results for reviewed organization.</summary>
     public IRelayCommand OrganizeSelectedFilesCommand { get; }
 
@@ -793,6 +797,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Raised when Search requests a stable-ID transition into Files.</summary>
     public event EventHandler<DiscoveryFileOpenRequest>? OpenInFilesRequested;
+
+    /// <summary>Raised when Search requests direct relationship context for one stable file identity.</summary>
+    public event EventHandler<string>? RelatedFilesRequested;
 
     /// <summary>Raised with an explicit stable-ID snapshot from Search or the current Saved View.</summary>
     public event EventHandler<OrganizationSelectionContext>? OrganizationRequested;
@@ -1422,6 +1429,14 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         OpenInFilesRequested?.Invoke(this, new DiscoveryFileOpenRequest(fileId, context));
     }
 
+    private void OpenRelatedFiles(SemanticSearchHit? hit)
+    {
+        if (hit?.FileId is { Length: > 0 } fileId)
+        {
+            RelatedFilesRequested?.Invoke(this, fileId);
+        }
+    }
+
     private Task OpenFileAsync(SemanticSearchHit? hit) => OpenAsync(hit, false);
 
     private Task OpenFolderAsync(SemanticSearchHit? hit) => OpenAsync(hit, true);
@@ -1745,6 +1760,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         RemoveFilterCommand.NotifyCanExecuteChanged();
         ClearFiltersCommand.NotifyCanExecuteChanged();
         OpenInFilesCommand.NotifyCanExecuteChanged();
+        OpenRelatedFilesCommand.NotifyCanExecuteChanged();
         OrganizeSelectedFilesCommand.NotifyCanExecuteChanged();
         InspectIndexedDataCommand.NotifyCanExecuteChanged();
         ToggleFacetCommand.NotifyCanExecuteChanged();
