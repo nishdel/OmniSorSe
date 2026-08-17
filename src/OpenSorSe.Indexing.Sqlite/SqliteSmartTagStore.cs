@@ -996,7 +996,8 @@ public sealed partial class SqliteDeepIndexStore
 
     private static IReadOnlyDictionary<string, IReadOnlyList<FileSmartTag>> ReadEffectiveSmartTags(
         SqliteConnection connection,
-        IReadOnlyList<string> fileIds)
+        IReadOnlyList<string> fileIds,
+        SqliteTransaction? transaction = null)
     {
         if (fileIds.Count == 0)
         {
@@ -1004,6 +1005,7 @@ public sealed partial class SqliteDeepIndexStore
         }
 
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         var parameters = new List<string>();
         for (var index = 0; index < fileIds.Count; index++)
         {

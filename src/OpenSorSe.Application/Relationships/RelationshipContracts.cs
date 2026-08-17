@@ -12,6 +12,28 @@ public sealed record RelationshipUserAuthority(
 /// <summary>Reports exact-file-pair relationship authority restoration without path guessing.</summary>
 public sealed record RelationshipAuthorityRestoreResult(int AppliedCount, int SkippedCount);
 
+/// <summary>Contains durable user-authored Smart Collection state without generated membership.</summary>
+public sealed record SmartCollectionUserAuthority(
+    string CollectionId,
+    string? ContextKey,
+    string Title,
+    string Description,
+    string RelationshipSummary,
+    RelationshipType ContextType,
+    SmartCollectionCreationSource CreationSource,
+    bool IsPinned,
+    bool IsUserRenamed,
+    IReadOnlyList<string> ManualMemberFileIds,
+    IReadOnlyList<string> ExcludedMemberFileIds);
+
+/// <summary>Contains all bounded authored collection state, including intentional automatic-collection tombstones.</summary>
+public sealed record SmartCollectionAuthorityBundle(
+    IReadOnlyList<SmartCollectionUserAuthority> Collections,
+    IReadOnlyList<string> ForgottenContextKeys);
+
+/// <summary>Reports exact-identity Smart Collection authority restoration.</summary>
+public sealed record SmartCollectionAuthorityRestoreResult(int AppliedCount, int SkippedCount);
+
 /// <summary>Discovers deterministic, evidence-backed file relationships.</summary>
 public interface IRelationshipEngine
 {
@@ -35,6 +57,19 @@ public interface IRelationshipEngine
 /// <summary>Persists relationships and collections without exposing provider-specific APIs.</summary>
 public interface IRelationshipStore
 {
+    /// <summary>Exports only user-authored collection metadata, membership, overrides, and tombstones.</summary>
+    Task<SmartCollectionAuthorityBundle> ExportSmartCollectionUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new SmartCollectionAuthorityBundle([], []));
+
+    /// <summary>Restores collection authority through collection and exact stable file identities.</summary>
+    Task<SmartCollectionAuthorityRestoreResult> RestoreSmartCollectionUserAuthorityAsync(
+        SmartCollectionAuthorityBundle authority,
+        bool replace,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new SmartCollectionAuthorityRestoreResult(0, 0));
     /// <summary>Exports bounded user-created relationships and persistent pair corrections.</summary>
     Task<IReadOnlyList<RelationshipUserAuthority>> ExportRelationshipUserAuthorityAsync(
         int maximumCount,
@@ -75,6 +110,13 @@ public interface IRelationshipStore
         int maximumCollectionMembers,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Returns visible file identities whose relationship feature version is stale or missing.</summary>
+    Task<IReadOnlyList<string>> GetStaleRelationshipFileIdsAsync(
+        string algorithmVersion,
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<string>>([]);
+
     /// <summary>Returns a bounded file list for manual controls.</summary>
     Task<IReadOnlyList<RelationshipFileDocument>> GetRelationshipFilesAsync(
         int maximumCount,
@@ -88,6 +130,33 @@ public interface IRelationshipStore
         RelatedFileSort sort,
         int maximumCount,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Returns one aggregate context per related target, preserving bounded typed-edge detail.</summary>
+    async Task<IReadOnlyList<RelatedFileContext>> GetRelatedFileContextsAsync(
+        string fileId,
+        RelationshipType? type,
+        RelationshipConfidence? minimumConfidence,
+        RelatedFileSort sort,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await GetRelatedFilesAsync(
+                fileId,
+                type,
+                minimumConfidence,
+                sort,
+                maximumCount,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return RelationshipPairAggregator.Aggregate(rows, maximumCount);
+    }
+
+    /// <summary>Returns explicit positive and negative pair corrections involving one file.</summary>
+    Task<IReadOnlyList<RelationshipPairCorrection>> GetRelationshipCorrectionsAsync(
+        string fileId,
+        int maximumCount,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured relationship store does not expose pair corrections.");
 
     /// <summary>Returns one inspectable relationship.</summary>
     Task<FileRelationship?> GetRelationshipAsync(string relationshipId, CancellationToken cancellationToken = default);
@@ -124,6 +193,14 @@ public interface IRelationshipStore
         RelationshipDecision decision,
         DateTimeOffset changedAtUtc,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Clears explicit authority for one pair so current evidence can be evaluated automatically.</summary>
+    Task<RelationshipOperationResult> ClearRelationshipDecisionAsync(
+        string firstFileId,
+        string secondFileId,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The configured relationship store cannot clear pair authority.");
 
     /// <summary>Renames one virtual collection without moving original files.</summary>
     Task<RelationshipOperationResult> RenameCollectionAsync(
@@ -200,6 +277,12 @@ public interface IRelationshipService
     /// <summary>Analyzes one indexed file incrementally.</summary>
     Task<RelationshipAnalysisResult> AnalyzeFileAsync(string fileId, CancellationToken cancellationToken = default);
 
+    /// <summary>Runs one bounded, restartable relationship-only stale-analysis pass.</summary>
+    Task<RelationshipReanalysisResult> ReanalyzeStaleAsync(
+        int maximumCount = 64,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new RelationshipReanalysisResult(0, 0, 0, false, string.Empty));
+
     /// <summary>Returns a bounded file list for manual relationship controls.</summary>
     Task<IReadOnlyList<RelationshipFileDocument>> GetFilesAsync(
         int maximumCount = 1_000,
@@ -213,6 +296,33 @@ public interface IRelationshipService
         RelatedFileSort sort = RelatedFileSort.Confidence,
         int maximumCount = 200,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Returns one aggregate context per related target.</summary>
+    async Task<IReadOnlyList<RelatedFileContext>> GetRelatedFileContextsAsync(
+        string fileId,
+        RelationshipType? type = null,
+        RelationshipConfidence? minimumConfidence = null,
+        RelatedFileSort sort = RelatedFileSort.Confidence,
+        int maximumCount = 200,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await GetRelatedFilesAsync(
+                fileId,
+                type,
+                minimumConfidence,
+                sort,
+                maximumCount,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return RelationshipPairAggregator.Aggregate(rows, maximumCount);
+    }
+
+    /// <summary>Returns explicit pair corrections, including hidden negative authority.</summary>
+    Task<IReadOnlyList<RelationshipPairCorrection>> GetCorrectionsAsync(
+        string fileId,
+        int maximumCount = 200,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<RelationshipPairCorrection>>([]);
 
     /// <summary>Returns one relationship for inspection.</summary>
     Task<FileRelationship?> GetRelationshipAsync(string relationshipId, CancellationToken cancellationToken = default);
@@ -245,6 +355,13 @@ public interface IRelationshipService
         string relationshipId,
         RelationshipDecision decision,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Removes explicit pair authority and runs bounded automatic re-evaluation.</summary>
+    Task<RelationshipOperationResult> UseAutomaticAsync(
+        string firstFileId,
+        string secondFileId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new RelationshipOperationResult(false, 0, 0, "Automatic relationship reset is unavailable."));
 
     /// <summary>Renames one virtual collection.</summary>
     Task<RelationshipOperationResult> RenameCollectionAsync(

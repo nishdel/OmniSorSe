@@ -7,6 +7,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.DependencyInjection;
 using OpenSorSe.Core.Lifecycle;
 using OpenSorSe.Core.Persistence;
@@ -61,6 +62,8 @@ public partial class App : Avalonia.Application
     private IApplicationHost? _applicationHost;
     private CancellationTokenSource? _graphStartupCancellation;
     private Task? _graphStartupTask;
+    private CancellationTokenSource? _relationshipRefreshCancellation;
+    private Task? _relationshipRefreshTask;
     private ProfileOwnershipLease? _profileOwnershipLease;
     private ApplicationRunStateMarker? _runStateMarker;
 
@@ -153,6 +156,7 @@ public partial class App : Avalonia.Application
         _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
         var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         desktop.MainWindow = new MainWindow(mainViewModel);
+        StartRelationshipRefreshInBackground(_serviceProvider);
         StartKnowledgeGraphInBackground(_serviceProvider);
     }
 
@@ -269,7 +273,20 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ISmartTagStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IRelationshipEngine, DeterministicRelationshipEngine>();
-        services.AddSingleton<RelationshipService>();
+        services.AddSingleton(serviceProvider =>
+            new RelationshipService(
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider.GetRequiredService<IRelationshipStore>(),
+                serviceProvider.GetRequiredService<IRelationshipEngine>(),
+                serviceProvider.GetService<IDiagnosticsEventSink>(),
+                serviceProvider.GetService<TimeProvider>(),
+                cancellationToken =>
+                {
+                    var signal = serviceProvider.GetService<IGraphReconciliationSignal>();
+                    return signal is null
+                        ? ValueTask.CompletedTask
+                        : signal.SignalAsync(cancellationToken);
+                }));
         services.AddSingleton<IRelationshipService>(serviceProvider =>
             serviceProvider.GetRequiredService<RelationshipService>());
         services.AddSingleton<IRelationshipSearchSource>(serviceProvider =>
@@ -506,6 +523,11 @@ public partial class App : Avalonia.Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
+        var relationshipRefreshStopped = false;
+        var relationshipShutdownHandled = LifecycleOperationGuard.TryExecute(
+            "relationship-refresh-shutdown",
+            () => relationshipRefreshStopped = StopRelationshipRefreshSafely(),
+            RecordLifecycleFailure);
         var graphStopped = false;
         var graphShutdownHandled = LifecycleOperationGuard.TryExecute(
             "knowledge-graph-shutdown",
@@ -520,7 +542,7 @@ public partial class App : Avalonia.Application
             () => WaitForLifecycleTask(_applicationHost?.ShutdownAsync(), "application host"),
             RecordLifecycleFailure);
         var providerDisposed = false;
-        if (graphStopped)
+        if (graphStopped && relationshipRefreshStopped)
         {
             providerDisposed = LifecycleOperationGuard.TryExecute(
                 "service-provider-disposal",
@@ -530,10 +552,11 @@ public partial class App : Avalonia.Application
         else
         {
             TryGetLifecycleLogger()?.LogWarning(
-                "Knowledge Graph initialization did not acknowledge bounded shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
+                "A bounded derived-intelligence task did not acknowledge shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
         }
 
-        if (graphShutdownHandled && graphStopped && hostStopped && providerDisposed)
+        if (relationshipShutdownHandled && relationshipRefreshStopped &&
+            graphShutdownHandled && graphStopped && hostStopped && providerDisposed)
         {
             _ = LifecycleOperationGuard.TryExecute(
                 "clean-shutdown-marker",
@@ -549,6 +572,65 @@ public partial class App : Avalonia.Application
             () => _profileOwnershipLease?.Dispose(),
             RecordLifecycleFailure);
         _profileOwnershipLease = null;
+    }
+
+    private void StartRelationshipRefreshInBackground(ServiceProvider serviceProvider)
+    {
+        _relationshipRefreshCancellation = new CancellationTokenSource();
+        _relationshipRefreshTask = Task.Run(
+            () => RefreshRelationshipsSafelyAsync(
+                serviceProvider.GetRequiredService<IRelationshipService>(),
+                _relationshipRefreshCancellation.Token),
+            CancellationToken.None);
+    }
+
+    private static async Task RefreshRelationshipsSafelyAsync(
+        IRelationshipService relationships,
+        CancellationToken cancellationToken)
+    {
+        RelationshipReanalysisResult result;
+        do
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            result = await relationships.ReanalyzeStaleAsync(64, cancellationToken).ConfigureAwait(false);
+            if (result.HasMore && result.FailedCount == 0)
+            {
+                // Yield between independently committed batches. Interruption resumes from the
+                // oldest stale feature version without replaying content extraction.
+                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        while (result.HasMore && result.FailedCount == 0);
+    }
+
+    private bool StopRelationshipRefreshSafely()
+    {
+        _relationshipRefreshCancellation?.Cancel();
+        try
+        {
+            _relationshipRefreshTask?
+                .WaitAsync(TimeSpan.FromSeconds(10))
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            // Cooperative cancellation leaves already committed per-file work resumable.
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            RecordLifecycleFailure("Relationship refresh shutdown", exception);
+            return false;
+        }
+
+        _relationshipRefreshCancellation?.Dispose();
+        _relationshipRefreshCancellation = null;
+        _relationshipRefreshTask = null;
+        return true;
     }
 
     private void StartKnowledgeGraphInBackground(ServiceProvider serviceProvider)

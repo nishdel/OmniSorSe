@@ -221,6 +221,34 @@ public sealed class RelationshipEngineTests
         Assert.Equal("Same invoice number", component.Explanation);
     }
 
+    /// <summary>Verifies exact-stem and filename-prefix intent remain above confirmed contextual expansion.</summary>
+    [Theory]
+    [InlineData("project report.pdf", SearchRankingSignalKind.ExactFilenameStem)]
+    [InlineData("project report final.pdf", SearchRankingSignalKind.FilenamePrefix)]
+    public void Rank_StemAndPrefixRemainAboveConfirmedRelationship(
+        string literalFileName,
+        SearchRankingSignalKind expectedSignal)
+    {
+        var ranker = new HybridSearchRanker(new FeatureHashingEmbeddingProvider(), new SearchSnippetFactory());
+        var interpretation = new SearchInterpretation("project report", "project report", ["project", "report"], []);
+        var literal = Candidate("literal", literalFileName);
+        var contextual = Candidate("related", "opaque-supporting-file.bin") with
+        {
+            RelationshipContext = new SearchRelationshipContext(
+                "seed",
+                RelationshipType.SameProject,
+                RelationshipConfidence.Confirmed,
+                "User-confirmed project relationship",
+                "Project set"),
+        };
+
+        var ranked = ranker.Rank(interpretation, [contextual, literal], 10, CancellationToken.None);
+
+        Assert.Equal("literal", ranked[0].Document.FileId);
+        Assert.Contains(ranked[0].Components, item => item.Kind == expectedSignal);
+        Assert.Equal("related", ranked[1].Document.FileId);
+    }
+
     /// <summary>Verifies direct relationship expansion ordering remains deterministic for otherwise identical candidates.</summary>
     [Fact]
     public void Rank_RelationshipContext_UsesStablePathTieBreak()

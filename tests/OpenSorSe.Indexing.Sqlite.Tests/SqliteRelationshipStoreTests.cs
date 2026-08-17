@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Reflection;
 using Microsoft.Data.Sqlite;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
@@ -20,7 +22,12 @@ public sealed class SqliteRelationshipStoreTests
         using var fixture = new Fixture();
         await using var store = await fixture.CreatePopulatedStoreAsync();
         var files = await store.GetRelationshipFilesAsync(10);
-        var service = new RelationshipService(new Configuration(), store, new DeterministicRelationshipEngine(new FixedTimeProvider(Epoch)));
+        var reconciliation = new ReconciliationSignal();
+        var service = new RelationshipService(
+            new Configuration(),
+            store,
+            new DeterministicRelationshipEngine(new FixedTimeProvider(Epoch)),
+            derivedProjectionInvalidator: reconciliation.SignalAsync);
 
         var first = await service.AnalyzeFileAsync(files[0].FileId);
         var second = await service.AnalyzeFileAsync(files[1].FileId);
@@ -29,6 +36,52 @@ public sealed class SqliteRelationshipStoreTests
         Assert.True(second.CandidateCount > 0);
         Assert.True(second.RelationshipCount > 0);
         Assert.NotEmpty(await service.GetRelatedFilesAsync(files[0].FileId));
+        Assert.Equal(2, reconciliation.Count);
+    }
+
+    /// <summary>Verifies relationship-version refresh is bounded, resumable, cancellable, and leaves extracted content untouched.</summary>
+    [Fact]
+    public async Task RelationshipService_ReanalyzesOnlyStaleRelationshipFeaturesInRestartableBatches()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var files = await store.GetRelationshipFilesAsync(10);
+        foreach (var file in files)
+        {
+            await store.UpsertRelationshipFeaturesAsync(
+                new RelationshipFeatureSet(file.FileId, "stale", "source:records", null, null, null, null, null, [], "old"),
+                Epoch);
+        }
+
+        var extractedBefore = fixture.Scalar("SELECT GROUP_CONCAT(extracted_text, '|') FROM index_content ORDER BY content_hash;");
+        var service = new RelationshipService(
+            new Configuration(),
+            store,
+            new DeterministicRelationshipEngine(new FixedTimeProvider(Epoch)));
+
+        var firstBatch = await service.ReanalyzeStaleAsync(1);
+
+        Assert.Equal(1, firstBatch.SelectedCount);
+        Assert.Equal(1, firstBatch.CompletedCount);
+        Assert.True(firstBatch.HasMore);
+        Assert.Single(await store.GetStaleRelationshipFileIdsAsync("3.0.0", 10));
+        Assert.Equal(extractedBefore, fixture.Scalar("SELECT GROUP_CONCAT(extracted_text, '|') FROM index_content ORDER BY content_hash;"));
+
+        var resumed = await service.ReanalyzeStaleAsync(1);
+
+        Assert.Equal(1, resumed.CompletedCount);
+        Assert.False(resumed.HasMore);
+        Assert.Empty(await store.GetStaleRelationshipFileIdsAsync("3.0.0", 10));
+
+        await store.UpsertRelationshipFeaturesAsync(
+            new RelationshipFeatureSet(files[0].FileId, "stale", "source:records", null, null, null, null, null, [], "old"),
+            Epoch.AddHours(1));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            service.ReanalyzeStaleAsync(1, cancellation.Token));
+        Assert.Single(await store.GetStaleRelationshipFileIdsAsync("3.0.0", 10));
     }
 
     /// <summary>Verifies the application service skips analysis when the user's global relationship setting is off.</summary>
@@ -121,6 +174,188 @@ public sealed class SqliteRelationshipStoreTests
         Assert.Empty(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
         Assert.Empty(await store.GetSearchExpansionsAsync([first.FileId], 10));
         Assert.Equal(1, (await store.GetRelationshipDiagnosticsAsync()).ManualOverrideCount);
+    }
+
+    /// <summary>Verifies positive pair authority survives lost heuristic evidence until the user returns to automatic mode.</summary>
+    [Fact]
+    public async Task AlwaysRelateAuthority_SurvivesReanalysisAndClearsReversibly()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, second) = await GetPairAsync(store);
+        var batch = CreateBatch(first, second);
+        await store.SaveRelationshipAnalysisAsync(batch, 100);
+        var relationship = Assert.Single(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
+
+        await store.SetRelationshipDecisionAsync(
+            relationship.Relationship.Id,
+            RelationshipDecision.AlwaysRelate,
+            Epoch.AddHours(1));
+        await store.SaveRelationshipAnalysisAsync(
+            batch with { Proposals = [], CompletedAtUtc = Epoch.AddHours(2) },
+            100);
+
+        var retained = Assert.Single(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
+        Assert.Equal(RelationshipDecision.AlwaysRelate, retained.Relationship.Decision);
+
+        await store.ClearRelationshipDecisionAsync(first.FileId, second.FileId, Epoch.AddHours(3));
+        await store.SaveRelationshipAnalysisAsync(
+            batch with { Proposals = [], CompletedAtUtc = Epoch.AddHours(4) },
+            100);
+
+        Assert.Empty(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
+        Assert.Empty(await store.GetRelationshipCorrectionsAsync(first.FileId, 10));
+    }
+
+    /// <summary>Verifies typed edges aggregate into one target and pair authority is visible and reversible.</summary>
+    [Fact]
+    public async Task RelatedFiles_AggregatesTypedPairAndClearsPairAuthority()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, second) = await GetPairAsync(store);
+        var batch = CreateBatch(first, second);
+        var secondEdge = batch.Proposals[0].Relationship with
+        {
+            Id = "rel:test-topic",
+            Type = RelationshipType.SameTopic,
+            Evidence = [new RelationshipEvidence(RelationshipEvidenceKind.Keyword, "lexical:derived:mercedes", "Shared keyword: mercedes")],
+        };
+        await store.SaveRelationshipAnalysisAsync(
+            batch with { Proposals = [batch.Proposals[0], new RelationshipProposal(secondEdge, null)] },
+            100);
+
+        var related = Assert.Single(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
+        Assert.Equal(2, related.ContributingRelationships.Count);
+        Assert.Equal(2, related.ContributingRelationships.Select(item => item.Type).Distinct().Count());
+
+        await store.SetRelationshipDecisionAsync(related.Relationship.Id, RelationshipDecision.NeverRelate, Epoch.AddHours(1));
+        Assert.Empty(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
+        var correction = Assert.Single(await store.GetRelationshipCorrectionsAsync(first.FileId, 10));
+        Assert.Equal(RelationshipDecision.NeverRelate, correction.Decision);
+        Assert.False(correction.HasVisibleRelationship);
+
+        var cleared = await store.ClearRelationshipDecisionAsync(first.FileId, second.FileId, Epoch.AddHours(2));
+        Assert.True(cleared.Applied);
+        Assert.Empty(await store.GetRelationshipCorrectionsAsync(first.FileId, 10));
+        await store.SaveRelationshipAnalysisAsync(batch with { CompletedAtUtc = Epoch.AddHours(3) }, 100);
+        Assert.Single(await store.GetRelatedFilesAsync(first.FileId, null, null, RelatedFileSort.Confidence, 10));
+    }
+
+    /// <summary>Verifies relationship hydration projects the existing effective Smart Tag authority.</summary>
+    [Fact]
+    public async Task RelationshipHydration_UsesEffectiveSmartTags()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, _) = await GetPairAsync(store);
+        await store.AddUserTagAsync(first.FileId, "Project Phoenix", Epoch);
+
+        var hydrated = Assert.IsType<RelationshipFileDocument>(await store.GetRelationshipFileAsync(first.FileId));
+
+        var tag = Assert.Single(hydrated.TagEvidence);
+        Assert.Equal(OpenSorSe.Application.SmartTags.SmartTagOrigin.User, tag.Origin);
+        Assert.Equal(OpenSorSe.Application.SmartTags.SmartTagAssignmentState.Accepted, tag.State);
+        Assert.Contains(tag.CanonicalKey, hydrated.Tags);
+    }
+
+    /// <summary>Verifies relationship-only algorithm staleness is selected deterministically without touching other stages.</summary>
+    [Fact]
+    public async Task StaleRelationshipSelection_IsVersionTargetedAndBounded()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var files = await store.GetRelationshipFilesAsync(10);
+        var (first, second) = await GetPairAsync(store);
+        var currentBatch = CreateBatch(first, second);
+        await store.SaveRelationshipAnalysisAsync(
+            currentBatch with
+            {
+                Features = currentBatch.Features with { FeatureVersion = "current" },
+                AlgorithmVersion = "current",
+            },
+            100);
+        await store.UpsertRelationshipFeaturesAsync(
+            new RelationshipFeatureSet(files[0].FileId, "alpha", "source:records", null, null, null, null, null, [], "old"),
+            Epoch);
+        await store.UpsertRelationshipFeaturesAsync(
+            new RelationshipFeatureSet(files[1].FileId, "beta", "source:records", null, null, null, null, null, [], "current"),
+            Epoch);
+
+        var stale = await store.GetStaleRelationshipFileIdsAsync("current", 10);
+        var diagnostics = await store.GetRelationshipDiagnosticsAsync();
+
+        Assert.Equal([files[0].FileId], stale);
+        Assert.Equal(1, diagnostics.StaleRelationshipFileCount);
+        Assert.True(diagnostics.RepairNeeded);
+        Assert.Equal(0, diagnostics.InvalidRecordCount);
+
+        var orphanPair = new[] { "missing", files[0].FileId }.Order(StringComparer.Ordinal).ToArray();
+        fixture.Execute(
+            $"PRAGMA foreign_keys=OFF; INSERT INTO relationship_pair_overrides(first_file_id, second_file_id, decision, relationship_type, changed_utc_ticks) VALUES('{orphanPair[0]}', '{orphanPair[1]}', {(int)RelationshipDecision.NeverRelate}, {(int)RelationshipType.SameTopic}, 0);");
+        var invalid = await store.GetRelationshipDiagnosticsAsync();
+        Assert.Equal(1, invalid.InvalidRecordCount);
+        Assert.True(invalid.RepairNeeded);
+    }
+
+    /// <summary>Verifies authored automatic-collection rename, pin, exclusion, and tombstone state round-trips.</summary>
+    [Fact]
+    public async Task SmartCollectionAuthority_RoundTripsWithoutGeneratedEdges()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, second) = await GetPairAsync(store);
+        await store.SaveRelationshipAnalysisAsync(CreateBatch(first, second), 100);
+        var collection = Assert.Single(await store.GetCollectionsAsync(10));
+        await store.RenameCollectionAsync(collection.Id, "My Purchase", Epoch.AddHours(1));
+        await store.SetCollectionPinnedAsync(collection.Id, true, Epoch.AddHours(1));
+        await store.SplitCollectionMemberAsync(collection.Id, second.FileId, Epoch.AddHours(1));
+        var authority = await store.ExportSmartCollectionUserAuthorityAsync(100);
+
+        await store.RestoreSmartCollectionUserAuthorityAsync(
+            new SmartCollectionAuthorityBundle([], []),
+            replace: true,
+            changedAtUtc: Epoch.AddHours(2));
+        await store.RestoreSmartCollectionUserAuthorityAsync(authority, replace: true, changedAtUtc: Epoch.AddHours(3));
+
+        var restored = Assert.IsType<SmartCollectionDetails>(await store.GetCollectionAsync(collection.Id, 10));
+        Assert.Equal("My Purchase", restored.Collection.Title);
+        Assert.True(restored.Collection.IsPinned);
+        Assert.True(restored.Collection.IsUserRenamed);
+        Assert.DoesNotContain(restored.Members, item => item.FileId == second.FileId);
+
+        await store.ForgetCollectionAsync(collection.Id, Epoch.AddHours(4));
+        var tombstones = await store.ExportSmartCollectionUserAuthorityAsync(100);
+        Assert.Contains("purchase:invoice-1234", tombstones.ForgottenContextKeys);
+    }
+
+    /// <summary>Verifies an automatic collection exclusion survives restore before generated membership is rebuilt.</summary>
+    [Fact]
+    public async Task SmartCollectionAuthority_RestoresAutomaticPlaceholderAndExclusionBeforeReanalysis()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        var (first, second) = await GetPairAsync(store);
+        var batch = CreateBatch(first, second);
+        await store.SaveRelationshipAnalysisAsync(batch, 100);
+        var collection = Assert.Single(await store.GetCollectionsAsync(10));
+        await store.SplitCollectionMemberAsync(collection.Id, second.FileId, Epoch.AddHours(1));
+        var authority = await store.ExportSmartCollectionUserAuthorityAsync(100);
+        fixture.Execute($"DELETE FROM smart_collections WHERE id = '{collection.Id}';");
+
+        var restored = await store.RestoreSmartCollectionUserAuthorityAsync(
+            authority,
+            replace: false,
+            changedAtUtc: Epoch.AddHours(2));
+
+        Assert.True(restored.AppliedCount >= 2);
+        Assert.Empty(await store.GetCollectionsAsync(10));
+        Assert.Equal("1", fixture.Scalar($"SELECT COUNT(*) FROM smart_collection_member_overrides WHERE collection_id = '{collection.Id}' AND file_id = '{second.FileId}';"));
+
+        await store.SaveRelationshipAnalysisAsync(batch with { CompletedAtUtc = Epoch.AddHours(3) }, 100);
+        var regenerated = Assert.IsType<SmartCollectionDetails>(await store.GetCollectionAsync(collection.Id, 10));
+        Assert.Contains(regenerated.Members, item => item.FileId == first.FileId);
+        Assert.DoesNotContain(regenerated.Members, item => item.FileId == second.FileId);
     }
 
     /// <summary>Verifies explicit manual links remain during targeted automatic rebuild preparation.</summary>
@@ -229,6 +464,9 @@ public sealed class SqliteRelationshipStoreTests
         await using var store = await fixture.CreatePopulatedStoreAsync();
         var (first, second) = await GetPairAsync(store);
         await store.SaveRelationshipAnalysisAsync(CreateBatch(first, second), 100);
+        await store.LinkFilesAsync(first.FileId, second.FileId, RelationshipType.Manual, null, true, Epoch);
+        var collection = Assert.Single(await store.GetCollectionsAsync(10));
+        await store.SplitCollectionMemberAsync(collection.Id, first.FileId, Epoch.AddMinutes(1));
 
         var result = await store.ForgetFileRelationshipsAsync(first.FileId, true, Epoch.AddHours(1));
         var retained = Assert.IsType<RelationshipFileDocument>(await store.GetRelationshipFileAsync(first.FileId));
@@ -236,6 +474,10 @@ public sealed class SqliteRelationshipStoreTests
         Assert.True(result.Applied);
         Assert.True(retained.RelationshipAnalysisSuppressed);
         Assert.Empty(await store.GetRelatedFilesAsync(second.FileId, null, null, RelatedFileSort.Confidence, 10));
+        Assert.Empty(await store.GetRelationshipCorrectionsAsync(second.FileId, 10));
+        Assert.Equal("0", fixture.Scalar($"SELECT COUNT(*) FROM relationship_pair_overrides WHERE first_file_id = '{first.FileId}' OR second_file_id = '{first.FileId}';"));
+        Assert.Equal("0", fixture.Scalar($"SELECT COUNT(*) FROM smart_collection_members WHERE file_id = '{first.FileId}';"));
+        Assert.Equal("0", fixture.Scalar($"SELECT COUNT(*) FROM smart_collection_member_overrides WHERE file_id = '{first.FileId}';"));
         Assert.NotNull(await store.InspectFileAsync(first.FileId));
     }
 
@@ -486,6 +728,66 @@ public sealed class SqliteRelationshipStoreTests
         Assert.Equal(files[1].FileId, candidate.FileId);
     }
 
+    /// <summary>Verifies skewed common evidence in a conceptual 100k library remains capped and deterministic.</summary>
+    [Fact]
+    [Trait("Category", "PerformanceRegression")]
+    public async Task CandidateSelection_100kSkewedLibraryRemainsBoundedAndDeterministic()
+    {
+        using var fixture = new Fixture();
+        await using var store = await fixture.CreatePopulatedStoreAsync();
+        fixture.Execute(
+            """
+            WITH RECURSIVE sequence(value) AS (
+                VALUES(1)
+                UNION ALL SELECT value + 1 FROM sequence WHERE value < 100000
+            )
+            INSERT INTO index_files(
+                id, source_id, full_path, path_key, relative_path, relative_path_key,
+                stable_identity, file_system_id, length, creation_utc_ticks, modified_utc_ticks,
+                attributes, metadata_fingerprint, content_hash, processor_fingerprint,
+                indexing_level, fully_indexed, deleted_utc_ticks, last_seen_run_id, updated_utc_ticks)
+            SELECT printf('scale-%06d', value), 'source', printf('/scale/common/file-%06d.txt', value),
+                   printf('/scale/common/file-%06d.txt', value), printf('common/file-%06d.txt', value),
+                   printf('common/file-%06d.txt', value), printf('stable-%06d', value), 'scale-volume',
+                   128, 638924400000000000, 638924400000000000, 0, 'scale', NULL, 'scale',
+                   1, 1, NULL, NULL, 638924400000000000
+            FROM sequence;
+
+            INSERT INTO index_relationship_features(
+                file_id, normalized_stem, folder_key, content_hash, date_bucket,
+                extracted_text_fingerprint, ocr_text_fingerprint, summary_fingerprint,
+                keyword_keys_json, feature_version, updated_utc_ticks)
+            SELECT id, 'generic document', 'source:source:common', NULL, NULL, NULL, NULL, NULL,
+                   '["context:derived:common-topic"]', '3.0.0', 638924400000000000
+            FROM index_files WHERE id LIKE 'scale-%';
+
+            INSERT INTO index_relationship_feature_terms(file_id, term)
+            SELECT id, 'context:derived:common-topic' FROM index_files WHERE id LIKE 'scale-%';
+            """);
+        var target = new RelationshipFeatureSet(
+            "scale-000001",
+            "generic document",
+            "source:source:common",
+            null,
+            null,
+            null,
+            null,
+            null,
+            ["context:derived:common-topic"],
+            "3.0.0");
+
+        var stopwatch = Stopwatch.StartNew();
+        var first = await store.GetRelationshipCandidatesAsync(target, 256);
+        var second = await store.GetRelationshipCandidatesAsync(target, 256);
+        stopwatch.Stop();
+
+        Assert.InRange(first.Count, 1, 256);
+        Assert.Equal(first.Select(item => item.FileId), second.Select(item => item.FileId));
+        Assert.DoesNotContain(first, item => item.FileId == target.FileId);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(15), $"Two 100k-library candidate queries took {stopwatch.Elapsed}.");
+        Assert.True(new FileInfo(fixture.DatabasePath).Length < 128L * 1024L * 1024L, "The bounded relationship projection exceeded 128 MiB.");
+    }
+
     /// <summary>Oversized candidate terms are rejected before JSON or indexed projections are written.</summary>
     [Fact]
     public async Task RelationshipFeatures_RejectOversizedCandidateTerm()
@@ -697,5 +999,17 @@ public sealed class SqliteRelationshipStoreTests
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class ReconciliationSignal : IGraphReconciliationSignal
+    {
+        public int Count { get; private set; }
+
+        public ValueTask SignalAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Count++;
+            return ValueTask.CompletedTask;
+        }
     }
 }

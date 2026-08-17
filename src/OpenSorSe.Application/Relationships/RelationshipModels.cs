@@ -1,6 +1,7 @@
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 
 namespace OpenSorSe.Application.Relationships;
 
@@ -113,6 +114,40 @@ public enum RelationshipEvidenceKind
     Manual,
 }
 
+/// <summary>Groups correlated evidence so one underlying observation cannot inflate confidence repeatedly.</summary>
+public enum RelationshipEvidenceFamily
+{
+    /// <summary>Stable hashes and strong document identifiers.</summary>
+    Identity,
+    /// <summary>Bounded text, OCR, transcript, and media-OCR fingerprints.</summary>
+    ContentFingerprint,
+    /// <summary>Typed topics and textual entities.</summary>
+    NamedContext,
+    /// <summary>Filename terms and generated keywords.</summary>
+    FilenameLexical,
+    /// <summary>User, accepted, or Strong deterministic tag authority.</summary>
+    TagAuthority,
+    /// <summary>Source-scoped structure, media metadata, and typed timestamps.</summary>
+    StructuralMediaTemporal,
+    /// <summary>Semantic similarity that may only corroborate another family.</summary>
+    SemanticCorroboration,
+    /// <summary>An explicit user-created relationship.</summary>
+    UserAuthority,
+}
+
+/// <summary>Identifies whether retained evidence is observed, derived, AI-derived, or explicit user authority.</summary>
+public enum RelationshipEvidenceOrigin
+{
+    /// <summary>Observed or deterministically calculated local evidence.</summary>
+    Deterministic,
+    /// <summary>Locally derived evidence that is not objective identity.</summary>
+    Derived,
+    /// <summary>Evidence originating in an explicitly enabled AI provider.</summary>
+    AiDerived,
+    /// <summary>Explicit user authority.</summary>
+    User,
+}
+
 /// <summary>Identifies a persistent user correction applied to one file pair.</summary>
 public enum RelationshipDecision
 {
@@ -152,7 +187,77 @@ public enum CollectionMembershipSource
 public sealed record RelationshipEvidence(
     RelationshipEvidenceKind Kind,
     string EvidenceKey,
-    string Explanation);
+    string Explanation)
+{
+    /// <summary>Gets the independent scoring family encoded by the relationship engine.</summary>
+    public RelationshipEvidenceFamily Family => RelationshipEvidenceMetadata.GetFamily(Kind, EvidenceKey);
+
+    /// <summary>Gets the retained evidence origin without exposing provider-specific content.</summary>
+    public RelationshipEvidenceOrigin Origin => RelationshipEvidenceMetadata.GetOrigin(Kind, EvidenceKey);
+}
+
+/// <summary>Interprets backward-compatible evidence keys without adding a second persistence authority.</summary>
+public static class RelationshipEvidenceMetadata
+{
+    /// <summary>Gets the evidence family, using the v2.12 key prefix or a safe legacy fallback.</summary>
+    public static RelationshipEvidenceFamily GetFamily(RelationshipEvidenceKind kind, string evidenceKey)
+    {
+        var separator = evidenceKey.IndexOf(':');
+        var prefix = separator > 0 ? evidenceKey[..separator] : string.Empty;
+        return prefix switch
+        {
+            "identity" => RelationshipEvidenceFamily.Identity,
+            "content" => RelationshipEvidenceFamily.ContentFingerprint,
+            "context" => RelationshipEvidenceFamily.NamedContext,
+            "lexical" => RelationshipEvidenceFamily.FilenameLexical,
+            "tag" => RelationshipEvidenceFamily.TagAuthority,
+            "structural" => RelationshipEvidenceFamily.StructuralMediaTemporal,
+            "semantic" => RelationshipEvidenceFamily.SemanticCorroboration,
+            "user" => RelationshipEvidenceFamily.UserAuthority,
+            _ => kind switch
+            {
+                RelationshipEvidenceKind.DuplicateContent or RelationshipEvidenceKind.Metadata => RelationshipEvidenceFamily.Identity,
+                RelationshipEvidenceKind.ExtractedText or RelationshipEvidenceKind.OcrText or
+                    RelationshipEvidenceKind.Summary or RelationshipEvidenceKind.MediaTranscript or
+                    RelationshipEvidenceKind.MediaOcr => RelationshipEvidenceFamily.ContentFingerprint,
+                RelationshipEvidenceKind.ContentTopic or RelationshipEvidenceKind.ContentEntity => RelationshipEvidenceFamily.NamedContext,
+                RelationshipEvidenceKind.Filename or RelationshipEvidenceKind.Keyword => RelationshipEvidenceFamily.FilenameLexical,
+                RelationshipEvidenceKind.Tag => RelationshipEvidenceFamily.TagAuthority,
+                RelationshipEvidenceKind.SemanticConcept => RelationshipEvidenceFamily.SemanticCorroboration,
+                RelationshipEvidenceKind.Manual => RelationshipEvidenceFamily.UserAuthority,
+                _ => RelationshipEvidenceFamily.StructuralMediaTemporal,
+            },
+        };
+    }
+
+    /// <summary>Gets the origin encoded after the family prefix, with a conservative legacy fallback.</summary>
+    public static RelationshipEvidenceOrigin GetOrigin(RelationshipEvidenceKind kind, string evidenceKey)
+    {
+        if (evidenceKey.Contains(":ai:", StringComparison.Ordinal))
+        {
+            return RelationshipEvidenceOrigin.AiDerived;
+        }
+
+        if (evidenceKey.Contains(":derived:", StringComparison.Ordinal))
+        {
+            return RelationshipEvidenceOrigin.Derived;
+        }
+
+        return kind == RelationshipEvidenceKind.Manual || evidenceKey.StartsWith("user:", StringComparison.Ordinal)
+            ? RelationshipEvidenceOrigin.User
+            : RelationshipEvidenceOrigin.Deterministic;
+    }
+}
+
+/// <summary>Contains one bounded effective tag used by relationship analysis.</summary>
+public sealed record RelationshipTagEvidence(
+    string CanonicalKey,
+    string DisplayName,
+    SmartTagType Type,
+    ContentIntelligenceConfidence Confidence,
+    SmartTagOrigin Origin,
+    SmartTagAssignmentState State,
+    SmartTagDecision Decision);
 
 /// <summary>Contains one provider-neutral persisted relationship.</summary>
 public sealed record FileRelationship
@@ -262,6 +367,9 @@ public sealed record RelationshipFileDocument
     /// <summary>Gets bounded accepted tags.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    /// <summary>Gets typed effective tag authority without creating a second tag store.</summary>
+    public IReadOnlyList<RelationshipTagEvidence> TagEvidence { get; init; } = [];
+
     /// <summary>Gets one bounded related-concept representation.</summary>
     public IReadOnlyList<float>? SemanticRepresentation { get; init; }
 
@@ -270,6 +378,9 @@ public sealed record RelationshipFileDocument
 
     /// <summary>Gets whether relationship analysis is excluded for this file.</summary>
     public bool RelationshipAnalysisSuppressed { get; init; }
+
+    /// <summary>Gets compact persisted features when candidate hydration intentionally omits large content fields.</summary>
+    public RelationshipFeatureSet? PrecomputedRelationshipFeatures { get; init; }
 }
 
 /// <summary>Contains bounded, indexable features used to select relationship candidates.</summary>
@@ -335,6 +446,14 @@ public sealed record RelationshipAnalysisResult(
     TimeSpan Duration,
     bool Skipped,
     string Message);
+
+/// <summary>Reports one bounded restartable relationship-only refresh pass.</summary>
+public sealed record RelationshipReanalysisResult(
+    int SelectedCount,
+    int CompletedCount,
+    int FailedCount,
+    bool HasMore,
+    string AlgorithmVersion);
 
 /// <summary>Contains one persisted Smart Collection.</summary>
 public sealed record SmartCollection
@@ -415,7 +534,58 @@ public sealed record RelatedFile
 
     /// <summary>Gets the persisted relationship.</summary>
     public required FileRelationship Relationship { get; init; }
+
+    /// <summary>Gets all bounded persisted relationship types aggregated for this exact target pair.</summary>
+    public IReadOnlyList<FileRelationship> ContributingRelationships { get; init; } = [];
+
+    /// <summary>Gets a concise bounded list of independent evidence families.</summary>
+    public string EvidenceClassification => string.Join(
+        ", ",
+        Relationship.Evidence.Select(item => item.Family).Distinct().Order());
+
+    /// <summary>Gets explicit authority without representing inference as a percentage.</summary>
+    public string AuthorityState => Relationship.Decision switch
+    {
+        RelationshipDecision.Confirmed or RelationshipDecision.AlwaysRelate => "Related by user authority",
+        RelationshipDecision.Rejected or RelationshipDecision.NeverRelate => "Not related by user authority",
+        _ => "Automatic evidence",
+    };
 }
+
+/// <summary>Contains one pair-level Related Files projection with no duplicate target.</summary>
+public sealed record RelatedFileContext(
+    string FileId,
+    string FileName,
+    string FullPath,
+    string SourceName,
+    FileRelationship PrimaryRelationship,
+    IReadOnlyList<FileRelationship> Relationships,
+    IReadOnlyList<RelationshipType> ContributingTypes,
+    IReadOnlyList<RelationshipEvidence> Evidence,
+    RelationshipDecision Decision,
+    DateTimeOffset LastValidatedAtUtc,
+    string Algorithm,
+    string AlgorithmVersion)
+{
+    /// <summary>Gets the bounded explanation composed from retained pair evidence.</summary>
+    public string Explanation => string.Join(
+        "; ",
+        Evidence.Select(item => item.Explanation).Distinct(StringComparer.Ordinal));
+}
+
+/// <summary>Contains one bounded explicit pair correction, including hidden negative authority.</summary>
+public sealed record RelationshipPairCorrection(
+    string FirstFileId,
+    string SecondFileId,
+    string OtherFileId,
+    string OtherFileName,
+    string OtherFullPath,
+    string OtherSourceName,
+    RelationshipDecision Decision,
+    RelationshipType Type,
+    string? CustomType,
+    DateTimeOffset ChangedAtUtc,
+    bool HasVisibleRelationship);
 
 /// <summary>Identifies a deterministic Related Files sort order.</summary>
 public enum RelatedFileSort
@@ -453,7 +623,17 @@ public sealed record RelationshipDiagnosticsSnapshot(
     int LastGeneratedRelationshipCount,
     int LastGeneratedCollectionCount,
     string AlgorithmVersion,
-    int RepairOperationCount);
+    int RepairOperationCount)
+{
+    /// <summary>Gets the bounded count of visible files whose relationship features use another version.</summary>
+    public long StaleRelationshipFileCount { get; init; }
+
+    /// <summary>Gets the aggregate count of relationship-authority records that reference unavailable files.</summary>
+    public long InvalidRecordCount { get; init; }
+
+    /// <summary>Gets whether invalid or stale relationship state needs bounded repair/reanalysis.</summary>
+    public bool RepairNeeded { get; init; }
+}
 
 /// <summary>Contains a controlled index-only relationship operation result.</summary>
 public sealed record RelationshipOperationResult(
