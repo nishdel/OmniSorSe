@@ -34,7 +34,7 @@ file is not replaced until an explicit Settings save or state restore.
 ## Logical state backup and restore
 
 **Export OmniSorSe State** creates one bounded `.oms-state` ZIP with exactly
-`manifest.json` and `state.json`. The manifest records format 1, schema 6,
+`manifest.json` and `state.json`. The current writer records format 2, schema 6,
 application version, source revision, build configuration, creation time, and
 the SHA-256 payload digest. Creation uses a same-directory temporary file and
 atomic replacement. On Unix, the resulting file is owner-read/write.
@@ -42,13 +42,16 @@ atomic replacement. On Unix, the resulting file is owner-read/write.
 The logical payload contains settings, registered/watched source definitions,
 user workflow profiles and organization recipes, Saved Views, explicit User
 Tags, accepted/rejected Smart Tag decisions, and manual relationship/pair
-decisions. Relationship authority uses exact stable file pairs and never path
+decisions. v2.12 format 2 also includes exact-pair authority and user-authored
+Smart Collection titles, pins, manual/merged identity, manual membership,
+exclusions/splits, and intentional tombstones. The reader continues to accept
+format 1. Relationship authority uses exact stable file pairs and never path
 guessing. It intentionally excludes
 extracted text, OCR, transcripts, thumbnails, generated classifications,
 Search/index data, background jobs, Change Plans, and journals. The archive can
 contain private source paths and authored labels and must be protected as
 sensitive user data; it is not encrypted. The independently journalled
-Knowledge Graph decision sidecar is not part of format 1 and remains a separate
+Knowledge Graph decision sidecar is not part of format 2 and remains a separate
 recovery/export limitation.
 
 Restore never extracts entries. It rejects extra/duplicate/traversal entries,

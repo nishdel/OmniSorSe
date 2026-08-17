@@ -5,6 +5,13 @@
 > See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md). This v1.9 guide remains
 > authoritative for direct relationships and Smart Collections.
 
+> v2.12 note: the current candidate keeps this schema-6 authority and adds
+> capped evidence families, one pair-level Related Files projection, reversible
+> Related/Not Related/Use automatic controls, compact bounded candidate
+> hydration, and format-2 logical backup for authored collection state. Direct
+> Related Files no longer depends on the optional Knowledge Graph. See
+> [Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md).
+
 OpenSorSe can use information already retained by background indexing to find
 evidence that files belong together. It records why a relationship was made;
 it does not ask you to trust an unexplained AI answer.
@@ -46,6 +53,11 @@ Use the controls to:
 - sort or filter Related Files;
 - rebuild relationship data for one file;
 - repair stale or inconsistent derived records.
+
+For one direct pair, **Related** stores positive authority, **Not Related**
+stores negative authority, and **Use automatic result** clears that authority
+and returns the pair to bounded deterministic analysis. Negative corrections
+remain visible from the selected file so they can be reversed.
 
 Manual changes persist. **Never relate**, collection splits, and forgotten
 collections prevent immediate automatic recreation.

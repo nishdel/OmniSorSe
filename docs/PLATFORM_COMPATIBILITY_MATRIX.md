@@ -2,7 +2,7 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** unreleased OmniSorSe v2.11 candidate on the v2.10 RC stack;
+**Current source:** unreleased OmniSorSe v2.12 candidate on the v2.5-v2.11 RC stack;
 v2.4.0 remains the latest published release
 
 **Last reviewed:** 2026-08-17

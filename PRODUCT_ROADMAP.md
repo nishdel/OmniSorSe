@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-08-12
+**Last repository review:** 2026-08-17
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -584,6 +584,29 @@ graph, protocol, updater, or Linux-package feature.
 
 See [v2.11 Supported Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md)
 and the [v2.11 manual addendum](docs/MANUAL_TESTING_v2.11.md).
+
+### v2.12 — Trusted Relationships & Context
+
+**Branch:** `v2.12-trusted-relationships-context`, created directly from the
+committed v2.11 release candidate.
+
+**Merged status:** Implementation candidate; automated gates and maintainer
+manual validation must be recorded before integration or publication.
+
+v2.12 extends the existing schema-6 relationship authority rather than adding
+a second graph or clustering system. Independent capped evidence families,
+reversible Related/Not Related/Use automatic authority, pair-level presentation,
+bounded indexed candidate buckets, compact hydration, and relationship-only
+version refresh improve trust and large-library behavior. Direct Related Files
+works without Knowledge Graph and remains secondary to literal Search intent.
+
+Logical `.oms-state` format 2 preserves authored pair and Smart Collection
+authority while retaining format-1 import. Schema 6, Explorer Protocol 1.0,
+.NET 10, optional AI, optional derived Knowledge Graph, Smart Collections, and
+the Change Plan mutation boundary remain unchanged.
+
+See [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md)
+and the [v2.12 manual addendum](docs/MANUAL_TESTING_v2.12.md).
 
 ## Planned
 

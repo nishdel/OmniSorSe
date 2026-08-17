@@ -242,7 +242,7 @@ do not copy it into the repository.
 Do not overwrite a running installation. Each store/provider owns its schema,
 migration, newer-version rejection, corruption, and recovery behavior.
 
-Current v2.11 candidate Windows/macOS packages are self-contained with .NET 10;
+Current v2.12 candidate Windows/macOS packages are self-contained with .NET 10;
 users do not install a separate runtime. OmniSorSe has no in-app updater. Obtain
 a trusted package, verify its checksum/signature status and embedded source
 identity, close the app, replace/install it, then review startup health.

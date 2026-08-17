@@ -167,6 +167,9 @@ public sealed partial class RepositoryDocumentationTests
             "SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md",
             "MANUAL_TESTING_v2.11.md",
             "RELEASE_NOTES_v2.11.0.md",
+            "TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md",
+            "MANUAL_TESTING_v2.12.md",
+            "RELEASE_NOTES_v2.12.0.md",
             "SEARCH_AND_AI_QUALITY_v2.1.md",
             "MANUAL_TESTING_v2.1.md",
             "RELEASE_PACKAGING_v2.0.md",
@@ -307,15 +310,15 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("\"version\": \"10.0.400\"", globalJson, StringComparison.Ordinal);
         var buildProperties = XDocument.Load(Path.Combine(RepositoryRoot, "Directory.Build.props"));
         Assert.Equal("net10.0", buildProperties.Descendants("TargetFramework").Single().Value);
-        Assert.Equal("2.11.0-rc", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
-        Assert.Equal("2.11.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
+        Assert.Equal("2.12.0-rc", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
+        Assert.Equal("2.12.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
 
         var releaseWorkflow = File.ReadAllText(Path.Combine(
             RepositoryRoot,
             ".github",
             "workflows",
             "release-packaging.yml"));
-        Assert.Contains("default: 2.11.0", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("default: 2.12.0", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("global-json-file: global.json", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-WindowsArtifacts.ps1", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-MacArtifacts.sh", releaseWorkflow, StringComparison.Ordinal);

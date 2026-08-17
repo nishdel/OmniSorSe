@@ -2,7 +2,7 @@
 
 **Document type:** Living technology inventory
 
-**Scope:** Current v2.11 candidate source; a technology in a roadmap or historical
+**Scope:** Current v2.12 candidate source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack

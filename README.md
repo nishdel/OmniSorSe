@@ -92,6 +92,14 @@ provenance and native package smoke evidence, and leaves schema 6, product
 behavior, Explorer Protocol v1, and OmniBrille unchanged. It is not released.
 See the [v2.11 runtime record](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md).
 
+The v2.12 candidate, **Trusted Relationships & Context**, builds directly on
+the committed v2.11 candidate. It strengthens the existing schema-6
+relationship authority with capped evidence families, reversible pair
+corrections, graph-independent Related Files, bounded large-library candidate
+selection, and `.oms-state` format 2 for authored relationship/Smart Collection
+state. Schema 6 and Explorer Protocol 1.0 remain unchanged. It is not released.
+See the [v2.12 implementation record](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md).
+
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The
 [manual checklist](docs/MANUAL_TESTING_v2.4.md) separates genuine Windows
@@ -134,8 +142,8 @@ update, uninstall, application-data, and checksum guidance is in
 | Watched Folders | Treats operating-system events as hints, verifies actual state, performs bounded incremental analysis, and reconciles missed/offline changes. Watching never applies file changes. |
 | Search | A primary navigation destination using deterministic local filename, folder, path, type, metadata, tag, retained text/OCR, summary, keyword, selected-text, optional related-concept evidence, and optional direct relationship context. v2.7 selects plausible IDs across the complete authorized index before bounded hydration, preserving exact/stem/prefix order beyond the old path-ordered projection ceiling. |
 | Search explanations | Preserves exact/literal evidence above related-concept-only similarity and exposes actual ranking reasons plus bounded source-labelled snippets. |
-| Relationships and Collections | Discovers bounded deterministic relationships from retained evidence, provides virtual Smart Collections and timelines, preserves user corrections, and never moves original files. |
-| Related Files | Optionally projects stable files, sources, folders, Collections, exact-content sets, and manual entities into an evidence-backed local Knowledge Graph with bounded browsing, privacy/repair controls, and opt-out Search context. It is disabled by default. |
+| Relationships and Collections | Discovers bounded deterministic relationships through capped independent evidence families, provides virtual Smart Collections and timelines, preserves reversible pair/collection authority, and never moves original files. |
+| Related Files | Directly shows one aggregated target per related pair with a confidence band and bounded reason, independently of the optional Knowledge Graph. Search and Files can open the selected stable identity here; Related, Not Related, and Use automatic result remain reversible. |
 | Content and OCR | Extracts bounded metadata/native text for supported formats and can call an externally installed local Tesseract 5 engine for enabled image/scanned-page OCR. |
 | Media Intelligence | Adds bounded structured image metadata and EXIF-oriented lazy thumbnails; optional image/video-frame OCR; optional `ffprobe` audio/video metadata and `ffmpeg` representative frames; and provider-neutral transcription/visual-description boundaries. v2.3 can use an explicitly configured user-managed whisper.cpp CLI/model for local speech transcription; no visual-description provider is included. Missing optional tools never disable ordinary Search. |
 | Content Intelligence | Derives bounded normalized topics, textual entities, keywords, and a one-sentence extractive summary from already indexed local evidence, retaining provider/version and source provenance. These remain optional clues rather than facts. |
@@ -151,6 +159,7 @@ update, uninstall, application-data, and checksum guidance is in
 | Persistence | The current unreleased source uses bounded local JSON, schema-6 embedded Search with shared media/content evidence, normalized Smart Tag authority, and a bounded relationship-term projection, plus isolated schema-1 Knowledge Graph/decision sidecars. v2.7 keeps schema 6 and stores Saved View rules in bounded atomic application-owned JSON. The established OpenSorSe profile locations remain authoritative. No database server is required. |
 | Production resilience (unreleased v2.10) | Enforces one writer per profile; fails closed on corrupt mutation/recovery stores; provides bounded health, abnormal-shutdown evidence, logical user-state backup/restore, and coordinated Forget. |
 | Runtime/platform readiness (unreleased v2.11) | Targets .NET 10 LTS throughout and strengthens self-contained runtime/RID/source provenance plus native smoke evidence without changing schema or product behavior. |
+| Trusted relationships (unreleased v2.12) | Keeps schema 6 and Protocol 1.0 while improving relationship evidence quality, explicit pair authority, direct access, bounded reanalysis, and format-2 logical backup of authored collection state. |
 
 The current source does not implement cloud synchronization, collaboration,
 OmniSorSe Server, a conversational assistant, unrestricted
@@ -255,6 +264,8 @@ documents are:
 | [v2.4 Manual Testing](docs/MANUAL_TESTING_v2.4.md) | Genuine Windows profile/installer and external two-process protocol evidence with explicit unchecked boundaries. |
 | [v2.11 Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md) | Unreleased .NET 10 migration, package provenance, platform evidence levels, and preserved architecture boundaries. |
 | [v2.11 Manual Addendum](docs/MANUAL_TESTING_v2.11.md) | Runtime/package/platform gates added to the v2.10 master matrix. |
+| [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | Unreleased relationship authority, scoring, scale, UX, backup, privacy, and protocol boundaries. |
+| [v2.12 Manual Addendum](docs/MANUAL_TESTING_v2.12.md) | Relationship-specific quality, lifecycle, accessibility, and companion gates. |
 | [Relationships and Collections](docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence, Smart Collections, Search context, privacy, control, and current limits. |
 | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | OmniSorSe transition, profile compatibility, Explorer Protocol v1, package trust, limitations, and final validation boundary. |
 | [v2.5 Workflow & Indexing Quality](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) | Unreleased implementation contract for post-operation reconciliation and progressive base-first indexing. |

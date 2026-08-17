@@ -106,7 +106,7 @@ activate providers or promise that every indexed file has every evidence type.
 | `GetChildren` | Stable folders-first containment with bounded paging. |
 | `GetNeighborhood` | Bounded structural depth with optional retained context. |
 | `Search` | Existing unified deterministic-first Search, grounded to authorized indexed file IDs. |
-| `GetRelated` | Existing medium-or-strong Related Files evidence with bounded reasons/provenance. |
+| `GetRelated` | Existing bounded Related Files evidence, aggregated to one opaque target per pair with deterministic order, concise reason, and provenance class. |
 | `GetNodeDetails` | Bounded metadata, concepts, summary, media facts, and relationship summaries. |
 
 There are no write, delete, rename, move, create-directory, Change Plan,

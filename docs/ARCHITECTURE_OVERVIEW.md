@@ -1,6 +1,6 @@
 # OmniSorSe architecture overview
 
-This is the authoritative top-level architecture for the OmniSorSe v2.11
+This is the authoritative top-level architecture for the OmniSorSe v2.12
 implementation candidate. It extends the released v2.4.0 baseline through the
 linear v2.5-v2.9 candidates while retaining established profile locations.
 The durable Search index is schema 6 and Explorer Protocol remains v1.
@@ -48,6 +48,22 @@ caches. Product version and source commit are centralized build inputs. PDF
 extraction and in-process rasterization have hard input/work/output bounds;
 native PDFium isolation remains a documented residual risk. See
 [v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md).
+
+## v2.12 trusted-relationship boundary
+
+The existing schema-6 relationship tables remain authoritative. Versioned
+deterministic analysis groups correlated observations into capped evidence
+families, persists typed edges, and projects one bounded target row per pair.
+Explicit Related/Not Related authority overrides inference and can be removed
+to restore automatic analysis. Indexed candidate buckets and compact batch
+hydration avoid all-pairs comparison and routine full-content hydration;
+relationship-only stale work resumes in independently committed batches.
+
+Direct Related Files, corrections, Search/Files entry points, and Explorer
+Protocol 1.0 do not depend on the optional derived Knowledge Graph. Logical
+`.oms-state` format 2 backs up pair and authored Smart Collection authority,
+while generated edges/evidence remain rebuildable. See
+[v2.12 Trusted Relationships](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md).
 
 ## Component view
 

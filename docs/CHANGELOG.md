@@ -7,6 +7,35 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## Unreleased — OmniSorSe v2.12 Trusted Relationships & Context
+
+Implementation branch: `v2.12-trusted-relationships-context`. This work is not
+a published release and builds directly on the committed v2.11 candidate.
+
+### Added and changed
+
+- Cap independent identity, content, named-context, lexical, tag,
+  structural/temporal, and semantic evidence families; semantic/AI evidence
+  cannot qualify alone.
+- Add reversible Related, Not Related, and Use automatic pair authority plus a
+  bounded correction view.
+- Aggregate multiple typed edges into one direct Related Files/Explorer target
+  without discarding persisted detail.
+- Use bounded indexed candidate buckets, compact batch hydration, and
+  resumable relationship-only version refresh for large libraries.
+- Make direct Related Files independent of the optional Knowledge Graph and add
+  Search/Files entry points.
+- Write `.oms-state` format 2 with authored Smart Collection authority while
+  retaining exact format-1 import.
+
+### Boundaries
+
+- Schema remains 6 and Explorer Protocol remains 1.0.
+- Knowledge Graph remains optional/derived; Smart Collections remain grouping
+  authority.
+- No new AI relationship inference, production dependency, clustering engine,
+  Search-ranker redesign, or file-mutation path is included.
+
 ## Unreleased — OmniSorSe v2.11 Supported Runtime & Platform Readiness
 
 Implementation branch: `v2.11-supported-runtime-platform-readiness`. This work
