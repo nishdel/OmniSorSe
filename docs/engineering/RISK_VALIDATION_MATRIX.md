@@ -22,7 +22,7 @@ when scope/release intent is uncertain.
 | Explorer Protocol/OmniBrille | Critical contract/security boundary | Architecture, UX, Performance, Docs, reviewer | Version/DTO compatibility, scoped grant/revocation, read-only enforcement, bounds, native IPC where relevant |
 | Plugins/extensions | High trust boundary | Architecture, DX, Implementation, Docs, reviewer | Capability/manifest/version/quarantine bounds; confirm no mutation or sandboxing claim |
 | Performance/large library | High | Performance, Architecture, Implementation, reviewer | Representative scale, allocation/work bounds, cancellation/deadline, correctness outside caps |
-| Packaging/platform/release | High operational risk | DX, Architecture, Docs, reviewer | local build/tests, native CI/host evidence, package smoke, artifact identity; signing/publication separate |
+| Packaging/platform/release | High operational risk | DX, Architecture, Docs, reviewer | local build/tests, native CI/host evidence, package smoke, artifact identity; signing/publication separate. For Git source publication, verify the intended local commit equals the remote ref after push and, where practical, verify the remote default branch from a disposable clone. |
 | Cross-cutting architecture | Critical | Product if scope changes, Architecture, DX, relevant UX/AX/Performance, Docs, reviewer | dependency/authority tests, affected subsystem regressions, ADR/diagram, manual gaps |
 
 Specialists can be omitted when the lead records why their concern is not

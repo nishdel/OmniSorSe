@@ -18,7 +18,7 @@ historical release records.
 | --- | --- | --- |
 | Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` |
 | Latest published release | **v2.4.0**. Later version lines in this repository are implementation candidates, not published releases. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
-| Current source line | **v2.12.0-rc**, Trusted Relationships & Context, built on the linear v2.5-v2.11 candidate stack. It is not merged, tagged, packaged as a release, or published. | `Directory.Build.props`; `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`; `docs/RELEASE_STATUS.md` |
+| Current source line | **v2.12.0-rc**, Trusted Relationships & Context, built on the linear v2.5-v2.11 candidate stack. It is integrated into local `main` for normal Git source publication. No v2.5-v2.12 release tag, package, or GitHub Release exists; Release Status owns the exact remote-synchronization evidence. | `Directory.Build.props`; `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`; `docs/RELEASE_STATUS.md` |
 | Runtime | All solution projects target **.NET 10**. `global.json` selects SDK `10.0.400` with latest-feature roll-forward. | `Directory.Build.props`; `global.json`; project files |
 | Durable Search/index schema | `deep-index.db` is **schema 6**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | Explorer boundary | Explorer Protocol is **1.0**. It is local, authenticated, source-scoped, bounded, read-only, and dormant until explicitly requested. | `ExplorerProtocolVersion` in `src/OmniSorSe.ExplorerProtocol/ExplorerProtocolContracts.cs`; `src/OpenSorSe.Application/Explorer/` |
@@ -76,12 +76,14 @@ change a source file or override durable user-authored relationship/tag state.
 
 ### Verified in recorded automated evidence
 
-Release Status records forced no-cache restore, zero-warning
-Debug and Release builds, and 1,856 passing tests in each configuration, plus
-focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer,
-UI/accessibility, 100k-scale, formatting, dependency/policy, vulnerability, and
-diff gates. Treat those as evidence for the recorded commit/environment, not as
-a guarantee for an unvalidated later working tree.
+Release Status records forced no-cache restore, zero-warning Debug and Release
+builds, and 1,861 passing tests in each configuration for the pre-integration
+candidate tree. Focused relationship, Search, SQLite lifecycle/backup/Forget,
+Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting,
+dependency/policy, vulnerability, local `win-x64` publish/smoke, and diff gates
+also passed. Treat those as evidence for the recorded commit/environment, not
+as a guarantee for an unvalidated later working tree, remote ref, or fresh
+clone.
 
 ### Not verified or still manual
 
