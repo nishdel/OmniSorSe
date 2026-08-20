@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-08-12
+**Last repository review:** 2026-08-17
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -419,6 +419,195 @@ primary Search navigation, and clearer privacy wording.
 See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 [v2.2.0 release notes](docs/RELEASE_NOTES_v2.2.0.md).
 
+## In progress
+
+### v2.5 — Workflow Completion & Indexing Quality
+
+**Branch:** `v2.5-workflow-indexing-quality`, created from released v2.4.0.
+
+**Merged status:** Committed release candidate awaiting maintainer sign-off. It
+is not released and does not alter Explorer Protocol v1.
+
+v2.5 completes existing workflows rather than introducing another subsystem.
+Its release scope is outcome-driven reconciliation of Files, Search, duplicate
+review, and selection after reviewed Change Plans and Undo; plus progressive
+base-first indexing so names, paths, and inexpensive evidence become searchable
+before enabled media/content intelligence finishes. A persisted initial-scan
+depth controls scheduling without duplicating OCR, transcription, or media
+capability switches.
+
+Folder suggestions remain bounded proposals and all source-file changes still
+require Change Plan review. OmniExplorer, protocol expansion, server/cloud
+architecture, autonomous organization, embeddings, and graph rendering are
+outside this release.
+
+See [v2.5 workflow and indexing design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md)
+and [v2.5 manual testing](docs/MANUAL_TESTING_v2.5.md).
+
+### v2.6 — Explainable Smart Tags
+
+**Branch:** `v2.6-explainable-smart-tags`, created from the committed v2.5
+release candidate because v2.5 has not yet been merged.
+
+**Merged status:** Committed release candidate awaiting maintainer sign-off. It
+is not released and does not alter Explorer Protocol v1.
+
+v2.6 consolidates generated classifications, existing user tags, and explicit
+accept/reject authority in schema 6. A small versioned Theme and Document Type
+taxonomy consumes already retained local text, OCR, transcript, metadata, and
+Content Intelligence evidence. Deterministic classification is deferred so
+v2.5 Fast/searchable-first coverage remains available first. Strong generated,
+accepted, and User Tag evidence can enrich deterministic Search; Moderate
+suggestions require review, and typed filters use OR within one type and AND
+across types.
+
+The release adds bounded native `.txt`/`.md` extraction, explainable evidence,
+user-controlled decisions, clearing/forget semantics, and compact Files details.
+It does not write file metadata, add embeddings/cloud classification, mutate
+files automatically, modify OmniBrille, or change Explorer Protocol v1.
+
+See [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) and the
+[v2.6 manual checklist](docs/MANUAL_TESTING_v2.6.md).
+
+### v2.7 — Scalable Faceted Discovery
+
+**Branch:** `v2.7-scalable-faceted-discovery`, created directly from the
+committed v2.6 release candidate.
+
+**Merged status:** Implementation and local automated validation complete on
+the feature branch; maintainer review/manual validation remain pending. It is
+not released, does not bump schema 6, and does not alter Explorer Protocol v1.
+
+v2.7 makes existing intelligence usable at ordinary-library scale. SQLite
+selects plausible candidates across the complete authorized index before a
+bounded projection reaches the established deterministic ranker. Search and
+Files share canonical Theme, Document Type, User Tag, file-type, created-year,
+and modified-year facets with contextual counts. Dynamic Saved Views persist
+query/filter rules and always reevaluate the current index; historical Saved
+scans remain distinct catalog snapshots.
+
+The release also adds bounded CSV/TSV evidence extraction and conservative
+XLSX/PPTX text improvements. Fast/searchable-first indexing, Smart Tag user
+authority, exact filename ranking, human-reviewed Change Plans, local privacy,
+OmniBrille separation, and Protocol v1 remain unchanged.
+
+See [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md)
+and [v2.7 manual testing](docs/MANUAL_TESTING_v2.7.md).
+
+### v2.8 — Guided Workflows & Product Coherence
+
+**Branch:** `v2.8-guided-workflows-product-coherence`, created directly from
+the committed v2.7 release candidate.
+
+**Merged status:** Implementation branch for review; it is not released and
+does not rewrite the v2.5–v2.7 candidate chain.
+
+v2.8 is a consolidation release. A small explicit discovery context connects
+Search and Files by stable file identity, preserves canonical query/facet/Saved
+View state, and supports return to discovery. Unresolved Moderate Smart Tag
+results become a continuous keyboard-accessible review sequence using the
+existing schema-6 authority.
+
+Home summarizes bounded durable library/readiness state after restart and
+routes Find, Understand, Review, and Organize into existing surfaces. Optional
+capabilities are summarized without eager provider/tool execution. Duplicate
+legacy Smart Tag selectors are retired in favor of the v2.7 facet model, while
+accepted or Strong deterministic classification can inform an editable rename
+proposal without bypassing Change Plans.
+
+Schema 6, deterministic Search ranking/candidate retrieval, progressive
+indexing, Saved View persistence, Smart Tag authority, Explorer Protocol v1,
+OmniBrille separation, and mutation safety remain unchanged.
+
+See [v2.8 guided-workflow design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
+and [v2.8 manual testing](docs/MANUAL_TESTING_v2.8.md).
+
+### v2.9 — Reviewed Intelligent Organization
+
+**Branch:** `v2.9-reviewed-intelligent-organization`, created directly from
+the committed v2.8 release candidate.
+
+**Merged status:** Implementation branch for review; it is not released and
+does not rewrite the v2.5–v2.8 candidate chain.
+
+v2.9 consolidates existing organization infrastructure. Files, Search, and a
+current Saved View can contribute an explicit bounded stable-ID selection to an
+existing persistent Organization recipe. A cancellable ephemeral preview shows
+trusted Smart Tag/filesystem evidence, literal coverage, fallbacks, readiness,
+privacy externalization, conflicts, and the combined file/directory action
+budget before the user explicitly creates the existing Change Plan.
+
+At most 1,000 files and 1,000 total Change Plan actions are permitted. One
+proposal remains inside one selected registered source. Original extensions are
+preserved; ambiguous date aliases, entities, and User Tags are not promoted as
+trusted path tokens. Existing journalling, rollback, reconciliation, and Undo
+remain the only mutation path.
+
+Schema 6, progressive indexing, Search/facet/Saved View semantics, Smart Tag
+authority, Explorer Protocol v1, OmniBrille separation, and the workflow-library
+JSON authority remain unchanged. No new AI, dependency, automatic watched-folder
+action, cross-root organization, or autonomous mutation is included.
+
+See [v2.9 Reviewed Intelligent Organization](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
+and [v2.9 manual testing](docs/MANUAL_TESTING_v2.9.md).
+
+### v2.10 — Production Hardening & Operational Resilience
+
+**Branch:** `v2.10-production-hardening-operational-resilience`, created
+directly from the committed v2.9 release candidate.
+
+**Merged status:** Committed release candidate awaiting maintainer sign-off. It
+is not released and does not rewrite the v2.5–v2.9 candidate chain.
+
+v2.10 adds one-writer profile ownership, fail-closed mutation/recovery stores,
+bounded PDF handling, logical user-state backup/restore, coordinated Forget,
+bounded Data & Index Health, abnormal-shutdown evidence, release provenance,
+and high-blast-radius failure tests. Schema remains 6 and product workflows,
+Explorer Protocol v1, and OmniBrille separation remain intact.
+
+See [v2.10 Production Hardening](docs/PRODUCTION_HARDENING_v2.10.md) and the
+[v2.10 master manual matrix](docs/MANUAL_TESTING_v2.10.md).
+
+### v2.11 — Supported Runtime & Platform Readiness
+
+**Branch:** `v2.11-supported-runtime-platform-readiness`, created directly from
+the committed v2.10 release candidate.
+
+**Merged status:** Implementation candidate; automated and native/manual release
+evidence must be recorded before integration or publication.
+
+v2.11 moves all projects and package paths to .NET 10 LTS, strengthens
+version/source/RID/runtime provenance, pins critical CI Actions, and separates
+compile, native smoke, package, installer, signing, notarization, and manual
+support claims. It adds no schema, Search, classification, organization, AI,
+graph, protocol, updater, or Linux-package feature.
+
+See [v2.11 Supported Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md)
+and the [v2.11 manual addendum](docs/MANUAL_TESTING_v2.11.md).
+
+### v2.12 — Trusted Relationships & Context
+
+**Branch:** `v2.12-trusted-relationships-context`, created directly from the
+committed v2.11 release candidate.
+
+**Merged status:** Implementation candidate; automated gates and maintainer
+manual validation must be recorded before integration or publication.
+
+v2.12 extends the existing schema-6 relationship authority rather than adding
+a second graph or clustering system. Independent capped evidence families,
+reversible Related/Not Related/Use automatic authority, pair-level presentation,
+bounded indexed candidate buckets, compact hydration, and relationship-only
+version refresh improve trust and large-library behavior. Direct Related Files
+works without Knowledge Graph and remains secondary to literal Search intent.
+
+Logical `.oms-state` format 2 preserves authored pair and Smart Collection
+authority while retaining format-1 import. Schema 6, Explorer Protocol 1.0,
+.NET 10, optional AI, optional derived Knowledge Graph, Smart Collections, and
+the Change Plan mutation boundary remain unchanged.
+
+See [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md)
+and the [v2.12 manual addendum](docs/MANUAL_TESTING_v2.12.md).
+
 ## Planned
 
 The versions below are planning concepts supplied by current project direction.
@@ -460,23 +649,7 @@ selective local retention.
 **Conceptual dependencies:** provider protocol and threat-model research,
 identity/conflict semantics, encryption/authentication, and migration policy.
 
-### v2.5 — OpenSorSe Server
-
-**Branch:** None; no branch exists.
-
-**Merged status:** Not applicable; planned concept only.
-
-The concept is a self-hostable server provider for durable indexing and query
-services. It would not make PostgreSQL or another server a desktop requirement.
-
-**Potential major capabilities:** authenticated provider API; server-side
-indexing/storage; provider-neutral desktop client; deployment, backup,
-migration, quotas, and observability.
-
-**Conceptual dependencies:** mature provider boundaries, a formal security model,
-operational ownership, protocol versioning, and compatibility tests.
-
-### v2.6 — Collaboration
+### Future collaboration
 
 **Branch:** None; no branch exists.
 

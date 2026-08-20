@@ -35,6 +35,52 @@ public interface IOperationJournalStore
     Task UpsertAsync(OperationJournalRecord operation, CancellationToken cancellationToken);
 }
 
+/// <summary>Tracks whether authoritative recovery state currently permits new filesystem mutation.</summary>
+public interface IRecoverySafetyState
+{
+    /// <summary>Gets whether new mutation and Undo operations are blocked.</summary>
+    bool IsMutationBlocked { get; }
+
+    /// <summary>Gets a bounded user-facing recovery explanation.</summary>
+    string? Message { get; }
+
+    /// <summary>Gets the affected store classification without exposing document content.</summary>
+    string? StoreName { get; }
+
+    /// <summary>Blocks mutation after authoritative corruption has been detected.</summary>
+    void Block(OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException exception);
+}
+
+/// <summary>Provides process-wide fail-closed recovery state for the desktop profile.</summary>
+public sealed class RecoverySafetyState : IRecoverySafetyState
+{
+    private readonly object _sync = new();
+
+    /// <summary>Gets a non-blocking state for isolated compatibility tests.</summary>
+    public static IRecoverySafetyState Unmanaged => new RecoverySafetyState();
+
+    /// <inheritdoc />
+    public bool IsMutationBlocked { get; private set; }
+
+    /// <inheritdoc />
+    public string? Message { get; private set; }
+
+    /// <inheritdoc />
+    public string? StoreName { get; private set; }
+
+    /// <inheritdoc />
+    public void Block(OpenSorSe.Core.Persistence.AuthoritativeStoreCorruptionException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        lock (_sync)
+        {
+            IsMutationBlocked = true;
+            StoreName = exception.StoreName;
+            Message = $"{exception.StoreName} recovery is required. File changes and Undo are blocked; read-only discovery remains available.";
+        }
+    }
+}
+
 /// <summary>Executes, verifies, rolls back, undoes, and recovers approved plans.</summary>
 public interface IChangePlanExecutionService
 {

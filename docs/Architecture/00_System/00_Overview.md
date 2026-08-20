@@ -1,6 +1,6 @@
 # OmniSorSe current system overview
 
-OmniSorSe (formerly OpenSorSe) is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 8, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
+OmniSorSe (formerly OpenSorSe) is a local-first Avalonia desktop application for understanding selected folders and reviewing organization decisions. It uses .NET 10 LTS, C#, MVVM, dependency injection, bounded asynchronous work, versioned local JSON stores, an embedded provider-isolated SQLite Search index, and optional isolated Knowledge Graph sidecars.
 
 ## Product boundary
 
@@ -37,6 +37,15 @@ Explorer Protocol contract and an on-demand current-user named-pipe host for a
 future separate OmniExplorer. The host is dormant until an explicit authorized
 session is created and exposes only bounded read-only projections of existing
 indexed services.
+Unreleased v2.5 adds an optional desktop launch bridge for the separately
+installed OmniBrille companion. Discovery, authorization, and one-time
+current-user handoff occur only after explicit user action; the Protocol v1 data contract,
+scope, transport, and version remain unchanged.
+The committed v2.6 release candidate advances the embedded Search index to
+schema 6 for normalized Explainable Smart Tags while retaining stable file
+identity and deferred searchable-first scheduling. Unreleased v2.7 keeps schema
+6 and adds complete-library SQLite candidate selection, database-backed facets,
+and local dynamic Saved Views without changing the ranker or Protocol v1.
 Watcher events, workflow settings, plugin output, and platform capability
 reports remain analysis inputs, not authorization or filesystem truth.
 

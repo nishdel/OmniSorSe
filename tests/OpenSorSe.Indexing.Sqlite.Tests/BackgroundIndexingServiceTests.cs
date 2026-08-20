@@ -1,16 +1,30 @@
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Semantic;
 using OpenSorSe.Indexing.Sqlite;
+using Microsoft.Data.Sqlite;
+using Xunit.Abstractions;
 
 namespace OpenSorSe.Indexing.Sqlite.Tests;
 
 /// <summary>Validates the live durable coordinator with deterministic discovery and stage workers.</summary>
 public sealed class BackgroundIndexingServiceTests
 {
+    private readonly ITestOutputHelper _output;
+
+    /// <summary>Initializes performance diagnostics for bounded scale gates.</summary>
+    public BackgroundIndexingServiceTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     /// <summary>Verifies a newly discovered Basic file completes every applicable durable stage.</summary>
     [Fact]
     public async Task NewFileCompletesDurableBasicPipeline()
@@ -52,6 +66,510 @@ public sealed class BackgroundIndexingServiceTests
         Assert.Equal(0, snapshot.TotalDiscovered);
         Assert.Equal(100, snapshot.OverallPercentage);
         Assert.Empty(await fixture.Service.GetDocumentsAsync(10));
+    }
+
+    /// <summary>Typed tag filtering stays database-backed and bounded at meaningful library scale.</summary>
+    [Fact]
+    [Trait("Category", "PerformanceRegression")]
+    public async Task SmartTagFilteredSearchMaterializesMoreThanOneLookupBatch()
+    {
+        const int documentCount = 10_000;
+        await using var fixture = await ServiceFixture.CreateAsync(discovery: new FakeDiscovery([]));
+        SeedSmartTagSearchDocuments(fixture.DatabasePath, fixture.Root, documentCount);
+
+        var started = Stopwatch.GetTimestamp();
+        var documents = await fixture.Service.GetDocumentsBySmartTagsAsync(
+            new SmartTagFilter(ThemeTagIds: ["theme.finance"]),
+            documentCount);
+        var elapsed = Stopwatch.GetElapsedTime(started);
+
+        Assert.Equal(documentCount, documents.Count);
+        Assert.Equal(documentCount, documents.Select(document => document.FileId).Distinct(StringComparer.Ordinal).Count());
+        Assert.True(elapsed < TimeSpan.FromSeconds(20), $"10,000-file canonical filtering took {elapsed}.");
+    }
+
+    /// <summary>Facet counts are aggregated in SQLite and respect other active facet groups.</summary>
+    [Fact]
+    public async Task FacetCountsUseCanonicalCrossFacetSemantics()
+    {
+        await using var fixture = await ServiceFixture.CreateAsync(discovery: new FakeDiscovery([]));
+        SeedSmartTagSearchDocuments(fixture.DatabasePath, fixture.Root, 12);
+
+        var snapshot = await fixture.Service.GetFacetCountsAsync(new DiscoveryFacetRequest("", []));
+
+        Assert.True(snapshot.IsAvailable);
+        AssertFacet(snapshot, DiscoveryFacetKind.Theme, "theme.finance", 12);
+        AssertFacet(snapshot, DiscoveryFacetKind.DocumentType, "document-type.invoice", 6);
+        AssertFacet(snapshot, DiscoveryFacetKind.UserTag, "user.review", 4);
+        AssertFacet(snapshot, DiscoveryFacetKind.FileType, "document", 11);
+        AssertFacet(snapshot, DiscoveryFacetKind.FileType, "other", 1);
+        AssertFacet(snapshot, DiscoveryFacetKind.CreatedYear, "1970", 12);
+
+        var filtered = await fixture.Service.GetFacetCountsAsync(new DiscoveryFacetRequest(
+            "",
+            [new SearchFilter(
+                "document-type:invoice",
+                SearchFilterKind.SmartTagDocumentType,
+                "document-type.invoice",
+                "Document Type: Invoice")]));
+
+        AssertFacet(filtered, DiscoveryFacetKind.Theme, "theme.finance", 6);
+        AssertFacet(filtered, DiscoveryFacetKind.DocumentType, "document-type.invoice", 6);
+        AssertFacet(filtered, DiscoveryFacetKind.UserTag, "user.review", 2);
+
+        var other = await fixture.Service.GetDiscoveryCandidatesAsync(new DiscoverySearchRequest(
+            "",
+            [new SearchFilter("file-type:other", SearchFilterKind.FileType, "other", "File type: Other")],
+            100));
+        Assert.Equal("asset.bin", Assert.Single(other.Documents).FileName);
+
+        var search = new SemanticSearchService(
+            new FakeConfiguration(DeepSettings(IndexingLevel.Basic)),
+            new FeatureHashingEmbeddingProvider(),
+            new EmptySemanticIndexStore(),
+            fixture.Service);
+        var otherResult = await search.SearchAsync(new SearchRequest(
+            "",
+            [new SearchFilter("file-type:other", SearchFilterKind.FileType, "other", "File type: Other")],
+            InterpretFilters: false,
+            TopicTextOverride: ""), CancellationToken.None);
+        Assert.Equal("asset.bin", Assert.Single(otherResult.Hits).FileName);
+
+        var unresolvedFilter = new SearchFilter(
+            "smart-tags:unresolved-moderate",
+            SearchFilterKind.UnresolvedModerateSmartTag,
+            "true",
+            "Smart Tags: unresolved Moderate suggestions");
+        var unresolved = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest("", [unresolvedFilter], 100));
+        Assert.Equal("document-001.txt", Assert.Single(unresolved.Documents).FileName);
+        var unresolvedResult = await search.SearchAsync(new SearchRequest(
+            "",
+            [unresolvedFilter],
+            InterpretFilters: false,
+            TopicTextOverride: ""), CancellationToken.None);
+        Assert.Equal("document-001.txt", Assert.Single(unresolvedResult.Hits).FileName);
+
+        InsertDecision(fixture.DatabasePath, "filter-001", "document-type.statement", SmartTagDecision.Accepted);
+        var afterAcceptance = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest("", [unresolvedFilter], 100));
+        Assert.Empty(afterAcceptance.Documents);
+
+        InsertDecision(fixture.DatabasePath, "filter-001", "document-type.statement", SmartTagDecision.Rejected);
+        var afterDecision = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest("", [unresolvedFilter], 100));
+        Assert.Empty(afterDecision.Documents);
+
+        InsertProgressiveFacetDocument(fixture.DatabasePath, fixture.Root);
+        var refreshed = await fixture.Service.GetFacetCountsAsync(new DiscoveryFacetRequest("", []));
+        AssertFacet(refreshed, DiscoveryFacetKind.Theme, "theme.finance", 13);
+        AssertFacet(refreshed, DiscoveryFacetKind.FileType, "document", 12);
+    }
+
+    private static void AssertFacet(
+        DiscoveryFacetSnapshot snapshot,
+        DiscoveryFacetKind kind,
+        string canonicalId,
+        long expectedCount)
+    {
+        var group = Assert.Single(snapshot.Groups, group => group.Kind == kind);
+        var value = Assert.Single(group.Values, value => value.CanonicalId == canonicalId);
+        Assert.Equal(expectedCount, value.Count);
+    }
+
+    /// <summary>An exact filename remains discoverable beyond the legacy 10,000-document hydration ceiling.</summary>
+    [Fact]
+    [Trait("Category", "PerformanceRegression")]
+    public async Task ExactFilenameBeyondDefaultProjectionIsSearchable()
+    {
+        const int documentCount = 20_000;
+        const string targetFileName = "zzzz-exact-target-beyond-ceiling.txt";
+        await using var fixture = await ServiceFixture.CreateAsync(discovery: new FakeDiscovery([]));
+        SeedSearchDocuments(fixture.DatabasePath, fixture.Root, documentCount, targetFileName);
+        var search = new SemanticSearchService(
+            new FakeConfiguration(DeepSettings(IndexingLevel.Basic)),
+            new FeatureHashingEmbeddingProvider(),
+            new EmptySemanticIndexStore(),
+            fixture.Service);
+
+        var candidates = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest(targetFileName, [], 10_000));
+        Assert.Contains(candidates.Documents, document => document.FileName == targetFileName);
+        Assert.Equal(documentCount, candidates.CandidateCoverage.EligibleFileCount);
+        Assert.True(candidates.CandidateCoverage.WasTruncated);
+
+        var result = await search.SearchAsync(new SearchRequest(targetFileName), CancellationToken.None);
+
+        Assert.True(result.CandidateCoverage.UsedCompleteLibrarySelection, result.Message);
+        var hit = Assert.IsType<SemanticSearchHit>(result.Hits.First());
+        Assert.Equal(targetFileName, hit.FileName);
+        Assert.Contains("exact filename", hit.Explanation, StringComparison.OrdinalIgnoreCase);
+
+        var stemResult = await search.SearchAsync(
+            new SearchRequest(Path.GetFileNameWithoutExtension(targetFileName)),
+            CancellationToken.None);
+        Assert.Equal(targetFileName, Assert.IsType<SemanticSearchHit>(stemResult.Hits.First()).FileName);
+
+        var prefixResult = await search.SearchAsync(
+            new SearchRequest("zzzz-exact-target"),
+            CancellationToken.None);
+        Assert.Equal(targetFileName, Assert.IsType<SemanticSearchHit>(prefixResult.Hits.First()).FileName);
+
+        var filtered = await search.SearchAsync(
+            new SearchRequest(
+                targetFileName,
+                [new SearchFilter("theme:finance", SearchFilterKind.SmartTagTheme, "theme.finance", "Theme: Finance")],
+                InterpretFilters: false,
+                TopicTextOverride: targetFileName),
+            CancellationToken.None);
+        Assert.Equal(targetFileName, Assert.Single(filtered.Hits).FileName);
+
+        var yearCandidates = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest(
+                "",
+                [new SearchFilter("modified-year:2025", SearchFilterKind.ModifiedYear, "2025", "Modified year: 2025")],
+                10_000));
+        var yearCandidate = Assert.Single(yearCandidates.Documents);
+        Assert.Equal(targetFileName, yearCandidate.FileName);
+        Assert.Equal(2025, yearCandidate.ModifiedTimeUtc?.Year);
+        var yearFiltered = await search.SearchAsync(
+            new SearchRequest(
+                "",
+                [new SearchFilter("modified-year:2025", SearchFilterKind.ModifiedYear, "2025", "Modified year: 2025")],
+                InterpretFilters: false,
+                TopicTextOverride: ""),
+            CancellationToken.None);
+        Assert.Equal(targetFileName, Assert.Single(yearFiltered.Hits).FileName);
+
+        var rangeFiltered = await search.SearchAsync(
+            new SearchRequest(
+                "",
+                [new SearchFilter("modified-after", SearchFilterKind.ModifiedOnOrAfter, "2025-01-01", "Modified on or after 2025-01-01")],
+                InterpretFilters: false,
+                TopicTextOverride: ""),
+            CancellationToken.None);
+        Assert.Equal(targetFileName, Assert.Single(rangeFiltered.Hits).FileName);
+
+        var createdRange = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest(
+                "",
+                [new SearchFilter("created-after", SearchFilterKind.CreatedOnOrAfter, "2025-01-01", "Created on or after 2025-01-01")],
+                10_000));
+        Assert.Equal(targetFileName, Assert.Single(createdRange.Documents).FileName);
+
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            fixture.Service.GetDiscoveryCandidatesAsync(
+                new DiscoverySearchRequest(targetFileName, [], 10_000),
+                cancelled.Token));
+    }
+
+    /// <summary>Complete-library eligibility remains bounded in hydration at a 100,000-file scale.</summary>
+    [Fact]
+    [Trait("Category", "PerformanceRegression")]
+    public async Task CandidateSelectionConsidersOneHundredThousandFilesWithoutHydratingTheLibrary()
+    {
+        const int documentCount = 100_000;
+        const string targetFileName = "zzzz-one-hundred-thousand-target.pdf";
+        await using var fixture = await ServiceFixture.CreateAsync(discovery: new FakeDiscovery([]));
+        SeedSearchDocuments(fixture.DatabasePath, fixture.Root, documentCount, targetFileName);
+        var started = Stopwatch.GetTimestamp();
+
+        var selection = await fixture.Service.GetDiscoveryCandidatesAsync(
+            new DiscoverySearchRequest(targetFileName, [], 512));
+        var elapsed = Stopwatch.GetElapsedTime(started);
+
+        Assert.Equal(documentCount, selection.CandidateCoverage.EligibleFileCount);
+        Assert.Equal(512, selection.Documents.Count);
+        Assert.Equal(targetFileName, selection.Documents[0].FileName);
+        Assert.True(selection.CandidateCoverage.WasTruncated);
+        Assert.True(elapsed < TimeSpan.FromSeconds(30), $"100,000-file candidate selection took {elapsed}.");
+
+        started = Stopwatch.GetTimestamp();
+        var facets = await fixture.Service.GetFacetCountsAsync(new DiscoveryFacetRequest("", []));
+        var facetElapsed = Stopwatch.GetElapsedTime(started);
+
+        _output.WriteLine("100,000-file candidate selection: {0}; facet aggregation: {1}.", elapsed, facetElapsed);
+
+        AssertFacet(facets, DiscoveryFacetKind.FileType, "document", documentCount - 1);
+        AssertFacet(facets, DiscoveryFacetKind.FileType, "pdf", 1);
+        AssertFacet(facets, DiscoveryFacetKind.CreatedYear, "1970", documentCount - 1);
+        AssertFacet(facets, DiscoveryFacetKind.CreatedYear, "2025", 1);
+        AssertFacet(facets, DiscoveryFacetKind.ModifiedYear, "2025", 1);
+        Assert.True(facetElapsed < TimeSpan.FromSeconds(45), $"100,000-file facet aggregation took {facetElapsed}.");
+    }
+
+    private static void SeedSearchDocuments(string databasePath, string root, int count, string targetFileName)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var ticks = DateTimeOffset.UnixEpoch.UtcTicks;
+        using (var source = connection.CreateCommand())
+        {
+            source.Transaction = transaction;
+            source.CommandText = """
+                INSERT INTO index_sources(
+                    id, root_path, root_path_key, display_name, indexing_level,
+                    include_subfolders, enabled, priority, exclusions_json,
+                    managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+                VALUES('ceiling-source', $root, $root, 'Ceiling source', 0, 1, 1, 0, '[]', 0, $ticks, $ticks);
+                """;
+            source.Parameters.AddWithValue("$root", root);
+            source.Parameters.AddWithValue("$ticks", ticks);
+            source.ExecuteNonQuery();
+        }
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO index_files(
+                id, source_id, full_path, path_key, relative_path, relative_path_key,
+                stable_identity, file_system_id, length, creation_utc_ticks, modified_utc_ticks,
+                attributes, metadata_fingerprint, content_hash, processor_fingerprint,
+                indexing_level, fully_indexed, updated_utc_ticks)
+            VALUES($id, 'ceiling-source', $path, $path, $relative, $relative, NULL, NULL,
+                100, $ticks, $ticks, 0, $metadata, $hash, 'fixture', 0, 1, $ticks);
+            """;
+        var idParameter = command.Parameters.Add("$id", SqliteType.Text);
+        var pathParameter = command.Parameters.Add("$path", SqliteType.Text);
+        var relativeParameter = command.Parameters.Add("$relative", SqliteType.Text);
+        var metadataParameter = command.Parameters.Add("$metadata", SqliteType.Text);
+        var hashParameter = command.Parameters.Add("$hash", SqliteType.Text);
+        var ticksParameter = command.Parameters.Add("$ticks", SqliteType.Integer);
+        command.Prepare();
+        for (var index = 0; index < count; index++)
+        {
+            var relativePath = index == count - 1 ? targetFileName : $"document-{index:D6}.txt";
+            var fullPath = Path.Combine(root, relativePath);
+            idParameter.Value = $"ceiling-{index:D6}";
+            pathParameter.Value = fullPath;
+            relativeParameter.Value = relativePath;
+            metadataParameter.Value = $"metadata-{index:D6}";
+            hashParameter.Value = index == count - 1 ? "target-content" : DBNull.Value;
+            ticksParameter.Value = index == count - 1
+                ? new DateTimeOffset(2025, 6, 15, 0, 0, 0, TimeSpan.Zero).UtcTicks
+                : ticks;
+            command.ExecuteNonQuery();
+            if (index == count - 1)
+            {
+                using (var content = connection.CreateCommand())
+                {
+                    content.Transaction = transaction;
+                    content.CommandText = """
+                        INSERT INTO index_content(
+                            content_hash, coverage_level, processor_fingerprint, updated_utc_ticks)
+                        VALUES('target-content', 0, 'fixture', $ticks);
+                        """;
+                    content.Parameters.AddWithValue("$ticks", ticks);
+                    content.ExecuteNonQuery();
+                }
+                using (var media = connection.CreateCommand())
+                {
+                    media.Transaction = transaction;
+                    media.CommandText = """
+                        INSERT INTO index_media_content(
+                            content_hash, media_kind, evidence_json, processing_fingerprint, updated_utc_ticks)
+                        VALUES(
+                            'target-content', 1,
+                            '{"Metadata":{"CapturedAtUtc":"2020-01-02T00:00:00+00:00"}}',
+                            'fixture', $ticks);
+                        """;
+                    media.Parameters.AddWithValue("$ticks", ticks);
+                    media.ExecuteNonQuery();
+                }
+                using var tag = connection.CreateCommand();
+                tag.Transaction = transaction;
+                tag.CommandText = """
+                    INSERT INTO file_smart_tag_assignments(
+                        file_id, tag_id, confidence, evidence_score, origin, classifier,
+                        classifier_version, taxonomy_version, input_fingerprint, evidence_json,
+                        assignment_state, active, created_utc_ticks, updated_utc_ticks)
+                    VALUES($id, 'theme.finance', 2, 8.0, 1, 'fixture', '1', '1.0',
+                        'fixture', '[]', 1, 1, $ticks, $ticks);
+                    """;
+                tag.Parameters.AddWithValue("$id", $"ceiling-{index:D6}");
+                tag.Parameters.AddWithValue("$ticks", ticks);
+                tag.ExecuteNonQuery();
+            }
+        }
+
+        transaction.Commit();
+    }
+
+    private static void SeedSmartTagSearchDocuments(string databasePath, string root, int count)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var ticks = DateTimeOffset.UnixEpoch.UtcTicks;
+        using (var source = connection.CreateCommand())
+        {
+            source.Transaction = transaction;
+            source.CommandText = """
+                INSERT INTO index_sources(
+                    id, root_path, root_path_key, display_name, indexing_level,
+                    include_subfolders, enabled, priority, exclusions_json,
+                    managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+                VALUES('filter-source', $root, $root, 'Filter source', 0, 1, 1, 0, '[]', 0, $ticks, $ticks);
+                """;
+            source.Parameters.AddWithValue("$root", root);
+            source.Parameters.AddWithValue("$ticks", ticks);
+            source.ExecuteNonQuery();
+        }
+
+        using (var userTag = connection.CreateCommand())
+        {
+            userTag.Transaction = transaction;
+            userTag.CommandText = """
+                INSERT INTO smart_tag_definitions(
+                    tag_id, tag_type, canonical_key, display_name, parent_tag_id,
+                    taxonomy_version, origin, is_builtin, is_hidden,
+                    created_utc_ticks, updated_utc_ticks)
+                VALUES('user.review', 2, 'review', 'Review', NULL, 'user', 3, 0, 0,
+                    $ticks, $ticks);
+                """;
+            userTag.Parameters.AddWithValue("$ticks", ticks);
+            userTag.ExecuteNonQuery();
+        }
+
+        for (var index = 0; index < count; index++)
+        {
+            var fileId = $"filter-{index:D3}";
+            var relativePath = index == count - 1 ? "asset.bin" : $"document-{index:D3}.txt";
+            var fullPath = Path.Combine(root, relativePath);
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                INSERT INTO index_files(
+                    id, source_id, full_path, path_key, relative_path, relative_path_key,
+                    stable_identity, file_system_id, length, creation_utc_ticks, modified_utc_ticks,
+                    attributes, metadata_fingerprint, content_hash, processor_fingerprint,
+                    indexing_level, fully_indexed, updated_utc_ticks)
+                VALUES($id, 'filter-source', $path, $path, $relative, $relative, NULL, NULL,
+                    100, $ticks, $ticks, 0, $metadata, NULL, 'fixture', 0, 1, $ticks);
+                INSERT INTO file_smart_tag_assignments(
+                    file_id, tag_id, confidence, evidence_score, origin, classifier,
+                    classifier_version, taxonomy_version, input_fingerprint, evidence_json,
+                    assignment_state, active, created_utc_ticks, updated_utc_ticks)
+                VALUES($id, 'theme.finance', 2, 8.0, 1, 'fixture', '1', '1.0',
+                    'fixture', '[]', 1, 1, $ticks, $ticks);
+                """;
+            command.Parameters.AddWithValue("$id", fileId);
+            command.Parameters.AddWithValue("$path", fullPath);
+            command.Parameters.AddWithValue("$relative", relativePath);
+            command.Parameters.AddWithValue("$metadata", $"metadata-{index:D3}");
+            command.Parameters.AddWithValue("$ticks", ticks);
+            command.ExecuteNonQuery();
+            if (index % 2 == 0)
+            {
+                InsertAssignment(connection, transaction, fileId, "document-type.invoice", ticks, origin: 1);
+            }
+
+            if (index % 3 == 0)
+            {
+                InsertAssignment(connection, transaction, fileId, "user.review", ticks, origin: 3);
+            }
+
+            if (index == 1)
+            {
+                InsertAssignment(
+                    connection,
+                    transaction,
+                    fileId,
+                    "document-type.statement",
+                    ticks,
+                    origin: 1,
+                    confidence: (int)ContentIntelligenceConfidence.Moderate,
+                    assignmentState: (int)SmartTagAssignmentState.Suggested);
+            }
+        }
+
+        transaction.Commit();
+    }
+
+    private static void InsertProgressiveFacetDocument(string databasePath, string root)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath}");
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var ticks = DateTimeOffset.UnixEpoch.UtcTicks;
+        var path = Path.Combine(root, "progressive-arrival.txt");
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO index_files(
+                id, source_id, full_path, path_key, relative_path, relative_path_key,
+                stable_identity, file_system_id, length, creation_utc_ticks, modified_utc_ticks,
+                attributes, metadata_fingerprint, content_hash, processor_fingerprint,
+                indexing_level, fully_indexed, updated_utc_ticks)
+            VALUES('filter-progressive', 'filter-source', $path, $path, 'progressive-arrival.txt',
+                'progressive-arrival.txt', NULL, NULL, 100, $ticks, $ticks, 0,
+                'progressive-metadata', NULL, 'fixture', 0, 1, $ticks);
+            INSERT INTO file_smart_tag_assignments(
+                file_id, tag_id, confidence, evidence_score, origin, classifier,
+                classifier_version, taxonomy_version, input_fingerprint, evidence_json,
+                assignment_state, active, created_utc_ticks, updated_utc_ticks)
+            VALUES('filter-progressive', 'theme.finance', 2, 8.0, 1, 'fixture', '1', '1.0',
+                'progressive', '[]', 1, 1, $ticks, $ticks);
+            """;
+        command.Parameters.AddWithValue("$path", path);
+        command.Parameters.AddWithValue("$ticks", ticks);
+        command.ExecuteNonQuery();
+        transaction.Commit();
+    }
+
+    private static void InsertAssignment(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string fileId,
+        string tagId,
+        long ticks,
+        int origin,
+        int confidence = (int)ContentIntelligenceConfidence.Strong,
+        int assignmentState = (int)SmartTagAssignmentState.Automatic)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO file_smart_tag_assignments(
+                file_id, tag_id, confidence, evidence_score, origin, classifier,
+                classifier_version, taxonomy_version, input_fingerprint, evidence_json,
+                assignment_state, active, created_utc_ticks, updated_utc_ticks)
+            VALUES($id, $tag, $confidence, 8.0, $origin, 'fixture', '1', '1.0',
+                'fixture', '[]', $assignmentState, 1, $ticks, $ticks);
+            """;
+        command.Parameters.AddWithValue("$id", fileId);
+        command.Parameters.AddWithValue("$tag", tagId);
+        command.Parameters.AddWithValue("$origin", origin);
+        command.Parameters.AddWithValue("$confidence", confidence);
+        command.Parameters.AddWithValue("$assignmentState", assignmentState);
+        command.Parameters.AddWithValue("$ticks", ticks);
+        command.ExecuteNonQuery();
+    }
+
+    private static void InsertDecision(
+        string databasePath,
+        string fileId,
+        string tagId,
+        SmartTagDecision decision)
+    {
+        using var connection = new SqliteConnection($"Data Source={databasePath}");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO file_smart_tag_decisions(file_id, tag_id, decision, reset_generation, changed_utc_ticks)
+            VALUES($file, $tag, $decision, 0, $ticks)
+            ON CONFLICT(file_id, tag_id) DO UPDATE SET
+                decision = excluded.decision,
+                changed_utc_ticks = excluded.changed_utc_ticks;
+            """;
+        command.Parameters.AddWithValue("$file", fileId);
+        command.Parameters.AddWithValue("$tag", tagId);
+        command.Parameters.AddWithValue("$decision", (int)decision);
+        command.Parameters.AddWithValue("$ticks", DateTimeOffset.UtcNow.UtcTicks);
+        command.ExecuteNonQuery();
     }
 
     /// <summary>Verifies queuing returns while slow discovery remains off the caller thread.</summary>
@@ -439,6 +957,33 @@ public sealed class BackgroundIndexingServiceTests
         Assert.Empty(await fixture.Service.GetSourcesAsync());
         Assert.True(Directory.Exists(fixture.Root));
         Assert.True(maintenance.IsWithinQuota);
+    }
+
+    /// <summary>Verifies an operation outcome refreshes only its configured source and reuses unchanged work.</summary>
+    [Fact]
+    public async Task ReconcilePathsAsync_RefreshesAffectedSourceWithoutRepeatingCompletedStages()
+    {
+        await using var fixture = await ServiceFixture.CreateAsync();
+        await fixture.Service.QueueFolderAsync(fixture.Root, IndexingLevel.Basic);
+        var initial = await WaitForProgressAsync(
+            fixture.Service,
+            snapshot => snapshot.Status == IndexingRunStatus.Complete && snapshot.Completed == 1);
+        var processedBeforeRefresh = fixture.Processor.ProcessedStages.Count;
+        var completion = WaitForProgressAsync(
+            fixture.Service,
+            snapshot => snapshot.Status == IndexingRunStatus.Complete &&
+                        snapshot.RunId is not null &&
+                        snapshot.RunId != initial.RunId);
+
+        var affected = await fixture.Service.ReconcilePathsAsync([
+            Path.Combine(fixture.Root, "document.txt"),
+        ]);
+        var refreshed = await completion;
+
+        Assert.Equal(1, affected);
+        Assert.NotEqual(initial.RunId, refreshed.RunId);
+        Assert.Single(await fixture.Service.GetSourcesAsync());
+        Assert.Equal(processedBeforeRefresh, fixture.Processor.ProcessedStages.Count);
     }
 
     /// <summary>Verifies disabled watched folders remove only their owned source and never an explicitly queued source.</summary>
@@ -851,6 +1396,7 @@ public sealed class BackgroundIndexingServiceTests
             Current = new ApplicationSettings
             {
                 DeepIndexing = settings,
+                SemanticSearch = new SemanticSearchSettings { Enabled = true },
             };
         }
 
@@ -865,6 +1411,17 @@ public sealed class BackgroundIndexingServiceTests
             Current = settings;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class EmptySemanticIndexStore : ISemanticIndexStore
+    {
+        public Task<IReadOnlyList<SemanticIndexEntry>> ListAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<SemanticIndexEntry>>([]);
+
+        public Task ReplaceAsync(IReadOnlyList<SemanticIndexEntry> entries, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task ClearAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class ControllableResourceMonitor : IBackgroundResourceMonitor

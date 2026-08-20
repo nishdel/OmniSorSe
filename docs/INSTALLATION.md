@@ -82,7 +82,7 @@ Prerequisites:
 
 - Windows 10 or later, or a Linux x64 graphical environment for the
   source-build preview;
-- the .NET SDK selected by [`global.json`](../global.json);
+- the .NET 10 SDK selected by [`global.json`](../global.json);
 - Git when cloning the repository.
 
 ```powershell
@@ -227,7 +227,10 @@ do not copy it into the repository.
 
 ## Update a source build or portable release
 
-1. Close OmniSorSe (or OpenSorSe v2.3) so stores, indexing, watchers, and plugins shut down.
+1. Close OmniSorSe (or an older compatible OpenSorSe build) so stores, indexing,
+   watchers, journals, and plugins shut down. The supported release procedure
+   never replaces binaries beneath a running process; the Windows installer
+   uses Restart Manager to request closure.
 2. Read Version Notes, Release Status, and migration information.
 3. Keep the previous program directory and a reviewed backup of important
    application-owned state.
@@ -238,6 +241,11 @@ do not copy it into the repository.
 
 Do not overwrite a running installation. Each store/provider owns its schema,
 migration, newer-version rejection, corruption, and recovery behavior.
+
+Current v2.12 candidate Windows/macOS packages are self-contained with .NET 10;
+users do not install a separate runtime. OmniSorSe has no in-app updater. Obtain
+a trusted package, verify its checksum/signature status and embedded source
+identity, close the app, replace/install it, then review startup health.
 
 ## Uninstall
 

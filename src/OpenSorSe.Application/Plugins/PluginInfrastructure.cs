@@ -755,7 +755,7 @@ public sealed class PluginDiscoveryService : IPluginDiscoveryService
             return PluginCompatibilityState.UnsupportedManifest;
         }
 
-        if (!string.Equals(manifest.RuntimeCompatibility, "net8.0", StringComparison.OrdinalIgnoreCase))
+        if (!PluginLimits.IsRuntimeCompatible(manifest.RuntimeCompatibility))
         {
             return PluginCompatibilityState.RuntimeIncompatible;
         }

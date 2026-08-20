@@ -1,16 +1,16 @@
-# OpenSorSe technology stack
+# OmniSorSe technology stack
 
 **Document type:** Living technology inventory
 
-**Scope:** Released v2.3 source; a technology in a roadmap or historical
+**Scope:** Current v2.12 candidate source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack
 
 | Area | Technology | Current use |
 | --- | --- | --- |
-| Application target | .NET 8 (`net8.0`) | All production and test projects target .NET 8. |
-| Repository SDK | .NET SDK selected by `global.json` (currently 9.0.315) | Reproducible build/tool selection; the newer SDK does not change the .NET 8 runtime target. |
+| Application target | .NET 10 LTS (`net10.0`) | All production, test, protocol-contract, and helper projects target .NET 10. |
+| Repository SDK | .NET SDK selected by `global.json` (currently 10.0.400) | One reproducible SDK/runtime authority; release packages are self-contained and report the exact bundled runtime. |
 | Language | C# with nullable reference types and implicit usings | Production and automated test implementation. |
 | Desktop UI | Avalonia 12.1 | Cross-platform-capable presentation; Windows is primary and Linux remains a preview. |
 | Presentation pattern | MVVM | Views/bindings are separated from ViewModel state/commands and Application/domain services. |
@@ -18,7 +18,7 @@ architecture document is not a current dependency
 | Composition | Microsoft.Extensions.DependencyInjection 8.x | Desktop composition root and service registration. |
 | Logging | Microsoft.Extensions.Logging 8.x plus OpenSorSe-owned bounded logging | Structured application logging without source content. |
 | JSON persistence | `System.Text.Json` plus shared bounded atomic replacement | Settings, catalogs, workflows, watched state, plans, journals, compatible content/Search stores, and other application-owned data. |
-| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Released schema-4 deep index with shared media evidence; isolated schema-1 graph/decision sidecars remain. |
+| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Schema-6 deep index with shared media/content/Smart Tag evidence; isolated schema-1 graph/decision sidecars remain. |
 | Media image parsing/thumbnails | Bounded managed parsers plus existing SkiaSharp 3.119.2 reference | Deterministic JPEG/PNG/WebP/BMP/TIFF headers/EXIF and lazy capped still-image PNG thumbnails; no network or source mutation. |
 | Optional media metadata/frames | User-managed `ffprobe` and `ffmpeg` | Capability-detected argument-list processes with output/time/duration/frame bounds; not downloaded or bundled. |
 | Media transcription | Provider-neutral Application contract plus optional user-managed whisper.cpp CLI adapter in v2.3.0 | No runtime/model is bundled or downloaded; missing configuration degrades to an unavailable capability. |
@@ -77,7 +77,9 @@ Current source does not use or claim:
 - a plugin marketplace, automatic plugin download/update, publisher signature
   authority, or OS sandbox;
 - Python/PySide as an application runtime;
-- a signed installer, automatic updater, or v2.0 distribution package;
+- an automatic updater or automatic package distribution. Published v2.4
+  Windows/macOS packages exist, but their release record identifies them as
+  unsigned and the macOS artifacts as not notarized;
 - OpenSorSe Server, collaboration, remote/unrestricted graph service, or a
   conversational assistant.
 

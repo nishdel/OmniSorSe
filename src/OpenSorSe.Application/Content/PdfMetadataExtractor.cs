@@ -9,6 +9,13 @@ namespace OpenSorSe.Application.Content;
 /// <summary>Reads bounded PDF metadata and page-level native text without executing embedded content.</summary>
 public sealed class PdfMetadataExtractor : IMetadataExtractor
 {
+    /// <summary>Hard safety ceiling applied before any managed or native PDF parser is invoked.</summary>
+    public const long HardMaximumInputBytes = 64L * 1024 * 1024;
+
+    /// <summary>Small compatibility prefix inspected when the primary parser rejects a damaged PDF.</summary>
+    public const int MaximumFallbackPrefixBytes = 4 * 1024 * 1024;
+
+    private const int MaximumPageTextInputCharacters = ContentText.MaximumTextCharacters * 2;
     private static readonly Regex PageRegex = new(@"/Type\s*/Page\b", RegexOptions.CultureInvariant);
     private static readonly Regex TextRegex = new(@"\((?<value>(?:\\.|[^\\)])*)\)\s*T[Jj]", RegexOptions.CultureInvariant);
 
@@ -28,16 +35,20 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             return Empty("PDF content was unavailable.");
         }
 
-        if (info.Length > maximumInputBytes || info.Length > int.MaxValue)
+        var effectiveMaximumInputBytes = Math.Min(maximumInputBytes, HardMaximumInputBytes);
+        if (info.Length > effectiveMaximumInputBytes)
         {
-            return Empty("PDF metadata was skipped because the file exceeds the configured content bound.");
+            return Empty("PDF metadata was skipped because the file exceeds the bounded PDF safety limit.");
         }
 
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
             return await Task.Run(
-                () => ExtractWithPdfPig(file.FullPath, maximumPages, cancellationToken),
+                () => ExtractWithPdfPig(
+                    file.FullPath,
+                    Math.Min(maximumPages, ContentText.MaximumPageRecords),
+                    cancellationToken),
                 cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -51,7 +62,7 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             return await ExtractFallbackAsync(
                 file.FullPath,
                 info.Length,
-                maximumPages,
+                Math.Min(maximumPages, ContentText.MaximumPageRecords),
                 cancellationToken).ConfigureAwait(false);
         }
     }
@@ -82,22 +93,23 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
         {
             cancellationToken.ThrowIfCancellationRequested();
             var raw = ContentOrderTextExtractor.GetText(document.GetPage(pageNumber));
-            var normalized = ContentText.Normalize(raw);
+            var boundedRaw = BoundInput(raw, MaximumPageTextInputCharacters);
+            var normalized = ContentText.Normalize(boundedRaw);
             var reliable = PdfNativeTextQuality.IsReliable(normalized);
             pages.Add(new PdfPageText(
                 pageNumber,
                 normalized.Length == 0 ? null : normalized,
                 reliable)
             {
-                RawNativeText = string.IsNullOrEmpty(raw) ? null : BoundRaw(raw),
+                RawNativeText = string.IsNullOrEmpty(boundedRaw) ? null : BoundRaw(boundedRaw),
             });
             if (normalized.Length > 0)
             {
-                AppendPage(combined, pageNumber, normalized);
+                AppendPageBounded(combined, pageNumber, normalized);
             }
-            if (!string.IsNullOrEmpty(raw))
+            if (!string.IsNullOrEmpty(boundedRaw))
             {
-                AppendPage(rawCombined, pageNumber, BoundRaw(raw));
+                AppendPageBounded(rawCombined, pageNumber, boundedRaw);
             }
         }
 
@@ -124,6 +136,11 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
         int maximumPages,
         CancellationToken cancellationToken)
     {
+        if (length > MaximumFallbackPrefixBytes)
+        {
+            return Empty("The primary PDF parser rejected this file; compatibility extraction was skipped because its bounded prefix would be insufficient.");
+        }
+
         var bytes = new byte[(int)length];
         await using (var stream = new FileStream(
             fullPath,
@@ -136,6 +153,7 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             await stream.ReadExactlyAsync(bytes, cancellationToken).ConfigureAwait(false);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         var source = Encoding.Latin1.GetString(bytes);
         var pageCount = PageRegex.Matches(source).Count;
         var fields = new List<ExtractedMetadataField>();
@@ -150,9 +168,7 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
             ContentProvenance.EmbeddedMetadata));
         var rawNativeText = pageCount > maximumPages
             ? string.Empty
-            : string.Join(' ', TextRegex.Matches(source)
-                .Take(2048)
-                .Select(match => UnescapePdfText(match.Groups["value"].Value)));
+            : JoinFallbackText(source, cancellationToken);
         var nativeText = ContentText.Normalize(rawNativeText);
         var pages = pageCount == 1
             ? new[]
@@ -213,17 +229,58 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
         }
     }
 
-    private static void AppendPage(StringBuilder output, int pageNumber, string text)
+    private static void AppendPageBounded(StringBuilder output, int pageNumber, string text)
     {
+        if (output.Length >= ContentText.MaximumTextCharacters)
+        {
+            return;
+        }
+
         if (output.Length > 0)
         {
             output.AppendLine();
         }
 
-        output.Append("[Page ")
+        var prefix = new StringBuilder(24)
+            .Append("[Page ")
             .Append(pageNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))
             .Append("] ")
-            .Append(text);
+            .ToString();
+        var remaining = ContentText.MaximumTextCharacters - output.Length;
+        if (prefix.Length >= remaining)
+        {
+            output.Append(prefix.AsSpan(0, remaining));
+            return;
+        }
+
+        output.Append(prefix);
+        remaining = ContentText.MaximumTextCharacters - output.Length;
+        output.Append(text.AsSpan(0, Math.Min(text.Length, remaining)));
+    }
+
+    private static string JoinFallbackText(string source, CancellationToken cancellationToken)
+    {
+        var output = new StringBuilder(Math.Min(source.Length, ContentText.MaximumTextCharacters));
+        var count = 0;
+        foreach (Match match in TextRegex.Matches(source))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (count++ >= 2048 || output.Length >= ContentText.MaximumTextCharacters)
+            {
+                break;
+            }
+
+            var value = UnescapePdfText(match.Groups["value"].Value);
+            if (output.Length > 0)
+            {
+                output.Append(' ');
+            }
+
+            var remaining = ContentText.MaximumTextCharacters - output.Length;
+            output.Append(value.AsSpan(0, Math.Min(value.Length, remaining)));
+        }
+
+        return output.ToString();
     }
 
     private static string UnescapePdfText(string value) => value
@@ -240,6 +297,9 @@ public sealed class PdfMetadataExtractor : IMetadataExtractor
         value.Length <= ContentText.MaximumTextCharacters
             ? value
             : value[..ContentText.MaximumTextCharacters];
+
+    private static string BoundInput(string value, int maximumCharacters) =>
+        value.Length <= maximumCharacters ? value : value[..maximumCharacters];
 }
 
 /// <summary>Applies the documented deterministic PDF-native-text sufficiency policy.</summary>

@@ -10,13 +10,19 @@ using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Application.Watching;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Relationships;
+using OpenSorSe.Application.Semantic;
 
 namespace OpenSorSe.Application.Indexing;
 
 /// <summary>
 /// Coordinates durable discovery and staged work while keeping Views, ViewModels, and search logic provider independent.
 /// </summary>
-public sealed partial class BackgroundIndexingService : IBackgroundIndexingService, IIndexPrivacyService
+public sealed partial class BackgroundIndexingService :
+    IBackgroundIndexingService,
+    IProgressiveSmartTagSearchSource,
+    IIndexPrivacyService
 {
     private static readonly HashSet<string> ArchiveExtensions = new(
         [".zip", ".7z", ".rar", ".tar", ".gz", ".bz2", ".xz"],
@@ -224,6 +230,40 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         }
 
         return _deepIndexStore.GetSourcesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ReconcilePathsAsync(
+        IReadOnlyList<string> affectedPaths,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureInitialized();
+        ThrowIfStorageUnavailable();
+        ArgumentNullException.ThrowIfNull(affectedPaths);
+        var normalized = affectedPaths
+            .Where(path => !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path))
+            .Select(_pathSemantics.NormalizeAbsolutePath)
+            .Distinct(_pathSemantics.Comparer)
+            .ToArray();
+        if (normalized.Length == 0)
+        {
+            return 0;
+        }
+
+        var sources = await _deepIndexStore.GetSourcesAsync(cancellationToken).ConfigureAwait(false);
+        var affectedSources = sources
+            .Where(source => source.Enabled && normalized.Any(path =>
+                _pathSemantics.IsWithinRoot(source.RootPath, path) ||
+                _pathSemantics.IsWithinRoot(path, source.RootPath)))
+            .DistinctBy(source => source.Id, StringComparer.Ordinal)
+            .ToArray();
+        foreach (var source in affectedSources)
+        {
+            _ = await QueueSourceAsync(source, cancellationToken).ConfigureAwait(false);
+        }
+
+        Signal(Math.Max(1, affectedSources.Length));
+        return affectedSources.Length;
     }
 
     /// <inheritdoc />
@@ -501,6 +541,121 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
         }
 
         return _deepIndexStore.GetSearchDocumentsByIdsAsync(fileIds, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<ProgressiveDiscoveryResult> GetDiscoveryCandidatesAsync(
+        DiscoverySearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureInitialized();
+        if (_initializationFailure is not null)
+        {
+            return new ProgressiveDiscoveryResult([], SearchCandidateCoverage.Unknown);
+        }
+
+        var selection = await _deepIndexStore
+            .SelectSearchCandidateIdsAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+        if (!selection.IsAvailable)
+        {
+            var compatible = await _deepIndexStore
+                .GetSearchDocumentsAsync(request.MaximumCandidateCount, cancellationToken)
+                .ConfigureAwait(false);
+            return new ProgressiveDiscoveryResult(
+                compatible,
+                new SearchCandidateCoverage(
+                    compatible.Count,
+                    compatible.Count,
+                    compatible.Count,
+                    false,
+                    false));
+        }
+
+        if (selection.FileIds.Count == 0)
+        {
+            return new ProgressiveDiscoveryResult(
+                [],
+                new SearchCandidateCoverage(
+                    selection.EligibleFileCount,
+                    selection.MatchingFileCount,
+                    0,
+                    selection.WasTruncated,
+                    true));
+        }
+
+        var documents = new Dictionary<string, ProgressiveSearchDocument>(StringComparer.Ordinal);
+        foreach (var batch in selection.FileIds.Chunk(RelationshipLimits.MaximumSearchExpansions))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var resolved = await _deepIndexStore
+                .GetSearchDocumentsByIdsAsync(batch, cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var document in resolved)
+            {
+                documents.TryAdd(document.FileId, document);
+            }
+        }
+
+        var ordered = selection.FileIds
+            .Where(documents.ContainsKey)
+            .Select(id => documents[id])
+            .ToArray();
+        return new ProgressiveDiscoveryResult(
+            Array.AsReadOnly(ordered),
+            new SearchCandidateCoverage(
+                selection.EligibleFileCount,
+                selection.MatchingFileCount,
+                ordered.Length,
+                selection.WasTruncated,
+                true));
+    }
+
+    /// <inheritdoc />
+    public Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+        DiscoveryFacetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureInitialized();
+        return _initializationFailure is not null
+            ? Task.FromResult(DiscoveryFacetSnapshot.Unavailable)
+            : _deepIndexStore.GetFacetCountsAsync(request, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ProgressiveSearchDocument>> GetDocumentsBySmartTagsAsync(
+        SmartTagFilter filter,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        EnsureInitialized();
+        if (_initializationFailure is not null || _deepIndexStore is not ISmartTagStore smartTagStore)
+        {
+            return [];
+        }
+
+        var fileIds = await smartTagStore
+            .FilterFileIdsBySmartTagsAsync(filter, maximumCount, cancellationToken)
+            .ConfigureAwait(false);
+        if (fileIds.Count == 0)
+        {
+            return [];
+        }
+
+        var documents = new List<ProgressiveSearchDocument>(fileIds.Count);
+        foreach (var batch in fileIds.Chunk(RelationshipLimits.MaximumSearchExpansions))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var resolved = await _deepIndexStore
+                .GetSearchDocumentsByIdsAsync(batch, cancellationToken)
+                .ConfigureAwait(false);
+            documents.AddRange(resolved);
+        }
+
+        return documents;
     }
 
     /// <inheritdoc />
@@ -872,7 +1027,10 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
                     .ResumeEligibleWaitingRunsAsync(_timeProvider.GetUtcNow(), cancellationToken)
                     .ConfigureAwait(false);
                 var work = await _deepIndexStore
-                    .ClaimNextAsync(_timeProvider.GetUtcNow(), cancellationToken)
+                    .ClaimNextAsync(
+                        _timeProvider.GetUtcNow(),
+                        settings.InitialScanDepth,
+                        cancellationToken)
                     .ConfigureAwait(false);
                 if (work is null)
                 {
@@ -983,7 +1141,10 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
                             work,
                             output.ContentHash,
                             reusable.Value,
-                            IndexingStage.SearchIndexUpdated,
+                            reusable.Value < IndexingStage.SemanticRepresentationGenerated &&
+                            settings.SemanticProcessingEnabled && !work.SuppressSemantic
+                                ? IndexingStage.SemanticRepresentationGenerated
+                                : IndexingStage.SmartTagsClassified,
                             completedAt,
                             stageCancellation.Token)
                         .ConfigureAwait(false);
@@ -1148,9 +1309,10 @@ public sealed partial class BackgroundIndexingService : IBackgroundIndexingServi
             IndexingStage.OcrProcessed => IndexingStage.SummaryKeywordsGenerated,
             IndexingStage.SummaryKeywordsGenerated =>
                 !settings.SemanticProcessingEnabled || work.SuppressSemantic
-                ? IndexingStage.SearchIndexUpdated
+                ? IndexingStage.SmartTagsClassified
                 : IndexingStage.SemanticRepresentationGenerated,
-            IndexingStage.SemanticRepresentationGenerated => IndexingStage.SearchIndexUpdated,
+            IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+            IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
             IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
             IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
             IndexingStage.FileFullyIndexed => null,

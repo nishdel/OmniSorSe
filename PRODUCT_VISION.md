@@ -56,14 +56,16 @@ OmniSorSe aims to:
 
 ## Current behavior
 
-The current source line targets unreleased OmniSorSe v2.4. Integration, validation,
-packaging, publication, and interactive/community-testing facts can change
-without changing the product purpose, so exact readiness belongs in
+Volatile source-line, runtime, schema, protocol, capability, and confidence
+facts belong in [Current State](docs/CURRENT-STATE.md). Integration, validation,
+packaging, publication, and interactive/community-testing facts belong in
 [Release Status](docs/RELEASE_STATUS.md), not in this vision.
 
-v2.4 preserves the released OpenSorSe v2.3 schema/profile while adding a
-dormant local read-only protocol for the separate future OmniExplorer. The
-companion is not part of this repository and remains optional/unreleased.
+The current source preserves established OpenSorSe compatibility identities
+while presenting OmniSorSe to users. Its Explorer Protocol is a dormant,
+authenticated, bounded read-only boundary for an explicitly launched, separately
+installed OmniBrille companion. OmniBrille is not implemented in this
+repository and is never required for core behavior.
 
 Today, the source implements:
 
@@ -80,6 +82,10 @@ Today, the source implements:
 - deterministic evidence-backed file relationships, virtual Smart Collections
   and timelines, persistent user corrections, relationship-aware Search, and
   index-only relationship privacy/repair controls;
+- normalized explainable Theme/Document Type/User Tag authority, canonical
+  facets, complete-index discovery, and dynamic Saved View rules;
+- direct graph-independent Related Files, capped relationship evidence families,
+  and reversible Related/Not Related/Use automatic pair authority;
 - an optional, disabled-by-default, conservative Knowledge Graph projection of
   stable files, sources, folders, Collections, exact-content document sets, and
   manual entities, with bounded browsing and Search context;
@@ -93,7 +99,11 @@ Today, the source implements:
   actions;
 - explicit review, immediate preflight, non-overwriting execution, a durable
   Operation Journal, result verification, rollback attempts, recovery, and
-  conflict-aware Undo.
+  conflict-aware Undo;
+- post-operation reconciliation so Files, duplicate review, Search, and targeted
+  indexing follow verified filesystem/journal outcomes rather than plan intent;
+- single-writer profile ownership, bounded health/lifecycle checks, coordinated
+  Forget, and reviewed logical state backup/restore.
 
 Current source does **not** implement cloud synchronization, collaboration,
 OmniSorSe Server, an unrestricted or remote knowledge graph, a conversational
@@ -104,7 +114,7 @@ or permanent deletion.
 
 The long-term direction is a trustworthy personal and shared knowledge layer
 over user-controlled files. Possible future capabilities beyond the current
-bounded relationships, collections, and the local conservative graph candidate
+bounded relationships, collections, and optional local conservative graph
 include adaptive assistance, richer media analysis, richer confirmed entities,
 remote/cross-device graphs, conversation, NAS/cloud providers, a server
 deployment, and collaboration.

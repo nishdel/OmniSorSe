@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using OpenSorSe.Application.Semantic;
+using OpenSorSe.Desktop.ViewModels;
 
 namespace OpenSorSe.Desktop.Views;
 
@@ -9,5 +11,13 @@ public partial class SemanticSearchView : UserControl
     public SemanticSearchView()
     {
         InitializeComponent();
+    }
+
+    private void OnSearchSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
+    {
+        if (DataContext is SemanticSearchViewModel viewModel && sender is ListBox listBox)
+        {
+            viewModel.SetOrganizationSelection(listBox.SelectedItems?.OfType<SemanticSearchHit>() ?? []);
+        }
     }
 }

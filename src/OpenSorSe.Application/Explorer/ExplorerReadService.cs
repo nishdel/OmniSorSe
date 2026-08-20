@@ -276,7 +276,13 @@ internal sealed class ExplorerReadService
         }
 
         var maximum = BoundCount(request.MaximumResults, 50, ExplorerProtocolDefaults.MaximumRelatedResults);
-        var related = await _source.GetRelatedFilesAsync(identity.FileId, maximum + 1, cancellationToken).ConfigureAwait(false);
+        var requestedRows = Math.Min((maximum + 1) * 4, RelationshipLimits.MaximumRelationshipsPerFile);
+        var relatedRows = await _source.GetRelatedFilesAsync(identity.FileId, requestedRows, cancellationToken).ConfigureAwait(false);
+        var related = RelationshipPairAggregator.ToRelatedFiles(RelationshipPairAggregator.Aggregate(
+            relatedRows
+                .Where(item => item.Relationship.Decision is not RelationshipDecision.Rejected and not RelationshipDecision.NeverRelate)
+                .ToArray(),
+            Math.Min(maximum + 1, ExplorerProtocolDefaults.MaximumRelatedResults + 1)));
         var relatedIds = related.Select(item => item.FileId).Distinct(StringComparer.Ordinal).ToArray();
         var documents = await _source.GetDocumentsByIdsAsync(relatedIds, cancellationToken).ConfigureAwait(false);
         var authorized = documents
@@ -693,6 +699,8 @@ internal sealed class ExplorerReadService
         FileRelationship relationship)
     {
         var firstEvidence = relationship.Evidence.FirstOrDefault();
+        var hasUserAuthority = relationship.IsManual ||
+            relationship.Decision is RelationshipDecision.Confirmed or RelationshipDecision.AlwaysRelate;
         var kind = firstEvidence?.Kind switch
         {
             RelationshipEvidenceKind.OcrText or RelationshipEvidenceKind.MediaOcr => ExplorerEdgeKind.Ocr,
@@ -702,10 +710,8 @@ internal sealed class ExplorerReadService
             RelationshipEvidenceKind.Timestamp => ExplorerEdgeKind.Temporal,
             _ => ExplorerEdgeKind.Related,
         };
-        var evidenceClass = firstEvidence?.Kind is RelationshipEvidenceKind.Summary or
-            RelationshipEvidenceKind.SemanticConcept or
-            RelationshipEvidenceKind.ContentTopic or
-            RelationshipEvidenceKind.ContentEntity
+        var evidenceClass = firstEvidence?.Origin is RelationshipEvidenceOrigin.Derived or
+            RelationshipEvidenceOrigin.AiDerived
                 ? ExplorerEvidenceClass.Derived
                 : ExplorerEvidenceClass.Deterministic;
         var strength = relationship.Confidence switch
@@ -720,9 +726,15 @@ internal sealed class ExplorerReadService
             targetNodeId,
             kind,
             strength,
-            Bound(relationship.Explanation, ExplorerProtocolDefaults.MaximumReasonCharacters),
+            Bound(
+                hasUserAuthority
+                    ? $"Related by explicit user authority. {relationship.Explanation}"
+                    : relationship.Explanation,
+                ExplorerProtocolDefaults.MaximumReasonCharacters),
             evidenceClass,
-            Bound($"{relationship.Algorithm} {relationship.AlgorithmVersion}", 128));
+            hasUserAuthority
+                ? "OmniSorSe user relationship authority"
+                : Bound($"{relationship.Algorithm} {relationship.AlgorithmVersion}", 128));
     }
 
     private static IReadOnlyList<ExplorerConcept> ToConcepts(

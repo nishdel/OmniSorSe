@@ -1,6 +1,12 @@
 # Documentation inventory
 
-**Document type:** Living documentation architecture and audit record
+**Document type:** Historical documentation audit snapshot
+
+**Status:** Frozen to its v2.4 repository basis. Use
+[`docs/README.md`](README.md) for the current documentation hierarchy and
+[`docs/engineering/README.md`](engineering/README.md) for the current
+engineering-knowledge system. The counts and classifications below remain
+useful archaeology but are not a current inventory.
 
 **Audit date:** 2026-08-03
 
@@ -109,6 +115,27 @@ These files describe current product/project policy or the current source tree:
 - `docs/MANUAL_TESTING_v2.3.md`
 - `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`
 - `docs/MANUAL_TESTING_v2.4.md`
+- `docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md`
+- `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`
+- `docs/MANUAL_TESTING_v2.5.md`
+- `docs/EXPLAINABLE_SMART_TAGS_v2.6.md`
+- `docs/MANUAL_TESTING_v2.6.md`
+- `docs/SCALABLE_FACETED_DISCOVERY_v2.7.md`
+- `docs/MANUAL_TESTING_v2.7.md`
+- `docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md`
+- `docs/MANUAL_TESTING_v2.8.md`
+- `docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md`
+- `docs/MANUAL_TESTING_v2.9.md`
+- `docs/PRODUCTION_HARDENING_v2.10.md`
+- `docs/OPERATIONAL_RUNBOOKS_v2.10.md`
+- `docs/MANUAL_TESTING_v2.10.md`
+- `docs/RELEASE_NOTES_v2.10.0.md`
+- `docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md`
+- `docs/MANUAL_TESTING_v2.11.md`
+- `docs/RELEASE_NOTES_v2.11.0.md`
+- `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`
+- `docs/MANUAL_TESTING_v2.12.md`
+- `docs/RELEASE_NOTES_v2.12.0.md`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`

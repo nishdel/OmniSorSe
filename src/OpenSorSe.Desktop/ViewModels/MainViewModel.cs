@@ -9,11 +9,13 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.Features;
+using OpenSorSe.Application.Guidance;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
@@ -47,9 +49,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.SemanticSearch, "Search", FeatureRequirement.Regular, NavigationGroup.Primary, "⌕"),
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Primary, "⧉"),
-        new(NavigationDestination.KnowledgeGraph, "Related Files", FeatureRequirement.Regular, NavigationGroup.Primary, "R"),
+        new(NavigationDestination.Collections, "Related Files", FeatureRequirement.Regular, NavigationGroup.Primary, "R"),
         new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
-        new(NavigationDestination.Collections, "Collections", FeatureRequirement.Regular, NavigationGroup.Secondary, "C"),
+        new(NavigationDestination.KnowledgeGraph, "Knowledge Graph", FeatureRequirement.Regular, NavigationGroup.Secondary, "G"),
         new(NavigationDestination.Catalog, "Saved scans", FeatureRequirement.Regular, NavigationGroup.Secondary, "▣"),
         new(NavigationDestination.WatchedFolders, "Watched Folders", FeatureRequirement.Regular, NavigationGroup.Secondary, "W"),
         new(NavigationDestination.Workflows, "Workflows", FeatureRequirement.Regular, NavigationGroup.Secondary, "P"),
@@ -71,6 +73,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IWatchedFolderManager? _watchedFolderManager;
     private readonly IWatchedFolderCoordinator? _watchedFolderCoordinator;
     private readonly IBackgroundIndexingService? _backgroundIndexingService;
+    private DiscoveryWorkflowContext? _discoveryContext;
+    private readonly IChangePlanReconciliationService _changePlanReconciliationService =
+        new ChangePlanReconciliationService();
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
     private readonly ObservableCollection<NavigationItem> _primaryNavigationItems = [];
@@ -291,7 +296,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IRelationshipService? relationshipService = null,
         KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
-        IMediaThumbnailProvider? mediaThumbnailProvider = null)
+        IMediaThumbnailProvider? mediaThumbnailProvider = null,
+        ISmartTagService? smartTagService = null,
+        ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
+        IProductReadinessService? productReadinessService = null,
+        IReviewedOrganizationService? reviewedOrganizationService = null)
         : this(
             configurationService,
             loggingService,
@@ -338,7 +347,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             relationshipService,
             knowledgeGraphViewModel,
             mediaIntelligenceService,
-            mediaThumbnailProvider)
+            mediaThumbnailProvider,
+            smartTagService,
+            savedDiscoveryViewStore,
+            productReadinessService,
+            reviewedOrganizationService)
     {
     }
 
@@ -388,7 +401,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         IRelationshipService? relationshipService = null,
         KnowledgeGraphViewModel? knowledgeGraphViewModel = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
-        IMediaThumbnailProvider? mediaThumbnailProvider = null)
+        IMediaThumbnailProvider? mediaThumbnailProvider = null,
+        ISmartTagService? smartTagService = null,
+        ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
+        IProductReadinessService? productReadinessService = null,
+        IReviewedOrganizationService? reviewedOrganizationService = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -402,15 +419,18 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _watchedFolderManager = watchedFolderManager;
         _watchedFolderCoordinator = watchedFolderCoordinator;
         _backgroundIndexingService = backgroundIndexingService;
-        Dashboard = new DashboardViewModel(Navigate);
-        FolderSelection = new FolderSelectionViewModel(workflowLibrary);
+        Dashboard = new DashboardViewModel(Navigate, productReadinessService);
+        FolderSelection = new FolderSelectionViewModel(workflowLibrary, configurationService);
         ScanProgress = new ScanProgressViewModel();
         Results = new ResultsViewModel(
             configurationService,
             aiSuggestionService,
             externalFileLauncher,
             contentStore,
-            suggestionChangePlanFactory);
+            suggestionChangePlanFactory,
+            smartTagService,
+            reviewedOrganizationService,
+            workflowLibrary);
         ReviewChanges = new ChangePlanReviewViewModel(
             changePlanValidator,
             changePlanExecutionService,
@@ -436,7 +456,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             backgroundIndexingService,
             advancedDiagnosticsWindowService,
             clipboard: clipboardService,
-            mediaThumbnailProvider: mediaThumbnailProvider);
+            mediaThumbnailProvider: mediaThumbnailProvider,
+            smartTagService: smartTagService,
+            savedViewStore: savedDiscoveryViewStore);
         Collections = new CollectionsViewModel(relationshipService);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
@@ -498,15 +520,27 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested += OnScanCancellationRequested;
         Results.PersistedTagsChanged += OnPersistedTagsChanged;
         Results.MeaningSearchRequested += OnMeaningSearchRequested;
+        Results.RelatedFilesRequested += OnRelatedFilesRequested;
+        Results.SmartTagFilterRequested += OnSmartTagFilterRequested;
         Results.ChangePlanCreated += OnChangePlanCreated;
+        Results.ReturnToDiscoveryRequested += OnReturnToDiscoveryRequested;
+        Results.ReviewNavigationRequested += OnReviewNavigationRequested;
+        Results.SmartTagReviewCompleted += OnSmartTagReviewCompleted;
+        Results.ManageOrganizationRecipesRequested += OnManageOrganizationRecipesRequested;
+        SemanticSearch.OpenInFilesRequested += OnOpenInFilesRequested;
+        SemanticSearch.RelatedFilesRequested += OnRelatedFilesRequested;
+        SemanticSearch.OrganizationRequested += OnOrganizationRequested;
+        Dashboard.UnderstandRequested += OnUnderstandRequested;
+        Dashboard.ReviewRequested += OnDashboardReviewRequested;
+        Dashboard.OrganizeRequested += OnOrganizeRequested;
+        Dashboard.SavedViewRequested += OnDashboardSavedViewRequested;
         WatchedFolders.ReviewPlanRequested += OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested += OnWatchedFolderNotificationRequested;
         Workflows.RunScanRequested += OnWorkflowRunScanRequested;
         Workflows.AssignToWatchedFolderRequested += OnWorkflowAssignRequested;
         Workflows.LibraryChanged += OnWorkflowLibraryChanged;
         ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
-        ReviewChanges.ChangePlanApplied += OnChangePlanApplied;
-        ReviewChanges.ChangePlanUndone += OnChangePlanUndone;
+        ReviewChanges.OperationCompleted += OnChangePlanOperationCompleted;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
         ReviewChanges.PropertyChanged += OnHostedOperationPropertyChanged;
@@ -520,7 +554,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         RuleEditor.SaveRequested += OnCurrentSortingRecipeSaved;
         Help.BackRequested += OnHelpBackRequested;
         ConfigureContextualHelp();
+        BeginDashboardRefresh();
     }
+
+    private void BeginDashboardRefresh() => _ = Dashboard.RefreshAsync();
 
     /// <summary>
     /// Gets the dashboard state hosted by the shell.
@@ -871,8 +908,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.Catalog => "Saved scans",
         NavigationDestination.CatalogSearch => "Search saved scans",
         NavigationDestination.SemanticSearch => "Search",
-        NavigationDestination.Collections => "Collections",
-        NavigationDestination.KnowledgeGraph => "Related Files",
+        NavigationDestination.Collections => "Related Files",
+        NavigationDestination.KnowledgeGraph => "Knowledge Graph",
         NavigationDestination.CatalogComparison => "Compare scans",
         NavigationDestination.StructureHistory => "Folder plans",
         NavigationDestination.Rules => "Sorting rules",
@@ -1022,7 +1059,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <param name="destination">The destination to display.</param>
     public void Navigate(NavigationDestination destination)
     {
-        if (destination == NavigationDestination.Results)
+        if (destination == NavigationDestination.Dashboard)
+        {
+            _ = Dashboard.RefreshAsync();
+        }
+        else if (destination == NavigationDestination.Results)
         {
             Results.ShowFiles();
         }
@@ -1139,9 +1180,21 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ScanProgress.CancelRequested -= OnScanCancellationRequested;
         Results.PersistedTagsChanged -= OnPersistedTagsChanged;
         Results.MeaningSearchRequested -= OnMeaningSearchRequested;
+        Results.RelatedFilesRequested -= OnRelatedFilesRequested;
+        Results.SmartTagFilterRequested -= OnSmartTagFilterRequested;
         Results.ChangePlanCreated -= OnChangePlanCreated;
-        ReviewChanges.ChangePlanApplied -= OnChangePlanApplied;
-        ReviewChanges.ChangePlanUndone -= OnChangePlanUndone;
+        Results.ReturnToDiscoveryRequested -= OnReturnToDiscoveryRequested;
+        Results.ReviewNavigationRequested -= OnReviewNavigationRequested;
+        Results.SmartTagReviewCompleted -= OnSmartTagReviewCompleted;
+        Results.ManageOrganizationRecipesRequested -= OnManageOrganizationRecipesRequested;
+        SemanticSearch.OpenInFilesRequested -= OnOpenInFilesRequested;
+        SemanticSearch.RelatedFilesRequested -= OnRelatedFilesRequested;
+        SemanticSearch.OrganizationRequested -= OnOrganizationRequested;
+        Dashboard.UnderstandRequested -= OnUnderstandRequested;
+        Dashboard.ReviewRequested -= OnDashboardReviewRequested;
+        Dashboard.OrganizeRequested -= OnOrganizeRequested;
+        Dashboard.SavedViewRequested -= OnDashboardSavedViewRequested;
+        ReviewChanges.OperationCompleted -= OnChangePlanOperationCompleted;
         WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested -= OnWatchedFolderNotificationRequested;
         Workflows.RunScanRequested -= OnWorkflowRunScanRequested;
@@ -1183,6 +1236,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         RefreshNavigationItems(settings);
         Results.RefreshFeatureAvailability();
         SemanticSearch.RefreshFeatureAvailability();
+        _ = Dashboard.RefreshAsync();
     }
 
     private void OnCurrentSortingRecipeSaved(object? sender, IReadOnlyList<OpenSorSe.Rules.Models.FileRule> rules)
@@ -1204,6 +1258,183 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Navigate(NavigationDestination.SemanticSearch);
     }
 
+    private async void OnSmartTagFilterRequested(SearchFilter filter)
+    {
+        Navigate(NavigationDestination.SemanticSearch);
+        await SemanticSearch.ApplyExternalFilterAsync(filter);
+    }
+
+    private async void OnOpenInFilesRequested(object? sender, DiscoveryFileOpenRequest request) =>
+        _ = await OpenDiscoveryFileAsync(request.Context, request.FileId);
+
+    private async void OnRelatedFilesRequested(object? sender, string fileId)
+    {
+        Navigate(NavigationDestination.Collections);
+        await Collections.SelectFileAsync(fileId);
+    }
+
+    private async void OnOrganizationRequested(object? sender, OrganizationSelectionContext selection)
+    {
+        var firstId = selection.FileIds.FirstOrDefault();
+        if (selection.DiscoveryContext is not null && firstId is not null)
+        {
+            if (!await OpenDiscoveryFileAsync(selection.DiscoveryContext, firstId))
+            {
+                return;
+            }
+        }
+        else
+        {
+            Navigate(NavigationDestination.Results);
+        }
+
+        try
+        {
+            await Results.OpenOrganizationAsync(selection);
+            StatusText = "Organization recipe preview is ready to configure. No files have changed.";
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            SemanticSearch.ReportWorkflowFailure(exception.Message);
+        }
+    }
+
+    private void OnManageOrganizationRecipesRequested(object? sender, EventArgs eventArgs)
+    {
+        Navigate(NavigationDestination.Workflows);
+        StatusText = "Manage persistent Organization recipes here, then return to Files to preview one.";
+    }
+
+    private async Task<bool> OpenDiscoveryFileAsync(DiscoveryWorkflowContext context, string fileId)
+    {
+        if (_backgroundIndexingService is null)
+        {
+            SemanticSearch.ReportWorkflowFailure("Files cannot resolve this stable indexed result in the current application mode.");
+            return false;
+        }
+
+        try
+        {
+            var documents = await _backgroundIndexingService.GetDocumentsByIdsAsync([fileId], CancellationToken.None);
+            var document = documents.FirstOrDefault(candidate => string.Equals(candidate.FileId, fileId, StringComparison.Ordinal));
+            if (document is null)
+            {
+                SemanticSearch.ReportWorkflowFailure("The indexed file is no longer available. The preserved Search can be refreshed safely.");
+                return false;
+            }
+
+            var updatedContext = context with { SelectedFileId = fileId };
+            _discoveryContext = updatedContext;
+            await Results.OpenDiscoveryDocumentAsync(document, updatedContext);
+            Navigate(NavigationDestination.Results);
+            StatusText = updatedContext.IsUnresolvedReview
+                ? "Review the bounded Smart Tag evidence, then accept or reject the suggestion to continue."
+                : "The Search result is open in Files. Return to discovery restores the prior query, facets, and Saved View.";
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
+        {
+            SemanticSearch.ReportWorkflowFailure("The indexed file could not be opened in Files. Search state and source files were unchanged.");
+            return false;
+        }
+    }
+
+    private async void OnReturnToDiscoveryRequested(object? sender, EventArgs eventArgs) =>
+        await ReturnToDiscoveryAsync();
+
+    private async Task ReturnToDiscoveryAsync()
+    {
+        var context = _discoveryContext;
+        if (context is null)
+        {
+            Navigate(NavigationDestination.SemanticSearch);
+            return;
+        }
+
+        await Results.EndDiscoveryDocumentAsync();
+        _discoveryContext = null;
+        Navigate(NavigationDestination.SemanticSearch);
+        await SemanticSearch.RestoreDiscoveryContextAsync(context);
+        StatusText = "Discovery context restored.";
+    }
+
+    private async void OnReviewNavigationRequested(object? sender, DiscoveryReviewDirection direction) =>
+        await MoveWithinDiscoveryReviewAsync(direction);
+
+    private async void OnSmartTagReviewCompleted(object? sender, EventArgs eventArgs) =>
+        await MoveWithinDiscoveryReviewAsync(DiscoveryReviewDirection.Next);
+
+    private async Task MoveWithinDiscoveryReviewAsync(DiscoveryReviewDirection direction)
+    {
+        var context = _discoveryContext;
+        if (context is null || !context.IsUnresolvedReview)
+        {
+            return;
+        }
+
+        var currentIndex = context.ResultFileIds
+            .Select((fileId, index) => new { fileId, index })
+            .FirstOrDefault(item => string.Equals(item.fileId, context.SelectedFileId, StringComparison.Ordinal))?.index ?? -1;
+        var nextIndex = currentIndex + (int)direction;
+        while (nextIndex >= 0 && nextIndex < context.ResultFileIds.Count)
+        {
+            if (await OpenDiscoveryFileAsync(context, context.ResultFileIds[nextIndex]))
+            {
+                return;
+            }
+
+            nextIndex += (int)direction;
+        }
+
+        if (direction == DiscoveryReviewDirection.Next)
+        {
+            await ReturnToDiscoveryAsync();
+            StatusText = "This bounded review sequence is complete. The unresolved discovery view has been refreshed.";
+        }
+        else
+        {
+            StatusText = "No earlier unresolved file remains in this bounded review sequence.";
+        }
+    }
+
+    private void OnUnderstandRequested(object? sender, EventArgs eventArgs)
+    {
+        if (Results.Snapshot is not null)
+        {
+            Navigate(NavigationDestination.Results);
+            StatusText = "Select a file to review its local intelligence, Smart Tags, and organization options.";
+            return;
+        }
+
+        Navigate(NavigationDestination.SemanticSearch);
+        StatusText = "Find an indexed file, then choose Open in Files to understand its details and evidence.";
+    }
+
+    private async void OnDashboardReviewRequested(object? sender, EventArgs eventArgs)
+    {
+        Navigate(NavigationDestination.SemanticSearch);
+        await SemanticSearch.OpenModerateReviewAsync();
+    }
+
+    private void OnOrganizeRequested(object? sender, EventArgs eventArgs)
+    {
+        if (Results.Snapshot is not null)
+        {
+            Navigate(NavigationDestination.Results);
+            StatusText = "Select files and request a rename or folder suggestion. No change occurs until you approve a Change Plan.";
+            return;
+        }
+
+        Navigate(NavigationDestination.SemanticSearch);
+        StatusText = "Find files first, then open them in Files to create a reviewed organization suggestion.";
+    }
+
+    private async void OnDashboardSavedViewRequested(object? sender, string savedViewId)
+    {
+        Navigate(NavigationDestination.SemanticSearch);
+        _ = await SemanticSearch.OpenSavedViewByIdAsync(savedViewId);
+    }
+
     private async void OnChangePlanCreated(object? sender, ChangePlan plan)
     {
         try
@@ -1222,11 +1453,43 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void OnChangePlanApplied(object? sender, ChangePlan plan) =>
-        Results.DuplicateReview.ApplyExecutedChangePlan(plan);
+    private async void OnChangePlanOperationCompleted(
+        object? sender,
+        ChangePlanOperationCompleted completed)
+    {
+        try
+        {
+            var reconciliation = _changePlanReconciliationService.Reconcile(
+                Results.Snapshot,
+                completed.Plan,
+                completed.Operation,
+                completed.IsUndo);
+            if (reconciliation.Snapshot is not null)
+            {
+                await Results.ApplyReconciledSnapshotAsync(reconciliation.Snapshot);
+            }
 
-    private void OnChangePlanUndone(object? sender, ChangePlan plan) =>
-        Results.DuplicateReview.RevertExecutedChangePlan(plan);
+            if (_backgroundIndexingService is not null && reconciliation.AffectedPaths.Count > 0)
+            {
+                _ = await _backgroundIndexingService.ReconcilePathsAsync(
+                    reconciliation.AffectedPaths,
+                    CancellationToken.None);
+            }
+
+            StatusText = reconciliation.Summary;
+            Notifications.Publish(new NotificationRequest(
+                reconciliation.RequiresTargetedRefresh
+                    ? NotificationSeverity.Warning
+                    : NotificationSeverity.Success,
+                reconciliation.Summary));
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            StatusText = "File changes completed, but one or more local projections could not be refreshed immediately. A later scan will reconcile the affected paths.";
+            Notifications.Publish(new NotificationRequest(NotificationSeverity.Warning, StatusText));
+        }
+    }
 
     private async void OnWatchedFolderReviewPlanRequested(object? sender, ChangePlan plan)
     {
@@ -1558,6 +1821,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         try
         {
+            if (_configurationService.Current.DeepIndexing.InitialScanDepth != request.InitialScanDepth)
+            {
+                var settingsDraft = SettingsDraft.FromSettings(_configurationService.Current);
+                settingsDraft.InitialScanDepth = request.InitialScanDepth;
+                await _configurationService.SaveAsync(settingsDraft.ToSettings(), cancellation.Token);
+            }
+
             ResolvedWorkflowConfiguration? workflow = null;
             if (_workflowConfigurationResolver is not null)
             {
@@ -1820,6 +2090,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async void OnPersistedTagsChanged(object? sender, EventArgs eventArgs)
     {
+        if (IsSemanticSearchSelected)
+        {
+            await SemanticSearch.RefreshCurrentQueryAsync();
+        }
+
+        _ = Dashboard.RefreshAsync();
         if (_currentCatalogEntryId is not null && _catalogStore is not null && _configurationService.Current.Catalog.Enabled)
         {
             await PersistAcceptedTagsAsync();

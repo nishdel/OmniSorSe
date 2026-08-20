@@ -406,6 +406,10 @@ public interface IContentStore
     /// <summary>Removes stale records that are not in the supplied known-path set.</summary>
     Task RemoveMissingAsync(IReadOnlyCollection<string> knownPaths, CancellationToken cancellationToken);
 
+    /// <summary>Removes exact application-owned records for an explicit privacy request.</summary>
+    Task RemoveAsync(IReadOnlyCollection<string> fullPaths, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("The configured content store does not support targeted privacy deletion.");
+
     /// <summary>Clears the application-owned cache without changing source files.</summary>
     Task ClearAsync(CancellationToken cancellationToken);
 }

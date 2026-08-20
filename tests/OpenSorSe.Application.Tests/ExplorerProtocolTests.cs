@@ -282,6 +282,53 @@ public sealed class ExplorerProtocolTests
             value.Contains("private", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>Verifies Protocol 1.0 emits one bounded node for a multi-edge pair and excludes negative authority.</summary>
+    [Fact]
+    public async Task RelatedFiles_AggregatesTypedPairAndHonorsNegativeAuthority()
+    {
+        var fixture = CreateFixture();
+        var root = Assert.Single((await fixture.Reads.GetAccessibleRootsAsync(fixture.Session, CancellationToken.None)).Nodes);
+        var children = await fixture.Reads.GetChildrenAsync(
+            fixture.Session,
+            new ExplorerChildrenRequest(root.Id),
+            CancellationToken.None);
+        var file = Assert.Single(children.Nodes, node => node.Kind == ExplorerNodeKind.File);
+        var first = Related("file-root", "file-nested", "Shared deterministic topic");
+        var second = Related("file-root", "file-nested", "Shared project identifier") with
+        {
+            Relationship = first.Relationship with
+            {
+                Id = "relationship-file-nested-project",
+                Type = RelationshipType.SameProject,
+                Decision = RelationshipDecision.AlwaysRelate,
+                Evidence = [new RelationshipEvidence(RelationshipEvidenceKind.Filename, "identity:deterministic:project-42", "Shared project identifier")],
+            },
+        };
+        var rejected = Related("file-root", "file-private", "Rejected relationship") with
+        {
+            Relationship = Related("file-root", "file-private", "Rejected relationship").Relationship with
+            {
+                Decision = RelationshipDecision.NeverRelate,
+            },
+        };
+        fixture.Source.Related = [first, second, rejected];
+
+        var result = await fixture.Reads.GetRelatedAsync(
+            fixture.Session,
+            new ExplorerRelatedRequest(file.Id, 10),
+            CancellationToken.None);
+
+        var node = Assert.Single(result.Nodes);
+        Assert.Equal("network.md", node.Name);
+        var edge = Assert.Single(result.Edges);
+        Assert.Equal(ExplorerEdgeKind.Related, edge.Kind);
+        Assert.Equal(ExplorerEvidenceClass.Deterministic, edge.EvidenceClass);
+        Assert.Contains("explicit user authority", edge.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("OmniSorSe user relationship authority", edge.Provenance);
+        Assert.False(result.IsTruncated);
+        Assert.Equal("1.0", ExplorerProtocolVersion.Display);
+    }
+
     /// <summary>Verifies details expose bounded facts but never full OCR, transcript, or precise GPS.</summary>
     [Fact]
     public async Task Details_DoNotLeakFullContentOrGps()
@@ -416,18 +463,33 @@ public sealed class ExplorerProtocolTests
     [Fact]
     public async Task Dispatcher_RequiresAuthorizationBeforeNegotiation()
     {
-        var fixture = CreateFixture();
-        using var dispatcher = new ExplorerProtocolDispatcher(fixture.Manager, fixture.Reads);
+        var unauthorizedFixture = CreateFixture();
         var empty = JsonSerializer.SerializeToElement(new { }, ExplorerProtocolJson.CreateOptions());
-        var unauthorized = await dispatcher.DispatchAsync(
-            new ExplorerRequestEnvelope(99, "request-1", fixture.Session.SessionId, "wrong", ExplorerOperation.GetProtocolInfo, empty),
+        using var unauthorizedDispatcher = new ExplorerProtocolDispatcher(
+            unauthorizedFixture.Manager,
+            unauthorizedFixture.Reads);
+        var unauthorized = await unauthorizedDispatcher.DispatchAsync(
+            new ExplorerRequestEnvelope(99, "request-1", unauthorizedFixture.Session.SessionId, "wrong", ExplorerOperation.GetProtocolInfo, empty),
             CancellationToken.None);
-        var incompatible = await dispatcher.DispatchAsync(
-            new ExplorerRequestEnvelope(99, "request-2", fixture.Session.SessionId, fixture.Token, ExplorerOperation.GetProtocolInfo, empty),
+        Assert.Equal(ExplorerErrorCode.Unauthorized, unauthorized.Error!.Code);
+        Assert.Equal(ExplorerSessionConnectionOutcome.AuthenticationRejected, await unauthorizedFixture.Manager.WaitForConnectionOutcomeAsync(
+            unauthorizedFixture.Session.SessionId,
+            TimeSpan.FromMilliseconds(25),
+            CancellationToken.None));
+
+        var incompatibleFixture = CreateFixture();
+        using var incompatibleDispatcher = new ExplorerProtocolDispatcher(
+            incompatibleFixture.Manager,
+            incompatibleFixture.Reads);
+        var incompatible = await incompatibleDispatcher.DispatchAsync(
+            new ExplorerRequestEnvelope(99, "request-2", incompatibleFixture.Session.SessionId, incompatibleFixture.Token, ExplorerOperation.GetProtocolInfo, empty),
             CancellationToken.None);
 
-        Assert.Equal(ExplorerErrorCode.Unauthorized, unauthorized.Error!.Code);
         Assert.Equal(ExplorerErrorCode.UnsupportedProtocol, incompatible.Error!.Code);
+        Assert.Equal(ExplorerSessionConnectionOutcome.IncompatibleVersion, await incompatibleFixture.Manager.WaitForConnectionOutcomeAsync(
+            incompatibleFixture.Session.SessionId,
+            TimeSpan.FromMilliseconds(25),
+            CancellationToken.None));
     }
 
     /// <summary>Verifies malformed operation payloads become stable protocol errors without internal detail.</summary>
@@ -526,10 +588,10 @@ public sealed class ExplorerProtocolTests
         var fixture = CreateFixture();
         fixture.Source.SearchDelay = TimeSpan.FromSeconds(5);
         using var dispatcher = new ExplorerProtocolDispatcher(fixture.Manager, fixture.Reads);
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+        using var cancellation = new CancellationTokenSource();
         var payload = JsonSerializer.SerializeToElement(new ExplorerSearchRequest("network"), ExplorerProtocolJson.CreateOptions());
 
-        var response = await dispatcher.DispatchAsync(
+        var dispatch = dispatcher.DispatchAsync(
             new ExplorerRequestEnvelope(
                 ExplorerProtocolVersion.Major,
                 "request-4",
@@ -538,6 +600,9 @@ public sealed class ExplorerProtocolTests
                 ExplorerOperation.Search,
                 payload),
             cancellation.Token);
+        await fixture.Source.SearchStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        cancellation.Cancel();
+        var response = await dispatch;
 
         Assert.Equal(ExplorerErrorCode.Cancelled, response.Error!.Code);
         Assert.True(fixture.Source.SearchWasCancelled);
@@ -653,13 +718,14 @@ public sealed class ExplorerProtocolTests
             response.Success || response.Error?.Code == ExplorerErrorCode.TemporarilyUnavailable));
     }
 
-    /// <summary>Verifies Explorer absence is a cheap, non-error capability state.</summary>
+    /// <summary>Verifies an unconfigured optional companion remains a cheap, non-error capability state.</summary>
     [Fact]
     public void CompanionPresence_IsUnavailableWithoutFilesystemProbe()
     {
         IExplorerCompanionPresence presence = new UnavailableExplorerCompanionPresence();
         Assert.False(presence.IsAvailable);
-        Assert.Contains("future companion", presence.Status, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("optional separate companion", presence.Status, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not installed or configured", presence.Status, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Protects representative structural projection from catastrophic unbounded work.</summary>
@@ -892,6 +958,8 @@ public sealed class ExplorerProtocolTests
         public OpenSorSe.Application.Semantic.SearchRequest? LastSearchRequest { get; private set; }
         public TimeSpan SearchDelay { get; set; }
         public bool SearchWasCancelled { get; private set; }
+        public TaskCompletionSource SearchStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public Task<IReadOnlyList<IndexingSource>> GetSourcesAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Sources);
@@ -913,6 +981,7 @@ public sealed class ExplorerProtocolTests
             CancellationToken cancellationToken)
         {
             LastSearchRequest = request;
+            SearchStarted.TrySetResult();
             try
             {
                 if (SearchDelay > TimeSpan.Zero)

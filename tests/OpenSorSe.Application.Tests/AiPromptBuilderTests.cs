@@ -45,6 +45,33 @@ public sealed class AiPromptBuilderTests
         Assert.Contains("no Markdown or prose", result.SystemPrompt, StringComparison.Ordinal);
     }
 
+    /// <summary>Grounded organization evidence is bounded, labelled, and contains no source path.</summary>
+    [Fact]
+    public void BuildFileRenamePrompt_GroundedEvidence_IsBoundedAndReviewable()
+    {
+        var file = CreateFile("file:1", "scan.pdf", "C:\\Private\\scan.pdf");
+        var request = new AiFileRenameRequest(file, [])
+        {
+            GroundedEvidence = [
+                new AiOrganizationEvidence("Document Type", "Invoice", "Accepted"),
+                new AiOrganizationEvidence("Theme", "Finance", "Strong deterministic"),
+                new AiOrganizationEvidence("User Tag", "Review", "User-created"),
+                new AiOrganizationEvidence("Theme", "Insurance", "Accepted"),
+                new AiOrganizationEvidence("Theme", "Excluded fifth value", "Accepted"),
+            ],
+        };
+
+        var result = _builder.BuildFileRenamePrompt(request, EmptyPreferences());
+
+        using var document = JsonDocument.Parse(result.Prompt);
+        var evidence = document.RootElement.GetProperty("input").GetProperty("groundedClassificationEvidence");
+        Assert.Equal(4, evidence.GetArrayLength());
+        Assert.Equal("Invoice", evidence[0].GetProperty("value").GetString());
+        Assert.Equal("Accepted", evidence[0].GetProperty("authority").GetString());
+        Assert.DoesNotContain("Excluded fifth value", result.Prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain(file.FullPath, result.Prompt, StringComparison.Ordinal);
+    }
+
     /// <summary>Equivalent folder evidence produces byte-identical prompts and stable opaque identities.</summary>
     [Fact]
     public void BuildFolderStructurePrompt_ReorderedInputs_IsDeterministic()

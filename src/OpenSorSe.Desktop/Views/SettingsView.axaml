@@ -20,6 +20,51 @@
             </Grid>
 
             <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Data &amp; Index Health" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Runs bounded schema, recovery, owned-store, source, and storage checks. It does not scan documents or repair anything automatically."
+                               TextWrapping="Wrap" />
+                    <Button Content="Check health"
+                            Command="{Binding RefreshOperationalHealthCommand}"
+                            HorizontalAlignment="Left"
+                            AutomationProperties.Name="Check Data and Index Health" />
+                    <TextBlock Text="{Binding OperationalHealthText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Export or restore OmniSorSe state" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="The logical archive contains user-authored settings, source definitions, recipes, Saved Views, User Tags, and accept/reject decisions. It excludes extracted content, OCR, transcripts, generated intelligence, the Search index, and active operation journals. Treat the archive as sensitive."
+                               TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button Margin="0,0,8,8"
+                                Content="Export state…"
+                                Click="ExportStateClick"
+                                AutomationProperties.Name="Export OmniSorSe state" />
+                        <Button Margin="0,0,8,8"
+                                Content="Preview restore…"
+                                Click="PreviewRestoreClick"
+                                AutomationProperties.Name="Preview OmniSorSe state restore" />
+                        <Button Margin="0,0,8,8"
+                                Content="Confirm restore"
+                                Command="{Binding ConfirmStateRestoreCommand}"
+                                IsVisible="{Binding IsStateRestorePending}"
+                                AutomationProperties.Name="Confirm reviewed OmniSorSe state restore" />
+                        <Button Margin="0,0,8,8"
+                                Content="Cancel restore"
+                                Command="{Binding CancelStateRestoreCommand}"
+                                IsVisible="{Binding IsStateRestorePending}" />
+                    </WrapPanel>
+                    <TextBlock Text="{Binding StateTransferStatusText}"
+                               TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="card">
                 <StackPanel Spacing="4">
                     <TextBlock Text="Completed scan library" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Save completed scans in OmniSorSe's local library"
@@ -134,7 +179,7 @@
                                TextWrapping="Wrap" />
                     <TextBlock Text="Basic stores names and metadata. Standard adds document text and related concepts. Deep adds applicable OCR and richer bounded analysis. Completed stages resume after interruption."
                                TextWrapping="Wrap" />
-                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
                         <StackPanel Spacing="3">
                             <TextBlock Text="Default indexing level" FontWeight="SemiBold" />
                             <ComboBox ItemsSource="{Binding AvailableIndexingLevels}"
@@ -142,17 +187,26 @@
                                       AutomationProperties.Name="Default indexing level" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Spacing="3">
+                            <TextBlock Text="Initial scan scheduling" FontWeight="SemiBold" />
+                            <ComboBox ItemsSource="{Binding AvailableInitialScanDepths}"
+                                      SelectedItem="{Binding SelectedInitialScanDepthOption, Mode=TwoWay}"
+                                      AutomationProperties.Name="Initial scan scheduling" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="3">
                             <TextBlock Text="Resource mode" FontWeight="SemiBold" />
                             <ComboBox ItemsSource="{Binding AvailableIndexingResourceModes}"
                                       SelectedItem="{Binding Draft.IndexingResourceMode, Mode=TwoWay}"
                                       AutomationProperties.Name="Background indexing resource mode" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Spacing="3">
+                        <StackPanel Grid.Column="3" Spacing="3">
                             <TextBlock Text="Maximum index size (MiB)" FontWeight="SemiBold" />
                             <TextBox Text="{Binding Draft.MaximumIndexSizeMiB, Mode=TwoWay}"
                                      AutomationProperties.Name="Maximum index size" />
                         </StackPanel>
                     </Grid>
+                    <TextBlock Text="Fast — searchable first makes broad local Search coverage available before enabled OCR, media, summaries, and relationship work continues. Deep initial analysis completes enabled work earlier per file. Capability switches still decide what runs."
+                               TextWrapping="Wrap"
+                               AutomationProperties.Name="Initial scan scheduling explanation" />
                     <WrapPanel>
                         <CheckBox Margin="0,0,16,6"
                                   Content="Enable OCR stages"
@@ -602,6 +656,24 @@
                     <CheckBox Content="Show advanced features"
                               IsChecked="{Binding Draft.ShowAdvancedFeatures, Mode=TwoWay}" />
                     <TextBlock Text="Shows specialist comparison, diagnostics, operation-history, logging, AI request diagnostics, and troubleshooting controls. Hidden values remain saved."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border IsVisible="{Binding IsAdvancedSettingsVisible}"
+                    Padding="12"
+                    BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="OmniBrille companion" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="OmniBrille is an optional separate application. OmniSorSe remains fully functional without it and starts the local read-only Explorer host only when you choose Open in OmniBrille."
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="OmniBrille executable" FontWeight="SemiBold" />
+                    <TextBox Text="{Binding Draft.OmniBrilleExecutablePath, Mode=TwoWay}"
+                             PlaceholderText="Optional absolute path; standard install locations are detected"
+                             AutomationProperties.Name="Optional OmniBrille executable path"
+                             AutomationProperties.HelpText="An optional absolute path to the separately installed OmniBrille executable. No companion process or Explorer listener starts while unused." />
+                    <TextBlock Text="The launch grants only currently enabled indexed sources, omits raw paths, and uses a short-lived one-time same-user bootstrap. No SQLite path or persistent credential is shared."
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>

@@ -1,6 +1,7 @@
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 
 namespace OpenSorSe.Application.Indexing;
 
@@ -8,10 +9,10 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
-    public const string ProcessorVersion = "2.3.0";
+    public const string ProcessorVersion = "2.6.0";
 }
 
 /// <summary>Identifies a durable stage in the background-indexing pipeline.</summary>
@@ -46,6 +47,9 @@ public enum IndexingStage
 
     /// <summary>All applicable stages for the selected policy completed.</summary>
     FileFullyIndexed,
+
+    /// <summary>Bounded explainable Smart Tags were classified from already-indexed evidence.</summary>
+    SmartTagsClassified,
 }
 
 /// <summary>Identifies the durable state of one stage or queued file.</summary>
@@ -108,6 +112,34 @@ public enum IndexingRunStatus
 
     /// <summary>The run could not continue because of a run-level failure.</summary>
     Failed,
+}
+
+/// <summary>Describes the user-meaningful phase of progressive indexing.</summary>
+public enum IndexingProgressPhase
+{
+    /// <summary>Source discovery is still determining the searchable set.</summary>
+    DiscoveringFiles,
+
+    /// <summary>Cheap identity, path, metadata, and document evidence is being published.</summary>
+    BuildingBaseSearchCoverage,
+
+    /// <summary>All known names and metadata are searchable while enabled deeper analysis continues.</summary>
+    DeeperAnalysis,
+
+    /// <summary>Durable work is paused.</summary>
+    Paused,
+
+    /// <summary>Durable work is waiting for an optional dependency or resource condition.</summary>
+    Waiting,
+
+    /// <summary>Cancellation is being applied or has completed.</summary>
+    Cancelled,
+
+    /// <summary>The run failed or completed with retained failures.</summary>
+    Failed,
+
+    /// <summary>All applicable durable work is complete.</summary>
+    Complete,
 }
 
 /// <summary>Classifies failures without retaining private file content.</summary>
@@ -250,6 +282,9 @@ public sealed record IndexingWorkItem
     /// <summary>Gets bounded structured topics, textual entities, and source-grounded summary evidence.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
+    /// <summary>Gets regenerated bounded Smart Tag candidates for this stable file identity.</summary>
+    public SmartTagClassificationResult? SmartTagClassification { get; init; }
+
     /// <summary>Gets whether per-file policy disables OCR processing.</summary>
     public bool SuppressOcr { get; init; }
 
@@ -286,6 +321,9 @@ public sealed record IndexingStageOutput
 
     /// <summary>Gets bounded provider-neutral content intelligence produced or reused by this stage.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
+
+    /// <summary>Gets regenerated bounded Smart Tag candidates produced by the classification stage.</summary>
+    public SmartTagClassificationResult? SmartTagClassification { get; init; }
 
     /// <summary>Gets a bounded non-sensitive summary when one was produced.</summary>
     public string? Summary { get; init; }
@@ -364,6 +402,9 @@ public sealed record IndexStorageBreakdown(
 
     /// <summary>Gets the logical bytes retained for bounded content-intelligence evidence.</summary>
     public long ContentIntelligenceBytes { get; init; }
+
+    /// <summary>Gets logical bytes retained for Smart Tag definitions, assignments, decisions, and bounded evidence.</summary>
+    public long SmartTagBytes { get; init; }
 }
 
 /// <summary>Describes current persistent progress suitable for UI binding.</summary>
@@ -383,6 +424,9 @@ public sealed record IndexingProgressSnapshot
 
     /// <summary>Gets the number of files discovered for the run.</summary>
     public long TotalDiscovered { get; init; }
+
+    /// <summary>Gets whether durable source discovery reached its commit boundary.</summary>
+    public bool DiscoveryComplete { get; init; }
 
     /// <summary>Gets the number of terminally processed files.</summary>
     public long Processed { get; init; }
@@ -423,6 +467,45 @@ public sealed record IndexingProgressSnapshot
 
     /// <summary>Gets progressive Search coverage.</summary>
     public SearchCoverage Coverage { get; init; } = new(0, 0, 0, 0, 0, 0);
+
+    /// <summary>Gets whether every currently known file has local name and metadata coverage.</summary>
+    public bool IsBaseCoverageComplete =>
+        DiscoveryComplete && Coverage.FilenameAndMetadataCount >= Coverage.KnownFileCount;
+
+    /// <summary>Gets normalized progress for the currently communicated indexing phase.</summary>
+    public double PhasePercentage
+    {
+        get
+        {
+            if (!IsBaseCoverageComplete)
+            {
+                return Coverage.KnownFileCount <= 0
+                    ? 0
+                    : Math.Clamp(
+                        Coverage.FilenameAndMetadataCount * 100d / Coverage.KnownFileCount,
+                        0,
+                        100);
+            }
+
+            return Coverage.KnownFileCount <= 0
+                ? Status is IndexingRunStatus.Complete ? 100 : 0
+                : Math.Clamp(Coverage.FullyIndexedCount * 100d / Coverage.KnownFileCount, 0, 100);
+        }
+    }
+
+    /// <summary>Gets a truthful phase label that distinguishes usable base coverage from deeper work.</summary>
+    public IndexingProgressPhase Phase => Status switch
+    {
+        IndexingRunStatus.Paused => IndexingProgressPhase.Paused,
+        IndexingRunStatus.Waiting => IndexingProgressPhase.Waiting,
+        IndexingRunStatus.Cancelling or IndexingRunStatus.Cancelled => IndexingProgressPhase.Cancelled,
+        IndexingRunStatus.Failed or IndexingRunStatus.CompleteWithFailures => IndexingProgressPhase.Failed,
+        IndexingRunStatus.Complete when !Coverage.IsIncomplete => IndexingProgressPhase.Complete,
+        _ when !DiscoveryComplete => IndexingProgressPhase.DiscoveringFiles,
+        _ when !IsBaseCoverageComplete => IndexingProgressPhase.BuildingBaseSearchCoverage,
+        _ when Coverage.IsIncomplete => IndexingProgressPhase.DeeperAnalysis,
+        _ => IndexingProgressPhase.Complete,
+    };
 }
 
 /// <summary>Describes a provider-neutral document available to progressive Search.</summary>
@@ -484,6 +567,9 @@ public sealed record ProgressiveSearchDocument
 
     /// <summary>Gets bounded topics, textual entities, and summary provenance retained by local indexing.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
+
+    /// <summary>Gets effective user-authoritative Smart Tags projected from schema-6 storage.</summary>
+    public IReadOnlyList<FileSmartTag> SmartTags { get; init; } = [];
 
     /// <summary>Gets bounded tags or generated keywords.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];

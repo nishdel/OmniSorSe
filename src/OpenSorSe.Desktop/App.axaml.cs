@@ -7,8 +7,10 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.DependencyInjection;
 using OpenSorSe.Core.Lifecycle;
+using OpenSorSe.Core.Persistence;
 using OpenSorSe.Desktop.ViewModels;
 using OpenSorSe.Desktop.Views;
 using OpenSorSe.Scanner;
@@ -21,12 +23,15 @@ using OpenSorSe.Application.CatalogSearch;
 using OpenSorSe.Application.Content;
 using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Explorer;
+using OpenSorSe.Application.Guidance;
 using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.Relationships;
+using OpenSorSe.Application.Resilience;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Structure;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
@@ -57,6 +62,10 @@ public partial class App : Avalonia.Application
     private IApplicationHost? _applicationHost;
     private CancellationTokenSource? _graphStartupCancellation;
     private Task? _graphStartupTask;
+    private CancellationTokenSource? _relationshipRefreshCancellation;
+    private Task? _relationshipRefreshTask;
+    private ProfileOwnershipLease? _profileOwnershipLease;
+    private ApplicationRunStateMarker? _runStateMarker;
 
     /// <summary>
     /// Loads the application's XAML resources.
@@ -94,16 +103,32 @@ public partial class App : Avalonia.Application
 
     private void ConfigureDesktopLifetime(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        _serviceProvider = CreateServiceProvider();
+        var applicationPaths = new ApplicationPathProvider();
+        applicationPaths.EnsureOwnedDirectories();
+        _profileOwnershipLease = ProfileOwnershipLease.Acquire(applicationPaths.Paths.StateDirectory);
+        _runStateMarker = ApplicationRunStateMarker.Begin(applicationPaths.Paths.StateDirectory);
+        _serviceProvider = CreateServiceProviderForPaths(applicationPaths, _profileOwnershipLease, _runStateMarker);
         _applicationHost = _serviceProvider.GetRequiredService<IApplicationHost>();
         _applicationHost.InitializeAsync().GetAwaiter().GetResult();
         _serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
             _serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
                 .Current.Diagnostics);
-        _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
-            .RecoverInterruptedAsync(CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
+        try
+        {
+            _serviceProvider.GetRequiredService<IChangePlanStore>()
+                .ListAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
+                .RecoverInterruptedAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (AuthoritativeStoreCorruptionException exception)
+        {
+            _serviceProvider.GetRequiredService<IRecoverySafetyState>().Block(exception);
+            RecordLifecycleFailure("Authoritative mutation recovery state", exception);
+        }
         _serviceProvider.GetRequiredService<IPluginManager>()
             .InitializeAsync(CancellationToken.None)
             .GetAwaiter()
@@ -116,6 +141,14 @@ public partial class App : Avalonia.Application
             .InitializeAsync(CancellationToken.None)
             .GetAwaiter()
             .GetResult();
+        _serviceProvider.GetRequiredService<SqliteDeepIndexStore>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<ISmartTagService>()
+            .InitializeAsync(CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
         _serviceProvider.GetRequiredService<IBackgroundIndexingService>()
             .InitializeAsync(CancellationToken.None)
             .GetAwaiter()
@@ -123,13 +156,17 @@ public partial class App : Avalonia.Application
         _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
         var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         desktop.MainWindow = new MainWindow(mainViewModel);
+        StartRelationshipRefreshInBackground(_serviceProvider);
         StartKnowledgeGraphInBackground(_serviceProvider);
     }
 
     internal static ServiceProvider CreateServiceProvider() =>
         CreateServiceProviderForPaths(new ApplicationPathProvider());
 
-    internal static ServiceProvider CreateServiceProviderForPaths(IApplicationPathProvider applicationPaths)
+    internal static ServiceProvider CreateServiceProviderForPaths(
+        IApplicationPathProvider applicationPaths,
+        IProfileOwnershipState? profileOwnership = null,
+        IApplicationRunState? runState = null)
     {
         ArgumentNullException.ThrowIfNull(applicationPaths);
         applicationPaths.EnsureOwnedDirectories();
@@ -137,6 +174,8 @@ public partial class App : Avalonia.Application
         var paths = applicationPaths.Paths;
         var services = new ServiceCollection();
         services.AddSingleton<IApplicationPathProvider>(applicationPaths);
+        services.AddSingleton(profileOwnership ?? ProfileOwnershipLease.NotRequired);
+        services.AddSingleton(runState ?? ApplicationRunStateMarker.NotRequired);
         services.AddOpenSorSeCore(new OpenSorSeCoreOptions { ConfigurationFilePath = settingsPath });
         var pluginRoot = paths.PluginDirectory;
         services.AddSingleton<IFileScanner, FileScanner>();
@@ -149,17 +188,22 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IConflictResolver, ConflictResolver>();
         services.AddSingleton<IFileSystemGateway, PhysicalFileSystemGateway>();
         services.AddSingleton<IChangePlanValidator, ChangePlanValidator>();
+        services.AddSingleton<RecoverySafetyState>();
+        services.AddSingleton<IRecoverySafetyState>(serviceProvider =>
+            serviceProvider.GetRequiredService<RecoverySafetyState>());
         services.AddSingleton<IChangePlanStore>(serviceProvider =>
         {
             return new JsonChangePlanStore(
                 Path.Combine(paths.StateDirectory, "change-plans.json"),
-                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>(),
+                serviceProvider.GetRequiredService<IRecoverySafetyState>());
         });
         services.AddSingleton<IOperationJournalStore>(serviceProvider =>
         {
             return new JsonOperationJournalStore(
                 Path.Combine(paths.StateDirectory, "operation-journal.json"),
-                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>(),
+                serviceProvider.GetRequiredService<IRecoverySafetyState>());
         });
         services.AddSingleton<IChangePlanFactory, ChangePlanFactory>();
         services.AddSingleton<IChangePlanExecutionService, ChangePlanExecutionService>();
@@ -170,6 +214,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IApplicationController, ApplicationController>();
         services.AddSingleton<IResultsSnapshotProjector, ResultsSnapshotProjector>();
         services.AddSingleton<IMetadataExtractor, FilesystemMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, PlainTextMetadataExtractor>();
+        services.AddSingleton<IMetadataExtractor, CsvMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, PdfMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, OpenXmlMetadataExtractor>();
         services.AddSingleton<IMetadataExtractor, ImageMetadataExtractor>();
@@ -208,6 +254,8 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
         services.AddSingleton<IContentIntelligenceProvider, DeterministicContentIntelligenceProvider>();
+        services.AddSingleton(_ => SmartTagTaxonomy.LoadBuiltIn());
+        services.AddSingleton<ISmartTagClassifier, DeterministicSmartTagClassifier>();
         services.AddSingleton<SqliteDeepIndexStore>(serviceProvider =>
         {
             return new SqliteDeepIndexStore(
@@ -216,12 +264,29 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton<IDeepIndexStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<IDeepIndexHealthProbe>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IIndexPrivacyStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IRelationshipStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<ISmartTagStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IRelationshipEngine, DeterministicRelationshipEngine>();
-        services.AddSingleton<RelationshipService>();
+        services.AddSingleton(serviceProvider =>
+            new RelationshipService(
+                serviceProvider.GetRequiredService<IConfigurationService>(),
+                serviceProvider.GetRequiredService<IRelationshipStore>(),
+                serviceProvider.GetRequiredService<IRelationshipEngine>(),
+                serviceProvider.GetService<IDiagnosticsEventSink>(),
+                serviceProvider.GetService<TimeProvider>(),
+                cancellationToken =>
+                {
+                    var signal = serviceProvider.GetService<IGraphReconciliationSignal>();
+                    return signal is null
+                        ? ValueTask.CompletedTask
+                        : signal.SignalAsync(cancellationToken);
+                }));
         services.AddSingleton<IRelationshipService>(serviceProvider =>
             serviceProvider.GetRequiredService<RelationshipService>());
         services.AddSingleton<IRelationshipSearchSource>(serviceProvider =>
@@ -233,7 +298,12 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IBackgroundIndexingService>(serviceProvider =>
             serviceProvider.GetRequiredService<BackgroundIndexingService>());
         services.AddSingleton<IIndexPrivacyService>(serviceProvider =>
-            serviceProvider.GetRequiredService<BackgroundIndexingService>());
+            new IndexPrivacyDeletionCoordinator(
+                serviceProvider.GetRequiredService<BackgroundIndexingService>(),
+                serviceProvider.GetRequiredService<IContentStore>(),
+                serviceProvider.GetRequiredService<ISemanticIndexStore>(),
+                serviceProvider.GetRequiredService<IMediaThumbnailProvider>()));
+        services.AddSingleton<ISmartTagService, SmartTagService>();
         services.AddSingleton<IProgressiveSearchSource>(serviceProvider =>
             serviceProvider.GetRequiredService<IBackgroundIndexingService>());
         services.AddSingleton<IProgressiveSearchDocumentLookup>(serviceProvider =>
@@ -293,9 +363,16 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ISearchSnippetFactory, SearchSnippetFactory>();
         services.AddSingleton<ISearchRanker, HybridSearchRanker>();
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
+        services.AddSingleton<ISavedDiscoveryViewStore>(serviceProvider =>
+            new JsonSavedDiscoveryViewStore(
+                Path.Combine(paths.DataDirectory, "saved-discovery-views.json"),
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>()));
         services.AddSingleton<IExplorerDataSource, ExplorerDataSource>();
         services.AddSingleton<IExplorerCompanionPresence, UnavailableExplorerCompanionPresence>();
         services.AddSingleton<IExplorerProtocolHost, NamedPipeExplorerProtocolHost>();
+        services.AddSingleton<IExplorerCompanionLocator, ExplorerCompanionLocator>();
+        services.AddSingleton<IExplorerCompanionLaunchService, ExplorerCompanionLaunchService>();
+        services.AddSingleton<IProductReadinessService, ProductReadinessService>();
         services.AddSingleton<IFolderStructureSnapshotService, FolderStructureSnapshotService>();
         services.AddSingleton<IStructureComparisonService, StructureComparisonService>();
         services.AddSingleton<IStructureHistoryStore>(serviceProvider =>
@@ -345,6 +422,11 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IWorkflowConfigurationResolver, WorkflowConfigurationResolver>();
         services.AddSingleton<IWorkflowImportExportService, WorkflowImportExportService>();
         services.AddSingleton<IWorkflowRecipePlanService, WorkflowRecipePlanService>();
+        services.AddSingleton<IStateRestoreFaultInjector, NoOpStateRestoreFaultInjector>();
+        services.AddSingleton<IStateBackupService, StateBackupService>();
+        services.AddSingleton<IOperationalHealthService, OperationalHealthService>();
+        services.AddSingleton<IReviewedOrganizationEvidenceSource, ReviewedOrganizationEvidenceSource>();
+        services.AddSingleton<IReviewedOrganizationService, ReviewedOrganizationService>();
         services.AddSingleton<WorkflowSortingRecipeResolver>();
         services.AddSingleton<IWatchedFolderManager, WatchedFolderManager>();
         services.AddSingleton<IWatchedFileSystem, PhysicalWatchedFileSystem>();
@@ -441,8 +523,13 @@ public partial class App : Avalonia.Application
 
     private void OnDesktopExit(object? sender, ControlledApplicationLifetimeExitEventArgs eventArgs)
     {
+        var relationshipRefreshStopped = false;
+        var relationshipShutdownHandled = LifecycleOperationGuard.TryExecute(
+            "relationship-refresh-shutdown",
+            () => relationshipRefreshStopped = StopRelationshipRefreshSafely(),
+            RecordLifecycleFailure);
         var graphStopped = false;
-        _ = LifecycleOperationGuard.TryExecute(
+        var graphShutdownHandled = LifecycleOperationGuard.TryExecute(
             "knowledge-graph-shutdown",
             () => graphStopped = StopKnowledgeGraphSafely(),
             RecordLifecycleFailure);
@@ -450,25 +537,100 @@ public partial class App : Avalonia.Application
             "diagnostics-clear",
             () => _serviceProvider?.GetService<IDiagnosticsCollector>()?.ClearAll(),
             RecordLifecycleFailure);
-        _ = LifecycleOperationGuard.TryExecute(
+        var hostStopped = LifecycleOperationGuard.TryExecute(
             "application-host-shutdown",
-            () => _applicationHost?.ShutdownAsync().GetAwaiter().GetResult(),
+            () => WaitForLifecycleTask(_applicationHost?.ShutdownAsync(), "application host"),
             RecordLifecycleFailure);
-        if (graphStopped)
+        var providerDisposed = false;
+        if (graphStopped && relationshipRefreshStopped)
         {
-            _ = LifecycleOperationGuard.TryExecute(
+            providerDisposed = LifecycleOperationGuard.TryExecute(
                 "service-provider-disposal",
-                () => _serviceProvider?.DisposeAsync().AsTask().GetAwaiter().GetResult(),
+                () => WaitForLifecycleTask(_serviceProvider?.DisposeAsync().AsTask(), "service provider"),
                 RecordLifecycleFailure);
         }
         else
         {
             TryGetLifecycleLogger()?.LogWarning(
-                "Knowledge Graph initialization did not acknowledge bounded shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
+                "A bounded derived-intelligence task did not acknowledge shutdown; process teardown will release remaining handles and durable recovery will fence unfinished work on the next startup.");
+        }
+
+        if (relationshipShutdownHandled && relationshipRefreshStopped &&
+            graphShutdownHandled && graphStopped && hostStopped && providerDisposed)
+        {
+            _ = LifecycleOperationGuard.TryExecute(
+                "clean-shutdown-marker",
+                () => _runStateMarker?.MarkCleanAsync().GetAwaiter().GetResult(),
+                RecordLifecycleFailure);
         }
 
         _serviceProvider = null;
         _applicationHost = null;
+        _runStateMarker = null;
+        _ = LifecycleOperationGuard.TryExecute(
+            "profile-ownership-release",
+            () => _profileOwnershipLease?.Dispose(),
+            RecordLifecycleFailure);
+        _profileOwnershipLease = null;
+    }
+
+    private void StartRelationshipRefreshInBackground(ServiceProvider serviceProvider)
+    {
+        _relationshipRefreshCancellation = new CancellationTokenSource();
+        _relationshipRefreshTask = Task.Run(
+            () => RefreshRelationshipsSafelyAsync(
+                serviceProvider.GetRequiredService<IRelationshipService>(),
+                _relationshipRefreshCancellation.Token),
+            CancellationToken.None);
+    }
+
+    private static async Task RefreshRelationshipsSafelyAsync(
+        IRelationshipService relationships,
+        CancellationToken cancellationToken)
+    {
+        RelationshipReanalysisResult result;
+        do
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            result = await relationships.ReanalyzeStaleAsync(64, cancellationToken).ConfigureAwait(false);
+            if (result.HasMore && result.FailedCount == 0)
+            {
+                // Yield between independently committed batches. Interruption resumes from the
+                // oldest stale feature version without replaying content extraction.
+                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        while (result.HasMore && result.FailedCount == 0);
+    }
+
+    private bool StopRelationshipRefreshSafely()
+    {
+        _relationshipRefreshCancellation?.Cancel();
+        try
+        {
+            _relationshipRefreshTask?
+                .WaitAsync(TimeSpan.FromSeconds(10))
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            // Cooperative cancellation leaves already committed per-file work resumable.
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+        catch (Exception exception)
+        {
+            RecordLifecycleFailure("Relationship refresh shutdown", exception);
+            return false;
+        }
+
+        _relationshipRefreshCancellation?.Dispose();
+        _relationshipRefreshCancellation = null;
+        _relationshipRefreshTask = null;
+        return true;
     }
 
     private void StartKnowledgeGraphInBackground(ServiceProvider serviceProvider)
@@ -525,16 +687,46 @@ public partial class App : Avalonia.Application
 
     private void ReleaseFailedStartupServices()
     {
-        _ = LifecycleOperationGuard.TryExecute(
+        var hostStopped = LifecycleOperationGuard.TryExecute(
             "failed-startup-host-shutdown",
-            () => _applicationHost?.ShutdownAsync().GetAwaiter().GetResult(),
+            () => WaitForLifecycleTask(_applicationHost?.ShutdownAsync(), "failed-startup application host"),
             RecordLifecycleFailure);
-        _ = LifecycleOperationGuard.TryExecute(
+        var providerDisposed = LifecycleOperationGuard.TryExecute(
             "failed-startup-service-disposal",
-            () => _serviceProvider?.DisposeAsync().AsTask().GetAwaiter().GetResult(),
+            () => WaitForLifecycleTask(_serviceProvider?.DisposeAsync().AsTask(), "failed-startup service provider"),
             RecordLifecycleFailure);
+        if (hostStopped && providerDisposed)
+        {
+            _ = LifecycleOperationGuard.TryExecute(
+                "failed-startup-clean-marker",
+                () => _runStateMarker?.MarkCleanAsync().GetAwaiter().GetResult(),
+                RecordLifecycleFailure);
+        }
         _applicationHost = null;
         _serviceProvider = null;
+        _runStateMarker = null;
+        _ = LifecycleOperationGuard.TryExecute(
+            "failed-startup-profile-ownership-release",
+            () => _profileOwnershipLease?.Dispose(),
+            RecordLifecycleFailure);
+        _profileOwnershipLease = null;
+    }
+
+    private static void WaitForLifecycleTask(Task? task, string component)
+    {
+        if (task is null)
+        {
+            return;
+        }
+
+        try
+        {
+            task.WaitAsync(TimeSpan.FromSeconds(20)).GetAwaiter().GetResult();
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException($"The {component} did not stop within the bounded shutdown grace period.", exception);
+        }
     }
 
     private static Window CreateStartupFailureWindow(Exception exception)

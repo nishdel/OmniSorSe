@@ -115,7 +115,10 @@ public sealed class DeterministicSearchQueryInterpreter : ISearchQueryInterprete
         RegexOptions.IgnoreCase |
         RegexOptions.CultureInvariant |
         RegexOptions.NonBacktracking;
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
+    // Inputs are capped before interpretation and every expression uses the
+    // non-backtracking engine. Keep a bounded timeout without treating brief
+    // scheduler starvation during concurrent indexing as an invalid query.
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
     private static readonly Regex ExtensionPattern = Pattern(
         @"\b(?:extension|ext)\s*[:=]?\s*\.?(?<value>[\p{L}\p{N}]{1,16})\b");
     private static readonly Regex TagPattern = Pattern(
@@ -181,7 +184,7 @@ public sealed class DeterministicSearchQueryInterpreter : ISearchQueryInterprete
     {
         ArgumentNullException.ThrowIfNull(request);
         var query = request.QueryText?.Trim() ?? string.Empty;
-        ValidateQuery(query);
+        ValidateQuery(query, request.ActiveFilters?.Count > 0);
         if (!request.InterpretFilters)
         {
             var explicitFilters = ValidateExplicitFilters(request.ActiveFilters ?? []);
@@ -212,9 +215,10 @@ public sealed class DeterministicSearchQueryInterpreter : ISearchQueryInterprete
 
     private static Regex Pattern(string expression) => new(expression, Options, RegexTimeout);
 
-    private static void ValidateQuery(string query)
+    private static void ValidateQuery(string query, bool hasExplicitFilters)
     {
-        if (query.Length is 0 or > SearchLimits.MaximumQueryCharacters)
+        if ((!hasExplicitFilters && query.Length == 0) ||
+            query.Length > SearchLimits.MaximumQueryCharacters)
         {
             throw new SearchQueryValidationException(
                 $"Enter a Search query of up to {SearchLimits.MaximumQueryCharacters} characters.");

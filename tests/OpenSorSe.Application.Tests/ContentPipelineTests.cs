@@ -37,6 +37,99 @@ public sealed class ContentPipelineTests
         Assert.Equal(1, result.PageCount);
     }
 
+    /// <summary>Verifies the hard PDF limit cannot be relaxed by a larger caller setting.</summary>
+    [Fact]
+    public async Task PdfExtractor_OverHardLimit_FailsBeforeParsing()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("oversized.pdf");
+        await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            stream.SetLength(PdfMetadataExtractor.HardMaximumInputBytes + 1);
+        }
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(
+            Entry(path),
+            long.MaxValue,
+            500,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.Contains(result.Warnings, warning => warning.Contains("safety limit", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies a large malformed file does not trigger the legacy whole-file fallback.</summary>
+    [Fact]
+    public async Task PdfExtractor_LargeMalformedFile_SkipsCompatibilityAmplification()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("malformed.pdf");
+        await using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            stream.SetLength(PdfMetadataExtractor.MaximumFallbackPrefixBytes + 1L);
+        }
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(
+            Entry(path),
+            PdfMetadataExtractor.HardMaximumInputBytes,
+            500,
+            CancellationToken.None);
+
+        Assert.Null(result.NativeText);
+        Assert.Contains(result.Warnings, warning => warning.Contains("bounded prefix", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies malformed compatibility output is bounded and cancellable.</summary>
+    [Fact]
+    public async Task PdfExtractor_CompatibilityText_IsBounded()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("expanded.pdf");
+        var repeated = string.Concat(Enumerable.Repeat("(A long but untrusted embedded value) Tj ", 20_000));
+        await File.WriteAllTextAsync(path, $"%PDF-broken /Type /Page {repeated}");
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(
+            Entry(path),
+            PdfMetadataExtractor.HardMaximumInputBytes,
+            500,
+            CancellationToken.None);
+
+        Assert.NotNull(result.NativeText);
+        Assert.True(result.NativeText.Length <= ContentText.MaximumTextCharacters);
+        Assert.True(result.RawNativeText?.Length <= ContentText.MaximumTextCharacters);
+    }
+
+    /// <summary>Verifies excessive page declarations do not produce unbounded page work.</summary>
+    [Fact]
+    public async Task PdfExtractor_CompatibilityPageCount_StopsTextExtractionBeyondBound()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("many-pages.pdf");
+        await File.WriteAllTextAsync(
+            path,
+            "%PDF-broken " + string.Concat(Enumerable.Repeat("/Type /Page ", 501)) + "(hidden) Tj");
+
+        var result = await new PdfMetadataExtractor().ExtractAsync(Entry(path), 1024 * 1024, 25, CancellationToken.None);
+
+        Assert.Equal(501, result.PageCount);
+        Assert.Null(result.NativeText);
+        Assert.Contains(result.Warnings, warning => warning.Contains("page count", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies cancellation is observed before a PDF parser is entered.</summary>
+    [Fact]
+    public async Task PdfExtractor_PreCancelled_StopsBeforeParsing()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("cancelled.pdf");
+        await File.WriteAllTextAsync(path, "%PDF-1.4 /Type /Page");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new PdfMetadataExtractor().ExtractAsync(Entry(path), 1024 * 1024, 25, cancellation.Token));
+    }
+
     /// <summary>Verifies DOCX properties and text are read from selected XML parts without macro execution.</summary>
     [Fact]
     public async Task OpenXmlExtractor_Docx_ReadsCoreAndDocumentPartsOnly()
@@ -92,6 +185,97 @@ public sealed class ContentPipelineTests
         Assert.Contains(result.Fields, field => field.Name == "Sheet count" && field.Value == "2");
         Assert.Equal(2, result.Fields.Count(field => field.Name == "Sheet name"));
         Assert.Contains("finance forecast", result.NativeText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies bounded XLSX extraction includes inline, shared, numeric, and formula evidence without execution.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_Xlsx_ReadsRepresentativeCellEvidence()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("finance.xlsx");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "xl/sharedStrings.xml", "<sst><si><t>Approved budget</t></si></sst>");
+            WriteEntry(archive, "xl/worksheets/sheet1.xml", """
+                <worksheet><sheetData><row>
+                  <c t="s"><v>0</v></c>
+                  <c t="inlineStr"><is><t>Project Alpha</t></is></c>
+                  <c><f>SUM(B2:B4)</f><v>12500</v></c>
+                </row></sheetData></worksheet>
+                """);
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Contains("Approved budget", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Project Alpha", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("SUM(B2:B4)", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("12500", result.NativeText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies PPTX slide and speaker-note text are read without rendering or opening relationships.</summary>
+    [Fact]
+    public async Task OpenXmlExtractor_Pptx_ReadsSlidesAndNotes()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("briefing.pptx");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "ppt/slides/slide1.xml", "<p:sld xmlns:p=\"urn:p\" xmlns:a=\"urn:a\"><a:t>Travel briefing</a:t></p:sld>");
+            WriteEntry(archive, "ppt/notesSlides/notesSlide1.xml", "<p:notes xmlns:p=\"urn:p\" xmlns:a=\"urn:a\"><a:t>Hotel booking details</a:t></p:notes>");
+            WriteEntry(archive, "ppt/slides/_rels/slide1.xml.rels", "<Relationship Target=\"https://example.invalid/private\"/>");
+        }
+
+        var result = await new OpenXmlMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Contains("Travel briefing", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Hotel booking details", result.NativeText, StringComparison.Ordinal);
+        Assert.DoesNotContain("example.invalid", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains(result.Fields, field => field.Name == "Slide count" && field.Value == "1");
+    }
+
+    /// <summary>Verifies CSV extraction honors quoted cells and produces bounded native evidence.</summary>
+    [Fact]
+    public async Task CsvExtractor_QuotedCells_ProducesSearchableEvidence()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("records.csv");
+        await File.WriteAllTextAsync(
+            path,
+            "Type,Description,Amount\r\nInvoice,\"Project Alpha, annual support\",1250\r\nReceipt,\"Quoted \"\"value\"\"\",25");
+
+        var result = await new CsvMetadataExtractor().ExtractAsync(
+            Entry(path),
+            1024 * 1024,
+            25,
+            CancellationToken.None);
+
+        Assert.Contains("Project Alpha, annual support", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Quoted \"value\"", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("1250", result.NativeText, StringComparison.Ordinal);
+        Assert.Contains("Bounded native delimited-text cells", result.ExtractionStrategies);
+    }
+
+    /// <summary>Verifies delimited extraction is cancelled before source content is read.</summary>
+    [Fact]
+    public async Task CsvExtractor_Cancelled_PropagatesCancellation()
+    {
+        using var temporary = new TemporaryDirectory();
+        var path = temporary.PathFor("cancel.csv");
+        await File.WriteAllTextAsync(path, "a,b\n1,2");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new CsvMetadataExtractor().ExtractAsync(Entry(path), 1024, 25, cancellation.Token));
     }
 
     /// <summary>Verifies a highly compressed oversized XML part is rejected before decompression can expand it.</summary>

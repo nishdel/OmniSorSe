@@ -1,6 +1,7 @@
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.ViewModels;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -135,10 +136,50 @@ public sealed class DesktopBrandingAndLayoutTests
 
         Assert.Contains("RowDefinitions=\"Auto,*\"", collections, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Scrollable Smart Collections\"", collections, StringComparison.Ordinal);
-        Assert.Contains("Header=\"Related Files\" IsVisible=\"False\"", collections, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Related Files\"", collections, StringComparison.Ordinal);
+        Assert.DoesNotContain("Header=\"Related Files\" IsVisible=\"False\"", collections, StringComparison.Ordinal);
+        Assert.Contains("Use automatic result", collections, StringComparison.Ordinal);
         Assert.Contains("VerticalContentAlignment=\"Stretch\"", related, StringComparison.Ordinal);
         Assert.Contains("<ScrollViewer Grid.Column=\"1\">", related, StringComparison.Ordinal);
         Assert.Contains("<VirtualizingStackPanel", related, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies scan-depth choices use outcome language and are exposed to accessibility APIs.</summary>
+    [Fact]
+    public void ProgressiveIndexing_UsesPlainLanguageAccessibleChoicesAndHelp()
+    {
+        var views = Path.Combine(FindRepositoryRoot(), "src", "OpenSorSe.Desktop", "Views");
+        var scan = File.ReadAllText(Path.Combine(views, "FolderSelectionView.axaml"));
+        var settings = File.ReadAllText(Path.Combine(views, "SettingsView.axaml"));
+        var labels = InitialScanDepthOptions.All.Select(option => option.Label).ToArray();
+        var help = HelpCatalog.Get(HelpTopicId.SemanticSearch);
+
+        Assert.Equal(["Fast — searchable first", "Deep initial analysis"], labels);
+        Assert.Contains("AutomationProperties.Name=\"Initial indexing schedule\"", scan, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Initial scan scheduling\"", settings, StringComparison.Ordinal);
+        Assert.DoesNotContain("BaseFirst makes", settings, StringComparison.Ordinal);
+        Assert.Contains(help.Workflow, step => step.Contains("searchable first", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("deeper analysis", help.CommonErrors, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies health and reviewed state transfer remain keyboard/assistive-technology discoverable.</summary>
+    [Fact]
+    public void SettingsHealthAndStateTransfer_ExposeAccessibleScrollableActions()
+    {
+        var settings = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "SettingsView.axaml"));
+
+        Assert.Contains("x:Name=\"SettingsScrollViewer\"", settings, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Data &amp; Index Health\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Check Data and Index Health\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Export OmniSorSe state\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Preview OmniSorSe state restore\"", settings, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Confirm reviewed OmniSorSe state restore\"", settings, StringComparison.Ordinal);
+        Assert.True(Regex.Matches(settings, "AutomationProperties.LiveSetting=\"Polite\"").Count >= 2);
     }
 
     /// <summary>Verifies Search naming and help remain plain-language and available beyond pointer hover.</summary>
@@ -230,6 +271,77 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("original source file is never deleted or modified", source, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("AutomationProperties.Name", source, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"{Binding}\"", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Facets and Saved Views expose bounded scrolling, live coverage, and named keyboard actions.</summary>
+    [Fact]
+    public void SearchView_FacetedDiscoveryIsBoundedAndAccessible()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "OpenSorSe.Desktop",
+            "Views",
+            "SemanticSearchView.axaml"));
+
+        Assert.Contains("AutomationProperties.Name=\"Available Search facets\"", source, StringComparison.Ordinal);
+        Assert.Contains("MaxHeight=\"300\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Clear all active Search filters\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Show files with unresolved Moderate Smart Tag suggestions\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Save current query and filters as a new Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Open selected Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Update selected Saved View from current query and filters\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Delete selected Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding CandidateCoverageText}\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
+    }
+
+    /// <summary>Guided workflow surfaces expose one canonical discovery model and named keyboard actions.</summary>
+    [Fact]
+    public void GuidedWorkflows_AreScrollableAccessibleAndDoNotRetainDuplicateTagFilters()
+    {
+        var views = Path.Combine(FindRepositoryRoot(), "src", "OpenSorSe.Desktop", "Views");
+        var home = File.ReadAllText(Path.Combine(views, "DashboardView.axaml"));
+        var search = File.ReadAllText(Path.Combine(views, "SemanticSearchView.axaml"));
+        var files = File.ReadAllText(Path.Combine(views, "ResultsView.axaml"));
+
+        Assert.Contains("AutomationProperties.Name=\"Home durable library overview\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Find files with Search, facets, and Saved Views\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Understand a file using details, Smart Tags, evidence, and Related Files\"", home, StringComparison.Ordinal);
+        Assert.Contains("StringFormat='Review {0} unresolved Smart Tag suggestion files'", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Organize selected files through a reviewed Change Plan\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", home, StringComparison.Ordinal);
+
+        Assert.Contains("Content=\"Open in Files\"", search, StringComparison.Ordinal);
+        Assert.Contains("StringFormat='Open {0} in Files with discovery context preserved'", search, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Advanced Search index maintenance\"", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("ThemeTagChoices", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("DocumentTypeTagChoices", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserTagChoices", search, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddSmartTagFiltersCommand", search, StringComparison.Ordinal);
+
+        Assert.Contains("AutomationProperties.Name=\"Return to preserved Search, facets, and Saved View\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Previous unresolved Smart Tag review item\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Next unresolved Smart Tag review item\"", files, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Why this classification?\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", files, StringComparison.Ordinal);
+    }
+
+    /// <summary>Built-in Help distinguishes durable discovery, historical snapshots, and relationship projections.</summary>
+    [Fact]
+    public void GuidedWorkflowHelp_ExplainsTasksAndPreservedBoundaries()
+    {
+        var home = HelpCatalog.Get(HelpTopicId.Dashboard);
+        var search = HelpCatalog.Get(HelpTopicId.SemanticSearch);
+        var files = HelpCatalog.Get(HelpTopicId.Results);
+        var tags = HelpCatalog.Get(HelpTopicId.SmartTags);
+
+        Assert.Contains("durable", home.Reads, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(home.Workflow, step => step.Contains("Find", StringComparison.Ordinal));
+        Assert.Contains(search.Workflow, step => step.Contains("Open in Files", StringComparison.Ordinal));
+        Assert.Contains("Saved scans remain historical", search.SafetyNotes, StringComparison.Ordinal);
+        Assert.Contains("stable file ID", files.SafetyNotes, StringComparison.Ordinal);
+        Assert.Contains(tags.Workflow, step => step.Contains("next current unresolved", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string FindRepositoryRoot()

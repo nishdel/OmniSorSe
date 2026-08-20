@@ -9,6 +9,541 @@ namespace OpenSorSe.Indexing.Sqlite;
 public sealed partial class SqliteDeepIndexStore
 {
     /// <inheritdoc />
+    public Task<SmartCollectionAuthorityBundle> ExportSmartCollectionUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (maximumCount is < 1 or > 100_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        }
+
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT c.id, c.context_key, c.title, c.description, c.relationship_summary,
+                           c.context_type, c.creation_source, c.is_pinned, c.is_user_renamed
+                    FROM smart_collections c
+                    WHERE c.creation_source <> $automatic OR c.is_pinned = 1 OR c.is_user_renamed = 1
+                       OR EXISTS (SELECT 1 FROM smart_collection_members m
+                                  WHERE m.collection_id = c.id AND m.membership_source = $manual)
+                       OR EXISTS (SELECT 1 FROM smart_collection_member_overrides o
+                                  WHERE o.collection_id = c.id)
+                    ORDER BY c.id
+                    LIMIT $maximum;
+                    """;
+                AddParameters(
+                    command,
+                    ("$automatic", (int)SmartCollectionCreationSource.Automatic),
+                    ("$manual", (int)CollectionMembershipSource.Manual),
+                    ("$maximum", maximumCount));
+                using var reader = command.ExecuteReader();
+                var rows = new List<(string Id, string? Context, string Title, string Description, string Summary, RelationshipType Type, SmartCollectionCreationSource Source, bool Pinned, bool Renamed)>();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    rows.Add((
+                        reader.GetString(0),
+                        reader.IsDBNull(1) ? null : reader.GetString(1),
+                        reader.GetString(2),
+                        reader.GetString(3),
+                        reader.GetString(4),
+                        (RelationshipType)reader.GetInt32(5),
+                        (SmartCollectionCreationSource)reader.GetInt32(6),
+                        reader.GetBoolean(7),
+                        reader.GetBoolean(8)));
+                }
+
+                reader.Close();
+                var authority = rows.Select(row => new SmartCollectionUserAuthority(
+                    row.Id,
+                    row.Context,
+                    row.Source == SmartCollectionCreationSource.Automatic && !row.Renamed
+                        ? "Pending Smart Collection"
+                        : row.Title,
+                    row.Source == SmartCollectionCreationSource.Automatic ? string.Empty : row.Description,
+                    row.Source == SmartCollectionCreationSource.Automatic ? string.Empty : row.Summary,
+                    row.Type,
+                    row.Source,
+                    row.Pinned,
+                    row.Renamed,
+                    ReadCollectionAuthorityFileIds(connection, row.Id, manualMembers: true),
+                    ReadCollectionAuthorityFileIds(connection, row.Id, manualMembers: false))).ToArray();
+                using var forgotten = connection.CreateCommand();
+                forgotten.CommandText =
+                    "SELECT context_key FROM forgotten_smart_collections ORDER BY context_key LIMIT $maximum;";
+                forgotten.Parameters.AddWithValue("$maximum", maximumCount);
+                using var forgottenReader = forgotten.ExecuteReader();
+                var tombstones = new List<string>();
+                while (forgottenReader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    tombstones.Add(forgottenReader.GetString(0));
+                }
+
+                return new SmartCollectionAuthorityBundle(authority, tombstones.AsReadOnly());
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<SmartCollectionAuthorityRestoreResult> RestoreSmartCollectionUserAuthorityAsync(
+        SmartCollectionAuthorityBundle authority,
+        bool replace,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSmartCollectionAuthority(authority, changedAtUtc);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                if (replace)
+                {
+                    ExecuteNonQuery(connection, transaction,
+                        "DELETE FROM smart_collection_members WHERE membership_source = $manual;",
+                        ("$manual", (int)CollectionMembershipSource.Manual));
+                    ExecuteNonQuery(connection, transaction, "DELETE FROM smart_collection_member_overrides;");
+                    ExecuteNonQuery(connection, transaction, "DELETE FROM forgotten_smart_collections;");
+                    ExecuteNonQuery(connection, transaction,
+                        "DELETE FROM smart_collections WHERE creation_source <> $automatic;",
+                        ("$automatic", (int)SmartCollectionCreationSource.Automatic));
+                    ExecuteNonQuery(connection, transaction,
+                        "UPDATE smart_collections SET is_pinned = 0, is_user_renamed = 0 WHERE creation_source = $automatic;",
+                        ("$automatic", (int)SmartCollectionCreationSource.Automatic));
+                }
+
+                var applied = 0;
+                var skipped = 0;
+                foreach (var item in authority.Collections)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var exists = Convert.ToInt32(ExecuteScalar(
+                        connection,
+                        transaction,
+                        "SELECT COUNT(*) FROM smart_collections WHERE id = $id;",
+                        ("$id", item.CollectionId)), CultureInfo.InvariantCulture) == 1;
+                    if (!exists && item.CreationSource == SmartCollectionCreationSource.Automatic &&
+                        string.IsNullOrWhiteSpace(item.ContextKey))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    if (!exists)
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            INSERT INTO smart_collections(
+                                id, context_key, title, description, relationship_summary,
+                                context_type, confidence, creation_source, is_pinned, is_user_renamed,
+                                created_utc_ticks, updated_utc_ticks)
+                            VALUES($id, $context, $title, $description, $summary, $type, $confidence,
+                                   $source, $pinned, $renamed, $now, $now);
+                            """,
+                            ("$id", item.CollectionId),
+                            ("$context", item.ContextKey),
+                            ("$title", item.Title),
+                            ("$description", item.Description),
+                            ("$summary", item.RelationshipSummary),
+                            ("$type", (int)item.ContextType),
+                            ("$confidence", (int)RelationshipConfidence.Confirmed),
+                            ("$source", (int)item.CreationSource),
+                            ("$pinned", item.IsPinned ? 1 : 0),
+                            ("$renamed", item.IsUserRenamed ? 1 : 0),
+                            ("$now", changedAtUtc.UtcTicks));
+                    }
+                    else
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            UPDATE smart_collections
+                            SET title = CASE WHEN $renamed = 1 THEN $title ELSE title END,
+                                is_pinned = $pinned,
+                                is_user_renamed = $renamed,
+                                updated_utc_ticks = $now
+                            WHERE id = $id;
+                            """,
+                            ("$renamed", item.IsUserRenamed ? 1 : 0),
+                            ("$title", item.Title),
+                            ("$pinned", item.IsPinned ? 1 : 0),
+                            ("$now", changedAtUtc.UtcTicks),
+                            ("$id", item.CollectionId));
+                    }
+
+                    foreach (var fileId in item.ManualMemberFileIds)
+                    {
+                        if (!RelationshipFileExists(connection, transaction, fileId))
+                        {
+                            skipped++;
+                            continue;
+                        }
+
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            INSERT INTO smart_collection_members(
+                                collection_id, file_id, membership_source, relationship_id, added_utc_ticks)
+                            VALUES($collection, $file, $manual, NULL, $now)
+                            ON CONFLICT(collection_id, file_id) DO UPDATE SET
+                                membership_source = $manual, relationship_id = NULL;
+                            """,
+                            ("$collection", item.CollectionId),
+                            ("$file", fileId),
+                            ("$manual", (int)CollectionMembershipSource.Manual),
+                            ("$now", changedAtUtc.UtcTicks));
+                        applied++;
+                    }
+
+                    foreach (var fileId in item.ExcludedMemberFileIds)
+                    {
+                        if (!RelationshipFileExists(connection, transaction, fileId))
+                        {
+                            skipped++;
+                            continue;
+                        }
+
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            INSERT INTO smart_collection_member_overrides(collection_id, file_id, excluded, changed_utc_ticks)
+                            VALUES($collection, $file, 1, $now)
+                            ON CONFLICT(collection_id, file_id) DO UPDATE SET excluded = 1, changed_utc_ticks = $now;
+                            """,
+                            ("$collection", item.CollectionId),
+                            ("$file", fileId),
+                            ("$now", changedAtUtc.UtcTicks));
+                        applied++;
+                    }
+
+                    applied++;
+                }
+
+                foreach (var contextKey in authority.ForgottenContextKeys)
+                {
+                    ExecuteNonQuery(
+                        connection,
+                        transaction,
+                        """
+                        INSERT INTO forgotten_smart_collections(context_key, forgotten_utc_ticks)
+                        VALUES($context, $now)
+                        ON CONFLICT(context_key) DO UPDATE SET forgotten_utc_ticks = $now;
+                        """,
+                        ("$context", contextKey),
+                        ("$now", changedAtUtc.UtcTicks));
+                    applied++;
+                }
+
+                transaction.Commit();
+                return new SmartCollectionAuthorityRestoreResult(applied, skipped);
+            },
+            cancellationToken);
+    }
+
+    private static IReadOnlyList<string> ReadCollectionAuthorityFileIds(
+        SqliteConnection connection,
+        string collectionId,
+        bool manualMembers)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = manualMembers
+            ? "SELECT file_id FROM smart_collection_members WHERE collection_id = $collection AND membership_source = $kind ORDER BY file_id;"
+            : "SELECT file_id FROM smart_collection_member_overrides WHERE collection_id = $collection AND excluded = 1 ORDER BY file_id;";
+        command.Parameters.AddWithValue("$collection", collectionId);
+        if (manualMembers)
+        {
+            command.Parameters.AddWithValue("$kind", (int)CollectionMembershipSource.Manual);
+        }
+
+        using var reader = command.ExecuteReader();
+        var result = new List<string>();
+        while (reader.Read())
+        {
+            result.Add(reader.GetString(0));
+        }
+
+        return result.AsReadOnly();
+    }
+
+    private static bool RelationshipFileExists(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string fileId) => Convert.ToInt32(ExecuteScalar(
+            connection,
+            transaction,
+            "SELECT COUNT(*) FROM index_files WHERE id = $file AND deleted_utc_ticks IS NULL;",
+            ("$file", fileId)), CultureInfo.InvariantCulture) == 1;
+
+    private static void ValidateSmartCollectionAuthority(
+        SmartCollectionAuthorityBundle authority,
+        DateTimeOffset changedAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        if (changedAtUtc.Offset != TimeSpan.Zero || authority.Collections.Count > 100_000 ||
+            authority.ForgottenContextKeys.Count > 100_000 ||
+            authority.Collections.Select(item => item.CollectionId).Distinct(StringComparer.Ordinal).Count() != authority.Collections.Count ||
+            authority.ForgottenContextKeys.Distinct(StringComparer.Ordinal).Count() != authority.ForgottenContextKeys.Count ||
+            authority.Collections.Any(item =>
+                string.IsNullOrWhiteSpace(item.CollectionId) || item.CollectionId.Length > 256 ||
+                item.ContextKey?.Length > 256 || item.Title.Length is < 1 or > RelationshipLimits.MaximumCollectionTitleCharacters ||
+                item.Description.Length > 512 || item.RelationshipSummary.Length > 512 ||
+                !Enum.IsDefined(item.ContextType) || !Enum.IsDefined(item.CreationSource) ||
+                item.CreationSource == SmartCollectionCreationSource.Automatic && string.IsNullOrWhiteSpace(item.ContextKey) ||
+                item.ManualMemberFileIds.Count > RelationshipLimits.MaximumCollectionMembers ||
+                item.ExcludedMemberFileIds.Count > RelationshipLimits.MaximumCollectionMembers ||
+                item.ManualMemberFileIds.Concat(item.ExcludedMemberFileIds).Any(id => string.IsNullOrWhiteSpace(id) || id.Length > 256)) ||
+            authority.ForgottenContextKeys.Any(key => string.IsNullOrWhiteSpace(key) || key.Length > 256))
+        {
+            throw new InvalidDataException("Smart Collection user authority is malformed, duplicated, or out of bounds.");
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<RelationshipUserAuthority>> ExportRelationshipUserAuthorityAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (maximumCount is < 1 or > 100_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        }
+
+        return RunExclusiveAsync<IReadOnlyList<RelationshipUserAuthority>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT o.first_file_id, o.second_file_id, o.decision,
+                           o.relationship_type, o.custom_type,
+                           CASE WHEN EXISTS (
+                               SELECT 1 FROM index_relationships r
+                               WHERE r.first_file_id = o.first_file_id
+                                 AND r.second_file_id = o.second_file_id
+                                 AND r.is_manual = 1
+                           ) THEN 1 ELSE 0 END
+                    FROM relationship_pair_overrides o
+                    JOIN index_files first ON first.id = o.first_file_id AND first.deleted_utc_ticks IS NULL
+                    JOIN index_files second ON second.id = o.second_file_id AND second.deleted_utc_ticks IS NULL
+                    ORDER BY o.first_file_id, o.second_file_id
+                    LIMIT $maximum;
+                    """;
+                command.Parameters.AddWithValue("$maximum", maximumCount);
+                var result = new List<RelationshipUserAuthority>();
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    result.Add(new RelationshipUserAuthority(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        (RelationshipDecision)reader.GetInt32(2),
+                        (RelationshipType)reader.GetInt32(3),
+                        reader.IsDBNull(4) ? null : reader.GetString(4),
+                        reader.GetInt32(5) == 1));
+                }
+
+                return result.AsReadOnly();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<RelationshipAuthorityRestoreResult> RestoreRelationshipUserAuthorityAsync(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRelationshipAuthority(authority, changedAtUtc);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var applied = 0;
+                var skipped = 0;
+                foreach (var item in authority)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var available = Convert.ToInt32(ExecuteScalar(
+                        connection,
+                        transaction,
+                        "SELECT COUNT(*) FROM index_files WHERE id IN ($first, $second) AND deleted_utc_ticks IS NULL;",
+                        ("$first", item.FirstFileId),
+                        ("$second", item.SecondFileId)), CultureInfo.InvariantCulture) == 2;
+                    if (!available)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    UpsertPairOverride(
+                        connection,
+                        transaction,
+                        item.FirstFileId,
+                        item.SecondFileId,
+                        item.Decision,
+                        item.Type,
+                        item.CustomType,
+                        changedAtUtc);
+                    if (item.IsManualRelationship)
+                    {
+                        var type = item.Type;
+                        var id = "rel:manual:" + StableRelationshipKey(
+                            $"{item.FirstFileId}|{item.SecondFileId}|{type}|{item.CustomType}");
+                        var relationship = new FileRelationship
+                        {
+                            Id = id,
+                            FirstFileId = item.FirstFileId,
+                            SecondFileId = item.SecondFileId,
+                            Type = type,
+                            CustomType = type == RelationshipType.Custom ? BoundOrNull(item.CustomType, 64) : null,
+                            Confidence = RelationshipConfidence.Confirmed,
+                            Evidence = [new RelationshipEvidence(RelationshipEvidenceKind.Manual, "user-link", "Linked by you")],
+                            Algorithm = "user",
+                            AlgorithmVersion = "1",
+                            CreatedAtUtc = changedAtUtc,
+                            LastValidatedAtUtc = changedAtUtc,
+                            Decision = item.Decision,
+                            IsManual = true,
+                        };
+                        UpsertRelationship(connection, transaction, relationship, null);
+                        ReplaceEvidence(connection, transaction, relationship);
+                    }
+                    else
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            """
+                            UPDATE index_relationships
+                            SET decision = $decision,
+                                confidence = CASE WHEN $decision IN ($confirmed, $always)
+                                                  THEN $confirmedConfidence ELSE confidence END,
+                                validated_utc_ticks = $now
+                            WHERE first_file_id = $first AND second_file_id = $second;
+                            """,
+                            ("$decision", (int)item.Decision),
+                            ("$confirmed", (int)RelationshipDecision.Confirmed),
+                            ("$always", (int)RelationshipDecision.AlwaysRelate),
+                            ("$confirmedConfidence", (int)RelationshipConfidence.Confirmed),
+                            ("$now", changedAtUtc.UtcTicks),
+                            ("$first", item.FirstFileId),
+                            ("$second", item.SecondFileId));
+                        if (item.Decision is RelationshipDecision.Rejected or RelationshipDecision.NeverRelate)
+                        {
+                            ExecuteNonQuery(
+                                connection,
+                                transaction,
+                                """
+                                DELETE FROM smart_collection_members
+                                WHERE membership_source = $automatic
+                                  AND relationship_id IN (
+                                      SELECT id FROM index_relationships
+                                      WHERE first_file_id = $first AND second_file_id = $second
+                                  );
+                                """,
+                                ("$automatic", (int)CollectionMembershipSource.Automatic),
+                                ("$first", item.FirstFileId),
+                                ("$second", item.SecondFileId));
+                        }
+                    }
+
+                    applied++;
+                }
+
+                CleanupAutomaticCollections(connection, transaction);
+                transaction.Commit();
+                return new RelationshipAuthorityRestoreResult(applied, skipped);
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task RemoveRelationshipUserAuthorityAsync(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRelationshipAuthority(authority, DateTimeOffset.UnixEpoch);
+        return RunExclusiveAsync<int>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                foreach (var item in authority)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ExecuteNonQuery(
+                        connection,
+                        transaction,
+                        "DELETE FROM relationship_pair_overrides WHERE first_file_id = $first AND second_file_id = $second;",
+                        ("$first", item.FirstFileId),
+                        ("$second", item.SecondFileId));
+                    if (item.IsManualRelationship)
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            "DELETE FROM index_relationships WHERE first_file_id = $first AND second_file_id = $second AND is_manual = 1;",
+                            ("$first", item.FirstFileId),
+                            ("$second", item.SecondFileId));
+                    }
+                    else
+                    {
+                        ExecuteNonQuery(
+                            connection,
+                            transaction,
+                            "UPDATE index_relationships SET decision = $none WHERE first_file_id = $first AND second_file_id = $second;",
+                            ("$none", (int)RelationshipDecision.None),
+                            ("$first", item.FirstFileId),
+                            ("$second", item.SecondFileId));
+                    }
+                }
+
+                CleanupAutomaticCollections(connection, transaction);
+                transaction.Commit();
+                return 0;
+            },
+            cancellationToken);
+    }
+
+    private static void ValidateRelationshipAuthority(
+        IReadOnlyList<RelationshipUserAuthority> authority,
+        DateTimeOffset changedAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(authority.Count, 100_000);
+        if (changedAtUtc.Offset != TimeSpan.Zero ||
+            authority.Any(item => item is null) ||
+            authority.Select(item => $"{item.FirstFileId}\n{item.SecondFileId}")
+                .Distinct(StringComparer.Ordinal).Count() != authority.Count ||
+            authority.Any(item =>
+                string.IsNullOrWhiteSpace(item.FirstFileId) ||
+                string.IsNullOrWhiteSpace(item.SecondFileId) ||
+                string.CompareOrdinal(item.FirstFileId, item.SecondFileId) >= 0 ||
+                item.FirstFileId.Length > 256 || item.SecondFileId.Length > 256 ||
+                item.Decision == RelationshipDecision.None || !Enum.IsDefined(item.Decision) ||
+                !Enum.IsDefined(item.Type) ||
+                item.CustomType?.Length > 64 || item.CustomType?.Any(char.IsControl) == true ||
+                item.Type == RelationshipType.Custom && string.IsNullOrWhiteSpace(item.CustomType)))
+        {
+            throw new InvalidDataException("Relationship restore authority is malformed, duplicated, or out of bounds.");
+        }
+    }
+
+    /// <inheritdoc />
     public Task<RelationshipOperationResult> LinkFilesAsync(
         string firstFileId,
         string secondFileId,
@@ -161,27 +696,85 @@ public sealed partial class SqliteDeepIndexStore
                         confidence = CASE WHEN $decision IN ($confirmed, $always)
                                           THEN $confirmedConfidence ELSE confidence END,
                         validated_utc_ticks = $now
-                    WHERE id = $id;
+                    WHERE first_file_id = $first AND second_file_id = $second;
                     """,
                     ("$decision", (int)decision),
                     ("$confirmed", (int)RelationshipDecision.Confirmed),
                     ("$always", (int)RelationshipDecision.AlwaysRelate),
                     ("$confirmedConfidence", (int)RelationshipConfidence.Confirmed),
                     ("$now", changedAtUtc.UtcTicks),
-                    ("$id", relationshipId));
+                    ("$first", relationship.FirstFileId),
+                    ("$second", relationship.SecondFileId));
                 if (decision is RelationshipDecision.Rejected or RelationshipDecision.NeverRelate)
                 {
                     ExecuteNonQuery(
                         connection,
                         transaction,
-                        "DELETE FROM smart_collection_members WHERE relationship_id = $relationship AND membership_source = $automatic;",
-                        ("$relationship", relationshipId),
+                        """
+                        DELETE FROM smart_collection_members
+                        WHERE relationship_id IN (
+                            SELECT id FROM index_relationships
+                            WHERE first_file_id = $first AND second_file_id = $second)
+                          AND membership_source = $automatic;
+                        """,
+                        ("$first", relationship.FirstFileId),
+                        ("$second", relationship.SecondFileId),
                         ("$automatic", (int)CollectionMembershipSource.Automatic));
                     CleanupAutomaticCollections(connection, transaction);
                 }
 
                 transaction.Commit();
                 return new RelationshipOperationResult(true, 1, 0, "Your relationship correction was saved.");
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<RelationshipOperationResult> ClearRelationshipDecisionAsync(
+        string firstFileId,
+        string secondFileId,
+        DateTimeOffset changedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRelationshipIdentifier(firstFileId, nameof(firstFileId));
+        ValidateRelationshipIdentifier(secondFileId, nameof(secondFileId));
+        if (string.Equals(firstFileId, secondFileId, StringComparison.Ordinal) || changedAtUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException("Automatic relationship evaluation requires two different stable file identities.");
+        }
+
+        var (first, second) = CanonicalPair(firstFileId, secondFileId);
+        return RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                var removed = ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    "DELETE FROM relationship_pair_overrides WHERE first_file_id = $first AND second_file_id = $second;",
+                    ("$first", first),
+                    ("$second", second));
+                ExecuteNonQuery(
+                    connection,
+                    transaction,
+                    """
+                    DELETE FROM index_relationships
+                    WHERE first_file_id = $first AND second_file_id = $second
+                      AND (is_manual = 1 OR decision <> $none);
+                    """,
+                    ("$first", first),
+                    ("$second", second),
+                    ("$none", (int)RelationshipDecision.None));
+                CleanupAutomaticCollections(connection, transaction);
+                transaction.Commit();
+                return new RelationshipOperationResult(
+                    removed > 0,
+                    removed > 0 ? 1 : 0,
+                    0,
+                    removed > 0
+                        ? "The explicit pair correction was cleared."
+                        : "No explicit pair correction was present.");
             },
             cancellationToken);
     }
@@ -683,7 +1276,23 @@ public sealed partial class SqliteDeepIndexStore
                         (SELECT COUNT(*) FROM index_privacy_rules WHERE suppress_relationships = 1),
                         d.last_analysis_utc_ticks, d.last_duration_milliseconds,
                         d.last_candidate_count, d.last_relationship_count, d.last_collection_count,
-                        d.algorithm_version, d.repair_operation_count
+                        d.algorithm_version, d.repair_operation_count,
+                        (SELECT COUNT(*) FROM index_relationship_features rf
+                         JOIN index_files f ON f.id = rf.file_id
+                         WHERE f.deleted_utc_ticks IS NULL
+                           AND d.algorithm_version <> ''
+                           AND rf.feature_version <> d.algorithm_version),
+                        ((SELECT COUNT(*) FROM relationship_pair_overrides o
+                          WHERE o.first_file_id NOT IN (SELECT id FROM index_files WHERE deleted_utc_ticks IS NULL)
+                             OR o.second_file_id NOT IN (SELECT id FROM index_files WHERE deleted_utc_ticks IS NULL))
+                         +
+                         (SELECT COUNT(*) FROM smart_collection_members m
+                          WHERE m.collection_id NOT IN (SELECT id FROM smart_collections)
+                             OR m.file_id NOT IN (SELECT id FROM index_files WHERE deleted_utc_ticks IS NULL))
+                         +
+                         (SELECT COUNT(*) FROM smart_collection_member_overrides o
+                          WHERE o.collection_id NOT IN (SELECT id FROM smart_collections)
+                             OR o.file_id NOT IN (SELECT id FROM index_files WHERE deleted_utc_ticks IS NULL)))
                     FROM relationship_diagnostics d
                     WHERE d.id = 1;
                     """;
@@ -697,6 +1306,8 @@ public sealed partial class SqliteDeepIndexStore
                     return new RelationshipDiagnosticsSnapshot(0, 0, 0, 0, 0, 0, null, null, 0, 0, 0, string.Empty, 0);
                 }
 
+                var stale = reader.GetInt64(13);
+                var invalid = reader.GetInt64(14);
                 return new RelationshipDiagnosticsSnapshot(
                     reader.GetInt64(0),
                     reader.GetInt64(1),
@@ -710,7 +1321,12 @@ public sealed partial class SqliteDeepIndexStore
                     reader.GetInt32(9),
                     reader.GetInt32(10),
                     reader.GetString(11),
-                    reader.GetInt32(12));
+                    reader.GetInt32(12))
+                {
+                    StaleRelationshipFileCount = stale,
+                    InvalidRecordCount = invalid,
+                    RepairNeeded = stale > 0 || invalid > 0,
+                };
             },
             cancellationToken);
 
@@ -926,6 +1542,11 @@ public sealed partial class SqliteDeepIndexStore
             ("$keepManual", keepManualRelationships ? 1 : 0));
         if (!keepManualRelationships)
         {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                "DELETE FROM smart_collection_member_overrides WHERE file_id = $file;",
+                ("$file", fileId));
             ExecuteNonQuery(
                 connection,
                 transaction,

@@ -183,50 +183,91 @@ public sealed partial class SqliteDeepIndexStore
                 using var command = connection.CreateCommand();
                 command.CommandText =
                     """
-                    SELECT rf.file_id
-                    FROM index_relationship_features rf
-                    JOIN index_files f ON f.id = rf.file_id
+                    WITH requested_terms(term) AS (
+                        SELECT CAST(value AS TEXT) FROM json_each($keywords)
+                    ),
+                    term_frequency AS (
+                        SELECT t.term, COUNT(*) AS frequency
+                        FROM index_relationship_feature_terms t
+                        JOIN requested_terms requested ON requested.term = t.term
+                        GROUP BY t.term
+                    ),
+                    exact_candidates(file_id, bucket, overlap_count, rarity_score) AS (
+                        SELECT rf.file_id, 0,
+                               CASE
+                                   WHEN $hash IS NOT NULL AND rf.content_hash = $hash THEN 8
+                                   WHEN ($text IS NOT NULL AND rf.extracted_text_fingerprint = $text)
+                                     OR ($ocr IS NOT NULL AND rf.ocr_text_fingerprint = $ocr)
+                                     OR ($mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript)
+                                     OR ($mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr) THEN 5
+                                   ELSE 2
+                               END,
+                               0.0
+                        FROM index_relationship_features rf
+                        WHERE rf.file_id <> $file AND (
+                               ($hash IS NOT NULL AND rf.content_hash = $hash)
+                            OR ($text IS NOT NULL AND rf.extracted_text_fingerprint = $text)
+                            OR ($ocr IS NOT NULL AND rf.ocr_text_fingerprint = $ocr)
+                            OR ($summary IS NOT NULL AND rf.summary_fingerprint = $summary)
+                            OR ($mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript)
+                            OR ($mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr)
+                        )
+                        ORDER BY 3 DESC, rf.file_id
+                        LIMIT 128
+                    ),
+                    term_candidates(file_id, bucket, overlap_count, rarity_score) AS (
+                        SELECT t.file_id, 1, COUNT(*), SUM(1.0 / frequency.frequency)
+                        FROM index_relationship_feature_terms t
+                        JOIN requested_terms requested ON requested.term = t.term
+                        JOIN term_frequency frequency ON frequency.term = t.term
+                        WHERE t.file_id <> $file
+                        GROUP BY t.file_id
+                        ORDER BY COUNT(*) DESC, SUM(1.0 / frequency.frequency) DESC, t.file_id
+                        LIMIT 192
+                    ),
+                    lexical_candidates(file_id, bucket, overlap_count, rarity_score) AS (
+                        SELECT rf.file_id, 2, 0, 0.0
+                        FROM index_relationship_features rf
+                        WHERE rf.file_id <> $file AND $stem <> '' AND rf.normalized_stem = $stem
+                        ORDER BY rf.file_id
+                        LIMIT 96
+                    ),
+                    context_candidates(file_id, bucket, overlap_count, rarity_score) AS (
+                        SELECT rf.file_id, 3, 0, 0.0
+                        FROM index_relationship_features rf
+                        WHERE rf.file_id <> $file AND (
+                               ($folder <> '' AND rf.folder_key = $folder)
+                            OR ($device IS NOT NULL AND rf.media_device_key = $device
+                                AND $captureDate IS NOT NULL
+                                AND rf.capture_date_bucket BETWEEN $captureDate - $day AND $captureDate + $day)
+                            OR ($date IS NOT NULL AND rf.date_bucket BETWEEN $date - $day AND $date + $day)
+                        )
+                        ORDER BY rf.file_id
+                        LIMIT 96
+                    ),
+                    all_candidates AS (
+                        SELECT * FROM exact_candidates
+                        UNION ALL SELECT * FROM term_candidates
+                        UNION ALL SELECT * FROM lexical_candidates
+                        UNION ALL SELECT * FROM context_candidates
+                    ),
+                    ranked_candidates AS (
+                        SELECT file_id, MIN(bucket) AS bucket,
+                               MAX(overlap_count) AS overlap_count,
+                               MAX(rarity_score) AS rarity_score
+                        FROM all_candidates
+                        GROUP BY file_id
+                    )
+                    SELECT ranked.file_id
+                    FROM ranked_candidates ranked
+                    JOIN index_files f ON f.id = ranked.file_id
                     LEFT JOIN index_privacy_rules p
                       ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
-                    WHERE rf.file_id <> $file
-                      AND f.deleted_utc_ticks IS NULL
+                    WHERE f.deleted_utc_ticks IS NULL
                       AND COALESCE(p.is_excluded, 0) = 0
                       AND COALESCE(p.suppress_relationships, 0) = 0
-                      AND (
-                           ($hash IS NOT NULL AND rf.content_hash = $hash)
-                        OR ($text IS NOT NULL AND rf.extracted_text_fingerprint = $text)
-                        OR ($ocr IS NOT NULL AND rf.ocr_text_fingerprint = $ocr)
-                        OR ($summary IS NOT NULL AND rf.summary_fingerprint = $summary)
-                        OR ($mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript)
-                        OR ($mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr)
-                        OR ($device IS NOT NULL AND rf.media_device_key = $device
-                            AND $captureDate IS NOT NULL
-                            AND rf.capture_date_bucket BETWEEN $captureDate - $day AND $captureDate + $day)
-                         OR ($folder <> '' AND rf.folder_key = $folder)
-                         OR ($stem <> '' AND rf.normalized_stem = $stem)
-                         OR ($date IS NOT NULL AND rf.date_bucket BETWEEN $date - $day AND $date + $day)
-                         OR EXISTS (
-                            SELECT 1
-                            FROM index_relationship_feature_terms term
-                            JOIN json_each($keywords) requested ON requested.value = term.term
-                            WHERE term.file_id = rf.file_id)
-                       )
-                    ORDER BY
-                        CASE WHEN $hash IS NOT NULL AND rf.content_hash = $hash THEN 0
-                             WHEN $text IS NOT NULL AND rf.extracted_text_fingerprint = $text THEN 1
-                             WHEN $ocr IS NOT NULL AND rf.ocr_text_fingerprint = $ocr THEN 2
-                             WHEN $summary IS NOT NULL AND rf.summary_fingerprint = $summary THEN 3
-                             WHEN $mediaTranscript IS NOT NULL AND rf.media_transcript_fingerprint = $mediaTranscript THEN 4
-                             WHEN $mediaOcr IS NOT NULL AND rf.media_ocr_fingerprint = $mediaOcr THEN 5
-                             WHEN EXISTS (
-                                SELECT 1
-                                FROM index_relationship_feature_terms term
-                                JOIN json_each($keywords) requested ON requested.value = term.term
-                                WHERE term.file_id = rf.file_id) THEN 6
-                             WHEN $stem <> '' AND rf.normalized_stem = $stem THEN 7
-                             WHEN $folder <> '' AND rf.folder_key = $folder THEN 8
-                             ELSE 9 END,
-                        rf.file_id
+                    ORDER BY ranked.bucket, ranked.overlap_count DESC,
+                             ranked.rarity_score DESC, ranked.file_id
                     LIMIT $maximum;
                     """;
                 AddParameters(
@@ -254,10 +295,7 @@ public sealed partial class SqliteDeepIndexStore
                 }
 
                 reader.Close();
-                return Array.AsReadOnly(
-                    ids.Select(id => ReadRelationshipFile(connection, id))
-                        .OfType<RelationshipFileDocument>()
-                        .ToArray());
+                return ReadRelationshipCandidateFiles(connection, ids, target.FeatureVersion);
             },
             cancellationToken);
     }
@@ -339,6 +377,52 @@ public sealed partial class SqliteDeepIndexStore
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetStaleRelationshipFileIdsAsync(
+        string algorithmVersion,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsValidBoundedText(algorithmVersion, 64))
+        {
+            throw new ArgumentException("The relationship algorithm version is invalid.", nameof(algorithmVersion));
+        }
+
+        ValidateRelationshipCount(maximumCount, RelationshipLimits.MaximumCandidates + 1, nameof(maximumCount));
+        return RunExclusiveAsync<IReadOnlyList<string>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT f.id
+                    FROM index_files f
+                    LEFT JOIN index_privacy_rules p
+                      ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
+                    LEFT JOIN index_relationship_features rf ON rf.file_id = f.id
+                    WHERE f.deleted_utc_ticks IS NULL
+                      AND f.fully_indexed = 1
+                      AND COALESCE(p.is_excluded, 0) = 0
+                      AND COALESCE(p.suppress_relationships, 0) = 0
+                      AND (rf.file_id IS NULL OR rf.feature_version <> $version)
+                    ORDER BY COALESCE(rf.updated_utc_ticks, 0), f.id
+                    LIMIT $maximum;
+                    """;
+                AddParameters(command, ("$version", algorithmVersion), ("$maximum", maximumCount));
+                using var reader = command.ExecuteReader();
+                var ids = new List<string>();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ids.Add(reader.GetString(0));
+                }
+
+                return ids.AsReadOnly();
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<RelatedFile>> GetRelatedFilesAsync(
         string fileId,
         RelationshipType? type,
@@ -385,6 +469,7 @@ public sealed partial class SqliteDeepIndexStore
                     ORDER BY {orderBy}
                     LIMIT $maximum;
                     """;
+                var fetchMaximum = Math.Min(1_000, Math.Max(maximumCount, maximumCount * 4));
                 AddParameters(
                     command,
                     ("$file", fileId),
@@ -392,7 +477,7 @@ public sealed partial class SqliteDeepIndexStore
                     ("$never", (int)RelationshipDecision.NeverRelate),
                     ("$type", type.HasValue ? (int)type.Value : null),
                     ("$confidence", minimumConfidence.HasValue ? (int)minimumConfidence.Value : null),
-                    ("$maximum", maximumCount));
+                    ("$maximum", fetchMaximum));
                 using var reader = command.ExecuteReader();
                 var rows = new List<(string RelationshipId, string FileId, string Path, string Source)>();
                 while (reader.Read())
@@ -401,14 +486,112 @@ public sealed partial class SqliteDeepIndexStore
                 }
 
                 reader.Close();
-                return Array.AsReadOnly(rows.Select(row => new RelatedFile
+                var typedRows = rows.Select(row => new RelatedFile
                 {
                     FileId = row.FileId,
                     FileName = Path.GetFileName(row.Path),
                     FullPath = row.Path,
                     SourceName = row.Source,
                     Relationship = ReadRelationship(connection, row.RelationshipId)!,
-                }).Where(item => item.Relationship is not null).ToArray());
+                }).Where(item => item.Relationship is not null).ToArray();
+                return RelationshipPairAggregator.ToRelatedFiles(
+                    RelationshipPairAggregator.Aggregate(typedRows, maximumCount, sort));
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RelatedFileContext>> GetRelatedFileContextsAsync(
+        string fileId,
+        RelationshipType? type,
+        RelationshipConfidence? minimumConfidence,
+        RelatedFileSort sort,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await GetRelatedFilesAsync(
+                fileId,
+                type,
+                minimumConfidence,
+                sort,
+                maximumCount,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return RelationshipPairAggregator.Aggregate(rows, maximumCount, sort);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<RelationshipPairCorrection>> GetRelationshipCorrectionsAsync(
+        string fileId,
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRelationshipIdentifier(fileId, nameof(fileId));
+        ValidateRelationshipCount(maximumCount, 1_000, nameof(maximumCount));
+        return RunExclusiveAsync<IReadOnlyList<RelationshipPairCorrection>>(
+            () =>
+            {
+                using var connection = OpenConnection();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    """
+                    SELECT o.first_file_id, o.second_file_id,
+                           f.id, f.full_path, s.display_name,
+                           o.decision, o.relationship_type, o.custom_type,
+                           o.changed_utc_ticks,
+                           CASE WHEN EXISTS (
+                               SELECT 1 FROM index_relationships r
+                               WHERE r.first_file_id = o.first_file_id
+                                 AND r.second_file_id = o.second_file_id
+                                 AND r.decision NOT IN ($rejected, $never)
+                           ) THEN 1 ELSE 0 END
+                    FROM relationship_pair_overrides o
+                    JOIN index_files f
+                      ON f.id = CASE WHEN o.first_file_id = $file THEN o.second_file_id ELSE o.first_file_id END
+                    JOIN index_sources s ON s.id = f.source_id
+                    LEFT JOIN index_privacy_rules p
+                      ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
+                    WHERE (o.first_file_id = $file OR o.second_file_id = $file)
+                      AND f.deleted_utc_ticks IS NULL
+                      AND COALESCE(p.is_excluded, 0) = 0
+                      AND COALESCE(p.suppress_relationships, 0) = 0
+                    ORDER BY o.changed_utc_ticks DESC, o.first_file_id, o.second_file_id
+                    LIMIT $maximum;
+                    """;
+                AddParameters(
+                    command,
+                    ("$file", fileId),
+                    ("$rejected", (int)RelationshipDecision.Rejected),
+                    ("$never", (int)RelationshipDecision.NeverRelate),
+                    ("$maximum", maximumCount));
+                using var reader = command.ExecuteReader();
+                var corrections = new List<RelationshipPairCorrection>();
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var ticks = reader.GetInt64(8);
+                    if (ticks < DateTimeOffset.MinValue.Ticks || ticks > DateTimeOffset.MaxValue.Ticks ||
+                        !Enum.IsDefined((RelationshipDecision)reader.GetInt32(5)) ||
+                        !Enum.IsDefined((RelationshipType)reader.GetInt32(6)))
+                    {
+                        continue;
+                    }
+
+                    corrections.Add(new RelationshipPairCorrection(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        Path.GetFileName(reader.GetString(3)),
+                        reader.GetString(3),
+                        reader.GetString(4),
+                        (RelationshipDecision)reader.GetInt32(5),
+                        (RelationshipType)reader.GetInt32(6),
+                        reader.IsDBNull(7) ? null : reader.GetString(7),
+                        new DateTimeOffset(ticks, TimeSpan.Zero),
+                        reader.GetInt32(9) == 1));
+                }
+
+                return corrections.AsReadOnly();
             },
             cancellationToken);
     }
@@ -521,25 +704,8 @@ public sealed partial class SqliteDeepIndexStore
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText =
-            """
-            SELECT f.id, f.source_id, s.display_name, f.full_path, f.relative_path,
-                   f.content_hash, f.creation_utc_ticks, f.modified_utc_ticks,
-                   f.metadata_fingerprint, c.extracted_text, c.ocr_text, c.summary,
-                   c.keywords_json, c.semantic_json, f.fully_indexed,
-                   COALESCE(p.suppress_relationships, 0), f.indexing_level,
-                   COALESCE(p.suppress_ocr, 0), COALESCE(p.suppress_summary, 0),
-                   COALESCE(p.suppress_semantic, 0), m.evidence_json,
-                   c.content_intelligence_json
-            FROM index_files f
-            JOIN index_sources s ON s.id = f.source_id
-            LEFT JOIN index_content c ON c.content_hash = f.content_hash
-            LEFT JOIN index_media_content m ON m.content_hash = f.content_hash
-            LEFT JOIN index_privacy_rules p
-              ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
-            WHERE f.id = $file AND f.deleted_utc_ticks IS NULL
-              AND COALESCE(p.is_excluded, 0) = 0;
-            """;
+        command.CommandText = RelationshipFileSelect +
+            " WHERE f.id = $file AND f.deleted_utc_ticks IS NULL AND COALESCE(p.is_excluded, 0) = 0;";
         command.Parameters.AddWithValue("$file", fileId);
         using var reader = command.ExecuteReader();
         if (!reader.Read())
@@ -547,6 +713,117 @@ public sealed partial class SqliteDeepIndexStore
             return null;
         }
 
+        var document = ReadRelationshipFileRow(reader);
+        reader.Close();
+        return AddRelationshipTagEvidence(connection, [document], transaction)[0];
+    }
+
+    private static IReadOnlyList<RelationshipFileDocument> ReadRelationshipFiles(
+        SqliteConnection connection,
+        IReadOnlyList<string> fileIds,
+        SqliteTransaction? transaction = null)
+    {
+        if (fileIds.Count == 0)
+        {
+            return [];
+        }
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        var parameters = fileIds.Select((_, index) => "$file" + index.ToString(CultureInfo.InvariantCulture)).ToArray();
+        command.CommandText = RelationshipFileSelect +
+            $" WHERE f.id IN ({string.Join(',', parameters)}) AND f.deleted_utc_ticks IS NULL " +
+            "AND COALESCE(p.is_excluded, 0) = 0;";
+        for (var index = 0; index < fileIds.Count; index++)
+        {
+            command.Parameters.AddWithValue(parameters[index], fileIds[index]);
+        }
+
+        using var reader = command.ExecuteReader();
+        var documents = new List<RelationshipFileDocument>(fileIds.Count);
+        while (reader.Read())
+        {
+            documents.Add(ReadRelationshipFileRow(reader));
+        }
+
+        reader.Close();
+        var hydrated = AddRelationshipTagEvidence(connection, documents, transaction)
+            .ToDictionary(item => item.FileId, StringComparer.Ordinal);
+        return fileIds.Where(hydrated.ContainsKey).Select(id => hydrated[id]).ToArray();
+    }
+
+    private static IReadOnlyList<RelationshipFileDocument> ReadRelationshipCandidateFiles(
+        SqliteConnection connection,
+        IReadOnlyList<string> fileIds,
+        string expectedFeatureVersion)
+    {
+        if (fileIds.Count == 0)
+        {
+            return [];
+        }
+
+        using var command = connection.CreateCommand();
+        var parameters = fileIds.Select((_, index) => "$candidate" + index.ToString(CultureInfo.InvariantCulture)).ToArray();
+        command.CommandText = RelationshipCandidateFileSelect +
+            $" WHERE f.id IN ({string.Join(',', parameters)}) AND f.deleted_utc_ticks IS NULL " +
+            "AND COALESCE(p.is_excluded, 0) = 0;";
+        for (var index = 0; index < fileIds.Count; index++)
+        {
+            command.Parameters.AddWithValue(parameters[index], fileIds[index]);
+        }
+
+        using var reader = command.ExecuteReader();
+        var compact = new List<RelationshipFileDocument>(fileIds.Count);
+        while (reader.Read())
+        {
+            var document = ReadRelationshipFileRow(reader);
+            compact.Add(document with
+            {
+                PrecomputedRelationshipFeatures = new RelationshipFeatureSet(
+                    document.FileId,
+                    reader.GetString(22),
+                    reader.GetString(23),
+                    reader.IsDBNull(24) ? null : reader.GetString(24),
+                    reader.IsDBNull(25) ? null : reader.GetInt64(25),
+                    reader.IsDBNull(26) ? null : reader.GetString(26),
+                    reader.IsDBNull(27) ? null : reader.GetString(27),
+                    reader.IsDBNull(28) ? null : reader.GetString(28),
+                    TryDeserializeStrings(reader.GetString(29)),
+                    reader.GetString(30))
+                {
+                    MediaTranscriptFingerprint = reader.IsDBNull(31) ? null : reader.GetString(31),
+                    MediaOcrFingerprint = reader.IsDBNull(32) ? null : reader.GetString(32),
+                    MediaDeviceKey = reader.IsDBNull(33) ? null : reader.GetString(33),
+                    CaptureDateBucket = reader.IsDBNull(34) ? null : reader.GetInt64(34),
+                },
+            });
+        }
+
+        reader.Close();
+        var staleIds = compact
+            .Where(item => !string.Equals(
+                item.PrecomputedRelationshipFeatures!.FeatureVersion,
+                expectedFeatureVersion,
+                StringComparison.Ordinal))
+            .Select(item => item.FileId)
+            .ToArray();
+        var stale = ReadRelationshipFiles(connection, staleIds)
+            .ToDictionary(item => item.FileId, StringComparer.Ordinal);
+        var current = AddRelationshipTagEvidence(
+                connection,
+                compact.Where(item => !stale.ContainsKey(item.FileId)).ToArray(),
+                transaction: null)
+            .ToDictionary(item => item.FileId, StringComparer.Ordinal);
+        foreach (var item in stale)
+        {
+            current[item.Key] = item.Value;
+        }
+
+        return fileIds.Where(current.ContainsKey).Select(id => current[id]).ToArray();
+    }
+
+    private static RelationshipFileDocument ReadRelationshipFileRow(SqliteDataReader reader)
+    {
         var fullPath = reader.GetString(3);
         var relativePath = reader.GetString(4);
         var basic = (IndexingLevel)reader.GetInt32(16) == IndexingLevel.Basic;
@@ -586,6 +863,76 @@ public sealed partial class SqliteDeepIndexStore
             RelationshipAnalysisSuppressed = reader.GetBoolean(15),
         };
     }
+
+    private static IReadOnlyList<RelationshipFileDocument> AddRelationshipTagEvidence(
+        SqliteConnection connection,
+        IReadOnlyList<RelationshipFileDocument> documents,
+        SqliteTransaction? transaction)
+    {
+        var effectiveByFile = ReadEffectiveSmartTags(connection, documents.Select(item => item.FileId).ToArray(), transaction);
+        return documents.Select(document =>
+        {
+            var effectiveTags = effectiveByFile.GetValueOrDefault(document.FileId) ?? [];
+            return document with
+            {
+                Tags = effectiveTags
+                    .Select(item => item.Definition.CanonicalKey)
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)
+                    .ToArray(),
+                TagEvidence = effectiveTags
+                    .Select(item => new RelationshipTagEvidence(
+                        item.Definition.CanonicalKey,
+                        item.Definition.DisplayName,
+                        item.Definition.Type,
+                        item.Confidence,
+                        item.Origin,
+                        item.State,
+                        item.Decision))
+                    .ToArray(),
+            };
+        }).ToArray();
+    }
+
+    private const string RelationshipFileSelect =
+        """
+        SELECT f.id, f.source_id, s.display_name, f.full_path, f.relative_path,
+               f.content_hash, f.creation_utc_ticks, f.modified_utc_ticks,
+               f.metadata_fingerprint, c.extracted_text, c.ocr_text, c.summary,
+               c.keywords_json, c.semantic_json, f.fully_indexed,
+               COALESCE(p.suppress_relationships, 0), f.indexing_level,
+               COALESCE(p.suppress_ocr, 0), COALESCE(p.suppress_summary, 0),
+               COALESCE(p.suppress_semantic, 0), m.evidence_json,
+               c.content_intelligence_json
+        FROM index_files f
+        JOIN index_sources s ON s.id = f.source_id
+        LEFT JOIN index_content c ON c.content_hash = f.content_hash
+        LEFT JOIN index_media_content m ON m.content_hash = f.content_hash
+        LEFT JOIN index_privacy_rules p
+          ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
+        """;
+
+    private const string RelationshipCandidateFileSelect =
+        """
+        SELECT f.id, f.source_id, s.display_name, f.full_path, f.relative_path,
+               f.content_hash, f.creation_utc_ticks, f.modified_utc_ticks,
+               f.metadata_fingerprint, NULL, NULL, NULL,
+               c.keywords_json, c.semantic_json, f.fully_indexed,
+               COALESCE(p.suppress_relationships, 0), f.indexing_level,
+               COALESCE(p.suppress_ocr, 0), COALESCE(p.suppress_summary, 0),
+               COALESCE(p.suppress_semantic, 0), NULL,
+               c.content_intelligence_json,
+               rf.normalized_stem, rf.folder_key, rf.content_hash, rf.date_bucket,
+               rf.extracted_text_fingerprint, rf.ocr_text_fingerprint, rf.summary_fingerprint,
+               rf.keyword_keys_json, rf.feature_version, rf.media_transcript_fingerprint,
+               rf.media_ocr_fingerprint, rf.media_device_key, rf.capture_date_bucket
+        FROM index_files f
+        JOIN index_sources s ON s.id = f.source_id
+        JOIN index_relationship_features rf ON rf.file_id = f.id
+        LEFT JOIN index_content c ON c.content_hash = f.content_hash
+        LEFT JOIN index_privacy_rules p
+          ON p.source_id = f.source_id AND p.relative_path_key = f.relative_path_key
+        """;
 
     private static DateTimeOffset? ReadOptionalTimestamp(SqliteDataReader reader, int ordinal)
     {
@@ -962,6 +1309,7 @@ public sealed partial class SqliteDeepIndexStore
             WHERE creation_source = $automatic
               AND is_pinned = 0
               AND is_user_renamed = 0
+              AND NOT EXISTS(SELECT 1 FROM smart_collection_member_overrides o WHERE o.collection_id = smart_collections.id)
               AND NOT EXISTS(SELECT 1 FROM smart_collection_members m WHERE m.collection_id = smart_collections.id);
             """,
             ("$automatic", (int)SmartCollectionCreationSource.Automatic));

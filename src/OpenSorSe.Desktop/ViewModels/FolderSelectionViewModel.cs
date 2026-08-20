@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
@@ -26,13 +27,17 @@ public sealed class FolderSelectionViewModel : ViewModelBase
     private bool _overrideAiEnabled;
     private double _overrideMaximumFileSizeMiB = 1024;
     private string _newProfileName = string.Empty;
+    private InitialScanDepth _initialScanDepth = InitialScanDepth.BaseFirst;
 
     /// <summary>
     /// Initializes folder-selection commands.
     /// </summary>
-    public FolderSelectionViewModel(IWorkflowLibraryService? workflowLibrary = null)
+    public FolderSelectionViewModel(
+        IWorkflowLibraryService? workflowLibrary = null,
+        IConfigurationService? configurationService = null)
     {
         _workflowLibrary = workflowLibrary;
+        _initialScanDepth = configurationService?.Current.DeepIndexing.InitialScanDepth ?? InitialScanDepth.BaseFirst;
         SelectedFolders = new ReadOnlyObservableCollection<string>(_selectedFolders);
         RecentFolders = new ReadOnlyObservableCollection<string>(_recentFolders);
         foreach (var profile in BuiltInWorkflowLibrary.Profiles.Where(profile => !profile.IsArchived))
@@ -102,6 +107,33 @@ public sealed class FolderSelectionViewModel : ViewModelBase
           $"{(SelectedWorkflowProfile.Ai.Enabled ? "optional AI policy" : "AI off")} · " +
           $"{SelectedWorkflowProfile.SortingRecipeIds.Count} attached recipe(s) · " +
           $"{ProcessingIntensity(SelectedWorkflowProfile)} processing";
+
+    /// <summary>Gets the available initial indexing schedules.</summary>
+    public IReadOnlyList<InitialScanDepthOption> AvailableInitialScanDepths { get; } = InitialScanDepthOptions.All;
+
+    /// <summary>Gets or sets the plain-language option selected in the scan UI.</summary>
+    public InitialScanDepthOption SelectedInitialScanDepthOption
+    {
+        get => InitialScanDepthOptions.For(SelectedInitialScanDepth);
+        set => SelectedInitialScanDepth = value.Value;
+    }
+
+    /// <summary>Gets or sets whether broad base Search coverage or per-file deep completion is prioritized.</summary>
+    public InitialScanDepth SelectedInitialScanDepth
+    {
+        get => _initialScanDepth;
+        set
+        {
+            if (SetProperty(ref _initialScanDepth, value))
+            {
+                OnPropertyChanged(nameof(SelectedInitialScanDepthOption));
+                OnPropertyChanged(nameof(InitialScanDepthDescription));
+            }
+        }
+    }
+
+    /// <summary>Gets a plain-language explanation of the selected durable scheduling policy.</summary>
+    public string InitialScanDepthDescription => SelectedInitialScanDepthOption.Description;
 
     /// <summary>Gets or sets whether the next scan applies constrained, session-only overrides.</summary>
     public bool UseOneTimeOverride
@@ -291,6 +323,7 @@ public sealed class FolderSelectionViewModel : ViewModelBase
         ScanRequested?.Invoke(this, new ScanRequest(_selectedFolders.ToArray())
         {
             ProfileId = SelectedWorkflowProfile.Id,
+            InitialScanDepth = SelectedInitialScanDepth,
             OneTimeOverride = UseOneTimeOverride
                 ? new WorkflowProfileOverride(
                     MaximumFileSizeBytes: checked((long)(OverrideMaximumFileSizeMiB * 1024 * 1024)),

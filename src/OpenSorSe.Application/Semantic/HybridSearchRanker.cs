@@ -1,6 +1,8 @@
 using System.Globalization;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.ContentIntelligence;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -8,10 +10,10 @@ namespace OpenSorSe.Application.Semantic;
 public static class SearchFileTypeClassifier
 {
     private static readonly HashSet<string> Documents = new(
-        [".doc", ".docx", ".odt", ".rtf", ".txt", ".md"],
+        [".doc", ".docx", ".odt", ".rtf", ".txt", ".text", ".md", ".markdown"],
         StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> Spreadsheets = new(
-        [".csv", ".xls", ".xlsx", ".ods"],
+        [".csv", ".tsv", ".xls", ".xlsx", ".ods"],
         StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> Presentations = new(
         [".ppt", ".pptx", ".odp"],
@@ -75,7 +77,7 @@ public static class SearchFileTypeClassifier
             return "archive";
         }
 
-        return string.Empty;
+        return "other";
     }
 }
 
@@ -268,6 +270,7 @@ public sealed class HybridSearchRanker : ISearchRanker
                     "tag",
                     150,
                     ref rankClass);
+                literalScore += AddSmartTagMatches(candidate.SmartTags, tokens, components, ref rankClass);
                 literalScore += AddFieldMatch(
                     fields.Keywords,
                     tokens,
@@ -471,51 +474,57 @@ public sealed class HybridSearchRanker : ISearchRanker
         IReadOnlyList<SearchFilter> filters,
         ICollection<SearchRankingComponent> components)
     {
-        foreach (var filter in filters)
+        var typedSmartTagFilters = filters
+            .Where(filter => filter.Kind is SearchFilterKind.SmartTagTheme or
+                SearchFilterKind.SmartTagDocumentType or SearchFilterKind.SmartTagUser)
+            .GroupBy(filter => filter.Kind)
+            .ToArray();
+        foreach (var group in typedSmartTagFilters)
         {
-            var matches = filter.Kind switch
+            var matched = group.FirstOrDefault(filter => MatchesSmartTagFilter(candidate, filter));
+            if (matched is null)
             {
-                SearchFilterKind.FileType =>
-                    EqualsNormalized(candidate.FileType, filter.Value),
-                SearchFilterKind.Extension =>
-                    EqualsNormalized(candidate.Extension.TrimStart('.'), filter.Value.TrimStart('.')),
-                SearchFilterKind.CreatedOnOrAfter =>
-                    CompareDate(candidate.MediaEvidence?.Metadata.CapturedAtUtc ?? candidate.CreationTimeUtc, filter.Value, onOrAfter: true),
-                SearchFilterKind.CreatedBefore =>
-                    CompareDate(candidate.MediaEvidence?.Metadata.CapturedAtUtc ?? candidate.CreationTimeUtc, filter.Value, onOrAfter: false),
-                SearchFilterKind.ModifiedOnOrAfter =>
-                    CompareDate(candidate.ModifiedTimeUtc, filter.Value, onOrAfter: true),
-                SearchFilterKind.ModifiedBefore =>
-                    CompareDate(candidate.ModifiedTimeUtc, filter.Value, onOrAfter: false),
-                SearchFilterKind.MinimumSizeBytes =>
-                    CompareSize(candidate.Length, filter.Value, minimum: true),
-                SearchFilterKind.MaximumSizeBytes =>
-                    CompareSize(candidate.Length, filter.Value, minimum: false),
-                SearchFilterKind.Source =>
-                    ContainsNormalized(candidate.SourceName, filter.Value) ||
-                    EqualsNormalized(candidate.SourceId, filter.Value),
-                SearchFilterKind.Folder =>
-                    ContainsNormalized(candidate.FolderName, filter.Value) ||
-                    ContainsNormalized(candidate.RelativePath, filter.Value),
-                SearchFilterKind.Tag =>
-                    candidate.Tags.Concat(candidate.Keywords)
-                        .Any(value => ContainsNormalized(value, filter.Value)),
-                SearchFilterKind.IndexingLevel =>
-                    candidate.IndexingLevel.HasValue &&
-                    EqualsNormalized(candidate.IndexingLevel.Value.ToString(), filter.Value),
-                SearchFilterKind.IndexingCompletion =>
-                    filter.Value.Equals(candidate.IsFullyIndexed ? "full" : "partial", StringComparison.OrdinalIgnoreCase),
-                SearchFilterKind.OcrAvailability =>
-                    CompareBoolean(
-                        !string.IsNullOrWhiteSpace(candidate.OcrText) ||
-                        !string.IsNullOrWhiteSpace(candidate.MediaEvidence?.OcrText),
-                        filter.Value),
-                SearchFilterKind.SemanticAvailability =>
-                    CompareBoolean(candidate.SemanticRepresentation is { Count: > 0 }, filter.Value),
-                SearchFilterKind.FailureState =>
-                    CompareBoolean(candidate.HasIndexingFailure, filter.Value),
-                _ => false,
-            };
+                return false;
+            }
+
+            components.Add(new SearchRankingComponent(
+                SearchRankingSignalKind.Filter,
+                matched.Kind.ToString(),
+                1,
+                $"{matched.DisplayName} matched"));
+        }
+
+        var canonicalFacetFilters = filters
+            .Where(filter => filter.Kind is SearchFilterKind.FileType or
+                SearchFilterKind.CreatedYear or SearchFilterKind.ModifiedYear or
+                SearchFilterKind.UnresolvedModerateSmartTag)
+            .GroupBy(filter => filter.Kind)
+            .ToArray();
+        foreach (var group in canonicalFacetFilters)
+        {
+            var matched = group.FirstOrDefault(filter => MatchesSingleFilter(candidate, filter));
+            if (matched is null)
+            {
+                return false;
+            }
+
+            components.Add(new SearchRankingComponent(
+                SearchRankingSignalKind.Filter,
+                matched.Kind.ToString(),
+                1,
+                $"{matched.DisplayName} matched"));
+        }
+
+        foreach (var filter in filters.Where(filter => filter.Kind is not
+                     SearchFilterKind.SmartTagTheme and not
+                     SearchFilterKind.SmartTagDocumentType and not
+                     SearchFilterKind.SmartTagUser and not
+                     SearchFilterKind.FileType and not
+                     SearchFilterKind.CreatedYear and not
+                     SearchFilterKind.ModifiedYear and not
+                     SearchFilterKind.UnresolvedModerateSmartTag))
+        {
+            var matches = MatchesSingleFilter(candidate, filter);
             if (!matches)
             {
                 return false;
@@ -531,13 +540,87 @@ public sealed class HybridSearchRanker : ISearchRanker
         return true;
     }
 
+    private static bool MatchesSingleFilter(SearchCandidateDocument candidate, SearchFilter filter) =>
+        filter.Kind switch
+        {
+            SearchFilterKind.FileType =>
+                EqualsNormalized(candidate.FileType, filter.Value),
+            SearchFilterKind.Extension =>
+                EqualsNormalized(candidate.Extension.TrimStart('.'), filter.Value.TrimStart('.')),
+            SearchFilterKind.CreatedOnOrAfter =>
+                CompareDate(candidate.CreationTimeUtc, filter.Value, onOrAfter: true),
+            SearchFilterKind.CreatedBefore =>
+                CompareDate(candidate.CreationTimeUtc, filter.Value, onOrAfter: false),
+            SearchFilterKind.ModifiedOnOrAfter =>
+                CompareDate(candidate.ModifiedTimeUtc, filter.Value, onOrAfter: true),
+            SearchFilterKind.ModifiedBefore =>
+                CompareDate(candidate.ModifiedTimeUtc, filter.Value, onOrAfter: false),
+            SearchFilterKind.MinimumSizeBytes =>
+                CompareSize(candidate.Length, filter.Value, minimum: true),
+            SearchFilterKind.MaximumSizeBytes =>
+                CompareSize(candidate.Length, filter.Value, minimum: false),
+            SearchFilterKind.Source =>
+                ContainsNormalized(candidate.SourceName, filter.Value) ||
+                EqualsNormalized(candidate.SourceId, filter.Value),
+            SearchFilterKind.Folder =>
+                ContainsNormalized(candidate.FolderName, filter.Value) ||
+                ContainsNormalized(candidate.RelativePath, filter.Value),
+            SearchFilterKind.Tag =>
+                candidate.Tags.Concat(candidate.Keywords)
+                    .Any(value => ContainsNormalized(value, filter.Value)),
+            SearchFilterKind.IndexingLevel =>
+                candidate.IndexingLevel.HasValue &&
+                EqualsNormalized(candidate.IndexingLevel.Value.ToString(), filter.Value),
+            SearchFilterKind.IndexingCompletion =>
+                filter.Value.Equals(candidate.IsFullyIndexed ? "full" : "partial", StringComparison.OrdinalIgnoreCase),
+            SearchFilterKind.OcrAvailability =>
+                CompareBoolean(
+                    !string.IsNullOrWhiteSpace(candidate.OcrText) ||
+                    !string.IsNullOrWhiteSpace(candidate.MediaEvidence?.OcrText),
+                    filter.Value),
+            SearchFilterKind.SemanticAvailability =>
+                CompareBoolean(candidate.SemanticRepresentation is { Count: > 0 }, filter.Value),
+            SearchFilterKind.FailureState =>
+                CompareBoolean(candidate.HasIndexingFailure, filter.Value),
+            SearchFilterKind.CreatedYear =>
+                MatchesYear(candidate.CreationTimeUtc, filter.Value),
+            SearchFilterKind.ModifiedYear =>
+                MatchesYear(candidate.ModifiedTimeUtc, filter.Value),
+            SearchFilterKind.UnresolvedModerateSmartTag =>
+                candidate.SmartTags.Any(tag =>
+                    tag.Confidence == ContentIntelligenceConfidence.Moderate &&
+                    tag.State == SmartTagAssignmentState.Suggested &&
+                    tag.Decision == SmartTagDecision.None),
+            _ => false,
+        };
+
+    private static bool MatchesYear(DateTimeOffset? value, string expected) =>
+        value.HasValue &&
+        int.TryParse(expected, NumberStyles.None, CultureInfo.InvariantCulture, out var year) &&
+        value.Value.Year == year;
+
+    private static bool MatchesSmartTagFilter(SearchCandidateDocument candidate, SearchFilter filter)
+    {
+        var expectedType = filter.Kind switch
+        {
+            SearchFilterKind.SmartTagTheme => SmartTagType.Theme,
+            SearchFilterKind.SmartTagDocumentType => SmartTagType.DocumentType,
+            SearchFilterKind.SmartTagUser => SmartTagType.UserTag,
+            _ => (SmartTagType?)null,
+        };
+        return expectedType.HasValue && candidate.SmartTags.Any(tag =>
+            tag.Definition.Type == expectedType.Value &&
+            string.Equals(tag.Definition.TagId, filter.Value, StringComparison.Ordinal) &&
+            tag.Decision != SmartTagDecision.Rejected &&
+            (tag.State is SmartTagAssignmentState.Accepted or SmartTagAssignmentState.Automatic));
+    }
+
     private static bool CompareDate(DateTimeOffset? candidate, string value, bool onOrAfter) =>
         candidate.HasValue &&
-        DateTimeOffset.TryParseExact(
+        DateTimeOffset.TryParse(
             value,
-            "O",
             CultureInfo.InvariantCulture,
-            DateTimeStyles.RoundtripKind,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
             out var boundary) &&
         (onOrAfter ? candidate.Value >= boundary : candidate.Value < boundary);
 
@@ -670,6 +753,54 @@ public sealed class HybridSearchRanker : ISearchRanker
             contribution + (count - 1) * 10,
             explanation,
             matched);
+    }
+
+    private static double AddSmartTagMatches(
+        IReadOnlyList<FileSmartTag> tags,
+        IReadOnlyList<string> tokens,
+        ICollection<SearchRankingComponent> components,
+        ref int rankClass)
+    {
+        var contribution = 0d;
+        foreach (var tag in tags.Where(tag =>
+                     tag.Decision != SmartTagDecision.Rejected &&
+                     (tag.State is SmartTagAssignmentState.Accepted or SmartTagAssignmentState.Automatic)))
+        {
+            var normalized = SearchTextNormalizer.Normalize(tag.Definition.DisplayName);
+            if (!tokens.Any(token => normalized.Contains(token, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            rankClass = Math.Max(rankClass, 2);
+            var kind = tag.Definition.Type switch
+            {
+                SmartTagType.Theme => SearchRankingSignalKind.SmartTagTheme,
+                SmartTagType.DocumentType => SearchRankingSignalKind.SmartTagDocumentType,
+                _ => SearchRankingSignalKind.SmartTagUser,
+            };
+            var label = tag.Definition.Type switch
+            {
+                SmartTagType.Theme => "Theme",
+                SmartTagType.DocumentType => "Document Type",
+                _ => "User Tag",
+            };
+            var authority = tag.State == SmartTagAssignmentState.Accepted
+                ? tag.Definition.Type == SmartTagType.UserTag ? string.Empty : " — Accepted"
+                : $" — {tag.Confidence}";
+            var weight = tag.Definition.Type == SmartTagType.UserTag
+                ? 180
+                : tag.State == SmartTagAssignmentState.Accepted ? 165 : 145;
+            contribution += Add(
+                components,
+                kind,
+                $"smart tag {tag.Definition.Type}",
+                weight,
+                $"{label}: {tag.Definition.DisplayName}{authority}",
+                tag.Definition.DisplayName);
+        }
+
+        return contribution;
     }
 
     private static double Add(

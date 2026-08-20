@@ -3,116 +3,137 @@
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
              x:Class="OpenSorSe.Desktop.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  AutomationProperties.Name="Home durable library overview">
         <StackPanel Spacing="18">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                 <StackPanel Spacing="3">
                     <TextBlock Classes="page-title" Text="Home" />
-                    <TextBlock Classes="page-subtitle" Text="Find clarity in your files." />
+                    <TextBlock Classes="page-subtitle" Text="Choose what you want to do; OmniSorSe keeps the underlying workflow connected." />
                 </StackPanel>
-                <Button Grid.Column="1"
-                        Classes="help"
-                        Content="?"
-                        Command="{Binding HelpCommand}"
-                        ToolTip.Tip="Learn what Home shows and how OmniSorSe keeps source files safe."
-                        AutomationProperties.Name="Help for Home" />
+                <WrapPanel Grid.Column="1">
+                    <Button Margin="0,0,8,0"
+                            Classes="secondary"
+                            Content="Refresh"
+                            Command="{Binding RefreshCommand}"
+                            AutomationProperties.Name="Refresh durable library readiness" />
+                    <Button Classes="help"
+                            Content="?"
+                            Command="{Binding HelpCommand}"
+                            ToolTip.Tip="Learn what Home shows and how OmniSorSe keeps source files safe."
+                            AutomationProperties.Name="Help for Home" />
+                </WrapPanel>
             </Grid>
 
             <Border IsVisible="{Binding IsAwaitingFirstScan}" Classes="empty-state">
                 <StackPanel Spacing="8" HorizontalAlignment="Center">
-                    <TextBlock Text="O"
-                               FontSize="30"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource AccentPrimaryBrush}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="Ready for your first scan"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="Choose a folder and see what is inside. Your files stay where they are."
-                               Classes="page-subtitle"
-                               TextAlignment="Center" />
-                    <Button Classes="primary"
-                            Content="Scan a folder"
-                            HorizontalAlignment="Center"
-                            Command="{Binding ScanFolderCommand}" />
+                    <TextBlock Text="O" FontSize="30" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentPrimaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="Build your local library" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <TextBlock Text="Scan a folder. Base filenames and metadata become searchable first; enabled deeper analysis can continue afterward."
+                               Classes="page-subtitle" TextAlignment="Center" TextWrapping="Wrap" />
+                    <Button Classes="primary" Content="Scan a folder" HorizontalAlignment="Center"
+                            Command="{Binding ScanFolderCommand}" AutomationProperties.Name="Scan a folder to create the local library" />
                 </StackPanel>
             </Border>
 
-            <Border IsVisible="{Binding HasCompletedScan}" Classes="card">
-                <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Latest scan" FontSize="18" FontWeight="SemiBold" />
-                            <TextBlock Text="A compact view of the latest scan in this session."
-                                       Classes="page-subtitle" />
+                            <TextBlock Text="Library readiness" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                            <TextBlock Text="{Binding ReadinessText}" Classes="page-subtitle" TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" />
                         </StackPanel>
-                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Margin="0,0,8,0"
-                                    Classes="primary"
-                                    Content="View files"
-                                    Command="{Binding ViewResultsCommand}" />
-                            <Button Classes="secondary"
-                                    Content="Scan another folder"
-                                    Command="{Binding ScanFolderCommand}" />
-                        </WrapPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding KnownFileCount, StringFormat='{}{0:N0} indexed files'}"
+                                   FontSize="18" FontWeight="SemiBold"
+                                   AutomationProperties.Name="{Binding KnownFileCount, StringFormat='{}{0:N0} indexed files known'}" />
                     </Grid>
-                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
-                        <Border Classes="metric-tile"
-                                BorderBrush="{DynamicResource AccentPrimaryBrush}">
-                            <StackPanel Spacing="3">
-                                <TextBlock Text="Files discovered" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Statistics.FilesScanned}" FontSize="26" />
-                                <TextBlock Text="Files included in the scan" Classes="page-subtitle" />
-                            </StackPanel>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                        <Border Classes="metric-tile" BorderBrush="{DynamicResource AccentPrimaryBrush}">
+                            <StackPanel><TextBlock Text="Sources" FontWeight="SemiBold" /><TextBlock Text="{Binding SourceCount}" FontSize="24" /></StackPanel>
                         </Border>
-                        <Border Grid.Column="1"
-                                Classes="metric-tile"
-                                BorderBrush="{DynamicResource AccentOrganizationBrush}">
-                            <StackPanel Spacing="3">
-                                <TextBlock Text="Folders explored" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Statistics.FoldersDiscovered}" FontSize="26" />
-                                <TextBlock Text="Folders checked locally" Classes="page-subtitle" />
-                            </StackPanel>
+                        <Border Grid.Column="1" Classes="metric-tile" BorderBrush="{DynamicResource AccentSearchBrush}">
+                            <StackPanel><TextBlock Text="Suggestions to review" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingReviewCount}" FontSize="24" /></StackPanel>
                         </Border>
-                        <Border Grid.Column="2"
-                                Classes="metric-tile"
-                                BorderBrush="{DynamicResource AccentDuplicateBrush}">
-                            <StackPanel Spacing="3">
-                                <TextBlock Text="Copies spotted" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Statistics.ExactDuplicates}" FontSize="26" />
-                                <TextBlock Text="Exact duplicate files found" Classes="page-subtitle" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="3"
-                                Classes="metric-tile"
-                                BorderBrush="{DynamicResource WarningBrush}">
-                            <StackPanel Spacing="3">
-                                <TextBlock Text="Needs attention" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Statistics.Warnings}" FontSize="26" />
-                                <TextBlock Text="Warnings from this scan" Classes="page-subtitle" />
-                            </StackPanel>
+                        <Border Grid.Column="2" Classes="metric-tile" BorderBrush="{DynamicResource AccentOrganizationBrush}">
+                            <StackPanel><TextBlock Text="Saved Views" FontWeight="SemiBold" /><TextBlock Text="{Binding SavedViewCount}" FontSize="24" /></StackPanel>
                         </Border>
                     </Grid>
                 </StackPanel>
             </Border>
 
             <Border Classes="card">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <StackPanel Spacing="3">
-                        <TextBlock Text="What would you like to do?" FontSize="17" FontWeight="SemiBold" />
-                        <TextBlock Text="Start a new scan or adjust how OmniSorSe works."
-                                   Classes="page-subtitle" />
+                <StackPanel Spacing="10">
+                    <TextBlock Text="What would you like to do?" FontSize="18" FontWeight="SemiBold" />
+                    <UniformGrid Columns="4">
+                        <Button Margin="0,0,8,8" Classes="primary" Content="Find" Command="{Binding FindCommand}"
+                                AutomationProperties.Name="Find files with Search, facets, and Saved Views" />
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Understand" Command="{Binding UnderstandCommand}"
+                                AutomationProperties.Name="Understand a file using details, Smart Tags, evidence, and Related Files" />
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Review" Command="{Binding ReviewCommand}"
+                                AutomationProperties.Name="{Binding PendingReviewCount, StringFormat='Review {0} unresolved Smart Tag suggestion files'}" />
+                        <Button Margin="0,0,0,8" Classes="secondary" Content="Organize" Command="{Binding OrganizeCommand}"
+                                AutomationProperties.Name="Organize selected files through a reviewed Change Plan" />
+                    </UniformGrid>
+                    <TextBlock Text="Find uses Search and facets. Understand opens richer file details. Review resolves uncertain Smart Tags. Organize always requires Review Changes before any file mutation."
+                               Classes="page-subtitle" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Border Classes="card" IsVisible="{Binding HasSavedViewShortcuts}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Saved View shortcuts" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="Recently updated live query rules. They run only when opened."
+                                   Classes="page-subtitle" TextWrapping="Wrap" />
+                        <ItemsControl ItemsSource="{Binding SavedViewShortcuts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HomeSavedViewRow">
+                                    <Button Margin="0,0,0,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                            Classes="secondary" Content="{Binding Name}"
+                                            Command="{Binding DataContext.OpenSavedViewCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            AutomationProperties.Name="{Binding Name, StringFormat='Open Saved View {0}'}"
+                                            x:CompileBindings="False" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
-                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                        <Button Margin="0,0,8,0"
-                                Classes="primary"
-                                Content="Scan folder"
-                                Command="{Binding ScanFolderCommand}" />
-                        <Button Classes="secondary"
-                                Content="Settings"
-                                Command="{Binding OpenSettingsCommand}" />
-                    </WrapPanel>
+                </Border>
+                <Border Grid.Column="1" Classes="card">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel><TextBlock Text="Optional capabilities" FontSize="17" FontWeight="SemiBold" />
+                                <TextBlock Text="Checked only when Home refreshes; no provider is contacted." Classes="page-subtitle" TextWrapping="Wrap" /></StackPanel>
+                            <Button Grid.Column="1" Classes="secondary" Content="Settings" Command="{Binding OpenSettingsCommand}" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Capabilities}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HomeCapabilityRow">
+                                    <Border Classes="result-row" Padding="0,5" AutomationProperties.Name="{Binding AccessibleName}">
+                                        <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="1" Text="{Binding State}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Explanation}" Classes="page-subtitle" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border IsVisible="{Binding HasCompletedScan}" Classes="card">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel>
+                        <TextBlock Text="Latest in-session scan" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Statistics.FilesScanned, StringFormat='{}{0:N0} files in the current Files snapshot'}" Classes="page-subtitle" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="secondary" Content="View current Files snapshot" Command="{Binding ViewResultsCommand}" />
                 </Grid>
             </Border>
         </StackPanel>

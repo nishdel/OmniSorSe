@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the released v2.4 solution as its projects exist in source. It describes
+This guide maps the current v2.12 solution as its projects exist in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -51,8 +51,9 @@ reference cycles.
 
 ### `OmniSorSe.ExplorerProtocol`
 
-- **Purpose:** Stable versioned read-only DTO/capability/error contract for the
-  future separate OmniExplorer client.
+- **Purpose:** Stable versioned read-only DTO/capability/error contract for an
+  optional separate Explorer client. The current supported companion boundary
+  is OmniBrille; its implementation is not in this repository.
 - **Owns:** Protocol 1.0 version, operations, capabilities, nodes, edges,
   requests/results, limits, and stable error envelopes.
 - **Must not own:** SQLite, provider implementations, Search/indexing logic,
@@ -169,6 +170,8 @@ reference cycles.
   - `Catalog`, `CatalogSearch`, `CatalogComparison`: saved scan data and query
     services.
   - `ChangePlans`: adapters from reviewed suggestions to executor models.
+    `ChangePlanReconciliationService` projects actual journal/filesystem
+    outcomes back into Files, duplicate review, Search, and refresh inputs.
   - `Content`: bounded metadata/text extraction, PDF rendering, OCR, and cache.
   - `Plugins`: manifest, discovery, integrity, dependencies, packages,
     lifecycle, registry, invocation, provenance, and built-ins.
@@ -184,7 +187,16 @@ reference cycles.
   - `ContentIntelligence`: bounded provider-neutral concept/summary contracts,
     deterministic local extraction with provenance, and the optional
     user-managed whisper.cpp process adapter.
-  - `Semantic`: deterministic local index and explained search.
+  - `Explorer`: Protocol 1.0 authorization, sessions, local transport, read
+    projections, and explicit OmniBrille discovery/launch/handoff.
+  - `Guidance`: bounded durable product-readiness projection.
+  - `Indexing`: provider-neutral background indexing, base-first scheduling,
+    stage processing, privacy/Forget coordination, and resource controls.
+  - `Resilience`: logical state backup/restore and bounded operational health.
+  - `Semantic`: deterministic local index, complete-index candidate selection,
+    facets, Saved View rules, explained Search, and ranking.
+  - `SmartTags`: canonical taxonomy, deterministic classification, persistence
+    contracts, and user-decision service.
   - `Structure`: snapshots, preview plans, history, and comparisons.
   - `Tags`: provenance-aware generated tag candidates.
   - `Watching`: opt-in configurations, hint normalization, debounce,
@@ -214,8 +226,9 @@ reference cycles.
 - **Owns:** SQLite schema/versioning, migrations/backups, transactions,
   integrity checks, durable sources/runs/jobs/stages, shared bounded content,
   coverage/search projections, schema-4 shared media evidence, schema-5
-  bounded Content Intelligence, and media
-  relationship features, relationship evidence/edges/corrections,
+  bounded Content Intelligence, schema-6 Smart Tag taxonomy/assignments/
+  decisions and canonical facet joins, media/relationship features,
+  relationship evidence/edges/pair authority,
   virtual collections/membership, isolated Knowledge Graph/decision sidecars,
   retention, quota maintenance, and compaction.
 - **Must not own:** Views, ViewModels, Search ranking, discovery/processing
@@ -255,6 +268,7 @@ reference cycles.
 | `OpenSorSe.Application.Tests` | Orchestration, stores, OCR/content, AI policy, catalog/search, watchers, workflows, plugins, provenance, and provider-neutral Knowledge Graph behavior |
 | `OpenSorSe.Indexing.Sqlite.Tests` | Schema, migration, corruption, incremental identity, durable stages, graph/decision sidecars, concurrency, cancellation, recovery, quota, Search coverage, and bounded performance regressions |
 | `OpenSorSe.Desktop.Tests` | Composition, navigation, ViewModels, command state, persistence presentation, Knowledge Graph accessibility, and plugin UI |
+| `OmniSorSe.CompanionTestHarness` | External-process Protocol 1.0 and one-time OmniBrille handoff lifecycle/security harness |
 
 Tests may reference the production project under test and explicit
 collaborators needed for integration. Production projects never reference test
@@ -272,8 +286,8 @@ projects.
   historical/long-term design material.
 - `docs/Implementation_Spec/`: Numbered, release-specific implementation
   history. Start at its [index](Implementation_Spec/README.md).
-- `scripts/`: Maintainer scripts only. It must not contain product source or
-  generated output.
+- `eng/`: Release build, package, checksum, and validation automation. It must
+  not contain product behavior or committed generated release output.
 - `release/`: Historical packaged release material already tracked by the
   repository. New release output must not be added during ordinary development.
 - `.artifacts/`, `bin/`, and `obj/`: Ignored build output, never source.
@@ -289,6 +303,8 @@ projects.
 | Embedded durable-index schema/provider mechanics | `OpenSorSe.Indexing.Sqlite` plus SQLite provider tests |
 | Knowledge Graph identity/projection/query/privacy policy | `OpenSorSe.Application/KnowledgeGraph` plus Application tests |
 | Knowledge Graph SQLite lifecycle/persistence | `OpenSorSe.Indexing.Sqlite/KnowledgeGraph` plus SQLite provider tests |
+| Explorer Protocol DTO/version contract | `OmniSorSe.ExplorerProtocol` plus Application protocol and companion-harness tests |
+| Explorer authorization/transport or OmniBrille handoff | `OpenSorSe.Application/Explorer` plus Application tests |
 | Ollama HTTP behavior | `OpenSorSe.AI` plus Application integration tests |
 | Navigation, ViewModel, or XAML | `OpenSorSe.Desktop` plus Desktop tests |
 | Plugin-author contract | `OpenSorSe.Extensions.Abstractions`, compatibility docs, and adversarial host tests |

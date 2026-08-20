@@ -1,6 +1,10 @@
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Content;
+using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.Indexing;
+using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.ViewModels;
@@ -14,6 +18,38 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class ResultsViewModelTests
 {
+    /// <summary>Files rows resolve through their current paths to bounded durable organization identities.</summary>
+    [Fact]
+    public async Task OrganizationSelection_ResolvesScanRowsToExplicitDurableFileIds()
+    {
+        var paths = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["C:\\Selected\\one.pdf"] = "index:durable:one",
+            ["C:\\Selected\\two.pdf"] = "index:durable:two",
+        };
+        using var viewModel = new ResultsViewModel(
+            new Configuration(),
+            null,
+            null,
+            null,
+            null,
+            new SmartTags([], paths));
+        await viewModel.LoadSnapshotAsync(CreateSnapshot(files:
+        [
+            CreateFile("scan:row:1", "C:\\Selected\\one.pdf", DuplicateStatus.Unique, null),
+            CreateFile("scan:row:2", "C:\\Selected\\two.pdf", DuplicateStatus.Unique, null),
+        ]));
+
+        viewModel.SetOrganizationSelection(viewModel.PageRows.Reverse());
+        await viewModel.OrganizeSelectedFilesCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, viewModel.OrganizationSelectedCount);
+        Assert.True(viewModel.OrganizeSelectedFilesCommand.CanExecute(null));
+        Assert.Contains("maximum 1000", viewModel.OrganizationSelectionText, StringComparison.Ordinal);
+        Assert.Equal(["index:durable:two", "index:durable:one"], viewModel.Organization.SelectedFileIds);
+        Assert.DoesNotContain(viewModel.Organization.SelectedFileIds, id => id.StartsWith("scan:", StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies divider commands persist a bounded preference without changing other settings.</summary>
     [Fact]
     public async Task DetailsPanelResizeCommands_PersistBoundedRatioAndResetDefault()
@@ -316,6 +352,39 @@ public sealed class ResultsViewModelTests
         Assert.Contains("Ready", viewModel.AiSuggestions.RenameActionAvailabilityText, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Verifies reconciliation preserves logical selection while replacing stale path projections.</summary>
+    [Fact]
+    public async Task ApplyReconciledSnapshotAsync_PreservesSelectionByFileIdentity()
+    {
+        var original = CreateSnapshot([
+            CreateFile("file:stable", "C:\\Selected\\before.txt", DuplicateStatus.Unique, null),
+        ]);
+        using var viewModel = new ResultsViewModel();
+        await viewModel.LoadSnapshotAsync(original);
+        viewModel.QueryText = "txt";
+        await viewModel.RefreshAsync();
+        viewModel.SelectedRow = Assert.Single(viewModel.PageRows);
+
+        var movedFile = original.Files[0] with
+        {
+            FullPath = "C:\\Selected\\after.txt",
+            DisplayFileName = "after.txt",
+            HasPlannedOperation = false,
+        };
+        var reconciled = original with
+        {
+            Files = Array.AsReadOnly([movedFile]),
+            PlannedOperations = Array.AsReadOnly<ResultPlannedOperation>([]),
+        };
+
+        await viewModel.ApplyReconciledSnapshotAsync(reconciled);
+
+        Assert.Equal("txt", viewModel.QueryText);
+        Assert.Equal("file:stable", viewModel.SelectedRow?.FileId);
+        Assert.Equal("C:\\Selected\\after.txt", viewModel.SelectedDetails?.FullPath);
+        Assert.DoesNotContain(viewModel.PageRows, row => row.FullPath.EndsWith("before.txt", StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies secondary filters use progressive disclosure without resetting their values.</summary>
     [Fact]
     public void ToggleFilters_PreservesFilterStateWhileDrawerIsHidden()
@@ -329,6 +398,107 @@ public sealed class ResultsViewModelTests
 
         Assert.False(viewModel.AreFiltersVisible);
         Assert.Equal(ResultDuplicateFilter.ExactDuplicatesOnly, viewModel.SelectedDuplicateFilter);
+    }
+
+    /// <summary>Verifies Search-to-Files uses stable identity and restores the prior Files projection.</summary>
+    [Fact]
+    public async Task DiscoveryDocument_OpenAndReturn_PreservesStableIdentityAndPriorFilesState()
+    {
+        var original = CreateSnapshot([
+            CreateFile("scan:file", "C:\\Selected\\ordinary.txt", DuplicateStatus.Unique, null),
+        ]);
+        using var viewModel = new ResultsViewModel();
+        await viewModel.LoadSnapshotAsync(original);
+        viewModel.QueryText = "ordinary";
+        await viewModel.RefreshAsync();
+
+        var indexed = CreateProgressiveDocument("index:stable", "C:\\Indexed\\renamed-invoice.pdf");
+        var context = new DiscoveryWorkflowContext(
+            new DiscoveryQueryState("invoice", []),
+            "saved:finance",
+            indexed.FileId,
+            false,
+            indexed.SourceId,
+            [indexed.FileId]);
+
+        await viewModel.OpenDiscoveryDocumentAsync(indexed, context);
+
+        Assert.True(viewModel.IsDiscoveryContextActive);
+        Assert.Equal("index:stable", Assert.Single(viewModel.PageRows).FileId);
+        Assert.Equal("index:stable", viewModel.SelectedRow?.FileId);
+        Assert.Contains("Saved View", viewModel.DiscoveryContextText, StringComparison.Ordinal);
+
+        await viewModel.EndDiscoveryDocumentAsync();
+
+        Assert.False(viewModel.IsDiscoveryContextActive);
+        Assert.Same(original, viewModel.Snapshot);
+        Assert.Equal("ordinary", viewModel.QueryText);
+        Assert.Equal("scan:file", Assert.Single(viewModel.PageRows).FileId);
+    }
+
+    /// <summary>Verifies a moved indexed file can be reopened by stable identity without resurrecting the old path.</summary>
+    [Fact]
+    public async Task DiscoveryDocument_MovedPath_ReusesStableIdentityAndPublishesOnlyCurrentPath()
+    {
+        using var viewModel = new ResultsViewModel();
+        var before = CreateProgressiveDocument("index:stable", "C:\\Indexed\\before.pdf");
+        var context = new DiscoveryWorkflowContext(
+            new DiscoveryQueryState("invoice", []), null, before.FileId, false, before.SourceId, [before.FileId]);
+        await viewModel.OpenDiscoveryDocumentAsync(before, context);
+
+        var after = before with { FullPath = "C:\\Indexed\\after.pdf", FileName = "after.pdf" };
+        await viewModel.OpenDiscoveryDocumentAsync(after, context);
+
+        var row = Assert.Single(viewModel.PageRows);
+        Assert.Equal("index:stable", row.FileId);
+        Assert.Equal("C:\\Indexed\\after.pdf", row.FullPath);
+        Assert.DoesNotContain(viewModel.PageRows, item => item.FullPath.EndsWith("before.pdf", StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies bounded continuous review announces previous/next navigation without changing tag authority itself.</summary>
+    [Fact]
+    public async Task DiscoveryReview_UsesCapturedResultOrderForKeyboardNavigation()
+    {
+        using var viewModel = new ResultsViewModel();
+        var document = CreateProgressiveDocument("index:2", "C:\\Indexed\\second.pdf");
+        var context = new DiscoveryWorkflowContext(
+            new DiscoveryQueryState(string.Empty, []), null, document.FileId, true, document.SourceId,
+            ["index:1", "index:2", "index:3"]);
+        await viewModel.OpenDiscoveryDocumentAsync(document, context);
+        DiscoveryReviewDirection? requested = null;
+        viewModel.ReviewNavigationRequested += (_, direction) => requested = direction;
+
+        Assert.True(viewModel.IsContinuousReviewActive);
+        Assert.Equal("Result 2 of 3", viewModel.ReviewPositionText);
+        Assert.True(viewModel.PreviousReviewItemCommand.CanExecute(null));
+        Assert.True(viewModel.NextReviewItemCommand.CanExecute(null));
+
+        viewModel.NextReviewItemCommand.Execute(null);
+        Assert.Equal(DiscoveryReviewDirection.Next, requested);
+        viewModel.PreviousReviewItemCommand.Execute(null);
+        Assert.Equal(DiscoveryReviewDirection.Previous, requested);
+    }
+
+    /// <summary>Verifies reviewed organization suggestions receive only user-authoritative or Strong deterministic evidence.</summary>
+    [Fact]
+    public async Task OrganizationEvidence_ExcludesUnresolvedModerateClassifications()
+    {
+        var tags = new SmartTags([
+            SmartTag("file:stable", "theme.finance", SmartTagType.Theme, "Finance", ContentIntelligenceConfidence.Strong, SmartTagAssignmentState.Automatic),
+            SmartTag("file:stable", "document-type.invoice", SmartTagType.DocumentType, "Invoice", ContentIntelligenceConfidence.Moderate, SmartTagAssignmentState.Accepted),
+            SmartTag("file:stable", "theme.travel", SmartTagType.Theme, "Travel", ContentIntelligenceConfidence.Moderate, SmartTagAssignmentState.Suggested),
+            SmartTag("file:stable", "user.review", SmartTagType.UserTag, "Review", ContentIntelligenceConfidence.Strong, SmartTagAssignmentState.Accepted),
+        ]);
+        var file = CreateFile("file:stable", "C:\\Selected\\invoice.pdf", DuplicateStatus.Unique, null);
+        using var viewModel = new ResultsViewModel(new Configuration(), null, null, null, null, tags);
+        await viewModel.LoadSnapshotAsync(CreateSnapshot([file]));
+        viewModel.SelectedRow = Assert.Single(viewModel.PageRows);
+        await WaitUntilAsync(() => viewModel.UserTags.Count == 4);
+
+        Assert.Contains("Theme: Finance — Strong deterministic", viewModel.AiSuggestions.OrganizationEvidenceText, StringComparison.Ordinal);
+        Assert.Contains("Document Type: Invoice — Accepted", viewModel.AiSuggestions.OrganizationEvidenceText, StringComparison.Ordinal);
+        Assert.Contains("User Tag: Review — User-created", viewModel.AiSuggestions.OrganizationEvidenceText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Travel", viewModel.AiSuggestions.OrganizationEvidenceText, StringComparison.Ordinal);
     }
 
     private static ResultsSnapshot CreateSnapshot(IReadOnlyList<ResultFile> files, bool duplicateDataAvailable = true)
@@ -377,6 +547,49 @@ public sealed class ResultsViewModelTests
             duplicateStatus,
             groupId,
             false);
+
+    private static ProgressiveSearchDocument CreateProgressiveDocument(string fileId, string path) => new()
+    {
+        FileId = fileId,
+        FullPath = path,
+        FileName = CrossPlatformPath.GetFileName(path),
+        RelativePath = CrossPlatformPath.GetFileName(path),
+        FolderName = "Indexed",
+        Extension = Path.GetExtension(path),
+        FileType = "Document",
+        SourceId = "source:docs",
+        SourceName = "Documents",
+        Length = 42,
+        ModifiedTimeUtc = DateTimeOffset.UnixEpoch,
+        IsFullyIndexed = true,
+    };
+
+    private static FileSmartTag SmartTag(
+        string fileId,
+        string tagId,
+        SmartTagType type,
+        string label,
+        ContentIntelligenceConfidence confidence,
+        SmartTagAssignmentState state) => new()
+        {
+            FileId = fileId,
+            Definition = new SmartTagDefinition
+            {
+                TagId = tagId,
+                Type = type,
+                CanonicalKey = tagId,
+                DisplayName = label,
+                TaxonomyVersion = type == SmartTagType.UserTag ? "user" : "1.0",
+                Origin = type == SmartTagType.UserTag ? SmartTagOrigin.User : SmartTagOrigin.BuiltInTaxonomy,
+                IsBuiltIn = type != SmartTagType.UserTag,
+            },
+            Confidence = confidence,
+            Origin = type == SmartTagType.UserTag ? SmartTagOrigin.User : SmartTagOrigin.DeterministicClassifier,
+            State = state,
+            Decision = state == SmartTagAssignmentState.Accepted ? SmartTagDecision.Accepted : SmartTagDecision.None,
+            Evidence = [new SmartTagEvidence(ContentEvidenceSourceKind.ExtractedText, "fixture", "Matched bounded local evidence")],
+            UpdatedAtUtc = DateTimeOffset.UnixEpoch,
+        };
 
     private static TagAssociation GeneratedTag(string path, string value) => new(
         $"tag:generated:{value}",
@@ -474,5 +687,34 @@ public sealed class ResultsViewModelTests
         public Task RemoveMissingAsync(IReadOnlyCollection<string> knownPaths, CancellationToken cancellationToken) =>
             Task.CompletedTask;
         public Task ClearAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class SmartTags(
+        IReadOnlyList<FileSmartTag> tags,
+        IReadOnlyDictionary<string, string>? fileIdsByPath = null) : ISmartTagService
+    {
+        public Task<SmartTagOperationResult> InitializeAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SmartTagOperationResult(false, 0, "Ready"));
+        public Task<IReadOnlyList<SmartTagDefinition>> GetDefinitionsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SmartTagDefinition>>(tags.Select(tag => tag.Definition).ToArray());
+        public Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(fileIdsByPath?.GetValueOrDefault(fullPath) ?? tags.FirstOrDefault()?.FileId);
+        public Task<IReadOnlyDictionary<string, string>> ResolveActiveFileIdsAsync(
+            IReadOnlyList<string> fullPaths,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(fullPaths
+                .Where(path => fileIdsByPath?.ContainsKey(path) == true)
+                .ToDictionary(path => path, path => fileIdsByPath![path], StringComparer.Ordinal));
+        public Task<IReadOnlyList<FileSmartTag>> GetFileTagsAsync(string fileId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<FileSmartTag>>(tags.Where(tag => tag.FileId == fileId).ToArray());
+        public Task<SmartTagOperationResult> AddUserTagAsync(string fileId, string displayName, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> DecideAsync(string fileId, string tagId, SmartTagDecision decision, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> RemoveAsync(string fileId, string tagId, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> ResetDecisionsAsync(string? fileId, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> ClearGeneratedAsync(string? fileId, CancellationToken cancellationToken = default) => Operation();
+        public Task<IReadOnlyList<string>> FilterAsync(SmartTagFilter filter, int maximumCount, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+        private static Task<SmartTagOperationResult> Operation() =>
+            Task.FromResult(new SmartTagOperationResult(true, 1, "Applied"));
     }
 }

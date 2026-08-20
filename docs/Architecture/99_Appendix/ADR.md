@@ -22,6 +22,9 @@ ADRs record decisions, not implementation details.
 | [ADR-001](ADR-001_Optional_Ollama_Suggestions.md) | Accepted for v0.3 | Keep Ollama behind a provider-neutral application boundary and make suggestions review-only. |
 | [ADR-002](ADR-002_Bounded_Saved_Query_Persistence.md) | Accepted for v0.7 | Store bounded query presets in separate atomic JSON and never persist hits. |
 | [ADR-003](ADR-003_Historical_Metadata_Comparison.md) | Accepted for v0.9 | Compare two bounded stored snapshots in memory without live filesystem verification or persisted reports. |
+| [ADR-004](ADR-004_Change_Plan_Mutation_Authority.md) | Accepted; reconstructed | Route production file mutation, rollback, Undo, and reconciliation through the shared Change Plan and Operation Journal boundary. |
+| [ADR-005](ADR-005_Indexed_and_Graph_Authority_Separation.md) | Accepted; reconstructed | Separate filesystem, indexed, user-authored, compatibility-cache, derived-graph, and graph-native decision authority. |
+| [ADR-006](ADR-006_Explorer_Protocol_Read_Only_Boundary.md) | Accepted; reconstructed | Keep OmniBrille integration local, explicitly scoped, bounded, optional, and read-only. |
 
 ---
 
@@ -100,11 +103,12 @@ Historical decisions remain valuable even after newer decisions replace them.
 
 ## Decision coverage
 
-Only ADR-001 through ADR-003 currently exist as standalone accepted records.
-Later significant decisions are documented in versioned implementation
-specifications and current architecture, including:
+ADR-004 through ADR-006 reconstruct current decisions from implementation,
+tests, and Git history. They are intentionally labelled as reconstructed and do
+not claim undocumented historical certainty. Other significant decisions remain
+documented in versioned implementation specifications and current architecture,
+including:
 
-* Change Plans, the Operation Journal, and conflict-aware Undo;
 * the in-process plugin trust/capability boundary;
 * provider-neutral durable indexing with embedded SQLite;
 * exact/literal-first hybrid Search ranking and index-only privacy controls.

@@ -55,6 +55,15 @@ Resolved settings are conjunctive: application safety/capability gates are ceili
 
 Recipe output is stored as a pending v1.1 Change Plan with profile/recipe revision, field values, evidence, deterministic/AI status, warnings, and unresolved fields. No workflow service approves or applies it. Existing preflight, explicit Apply, non-overwrite, journal, recovery, rollback, history, and Undo rules remain the sole mutation path.
 
+Unreleased v2.9 presents the same persistent definitions as **Organization
+recipes** and adds only an ephemeral reviewed preview over an explicit stable-ID
+selection. The preview remains inside one registered source root, budgets file
+and directory actions together, and is re-resolved before Change Plan creation.
+When Theme or Document Type is written into a filesystem-visible name, the UI
+warns that the classification may become visible through shared folders,
+backups, sync, or attachments. Ordinary diagnostics omit raw tag/evidence and
+expanded path values.
+
 Workflow export excludes document contents, AI endpoint/model/provider configuration, credentials, and secrets. Diagnostic export contains library lifecycle/status data and may include the local path of a preserved corrupt workflow file; inspect it before sharing.
 
 The mutation workflow requires:
@@ -204,6 +213,62 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Ordinary diagnostics retain operational state and bounded counts/sizes, not
   full text, OCR, transcript, summaries, prompts, or evidence excerpts.
 
+### Explainable Smart Tags candidate
+
+- Unreleased v2.6 consumes already retained bounded evidence and persists
+  normalized Theme, Document Type, and explicit User Tag state in schema 6.
+  It does not re-open source files solely for classification, write embedded
+  file metadata, or require Ollama.
+- Generated assignments retain a confidence band, classifier/taxonomy version,
+  input fingerprint, state, and at most a few bounded reasons. Confidence bands
+  are evidence strength, not probabilities.
+- Explicit User Tags and accepted/rejected decisions are separate authority.
+  Generated reclassification, a taxonomy change, and file moves/renames do not
+  silently erase those choices. Clear Generated preserves User Tags, accepted
+  authority, and rejection decisions; Reset Decisions is explicit.
+- Tag values, User Tags, classification evidence, and entities are treated as
+  content-sensitive. Ordinary diagnostics retain only safe counts, timings,
+  classifier/taxonomy identifiers, confidence bands, fingerprints, and failure
+  categories—not labels, evidence excerpts, extracted content, or provider
+  prompt/response bodies.
+- Strong deterministic and accepted/User Tag evidence may participate in local
+  Search. Moderate unaccepted and rejected assignments do not. Classification
+  adds no telemetry, hidden network access, cloud classification, biometric
+  identification, or autonomous file mutation.
+
+### Scalable faceted discovery candidate
+
+- Unreleased v2.7 applies free text and canonical facets inside the existing
+  authorized local Search boundary. Candidate selection and facet counts never
+  authorize disabled sources or privacy-excluded/deleted rows.
+- Candidate coverage uses counts only. Ordinary diagnostics do not retain raw
+  query text, User Tag values, facet labels, Saved View names/rules, or evidence
+  excerpts.
+- Saved Views are bounded local query/filter rules in application-owned JSON;
+  they contain no copied file membership and have no cloud synchronization.
+- Filesystem-created and filesystem-modified dates remain explicitly separate;
+  v2.7 does not infer or expose a generic ambiguous year.
+
+### Guided workflow candidate
+
+- Unreleased v2.8 moves between Search and Files using stable durable file IDs
+  and bounded canonical query/filter state. It never treats a stale path as
+  authority or opens an unavailable source file merely to complete navigation.
+- Home uses local counts, readiness facts, at most three Saved View definitions,
+  and existing bounded capability discovery. It does not execute Saved Views,
+  contact Ollama, invoke external tools, launch OmniBrille, or retain a file/tag graph.
+- Continuous Smart Tag review calls the existing schema-6 decision authority.
+  Evidence presentation remains bounded, and raw evidence is not copied into
+  ordinary navigation state or diagnostics.
+- Organization prompts may contain at most a few accepted/User-owned or Strong
+  deterministic labels and authority descriptions after an explicit request.
+  Unresolved Moderate, Limited, and rejected classifications are excluded. A
+  non-local configured AI endpoint remains the previously documented explicit
+  privacy boundary.
+- Ordinary diagnostics do not retain raw discovery queries, User Tags, Saved
+  View rules, classification evidence excerpts, provider secrets, or sensitive
+  configured executable/model paths.
+
 ### Explorer Protocol v1
 
 - The v2.4 protocol is an on-demand local named pipe (Unix-domain-backed on
@@ -266,24 +331,27 @@ a competing profile merely because its visible name changed.
 | Data | File/location | Bound and behavior |
 | --- | --- | --- |
 | Settings | `settings.json` | At most 1 MiB, validated, backward compatible, atomically replaced. |
+| Profile ownership/run state | OS profile mutex plus `profile.owner.lock` and `application-run-state.json` | One current-user writer per profile; the OS releases ownership after process death. The bounded atomic marker distinguishes first/clean startup from a prior run that did not complete orderly shutdown. |
 | Diagnostic logs | `Logs/opensorse-owned-YYYY-MM-DD.log` | Bounded daily files with ownership markers and retention. |
 | AI decisions | `decision-history.json` | Up to 1,000 bounded metadata-only review records. |
 | Saved catalog | `catalog.json` | Opt-in bounded historical display metadata, names, source roots, and accepted tags. |
 | Saved searches | `saved-catalog-searches.json` | Up to 25 name/query definitions; hits are not stored. |
+| Saved Views | `saved-discovery-views.json` | Up to 100 versioned current-index query/filter rules; result membership is never stored and contents remain local. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
-| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 adds one nullable bounded content-intelligence JSON field and an indexed, at-most-64-term-per-file relationship-candidate projection as schema 5 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 added bounded Content Intelligence and relationship terms as schema 5. Unreleased v2.6 adds normalized Smart Tag definitions, assignments, decisions, and status as schema 6 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |
 | Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
 | Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |
-| Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. |
-| Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. |
+| Change Plans | `change-plans.json` | Up to 100 versioned review plans with at most 1,000 actions each; contains paths, identities, reasons, provenance, decisions, validation, and conflicts, but no file contents. Corruption is preserved and blocks mutation. |
+| Operation Journal | `operation-journal.json` | Up to 500 durable operation records and 128 MiB total; contains attempted paths, identities, results, rollback/Undo facts, safe errors, and optional AI correlation metadata. Invalid lifecycle/version/JSON is preserved and blocks execution and Undo rather than becoming empty history. |
 | Watched-folder configurations | `watched-folders.json` | Up to 64 schema-versioned roots with scope, ignore, analysis, notification, quiet-period, lifecycle, and catalogue settings; atomically replaced. |
 | Watched catalogues | `watched-catalogues.json` | Up to 250,000 files per catalogue and 256 MiB total; stores metadata, stable/best-effort identity, derived results, AI retry state, directories, and reconciliation facts without file contents. |
 | Watched activity | `watched-activity.json` | Up to 1,000 grouped lifecycle/batch/scan/error/plan activities and 16 MiB total; raw watcher events are not persisted individually. |
 | Workflow Profiles and Sorting Recipes | `workflow-library.json` | Bounded schema-versioned user items with atomic replacement; canonical built-ins are application-owned and corrupt user data is preserved where possible before safe recovery. |
 | Plugin state | `plugins-state.json` | Bounded atomic enabled/grant/hash/failure/quarantine/version state; no file contents, credentials, or AI prompts. |
 | Plugin packages | `plugins/<plugin-id>/<version>/` | Controlled local packages with bounded files/bytes, strict paths, and integrity hashing. |
+| Logical state backups | User-selected `.oms-state` plus application-created pre-restore recovery archives | Bounded format-2 archives contain settings, source definitions, recipes, Saved Views, User Tags, explicit tag decisions, exact-pair relationship authority, and authored Smart Collection rename/pin/manual-membership/merge/split/tombstone state. Format-1 import remains supported. They exclude document contents, derived edges/evidence/indexes, automatic collection membership, generated tags, jobs, Change Plans, journals, and the separately journalled Knowledge Graph decision sidecar. Archives contain sensitive authored values/paths, are not encrypted, and are never removed automatically. |
 
 Content and Search stores can contain sensitive words extracted from selected
 documents and media, transcripts, OCR, optional descriptions, camera/device
@@ -298,7 +366,18 @@ queries, result snippets, extracted paragraphs, transcripts, descriptions,
 vectors, precise GPS, source-derived evidence text, or absolute paths. An
 export remains user-initiated and reviewable before sharing.
 
-Atomic stores use temporary sibling files and replace only their own target. Corrupt optional content/semantic/history stores fail closed to an empty or rebuildable state; they never trigger source-file operations.
+Atomic stores use temporary sibling files and replace only their own target.
+Rebuildable content/semantic/history stores may fail to empty/rebuildable state;
+user-authored stores preserve corrupt input until reviewed replacement; and
+mutation/recovery stores preserve evidence and fail closed. No corruption path
+triggers a source-file operation.
+
+Forget is coordinated through schema-6 SQLite and the compatibility content,
+semantic, and thumbnail caches. Whole compatibility-cache clearing is used
+where old path-keyed records cannot prove complete stable-ID ownership. This is
+distinct from Clear Generated Intelligence and Clear Index/Rebuild. A logical
+state backup can restore reviewed authored state but never restores source-file
+contents.
 
 ## Knowledge Graph privacy and authority
 
@@ -384,7 +463,7 @@ Unsafe actions are marked blocked; they do not overwrite or destroy newer data. 
 
 ## Recovery
 
-Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, v1.3 workflow-library, and v1.4 plugin-state stores are valid empty states. Corrupt workflow data preserves the original and attempts a diagnostic copy before built-ins-only recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Invalid plugin state or installed content cannot activate an external contribution. Legacy raw-array journal data is normalized to the current schema; corrupt or unsupported journal data fails gracefully to an empty history and cannot trigger a mutation.
+Malformed or invalid settings are preserved while safe defaults are loaded. Existing v1.0 settings, catalog schemas 1/2, accepted tags, saved searches, AI decisions, content, semantic, and structure history remain readable. Missing v1.1 plan/journal, v1.2 watched-folder, v1.3 workflow-library, and v1.4 plugin-state stores are valid empty states. Corrupt workflow data preserves the original and exposes safe built-ins but cannot overwrite the user library without reviewed recovery. Corrupt watched configuration/catalogue/activity data is preserved and fails closed rather than silently replacing evidence or starting a watcher. Invalid plugin state or installed content cannot activate an external contribution. Legacy raw-array journal data is normalized to the current schema; corrupt, unsupported, or lifecycle-invalid Change Plan/Operation Journal data is preserved, copied for recovery, surfaced, and fences all new mutation and Undo until reviewed recovery.
 
 At startup, journal records left Pending or Running are inspected against actual paths and marked **Interrupted**. Completed actions are inferred only when path and identity evidence agree. Directory ownership and ambiguous states are never guessed; Operation Details explains the conflict and any manual recovery requirement.
 

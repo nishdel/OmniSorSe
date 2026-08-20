@@ -10,6 +10,7 @@
                     ToolTip.Tip="Open About help" AutomationProperties.Name="Help for About" />
         </Grid>
         <TextBlock Text="{Binding Version}" />
+        <TextBlock Text="{Binding Provenance}" AutomationProperties.Name="Build provenance" />
         <TextBlock Text="{Binding License}" />
         <TextBlock Text="{Binding Acknowledgements}" TextWrapping="Wrap" />
         <TextBlock Text="Project repository (copy to open)" FontWeight="SemiBold" />

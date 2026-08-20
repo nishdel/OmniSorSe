@@ -83,8 +83,64 @@
                 <Border IsVisible="{Binding AreFiltersVisible}"
                         Classes="subtle-card"
                         Padding="8">
-                    <TextBlock Text="Search recognises conservative file type, extension, date, size, source, folder, tag, indexing, OCR, and related-concept filters. Uncertain phrases stay as topic words."
-                               TextWrapping="Wrap" />
+                    <StackPanel Spacing="7">
+                        <TextBlock Text="Search recognises conservative file type, extension, date, size, source, folder, tag, indexing, OCR, and related-concept filters. Uncertain phrases stay as topic words."
+                                   TextWrapping="Wrap" />
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <StackPanel>
+                                    <TextBlock Text="Discover by facet"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="Counts reflect the current query and filters from other groups. Choose multiple values in one group for OR; groups combine with AND."
+                                               Classes="page-subtitle"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Classes="secondary"
+                                        Content="Review Moderate suggestions"
+                                        Command="{Binding ShowModerateSuggestionsCommand}"
+                                        AutomationProperties.Name="Show files with unresolved Moderate Smart Tag suggestions" />
+                            </Grid>
+                            <ScrollViewer MaxHeight="300"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          IsVisible="{Binding HasFacetGroups}"
+                                          AutomationProperties.Name="Available Search facets">
+                                <ItemsControl ItemsSource="{Binding FacetGroups}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:DiscoveryFacetGroupRow">
+                                            <Expander Header="{Binding DisplayName}"
+                                                      Margin="0,0,0,4"
+                                                      AutomationProperties.Name="{Binding DisplayName, StringFormat='Facet group {0}'}">
+                                                <ItemsControl ItemsSource="{Binding Values}" Margin="8,4,0,4">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:DiscoveryFacetValueRow">
+                                                            <ToggleButton Margin="0,0,7,6"
+                                                                          Content="{Binding CountLabel}"
+                                                                          IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                                                          Command="{Binding DataContext.ToggleFacetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                          CommandParameter="{Binding}"
+                                                                          AutomationProperties.Name="{Binding AccessibleName}"
+                                                                          x:CompileBindings="False" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBlock IsVisible="{Binding !HasFacetGroups}"
+                                       Text="Facet values appear as indexed evidence becomes available."
+                                       Classes="page-subtitle"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
                 </Border>
                 <StackPanel IsVisible="{Binding HasActiveFilters}" Spacing="5">
                     <Grid ColumnDefinitions="*,Auto">
@@ -115,47 +171,89 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
-                <WrapPanel>
-                    <Button Margin="0,0,8,0"
-                            Classes="secondary"
-                            Content="Build or refresh existing index"
-                            Command="{Binding BuildIndexCommand}" />
-                    <Button Margin="0,0,8,0"
-                            Classes="secondary"
-                            Content="Rebuild index"
-                            Command="{Binding RebuildIndexCommand}" />
-                    <Button Margin="0,0,8,0"
-                            IsVisible="{Binding IsBusy}"
-                            Classes="secondary"
-                            Content="Cancel"
-                            Command="{Binding CancelCommand}" />
-                    <Button Classes="secondary"
-                            Content="Clear generated Search data"
-                            Command="{Binding RequestClearIndexCommand}"
-                            AutomationProperties.HelpText="Clears application-owned generated Search data after confirmation. Indexed sources and original files remain unchanged." />
-                    <Button Margin="8,0,0,0"
-                            IsVisible="{Binding IsClearPending}"
-                            Classes="danger"
-                            Content="Confirm clear"
-                            Command="{Binding ConfirmClearIndexCommand}" />
-                    <Button Margin="8,0,0,0"
-                            IsVisible="{Binding IsClearPending}"
-                            Classes="secondary"
-                            Content="Keep index"
-                            Command="{Binding CancelClearIndexCommand}" />
-                </WrapPanel>
+                <Border Classes="subtle-card" Padding="8">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="Saved Views"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="Save the current query and typed filters as a live rule. Files are not copied; opening a view evaluates the current local index. Saved scans remain historical catalog snapshots."
+                                   Classes="page-subtitle"
+                                   TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="7">
+                            <ComboBox ItemsSource="{Binding SavedViews}"
+                                      SelectedItem="{Binding SelectedSavedView, Mode=TwoWay}"
+                                      PlaceholderText="Choose a Saved View"
+                                      AutomationProperties.Name="Choose a Saved View">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SavedDiscoveryViewRow">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" />
+                                            <TextBlock Text="{Binding Summary}" Classes="page-subtitle" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding SavedViewName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="View name"
+                                     MaxLength="128"
+                                     AutomationProperties.Name="Saved View name" />
+                            <Button Grid.Column="2"
+                                    Classes="primary"
+                                    Content="Save new"
+                                    Command="{Binding SaveViewCommand}"
+                                    AutomationProperties.Name="Save current query and filters as a new Saved View" />
+                        </Grid>
+                        <WrapPanel>
+                            <Button Margin="0,0,8,0"
+                                    Classes="secondary"
+                                    Content="Open"
+                                    Command="{Binding OpenSavedViewCommand}"
+                                    AutomationProperties.Name="Open selected Saved View" />
+                            <Button Margin="0,0,8,0"
+                                    Classes="secondary"
+                                    Content="Update selected"
+                                    Command="{Binding UpdateSavedViewCommand}"
+                                    AutomationProperties.Name="Update selected Saved View from current query and filters" />
+                            <Button Classes="secondary"
+                                    Content="Delete selected"
+                                    Command="{Binding DeleteSavedViewCommand}"
+                                    AutomationProperties.Name="Delete selected Saved View" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+                <Expander Header="Advanced Search index maintenance"
+                          IsExpanded="False"
+                          AutomationProperties.Name="Advanced Search index maintenance actions">
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Build or refresh existing index" Command="{Binding BuildIndexCommand}" />
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Rebuild index" Command="{Binding RebuildIndexCommand}" />
+                        <Button Margin="0,0,8,8" IsVisible="{Binding IsBusy}" Classes="secondary" Content="Cancel" Command="{Binding CancelCommand}" />
+                        <Button Margin="0,0,8,8" Classes="secondary" Content="Clear generated Search data"
+                                Command="{Binding RequestClearIndexCommand}"
+                                AutomationProperties.HelpText="Clears application-owned generated Search data after confirmation. Indexed sources and original files remain unchanged." />
+                        <Button Margin="0,0,8,8" IsVisible="{Binding IsClearPending}" Classes="danger" Content="Confirm clear" Command="{Binding ConfirmClearIndexCommand}" />
+                        <Button Margin="0,0,8,8" IsVisible="{Binding IsClearPending}" Classes="secondary" Content="Keep index" Command="{Binding CancelClearIndexCommand}" />
+                    </WrapPanel>
+                </Expander>
                 <ProgressBar Minimum="0"
                              Maximum="1"
                              Value="{Binding ProgressValue}"
                              IsVisible="{Binding IsBusy}"
                              AutomationProperties.Name="Current Search operation progress" />
                 <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding CandidateCoverageText}"
+                           TextWrapping="Wrap"
+                           Classes="page-subtitle"
+                           AutomationProperties.LiveSetting="Polite" />
                 <views:StatusBanner DataContext="{Binding Status}" />
             </StackPanel>
         </Border>
 
         <Border Grid.Row="2" Classes="card">
-            <StackPanel Spacing="9">
+            <Expander Header="Background indexing status and maintenance"
+                      IsExpanded="False"
+                      AutomationProperties.Name="Background indexing status and advanced maintenance">
+            <StackPanel Spacing="9" Margin="0,8,0,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <StackPanel Spacing="3">
                         <TextBlock Text="Background indexing"
@@ -287,14 +385,15 @@
                     </ItemsControl>
                 </Expander>
             </StackPanel>
+            </Expander>
         </Border>
 
         <Border Grid.Row="3" Classes="card">
-            <Grid RowDefinitions="Auto,*" RowSpacing="8">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
                 <Expander Grid.Row="0"
                           IsVisible="{Binding HasPrivacyItem}"
-                          IsExpanded="True"
-                          Header="Indexed data inspection"
+                          IsExpanded="False"
+                          Header="Advanced indexed data inspection"
                           AutomationProperties.Name="Indexed data inspection and privacy actions">
                     <StackPanel Spacing="8">
                         <Border IsVisible="{Binding HasSelectedMediaThumbnail}"
@@ -402,7 +501,15 @@
                         </Expander>
                     </StackPanel>
                 </Expander>
-                <StackPanel Grid.Row="1"
+                <Grid Grid.Row="1" IsVisible="{Binding HasHits}" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Text="{Binding OrganizationSelectionText}"
+                               VerticalAlignment="Center"
+                               AutomationProperties.LiveSetting="Polite" />
+                    <Button Grid.Column="1" Classes="primary" Content="Organize selected"
+                            Command="{Binding OrganizeSelectedFilesCommand}"
+                            AutomationProperties.Name="Preview selected Search results with an Organization recipe" />
+                </Grid>
+                <StackPanel Grid.Row="2"
                             IsVisible="{Binding !HasHits}"
                             Classes="empty-state"
                             Spacing="6"
@@ -420,12 +527,15 @@
                                Classes="page-subtitle"
                                TextAlignment="Center" />
                 </StackPanel>
-                <ScrollViewer Grid.Row="1"
+                <ScrollViewer Grid.Row="2"
                               IsVisible="{Binding HasHits}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Hits}">
-                        <ItemsControl.ItemTemplate>
+                    <ListBox ItemsSource="{Binding Hits}"
+                             SelectionMode="Multiple"
+                             SelectionChanged="OnSearchSelectionChanged"
+                             AutomationProperties.Name="Search results available for reviewed organization">
+                        <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="semantic:SemanticSearchHit">
                                 <Border Classes="result-row" Padding="0,9">
                                     <StackPanel Spacing="4">
@@ -475,6 +585,21 @@
                                         </Expander>
                                         <WrapPanel>
                                             <Button Margin="0,0,8,0"
+                                                    Classes="primary"
+                                                    Content="Open in Files"
+                                                    Command="{Binding DataContext.OpenInFilesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.HelpText="Opens the same stable indexed file in Files and preserves the current Search, facets, and Saved View for return."
+                                                    AutomationProperties.Name="{Binding FileName, StringFormat='Open {0} in Files with discovery context preserved'}"
+                                                    x:CompileBindings="False" />
+                                            <Button Margin="0,0,8,0"
+                                                    Classes="secondary"
+                                                    Content="Related to this file"
+                                                    Command="{Binding DataContext.OpenRelatedFilesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    AutomationProperties.Name="{Binding FileName, StringFormat='Show files related to {0}'}"
+                                                    x:CompileBindings="False" />
+                                            <Button Margin="0,0,8,0"
                                                     Classes="secondary"
                                                     Content="Open file"
                                                     Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -503,8 +628,8 @@
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </ScrollViewer>
             </Grid>
         </Border>

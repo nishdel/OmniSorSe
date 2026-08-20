@@ -23,6 +23,10 @@ public static class PluginLimits
     public const int MaximumDiagnostics = 1_000;
     public static readonly TimeSpan InitializationTimeout = TimeSpan.FromSeconds(10);
     public static readonly Version HostVersion = new(1, 5, 0);
+
+    public static bool IsRuntimeCompatible(string runtimeCompatibility) =>
+        string.Equals(runtimeCompatibility, "net10.0", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(runtimeCompatibility, "net8.0", StringComparison.OrdinalIgnoreCase);
 }
 
 public enum PluginOriginKind

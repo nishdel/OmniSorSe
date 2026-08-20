@@ -72,6 +72,13 @@
             <Setter Property="Height" Value="1" />
             <Setter Property="Background" Value="{DynamicResource BorderSubtleBrush}" />
         </Style>
+        <Style Selector="Border.tag-chip">
+            <Setter Property="Padding" Value="7,3" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource BackgroundSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
         <Style Selector="Border.result-row">
             <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
             <Setter Property="BorderThickness" Value="0,1,0,0" />

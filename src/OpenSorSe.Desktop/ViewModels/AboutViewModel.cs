@@ -17,6 +17,9 @@ public sealed class AboutViewModel : ViewModelBase
     /// </summary>
     public string Version => ApplicationVersionInfo.Display;
 
+    /// <summary>Gets the source revision and build configuration for support correlation.</summary>
+    public string Provenance => ApplicationVersionInfo.Provenance;
+
     /// <summary>
     /// Gets the project license displayed by the current application.
     /// </summary>

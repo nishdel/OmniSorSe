@@ -2,6 +2,11 @@
 
 **Status:** released as OmniSorSe v2.4.0 from `v2.4-omnisorse-transition`
 
+> **Later unreleased integration note:** v2.5 keeps every Protocol v1 wire
+> contract and security boundary below unchanged while adding a desktop-only,
+> one-time launch bootstrap for the separately installed OmniBrille companion.
+> See [OmniBrille companion handoff](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md).
+
 **Stable baseline:** OpenSorSe v2.3.0, commit
 `abe43e171bdcefa48cc55a6af6e560e2c8c8ce94`, schema 5
 
@@ -101,7 +106,7 @@ activate providers or promise that every indexed file has every evidence type.
 | `GetChildren` | Stable folders-first containment with bounded paging. |
 | `GetNeighborhood` | Bounded structural depth with optional retained context. |
 | `Search` | Existing unified deterministic-first Search, grounded to authorized indexed file IDs. |
-| `GetRelated` | Existing medium-or-strong Related Files evidence with bounded reasons/provenance. |
+| `GetRelated` | Existing bounded Related Files evidence, aggregated to one opaque target per pair with deterministic order, concise reason, and provenance class. |
 | `GetNodeDetails` | Bounded metadata, concepts, summary, media facts, and relationship summaries. |
 
 There are no write, delete, rename, move, create-directory, Change Plan,

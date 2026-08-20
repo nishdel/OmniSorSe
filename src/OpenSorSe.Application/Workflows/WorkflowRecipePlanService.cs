@@ -290,6 +290,7 @@ public sealed class WorkflowRecipePlanService : IWorkflowRecipePlanService
             var value = modified.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture);
             values["modifiedDate"] = new(value, "filesystem metadata");
             values["date"] = new(value, "filesystem metadata");
+            values["filesystemModifiedDate"] = new(value, "filesystem modified timestamp");
         }
 
         if (file.CreationTimeUtc is DateTimeOffset created)
@@ -297,6 +298,7 @@ public sealed class WorkflowRecipePlanService : IWorkflowRecipePlanService
             var createdUtc = created.ToUniversalTime();
             var value = createdUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
             values["createdDate"] = new(value, "filesystem metadata");
+            values["filesystemCreatedDate"] = new(value, "filesystem created timestamp");
             values["captureYear"] = new(createdUtc.Year.ToString(System.Globalization.CultureInfo.InvariantCulture), "filesystem metadata");
             values["captureMonth"] = new(createdUtc.Month.ToString("00", System.Globalization.CultureInfo.InvariantCulture), "filesystem metadata");
         }

@@ -5,7 +5,13 @@ param(
     [string]$Version,
 
     [Parameter(Mandatory)]
-    [string]$ArtifactDirectory
+    [string]$ArtifactDirectory,
+    [Parameter(Mandatory)]
+    [ValidatePattern('^[0-9a-fA-F]{40}$')]
+    [string]$SourceRevision,
+
+    [Parameter()]
+    [switch]$PortableOnly
 )
 
 Set-StrictMode -Version Latest
@@ -18,7 +24,11 @@ if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
 $artifactRoot = [IO.Path]::GetFullPath($ArtifactDirectory)
 $portableArchive = Join-Path $artifactRoot "OmniSorSe-v$Version-win-x64.zip"
 $installer = Join-Path $artifactRoot "OmniSorSe-v$Version-win-x64-setup.exe"
-foreach ($artifact in @($portableArchive, $installer)) {
+$requiredArtifacts = @($portableArchive)
+if (-not $PortableOnly) {
+    $requiredArtifacts += $installer
+}
+foreach ($artifact in $requiredArtifacts) {
     if (-not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
         throw "Required Windows artifact is missing: $artifact"
     }
@@ -57,13 +67,56 @@ $versionInfo = (Get-Item -LiteralPath $portableExecutable).VersionInfo
 if ($versionInfo.FileVersion -ne "$Version.0" -or $versionInfo.ProductVersion -notlike "$Version*") {
     throw "OmniSorSe.exe version metadata is inconsistent: file '$($versionInfo.FileVersion)', product '$($versionInfo.ProductVersion)'."
 }
+$provenancePath = Join-Path $portableRoot 'OmniSorSe.build.json'
+if (-not (Test-Path -LiteralPath $provenancePath -PathType Leaf)) {
+    throw 'The portable package is missing its build provenance manifest.'
+}
+$provenance = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json
+if ($provenance.productVersion -ne $Version -or
+    $provenance.sourceRevision -ne $SourceRevision -or
+    $provenance.configuration -ne 'Release' -or
+    $provenance.targetFramework -ne 'net10.0' -or
+    $provenance.runtimeIdentifier -ne 'win-x64' -or
+    $provenance.runtimeVersion -notmatch '^10\.' -or
+    $provenance.selfContained -ne $true -or
+    $versionInfo.ProductVersion -notlike "$Version+$SourceRevision*") {
+    throw 'Package filename, binary metadata, and build provenance do not identify the same source.'
+}
+$runtimeConfiguration = Get-Content -Raw -LiteralPath (Join-Path $portableRoot 'OmniSorSe.runtimeconfig.json') | ConvertFrom-Json
+if ($runtimeConfiguration.runtimeOptions.tfm -ne 'net10.0') {
+    throw 'The Windows package runtime configuration is not net10.0.'
+}
+foreach ($runtimeAsset in @('coreclr.dll', 'hostfxr.dll', 'libSkiaSharp.dll')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $portableRoot $runtimeAsset) -PathType Leaf)) {
+        throw "The Windows package is missing required runtime/native asset '$runtimeAsset'."
+    }
+}
 
 $forbidden = Get-ChildItem -LiteralPath $portableRoot -Recurse -Force -File | Where-Object {
-    $_.Extension -in @('.pdb', '.trx', '.db', '.log', '.cs', '.csproj', '.sln') -or
-    [IO.Path]::GetFileNameWithoutExtension($_.Name) -match '(?i)^(test-results?|secrets?|credentials?|tokens?)$'
+    $_.Extension -in @('.pdb', '.trx', '.db', '.sqlite', '.log', '.oms-state', '.bak', '.cs', '.csproj', '.sln') -or
+    $_.Name -match '(?i)\.(db-wal|db-shm)$' -or
+    [IO.Path]::GetFileNameWithoutExtension($_.Name) -match '(?i)^(test-results?|secrets?|credentials?|tokens?|settings|operation-journal|change-plans?|saved-views?|recipes?)$'
 }
 if ($forbidden) {
     throw "Forbidden portable payload entries: $($forbidden.FullName -join ', ')"
+}
+
+if ($PortableOnly) {
+    $portableSmokeRoot = Join-Path $validationRoot 'portable-user-data'
+    $portableSmoke = Start-Process -FilePath $portableExecutable -ArgumentList @(
+        '--package-smoke-test', ('"' + $portableSmokeRoot.Replace('"', '\"') + '"')
+    ) -WorkingDirectory $portableRoot -WindowStyle Hidden -Wait -PassThru
+    if ($portableSmoke.ExitCode -ne 0 -or
+        -not (Test-Path -LiteralPath $portableSmokeRoot -PathType Container)) {
+        throw "The Windows portable package smoke failed with exit code $($portableSmoke.ExitCode)."
+    }
+
+    return [pscustomobject]@{
+        PortableExecutableVersion = $versionInfo.FileVersion
+        RuntimeVersion = $provenance.runtimeVersion
+        PackageSmokeExitCode = $portableSmoke.ExitCode
+        InstallerValidation = 'Not requested'
+    }
 }
 
 $installRoot = Join-Path $validationRoot 'installed'

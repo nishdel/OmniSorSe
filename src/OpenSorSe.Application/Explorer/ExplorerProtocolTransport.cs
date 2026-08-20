@@ -67,12 +67,18 @@ internal sealed class ExplorerProtocolDispatcher : IDisposable
 
         if (authorization.Validation != ExplorerSessionValidation.Valid || authorization.Session is null)
         {
+            _sessions.MarkConnectionOutcome(
+                request.SessionId,
+                ExplorerSessionConnectionOutcome.AuthenticationRejected);
             RecordAuthorizationFailure("unauthorized");
             return Error(request.RequestId, ExplorerErrorCode.Unauthorized, "Valid local Explorer session authorization is required.");
         }
 
         if (request.ProtocolMajor != ExplorerProtocolVersion.Major)
         {
+            _sessions.MarkConnectionOutcome(
+                request.SessionId,
+                ExplorerSessionConnectionOutcome.IncompatibleVersion);
             RecordAuthorizationFailure("incompatible-protocol");
             return Error(request.RequestId, ExplorerErrorCode.UnsupportedProtocol, "The requested Explorer protocol major version is unsupported.");
         }
@@ -108,6 +114,9 @@ internal sealed class ExplorerProtocolDispatcher : IDisposable
                 request.Operation,
                 request.Payload,
                 timeout.Token).ConfigureAwait(false);
+            _sessions.MarkConnectionOutcome(
+                request.SessionId,
+                ExplorerSessionConnectionOutcome.Authenticated);
             var response = new ExplorerResponseEnvelope(
                 ExplorerProtocolVersion.Major,
                 request.RequestId,
@@ -294,7 +303,7 @@ internal sealed class ExplorerProtocolDispatcher : IDisposable
 /// Hosts Explorer Protocol v1 over an on-demand, current-user-only local named pipe.
 /// It never creates a TCP listener and remains dormant while OmniExplorer is absent.
 /// </summary>
-public sealed class NamedPipeExplorerProtocolHost : IExplorerProtocolHost
+public sealed class NamedPipeExplorerProtocolHost : IExplorerProtocolHost, IExplorerSessionConnectionObserver
 {
     private readonly ExplorerSessionManager _sessions;
     private readonly ExplorerReadService _reads;
@@ -368,6 +377,13 @@ public sealed class NamedPipeExplorerProtocolHost : IExplorerProtocolHost
         RecordLifecycle("Explorer session revoked", DiagnosticStatus.Succeeded);
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public Task<ExplorerSessionConnectionOutcome?> WaitForConnectionOutcomeAsync(
+        string sessionId,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default) =>
+        _sessions.WaitForConnectionOutcomeAsync(sessionId, timeout, cancellationToken);
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

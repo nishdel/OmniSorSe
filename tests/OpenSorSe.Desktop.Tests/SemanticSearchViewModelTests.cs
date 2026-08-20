@@ -2,6 +2,8 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Media;
+using OpenSorSe.Application.SmartTags;
+using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop.Services;
@@ -12,6 +14,175 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies Semantic Search Beta presentation state, confirmation, cancellation, and safe shell opening.</summary>
 public sealed class SemanticSearchViewModelTests
 {
+    /// <summary>Search organization captures stable IDs and the canonical return context.</summary>
+    [Fact]
+    public async Task OrganizationSelection_SnapshotsStableIdsAndDiscoveryContext()
+    {
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([Hit("C:\\Docs\\one.pdf", "file:1"), Hit("C:\\Docs\\two.pdf", "file:2")]),
+            new Store(),
+            new Launcher());
+        viewModel.QueryText = "invoice";
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        OrganizationSelectionContext? request = null;
+        viewModel.OrganizationRequested += (_, value) => request = value;
+        viewModel.SetOrganizationSelection(viewModel.Hits);
+
+        viewModel.OrganizeSelectedFilesCommand.Execute(null);
+
+        Assert.NotNull(request);
+        Assert.Equal(OrganizationSelectionOrigin.Search, request.Origin);
+        Assert.Equal(["file:1", "file:2"], request.FileIds);
+        Assert.Equal("invoice", request.DiscoveryContext!.Query.QueryText);
+        Assert.Equal(["file:1", "file:2"], request.DiscoveryContext.ResultFileIds);
+    }
+
+    /// <summary>Facet toggles share one query state and preserve OR-within-type canonical IDs.</summary>
+    [Fact]
+    public async Task FacetsComposeWithQueryAndPublishTruthfulCoverage()
+    {
+        var search = new FacetedSearch();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher());
+        viewModel.QueryText = "tax records";
+
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        var theme = Assert.Single(viewModel.FacetGroups, group => group.Kind == DiscoveryFacetKind.Theme);
+        var financeRow = theme.Values.Single(value => value.CanonicalId == "theme.finance");
+        await viewModel.ToggleFacetCommand.ExecuteAsync(financeRow);
+        theme = Assert.Single(viewModel.FacetGroups, group => group.Kind == DiscoveryFacetKind.Theme);
+        Assert.Same(financeRow, theme.Values.Single(value => value.CanonicalId == "theme.finance"));
+        Assert.True(financeRow.IsSelected);
+        await viewModel.ToggleFacetCommand.ExecuteAsync(theme.Values.Single(value => value.CanonicalId == "theme.insurance"));
+
+        Assert.Equal("tax records", viewModel.QueryText);
+        Assert.Equal(2, search.LastRequest!.ActiveFilters!.Count(filter => filter.Kind == SearchFilterKind.SmartTagTheme));
+        Assert.Contains("20,000", viewModel.CandidateCoverageText, StringComparison.Ordinal);
+        Assert.All(theme.Values, value => Assert.Contains("matching files", value.AccessibleName, StringComparison.Ordinal));
+    }
+
+    /// <summary>Saved Views persist live rules and reopen the canonical query without copied membership.</summary>
+    [Fact]
+    public async Task SavedViewCommandsCreateUpdateOpenAndDeleteRules()
+    {
+        var search = new InterpretingSearch([]);
+        var store = new SavedViews();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher(),
+            savedViewStore: store);
+        viewModel.QueryText = "invoice";
+        viewModel.SavedViewName = "Invoices";
+
+        await viewModel.SaveViewCommand.ExecuteAsync(null);
+        var saved = Assert.Single(store.Items);
+        Assert.Equal("invoice", saved.Query.QueryText);
+
+        viewModel.SelectedSavedView = SavedDiscoveryViewRow.FromModel(saved);
+        viewModel.QueryText = "invoice 2026";
+        viewModel.SavedViewName = "Invoices 2026";
+        await viewModel.UpdateSavedViewCommand.ExecuteAsync(null);
+        Assert.Equal("invoice 2026", Assert.Single(store.Items).Query.QueryText);
+
+        await viewModel.OpenSavedViewCommand.ExecuteAsync(null);
+        Assert.Equal("invoice 2026", viewModel.QueryText);
+        await viewModel.DeleteSavedViewCommand.ExecuteAsync(null);
+        Assert.Empty(store.Items);
+    }
+
+    /// <summary>Search captures one bounded canonical context for stable-ID navigation into Files.</summary>
+    [Fact]
+    public async Task DiscoveryContextCapturesQueryFiltersAndStableResultOrder()
+    {
+        var hit = Hit("C:\\Docs\\invoice.pdf", "file:invoice");
+        var search = new Search([hit]);
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            search,
+            new Store(),
+            new Launcher());
+        viewModel.QueryText = "invoice";
+
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        var context = viewModel.CaptureDiscoveryContext(Assert.Single(viewModel.Hits));
+
+        Assert.NotNull(context);
+        Assert.Equal("invoice", context.Query.QueryText);
+        Assert.Equal("file:invoice", context.SelectedFileId);
+        Assert.Equal(["file:invoice"], context.ResultFileIds);
+    }
+
+    /// <summary>Open in Files emits one stable-ID request and never opens a raw path directly.</summary>
+    [Fact]
+    public async Task OpenInFiles_EmitsStableDiscoveryRequest()
+    {
+        var hit = Hit("C:\\Docs\\invoice.pdf", "file:invoice");
+        var launcher = new Launcher();
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
+            launcher)
+        {
+            QueryText = "invoice",
+        };
+        await viewModel.SearchCommand.ExecuteAsync(null);
+        DiscoveryFileOpenRequest? request = null;
+        viewModel.OpenInFilesRequested += (_, value) => request = value;
+
+        viewModel.OpenInFilesCommand.Execute(hit);
+
+        Assert.NotNull(request);
+        Assert.Equal("file:invoice", request!.FileId);
+        Assert.Equal("invoice", request.Context.Query.QueryText);
+        Assert.Empty(launcher.Opened);
+    }
+
+    /// <summary>Returning from Files restores query, canonical facets, and the selected Saved View rule.</summary>
+    [Fact]
+    public async Task RestoreDiscoveryContext_RestoresCanonicalQueryFiltersAndSavedView()
+    {
+        var hit = Hit("C:\\Docs\\invoice.pdf", "file:invoice");
+        var saved = new SavedDiscoveryView(
+            "view:finance",
+            "Finance",
+            new DiscoveryQueryState(
+                "invoice",
+                [new SearchFilter("theme.finance", SearchFilterKind.SmartTagTheme, "theme.finance", "Finance")]),
+            1,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch);
+        var views = new SavedViews();
+        views.Items.Add(saved);
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([hit]),
+            new Store(),
+            new Launcher(),
+            savedViewStore: views);
+        await viewModel.RefreshAsync();
+        var context = new DiscoveryWorkflowContext(saved.Query, saved.Id, hit.FileId!, false, null, [hit.FileId!]);
+
+        await viewModel.RestoreDiscoveryContextAsync(context);
+
+        Assert.Equal("invoice", viewModel.QueryText);
+        Assert.Equal("view:finance", viewModel.SelectedSavedView?.Id);
+        Assert.Contains(viewModel.ActiveFilters, filter => filter.Kind == SearchFilterKind.SmartTagTheme && filter.Value == "theme.finance");
+        Assert.Single(viewModel.Hits);
+    }
+
     /// <summary>Verifies explained local results are published without exposing vectors.</summary>
     [Fact]
     public async Task Search_Enabled_PublishesExplainedHits()
@@ -114,6 +285,7 @@ public sealed class SemanticSearchViewModelTests
                 CurrentStage = IndexingStage.TextExtracted,
                 CurrentFile = "report.pdf",
                 TotalDiscovered = 10,
+                DiscoveryComplete = true,
                 Processed = 4,
                 Completed = 3,
                 Skipped = 1,
@@ -136,7 +308,8 @@ public sealed class SemanticSearchViewModelTests
 
         await viewModel.RefreshAsync();
 
-        Assert.Equal(0.4, viewModel.BackgroundProgressValue);
+        Assert.Equal(0.3, viewModel.BackgroundProgressValue);
+        Assert.Contains("files searchable", viewModel.BackgroundStateText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("document text", viewModel.CurrentStageText, StringComparison.Ordinal);
         Assert.Contains("report.pdf", viewModel.CurrentFileText, StringComparison.Ordinal);
         Assert.Contains("4 of 10", viewModel.ProcessedCountText, StringComparison.Ordinal);
@@ -337,6 +510,39 @@ public sealed class SemanticSearchViewModelTests
         Assert.True(viewModel.IsBackgroundProgressIndeterminate);
         Assert.Contains("determining the total", viewModel.ProcessedCountText, StringComparison.Ordinal);
         Assert.Contains("not yet known", viewModel.RemainingCountText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies the UI says base coverage is usable while deeper evidence continues.</summary>
+    [Fact]
+    public async Task CompletedBaseCoverageReportsDeeperAnalysisWithoutMisleadingOverallProgress()
+    {
+        var background = new BackgroundIndexing
+        {
+            Progress = new IndexingProgressSnapshot
+            {
+                RunId = "progressive",
+                Status = IndexingRunStatus.Running,
+                DiscoveryComplete = true,
+                TotalDiscovered = 10,
+                Processed = 2,
+                Coverage = new SearchCoverage(10, 10, 4, 1, 2, 2),
+                EstimatedRemaining = TimeSpan.FromMinutes(3),
+            },
+        };
+        using var viewModel = new SemanticSearchViewModel(
+            new Configuration(true),
+            new Indexer(),
+            new Search([]),
+            new Store(),
+            new Launcher(),
+            background);
+
+        await viewModel.RefreshAsync();
+
+        Assert.Equal(0.2, viewModel.BackgroundProgressValue, precision: 3);
+        Assert.Contains("files searchable", viewModel.BackgroundStateText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("deeper analysis", viewModel.CoverageText, StringComparison.OrdinalIgnoreCase);
+        Assert.True(viewModel.HasEstimatedTime);
     }
 
     /// <summary>Verifies a known result path uses the existing cross-platform clipboard boundary.</summary>
@@ -753,6 +959,70 @@ public sealed class SemanticSearchViewModelTests
         }
     }
 
+    private sealed class FacetedSearch : ISemanticSearchService
+    {
+        public SearchRequest? LastRequest { get; private set; }
+
+        public Task<SemanticResult<IReadOnlyList<SemanticSearchHit>>> SearchAsync(
+            string query,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new SemanticResult<IReadOnlyList<SemanticSearchHit>>(SemanticState.Ready, "Ready", []));
+
+        public Task<SearchExecutionResult> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            return Task.FromResult(new SearchExecutionResult(
+                SemanticState.Ready,
+                "Ready",
+                [],
+                new SearchInterpretation(
+                    request.QueryText,
+                    request.TopicTextOverride ?? request.QueryText,
+                    ["tax", "records"],
+                    request.ActiveFilters ?? []),
+                new SearchCoverage(20_000, 20_000, 10_000, 0, 0, 10_000))
+            {
+                CandidateCoverage = new SearchCandidateCoverage(20_000, 320, 10_000, true, true),
+            });
+        }
+
+        public Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+            SearchRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var selected = (request.ActiveFilters ?? [])
+                .Where(filter => filter.Kind == SearchFilterKind.SmartTagTheme)
+                .Select(filter => filter.Value)
+                .ToHashSet(StringComparer.Ordinal);
+            return Task.FromResult(new DiscoveryFacetSnapshot([
+                new DiscoveryFacetGroup(DiscoveryFacetKind.Theme, "Themes", [
+                    new DiscoveryFacetValue("theme.finance", "Finance", 245, selected.Contains("theme.finance")),
+                    new DiscoveryFacetValue("theme.insurance", "Insurance", 41, selected.Contains("theme.insurance")),
+                ]),
+            ]));
+        }
+    }
+
+    private sealed class SavedViews : ISavedDiscoveryViewStore
+    {
+        public List<SavedDiscoveryView> Items { get; } = [];
+
+        public Task<IReadOnlyList<SavedDiscoveryView>> ListAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SavedDiscoveryView>>(Items.ToArray());
+
+        public Task<SavedDiscoveryView> SaveAsync(
+            SavedDiscoveryView view,
+            CancellationToken cancellationToken = default)
+        {
+            Items.RemoveAll(item => item.Id == view.Id);
+            Items.Add(view);
+            return Task.FromResult(view);
+        }
+
+        public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Items.RemoveAll(item => item.Id == id) > 0);
+    }
+
     private sealed class Store : ISemanticIndexStore
     {
         public int ClearCount { get; private set; }
@@ -765,6 +1035,44 @@ public sealed class SemanticSearchViewModelTests
             ClearCount++;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class SmartTags : ISmartTagService
+    {
+        private static readonly IReadOnlyList<SmartTagDefinition> Definitions =
+        [
+            Definition("theme.finance", SmartTagType.Theme, "Finance"),
+            Definition("theme.legal", SmartTagType.Theme, "Legal"),
+            Definition("document-type.invoice", SmartTagType.DocumentType, "Invoice"),
+            Definition("user.review", SmartTagType.UserTag, "Review", builtIn: false),
+        ];
+
+        public Task<SmartTagOperationResult> InitializeAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SmartTagOperationResult(false, 0, "Ready"));
+        public Task<IReadOnlyList<SmartTagDefinition>> GetDefinitionsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(Definitions);
+        public Task<string?> ResolveActiveFileIdAsync(string fullPath, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+        public Task<IReadOnlyList<FileSmartTag>> GetFileTagsAsync(string fileId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<FileSmartTag>>([]);
+        public Task<SmartTagOperationResult> AddUserTagAsync(string fileId, string displayName, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> DecideAsync(string fileId, string tagId, SmartTagDecision decision, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> RemoveAsync(string fileId, string tagId, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> ResetDecisionsAsync(string? fileId, CancellationToken cancellationToken = default) => Operation();
+        public Task<SmartTagOperationResult> ClearGeneratedAsync(string? fileId, CancellationToken cancellationToken = default) => Operation();
+        public Task<IReadOnlyList<string>> FilterAsync(SmartTagFilter filter, int maximumCount, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<string>>([]);
+
+        private static Task<SmartTagOperationResult> Operation() =>
+            Task.FromResult(new SmartTagOperationResult(true, 1, "Applied"));
+
+        private static SmartTagDefinition Definition(string id, SmartTagType type, string display, bool builtIn = true) => new()
+        {
+            TagId = id,
+            Type = type,
+            CanonicalKey = id[(id.IndexOf('.') + 1)..],
+            DisplayName = display,
+            TaxonomyVersion = builtIn ? "1.0" : "user",
+            Origin = builtIn ? SmartTagOrigin.BuiltInTaxonomy : SmartTagOrigin.User,
+            IsBuiltIn = builtIn,
+        };
     }
 
     private sealed class Launcher : IExternalFileLauncher

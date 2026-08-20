@@ -6,6 +6,7 @@ using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 
@@ -14,7 +15,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivacyStore, IRelationshipStore, IDisposable
+public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHealthProbe, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -33,6 +34,33 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
     /// <summary>Gets the fully qualified application-owned database path.</summary>
     public string DatabasePath => _databasePath;
+
+    /// <inheritdoc />
+    public Task<DeepIndexHealthSnapshot> CheckHealthAsync(CancellationToken cancellationToken = default) =>
+        RunExclusiveAsync(
+            () =>
+            {
+                using var connection = OpenConnection();
+                EnsureIntegrity(connection);
+                var schemaVersion = Convert.ToInt32(ExecuteScalar(connection, "PRAGMA user_version;"), CultureInfo.InvariantCulture);
+                var requiredCount = Convert.ToInt32(ExecuteScalar(
+                    connection,
+                    """
+                    SELECT COUNT(*) FROM sqlite_master
+                    WHERE name IN (
+                        'index_meta', 'index_sources', 'index_files', 'index_stage_states',
+                        'smart_tag_definitions', 'file_smart_tag_assignments', 'file_smart_tag_decisions',
+                        'ix_index_files_deleted', 'ix_file_smart_tags_tag');
+                    """), CultureInfo.InvariantCulture);
+                var requiredObjectsPresent = requiredCount == 9;
+                var healthy = schemaVersion == DeepIndexingVersion.SchemaVersion && requiredObjectsPresent;
+                return new DeepIndexHealthSnapshot(
+                    healthy,
+                    schemaVersion,
+                    requiredObjectsPresent,
+                    healthy ? "The schema and bounded SQLite quick check are healthy." : "The index schema or required objects need recovery.");
+            },
+            cancellationToken);
 
     /// <inheritdoc />
     public Task InitializeAsync(CancellationToken cancellationToken = default) =>
@@ -90,6 +118,11 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                             ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
                         }
 
+                        if (version < 6)
+                        {
+                            ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
+                        }
+
                         ExecuteNonQuery(
                             connection,
                             transaction,
@@ -98,6 +131,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                         ExecuteNonQuery(connection, transaction, $"PRAGMA user_version = {DeepIndexingVersion.SchemaVersion};");
                         transaction.Commit();
                     }
+
+                    SeedBuiltInSmartTagTaxonomy(connection, SmartTagTaxonomy.LoadBuiltIn());
 
                     EnsureIntegrity(connection);
                     return 0;
@@ -544,7 +579,10 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
     }
 
     /// <inheritdoc />
-    public Task<IndexingWorkItem?> ClaimNextAsync(DateTimeOffset nowUtc, CancellationToken cancellationToken = default) =>
+    public Task<IndexingWorkItem?> ClaimNextAsync(
+        DateTimeOffset nowUtc,
+        InitialScanDepth initialScanDepth = InitialScanDepth.BaseFirst,
+        CancellationToken cancellationToken = default) =>
         RunExclusiveAsync(
             () =>
             {
@@ -580,7 +618,10 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                           OR (j.status = $waiting AND j.next_retry_utc_ticks IS NOT NULL AND j.next_retry_utc_ticks <= $now)
                       )
                       AND (j.next_retry_utc_ticks IS NULL OR j.next_retry_utc_ticks <= $now)
-                    ORDER BY s.priority DESC, j.priority DESC, j.queued_utc_ticks, j.id
+                    ORDER BY s.priority DESC,
+                             CASE WHEN $baseFirst = 1 THEN j.stage ELSE 0 END,
+                             CASE WHEN $baseFirst = 0 THEN f.id ELSE '' END,
+                             j.priority DESC, j.queued_utc_ticks, j.id
                     LIMIT 1;
                     """;
                 AddParameters(
@@ -589,7 +630,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     ("$queued", (int)IndexingStageStatus.Queued),
                     ("$retry", (int)IndexingStageStatus.RetryScheduled),
                     ("$waiting", (int)IndexingStageStatus.WaitingForDependency),
-                    ("$now", nowUtc.UtcTicks));
+                    ("$now", nowUtc.UtcTicks),
+                    ("$baseFirst", initialScanDepth == InitialScanDepth.BaseFirst ? 1 : 0));
                 using var reader = command.ExecuteReader();
                 if (!reader.Read())
                 {
@@ -1248,7 +1290,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 command.CommandText =
                     """
                     SELECT r.id, r.status, r.current_stage, r.current_file_name,
-                           r.total_discovered, r.started_utc_ticks,
+                           r.total_discovered, r.started_utc_ticks, r.discovery_complete,
                            SUM(CASE WHEN j.status IN ($complete, $skipped, $failed, $cancelled) THEN 1 ELSE 0 END),
                            SUM(CASE WHEN j.status = $complete THEN 1 ELSE 0 END),
                            SUM(CASE WHEN j.status = $skipped THEN 1 ELSE 0 END),
@@ -1288,7 +1330,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 var total = reader.GetInt64(4);
                 var started = new DateTimeOffset(reader.GetInt64(5), TimeSpan.Zero);
-                var processed = reader.IsDBNull(6) ? 0 : reader.GetInt64(6);
+                var processed = reader.IsDBNull(7) ? 0 : reader.GetInt64(7);
                 var elapsed = nowUtc - started;
                 var speed = elapsed.TotalSeconds >= 1 ? processed / elapsed.TotalSeconds : 0;
                 var remaining = Math.Max(0, total - processed);
@@ -1302,12 +1344,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     CurrentStage = reader.IsDBNull(2) ? null : (IndexingStage)reader.GetInt32(2),
                     CurrentFile = reader.IsDBNull(3) ? null : reader.GetString(3),
                     TotalDiscovered = total,
+                    DiscoveryComplete = reader.GetBoolean(6),
                     Processed = processed,
-                    Completed = reader.IsDBNull(7) ? 0 : reader.GetInt64(7),
-                    Skipped = reader.IsDBNull(8) ? 0 : reader.GetInt64(8),
-                    Failed = reader.IsDBNull(9) ? 0 : reader.GetInt64(9),
-                    Waiting = reader.IsDBNull(10) ? 0 : reader.GetInt64(10),
-                    RetryScheduled = reader.IsDBNull(11) ? 0 : reader.GetInt64(11),
+                    Completed = reader.IsDBNull(8) ? 0 : reader.GetInt64(8),
+                    Skipped = reader.IsDBNull(9) ? 0 : reader.GetInt64(9),
+                    Failed = reader.IsDBNull(10) ? 0 : reader.GetInt64(10),
+                    Waiting = reader.IsDBNull(11) ? 0 : reader.GetInt64(11),
+                    RetryScheduled = reader.IsDBNull(12) ? 0 : reader.GetInt64(12),
                     FilesPerSecond = speed,
                     EstimatedRemaining = estimate,
                     IndexSizeBytes = GetPhysicalSize(),
@@ -1453,16 +1496,591 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 reader.Close();
                 var chunks = ReadChunks(connection, hashes.Values.Distinct(StringComparer.Ordinal));
+                var smartTags = ReadEffectiveSmartTags(connection, documents.Select(document => document.FileId).ToArray());
                 return documents
-                    .Select(document =>
-                        hashes.TryGetValue(document.FileId, out var hash) &&
-                        chunks.TryGetValue(hash, out var selected)
-                            ? document with { SelectedChunks = selected }
-                            : document)
+                    .Select(document => ApplySearchProjection(document, hashes, chunks, smartTags))
                     .ToArray();
             },
             cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task<DiscoveryCandidateSelection> SelectSearchCandidateIdsAsync(
+        DiscoverySearchRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Filters);
+        if (request.MaximumCandidateCount is < 1 or > MaximumSearchDocuments ||
+            request.TopicText.Length > SearchLimits.MaximumQueryCharacters ||
+            request.Filters.Count > SearchLimits.MaximumFilters)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request));
+        }
+
+        return RunExclusiveAsync(
+            () => SelectSearchCandidateIdsCore(request),
+            cancellationToken);
+    }
+
+    private DiscoveryCandidateSelection SelectSearchCandidateIdsCore(DiscoverySearchRequest request)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        var filterClauses = BuildDiscoveryFilterClauses(command, request.Filters);
+        var topic = request.TopicText.Trim().ToLowerInvariant();
+        var scoreExpression = BuildDiscoveryScoreExpression(command, topic);
+        command.CommandText = $"""
+            WITH eligible AS (
+                SELECT f.id,
+                       f.relative_path_key,
+                       f.modified_utc_ticks,
+                       s.priority,
+                       {scoreExpression} AS discovery_score
+                FROM index_files f
+                JOIN index_sources s ON s.id = f.source_id
+                LEFT JOIN index_content c ON c.content_hash = f.content_hash
+                LEFT JOIN index_media_content m ON m.content_hash = f.content_hash
+                LEFT JOIN index_privacy_rules p
+                  ON p.source_id = f.source_id
+                 AND p.relative_path_key = f.relative_path_key
+                WHERE f.deleted_utc_ticks IS NULL
+                  AND s.enabled = 1
+                  AND COALESCE(p.is_excluded, 0) = 0
+                  {filterClauses}
+            ), scored AS (
+                SELECT id, relative_path_key, modified_utc_ticks, priority, discovery_score,
+                       COUNT(*) OVER () AS eligible_count,
+                       SUM(CASE WHEN discovery_score > 0 THEN 1 ELSE 0 END) OVER () AS matching_count
+                FROM eligible
+            )
+            SELECT id, eligible_count, matching_count
+            FROM scored
+            ORDER BY discovery_score DESC, priority DESC, modified_utc_ticks DESC, relative_path_key, id
+            LIMIT $maximum;
+            """;
+        command.Parameters.AddWithValue("$maximum", request.MaximumCandidateCount);
+        using var reader = command.ExecuteReader();
+        var ids = new List<string>(request.MaximumCandidateCount);
+        long eligibleCount = 0;
+        long matchingCount = 0;
+        while (reader.Read())
+        {
+            ids.Add(reader.GetString(0));
+            eligibleCount = reader.GetInt64(1);
+            matchingCount = reader.IsDBNull(2) ? 0 : reader.GetInt64(2);
+        }
+
+        return new DiscoveryCandidateSelection(
+            Array.AsReadOnly(ids.ToArray()),
+            eligibleCount,
+            string.IsNullOrEmpty(topic) ? eligibleCount : matchingCount,
+            eligibleCount > ids.Count);
+    }
+
+    private static string BuildDiscoveryScoreExpression(SqliteCommand command, string topic)
+    {
+        if (string.IsNullOrEmpty(topic))
+        {
+            return "0";
+        }
+
+        command.Parameters.AddWithValue("$discoveryTopic", topic);
+        command.Parameters.AddWithValue("$discoveryEndsSlash", "%/" + EscapeLike(topic));
+        command.Parameters.AddWithValue("$discoveryEndsBackslash", "%\\" + EscapeLike(topic));
+        command.Parameters.AddWithValue("$discoveryStemRoot", EscapeLike(topic) + ".%");
+        command.Parameters.AddWithValue("$discoveryStemSlash", "%/" + EscapeLike(topic) + ".%");
+        command.Parameters.AddWithValue("$discoveryStemBackslash", "%\\" + EscapeLike(topic) + ".%");
+        command.Parameters.AddWithValue("$discoveryContains", "%" + EscapeLike(topic) + "%");
+
+        var searchableFields = """
+            lower(COALESCE(f.relative_path, '')) LIKE $discoveryContains ESCAPE '\'
+            OR lower(COALESCE(c.extracted_text, '')) LIKE $discoveryContains ESCAPE '\'
+            OR lower(COALESCE(c.ocr_text, '')) LIKE $discoveryContains ESCAPE '\'
+            OR lower(COALESCE(c.summary, '')) LIKE $discoveryContains ESCAPE '\'
+            OR lower(COALESCE(c.keywords_json, '')) LIKE $discoveryContains ESCAPE '\'
+            OR lower(COALESCE(c.content_intelligence_json, '')) LIKE $discoveryContains ESCAPE '\'
+            OR lower(COALESCE(m.evidence_json, '')) LIKE $discoveryContains ESCAPE '\'
+            """;
+        var tokenScores = new List<string>();
+        var tokens = topic
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.Ordinal)
+            .Take(SearchLimits.MaximumQueryTokens)
+            .ToArray();
+        for (var index = 0; index < tokens.Length; index++)
+        {
+            var name = $"$discoveryToken{index}";
+            command.Parameters.AddWithValue(name, "%" + EscapeLike(tokens[index]) + "%");
+            tokenScores.Add($"CASE WHEN lower(COALESCE(f.relative_path, '')) LIKE {name} ESCAPE '\\' OR lower(COALESCE(c.extracted_text, '')) LIKE {name} ESCAPE '\\' OR lower(COALESCE(c.ocr_text, '')) LIKE {name} ESCAPE '\\' OR lower(COALESCE(c.summary, '')) LIKE {name} ESCAPE '\\' OR lower(COALESCE(c.keywords_json, '')) LIKE {name} ESCAPE '\\' OR lower(COALESCE(c.content_intelligence_json, '')) LIKE {name} ESCAPE '\\' OR lower(COALESCE(m.evidence_json, '')) LIKE {name} ESCAPE '\\' THEN 10 ELSE 0 END");
+        }
+
+        var tokenScore = tokenScores.Count == 0 ? "0" : string.Join(" + ", tokenScores);
+        return $"""
+            CASE
+                WHEN lower(f.relative_path) = $discoveryTopic
+                  OR lower(f.relative_path) LIKE $discoveryEndsSlash ESCAPE '\'
+                  OR lower(f.relative_path) LIKE $discoveryEndsBackslash ESCAPE '\' THEN 100000
+                WHEN lower(f.relative_path) LIKE $discoveryStemRoot ESCAPE '\'
+                  OR lower(f.relative_path) LIKE $discoveryStemSlash ESCAPE '\'
+                  OR lower(f.relative_path) LIKE $discoveryStemBackslash ESCAPE '\' THEN 90000
+                WHEN lower(f.relative_path) LIKE $discoveryContains ESCAPE '\' THEN 70000
+                WHEN {searchableFields} THEN 50000
+                ELSE 0
+            END + ({tokenScore})
+            """;
+    }
+
+    private static string BuildDiscoveryFilterClauses(
+        SqliteCommand command,
+        IReadOnlyList<SearchFilter> filters,
+        IReadOnlySet<SearchFilterKind>? ignoredKinds = null)
+    {
+        var clauses = new List<string>();
+        var groups = filters
+            .Where(filter => ignoredKinds?.Contains(filter.Kind) != true)
+            .GroupBy(filter => filter.Kind)
+            .OrderBy(group => group.Key)
+            .ToArray();
+        var parameterIndex = 0;
+        foreach (var group in groups)
+        {
+            var alternatives = new List<string>();
+            foreach (var filter in group.Take(SearchLimits.MaximumFilters))
+            {
+                var name = $"$filter{parameterIndex++}";
+                var value = filter.Value.Trim();
+                switch (filter.Kind)
+                {
+                    case SearchFilterKind.SmartTagTheme:
+                    case SearchFilterKind.SmartTagDocumentType:
+                    case SearchFilterKind.SmartTagUser:
+                        command.Parameters.AddWithValue(name, value);
+                        alternatives.Add(BuildEffectiveSmartTagExists(name, filter.Kind));
+                        break;
+                    case SearchFilterKind.UnresolvedModerateSmartTag:
+                        alternatives.Add($"""
+                            EXISTS (
+                                SELECT 1 FROM file_smart_tag_assignments a
+                                LEFT JOIN file_smart_tag_decisions d
+                                  ON d.file_id = a.file_id AND d.tag_id = a.tag_id
+                                WHERE a.file_id = f.id AND a.active = 1
+                                  AND a.confidence = {(int)ContentIntelligenceConfidence.Moderate}
+                                  AND a.assignment_state = {(int)SmartTagAssignmentState.Suggested}
+                                  AND COALESCE(d.decision, 0) = {(int)SmartTagDecision.None}
+                            )
+                            """);
+                        break;
+                    case SearchFilterKind.FileType:
+                        var extensions = SearchExtensionsForFileType(value);
+                        if (extensions.Count > 0)
+                        {
+                            var extensionAlternatives = new List<string>();
+                            foreach (var extension in extensions)
+                            {
+                                var extensionName = $"$filter{parameterIndex++}";
+                                command.Parameters.AddWithValue(extensionName, "%" + extension);
+                                extensionAlternatives.Add($"lower(f.full_path) LIKE {extensionName}");
+                            }
+
+                            alternatives.Add("(" + string.Join(" OR ", extensionAlternatives) + ")");
+                        }
+                        else if (value.Equals("other", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var knownExtensions = KnownSearchExtensions
+                                .Select(extension => $"lower(f.full_path) NOT LIKE '%{extension}'")
+                                .ToArray();
+                            alternatives.Add("(" + string.Join(" AND ", knownExtensions) + ")");
+                        }
+                        break;
+                    case SearchFilterKind.Extension:
+                        command.Parameters.AddWithValue(name, "%." + value.TrimStart('.').ToLowerInvariant());
+                        alternatives.Add($"lower(f.full_path) LIKE {name}");
+                        break;
+                    case SearchFilterKind.CreatedYear:
+                        AddYearRange(command, alternatives, name, value, "f.creation_utc_ticks");
+                        break;
+                    case SearchFilterKind.ModifiedYear:
+                        AddYearRange(command, alternatives, name, value, "f.modified_utc_ticks");
+                        break;
+                    case SearchFilterKind.CreatedOnOrAfter:
+                    case SearchFilterKind.CreatedBefore:
+                        AddDateBoundary(
+                            command,
+                            alternatives,
+                            name,
+                            value,
+                            "date(((f.creation_utc_ticks - 621355968000000000) / 10000000), 'unixepoch')",
+                            filter.Kind == SearchFilterKind.CreatedOnOrAfter);
+                        break;
+                    case SearchFilterKind.ModifiedOnOrAfter:
+                    case SearchFilterKind.ModifiedBefore:
+                        AddDateBoundary(
+                            command,
+                            alternatives,
+                            name,
+                            value,
+                            "date(((f.modified_utc_ticks - 621355968000000000) / 10000000), 'unixepoch')",
+                            filter.Kind == SearchFilterKind.ModifiedOnOrAfter);
+                        break;
+                    case SearchFilterKind.MinimumSizeBytes:
+                    case SearchFilterKind.MaximumSizeBytes:
+                        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size))
+                        {
+                            command.Parameters.AddWithValue(name, size);
+                            alternatives.Add(filter.Kind == SearchFilterKind.MinimumSizeBytes
+                                ? $"f.length >= {name}"
+                                : $"f.length <= {name}");
+                        }
+                        break;
+                    case SearchFilterKind.Source:
+                        command.Parameters.AddWithValue(name, "%" + EscapeLike(value.ToLowerInvariant()) + "%");
+                        var exactSourceName = name + "Exact";
+                        command.Parameters.AddWithValue(exactSourceName, value.ToLowerInvariant());
+                        alternatives.Add($"(lower(s.display_name) LIKE {name} ESCAPE '\\' OR lower(s.id) = {exactSourceName})");
+                        break;
+                    case SearchFilterKind.Folder:
+                        command.Parameters.AddWithValue(name, "%" + EscapeLike(value.ToLowerInvariant()) + "%");
+                        alternatives.Add($"lower(f.relative_path) LIKE {name} ESCAPE '\\'");
+                        break;
+                    case SearchFilterKind.IndexingCompletion:
+                        command.Parameters.AddWithValue(name, value.Equals("full", StringComparison.OrdinalIgnoreCase) ? 1 : 0);
+                        alternatives.Add($"f.fully_indexed = {name}");
+                        break;
+                    case SearchFilterKind.IndexingLevel:
+                        if (Enum.TryParse<IndexingLevel>(value, true, out var level))
+                        {
+                            command.Parameters.AddWithValue(name, (int)level);
+                            alternatives.Add($"f.indexing_level = {name}");
+                        }
+                        break;
+                    case SearchFilterKind.OcrAvailability:
+                        command.Parameters.AddWithValue(name, value.Equals("true", StringComparison.OrdinalIgnoreCase) ? 1 : 0);
+                        alternatives.Add($"(CASE WHEN length(COALESCE(c.ocr_text, '')) > 0 THEN 1 ELSE 0 END) = {name}");
+                        break;
+                    case SearchFilterKind.SemanticAvailability:
+                        command.Parameters.AddWithValue(name, value.Equals("true", StringComparison.OrdinalIgnoreCase) ? 1 : 0);
+                        alternatives.Add($"(CASE WHEN length(COALESCE(c.semantic_json, '')) > 2 THEN 1 ELSE 0 END) = {name}");
+                        break;
+                    case SearchFilterKind.FailureState:
+                        command.Parameters.AddWithValue(name, value.Equals("true", StringComparison.OrdinalIgnoreCase) ? 1 : 0);
+                        alternatives.Add($"(CASE WHEN EXISTS(SELECT 1 FROM index_failures x WHERE x.file_id = f.id) THEN 1 ELSE 0 END) = {name}");
+                        break;
+                }
+            }
+
+            if (alternatives.Count > 0)
+            {
+                clauses.Add("AND (" + string.Join(" OR ", alternatives) + ")");
+            }
+        }
+
+        return string.Join(Environment.NewLine, clauses);
+    }
+
+    private static string BuildEffectiveSmartTagExists(string parameterName, SearchFilterKind kind)
+    {
+        var type = kind switch
+        {
+            SearchFilterKind.SmartTagTheme => SmartTagType.Theme,
+            SearchFilterKind.SmartTagDocumentType => SmartTagType.DocumentType,
+            _ => SmartTagType.UserTag,
+        };
+        return $"""
+            EXISTS (
+                SELECT 1
+                FROM file_smart_tag_assignments a
+                JOIN smart_tag_definitions d ON d.tag_id = a.tag_id
+                LEFT JOIN file_smart_tag_decisions x
+                  ON x.file_id = a.file_id AND x.tag_id = a.tag_id
+                WHERE a.file_id = f.id AND a.active = 1
+                  AND d.tag_type = {(int)type}
+                  AND a.tag_id = {parameterName}
+                  AND COALESCE(x.decision, 0) <> {(int)SmartTagDecision.Rejected}
+                  AND (x.decision = {(int)SmartTagDecision.Accepted}
+                       OR a.origin = {(int)SmartTagOrigin.User}
+                       OR a.assignment_state = {(int)SmartTagAssignmentState.Automatic})
+            )
+            """;
+    }
+
+    private static void AddYearRange(
+        SqliteCommand command,
+        ICollection<string> alternatives,
+        string parameterPrefix,
+        string value,
+        string column)
+    {
+        if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var year) || year is < 1601 or > 9998)
+        {
+            return;
+        }
+
+        var startName = parameterPrefix + "Start";
+        var endName = parameterPrefix + "End";
+        command.Parameters.AddWithValue(startName, new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero).UtcTicks);
+        command.Parameters.AddWithValue(endName, new DateTimeOffset(year + 1, 1, 1, 0, 0, 0, TimeSpan.Zero).UtcTicks);
+        alternatives.Add($"({column} >= {startName} AND {column} < {endName})");
+    }
+
+    private static void AddDateBoundary(
+        SqliteCommand command,
+        ICollection<string> alternatives,
+        string parameterName,
+        string value,
+        string dateExpression,
+        bool onOrAfter)
+    {
+        if (!DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var boundary))
+        {
+            return;
+        }
+
+        command.Parameters.AddWithValue(parameterName, boundary.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        alternatives.Add(onOrAfter
+            ? $"{dateExpression} >= {parameterName}"
+            : $"{dateExpression} < {parameterName}");
+    }
+
+    private static IReadOnlyList<string> SearchExtensionsForFileType(string value) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "pdf" => [".pdf"],
+            "document" => [".doc", ".docx", ".odt", ".rtf", ".txt", ".text", ".md", ".markdown"],
+            "spreadsheet" => [".csv", ".tsv", ".xls", ".xlsx", ".ods"],
+            "presentation" => [".ppt", ".pptx", ".odp"],
+            "image" => [".bmp", ".gif", ".heic", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp"],
+            "video" => [".avi", ".m4v", ".mkv", ".mov", ".mp4", ".webm"],
+            "audio" => [".aac", ".flac", ".m4a", ".mp3", ".ogg", ".wav"],
+            "archive" => [".7z", ".bz2", ".gz", ".rar", ".tar", ".xz", ".zip"],
+            _ => [],
+        };
+
+    private static readonly IReadOnlyList<string> KnownSearchExtensions =
+    [
+        ".pdf", ".doc", ".docx", ".odt", ".rtf", ".txt", ".text", ".md", ".markdown",
+        ".csv", ".tsv", ".xls", ".xlsx", ".ods", ".ppt", ".pptx", ".odp",
+        ".bmp", ".gif", ".heic", ".jpeg", ".jpg", ".png", ".svg", ".tif", ".tiff", ".webp",
+        ".avi", ".m4v", ".mkv", ".mov", ".mp4", ".webm",
+        ".aac", ".flac", ".m4a", ".mp3", ".ogg", ".wav",
+        ".7z", ".bz2", ".gz", ".rar", ".tar", ".xz", ".zip",
+    ];
+
+    private static string EscapeLike(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
+
+    /// <inheritdoc />
+    public Task<DiscoveryFacetSnapshot> GetFacetCountsAsync(
+        DiscoveryFacetRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Filters);
+        if (request.TopicText.Length > SearchLimits.MaximumQueryCharacters ||
+            request.Filters.Count > SearchLimits.MaximumFilters ||
+            request.MaximumValuesPerFacet is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request));
+        }
+
+        return RunExclusiveAsync(
+            () => GetFacetCountsCore(request),
+            cancellationToken);
+    }
+
+    private DiscoveryFacetSnapshot GetFacetCountsCore(DiscoveryFacetRequest request)
+    {
+        using var connection = OpenConnection();
+        var groups = new[]
+        {
+            ReadSmartTagFacet(connection, request, DiscoveryFacetKind.Theme, SmartTagType.Theme, SearchFilterKind.SmartTagTheme),
+            ReadSmartTagFacet(connection, request, DiscoveryFacetKind.DocumentType, SmartTagType.DocumentType, SearchFilterKind.SmartTagDocumentType),
+            ReadSmartTagFacet(connection, request, DiscoveryFacetKind.UserTag, SmartTagType.UserTag, SearchFilterKind.SmartTagUser),
+            ReadScalarFacet(connection, request, DiscoveryFacetKind.FileType, SearchFilterKind.FileType, FileTypeSqlExpression),
+            ReadScalarFacet(connection, request, DiscoveryFacetKind.CreatedYear, SearchFilterKind.CreatedYear, CreatedYearSqlExpression),
+            ReadScalarFacet(connection, request, DiscoveryFacetKind.ModifiedYear, SearchFilterKind.ModifiedYear, ModifiedYearSqlExpression),
+        };
+        return new DiscoveryFacetSnapshot(Array.AsReadOnly(groups));
+    }
+
+    private static readonly string FileTypeSqlExpression = """
+        CASE
+            WHEN lower(f.full_path) LIKE '%.pdf' THEN 'pdf'
+            WHEN lower(f.full_path) LIKE '%.doc' OR lower(f.full_path) LIKE '%.docx'
+              OR lower(f.full_path) LIKE '%.odt' OR lower(f.full_path) LIKE '%.rtf'
+              OR lower(f.full_path) LIKE '%.txt' OR lower(f.full_path) LIKE '%.text'
+              OR lower(f.full_path) LIKE '%.md' OR lower(f.full_path) LIKE '%.markdown' THEN 'document'
+            WHEN lower(f.full_path) LIKE '%.csv' OR lower(f.full_path) LIKE '%.tsv'
+              OR lower(f.full_path) LIKE '%.xls'
+              OR lower(f.full_path) LIKE '%.xlsx' OR lower(f.full_path) LIKE '%.ods' THEN 'spreadsheet'
+            WHEN lower(f.full_path) LIKE '%.ppt' OR lower(f.full_path) LIKE '%.pptx'
+              OR lower(f.full_path) LIKE '%.odp' THEN 'presentation'
+            WHEN lower(f.full_path) LIKE '%.bmp' OR lower(f.full_path) LIKE '%.gif'
+              OR lower(f.full_path) LIKE '%.heic' OR lower(f.full_path) LIKE '%.jpeg'
+              OR lower(f.full_path) LIKE '%.jpg' OR lower(f.full_path) LIKE '%.png'
+              OR lower(f.full_path) LIKE '%.svg' OR lower(f.full_path) LIKE '%.tif'
+              OR lower(f.full_path) LIKE '%.tiff' OR lower(f.full_path) LIKE '%.webp' THEN 'image'
+            WHEN lower(f.full_path) LIKE '%.avi' OR lower(f.full_path) LIKE '%.m4v'
+              OR lower(f.full_path) LIKE '%.mkv' OR lower(f.full_path) LIKE '%.mov'
+              OR lower(f.full_path) LIKE '%.mp4' OR lower(f.full_path) LIKE '%.webm' THEN 'video'
+            WHEN lower(f.full_path) LIKE '%.aac' OR lower(f.full_path) LIKE '%.flac'
+              OR lower(f.full_path) LIKE '%.m4a' OR lower(f.full_path) LIKE '%.mp3'
+              OR lower(f.full_path) LIKE '%.ogg' OR lower(f.full_path) LIKE '%.wav' THEN 'audio'
+            WHEN lower(f.full_path) LIKE '%.7z' OR lower(f.full_path) LIKE '%.bz2'
+              OR lower(f.full_path) LIKE '%.gz' OR lower(f.full_path) LIKE '%.rar'
+              OR lower(f.full_path) LIKE '%.tar' OR lower(f.full_path) LIKE '%.xz'
+              OR lower(f.full_path) LIKE '%.zip' THEN 'archive'
+            ELSE 'other'
+        END
+        """;
+
+    private const string CreatedYearSqlExpression =
+        "strftime('%Y', ((f.creation_utc_ticks - 621355968000000000) / 10000000), 'unixepoch')";
+    private const string ModifiedYearSqlExpression =
+        "strftime('%Y', ((f.modified_utc_ticks - 621355968000000000) / 10000000), 'unixepoch')";
+
+    private DiscoveryFacetGroup ReadSmartTagFacet(
+        SqliteConnection connection,
+        DiscoveryFacetRequest request,
+        DiscoveryFacetKind facetKind,
+        SmartTagType tagType,
+        SearchFilterKind filterKind)
+    {
+        using var command = connection.CreateCommand();
+        var ignored = new HashSet<SearchFilterKind> { filterKind };
+        var matching = BuildFacetMatchingCte(command, request, ignored);
+        command.CommandText = $"""
+            {matching}
+            SELECT d.tag_id, d.display_name, COUNT(DISTINCT q.id) AS value_count
+            FROM matching q
+            JOIN file_smart_tag_assignments a ON a.file_id = q.id AND a.active = 1
+            JOIN smart_tag_definitions d ON d.tag_id = a.tag_id
+            LEFT JOIN file_smart_tag_decisions x
+              ON x.file_id = a.file_id AND x.tag_id = a.tag_id
+            WHERE d.tag_type = $tagType
+              AND d.is_hidden = 0
+              AND COALESCE(x.decision, 0) <> {(int)SmartTagDecision.Rejected}
+              AND (x.decision = {(int)SmartTagDecision.Accepted}
+                   OR a.origin = {(int)SmartTagOrigin.User}
+                   OR a.assignment_state = {(int)SmartTagAssignmentState.Automatic})
+            GROUP BY d.tag_id, d.display_name
+            ORDER BY value_count DESC, d.display_name COLLATE NOCASE, d.tag_id
+            LIMIT $facetMaximum;
+            """;
+        command.Parameters.AddWithValue("$tagType", (int)tagType);
+        command.Parameters.AddWithValue("$facetMaximum", request.MaximumValuesPerFacet);
+        return new DiscoveryFacetGroup(
+            facetKind,
+            FacetDisplayName(facetKind),
+            ReadFacetValues(command, request.Filters, filterKind));
+    }
+
+    private DiscoveryFacetGroup ReadScalarFacet(
+        SqliteConnection connection,
+        DiscoveryFacetRequest request,
+        DiscoveryFacetKind facetKind,
+        SearchFilterKind filterKind,
+        string valueExpression)
+    {
+        using var command = connection.CreateCommand();
+        var ignored = new HashSet<SearchFilterKind> { filterKind };
+        var matching = BuildFacetMatchingCte(command, request, ignored, valueExpression);
+        command.CommandText = $"""
+            {matching}
+            SELECT facet_value, facet_value, COUNT(*) AS value_count
+            FROM matching
+            WHERE facet_value IS NOT NULL AND facet_value <> ''
+            GROUP BY facet_value
+            ORDER BY value_count DESC, facet_value COLLATE NOCASE
+            LIMIT $facetMaximum;
+            """;
+        command.Parameters.AddWithValue("$facetMaximum", request.MaximumValuesPerFacet);
+        return new DiscoveryFacetGroup(
+            facetKind,
+            FacetDisplayName(facetKind),
+            ReadFacetValues(command, request.Filters, filterKind));
+    }
+
+    private string BuildFacetMatchingCte(
+        SqliteCommand command,
+        DiscoveryFacetRequest request,
+        IReadOnlySet<SearchFilterKind> ignoredKinds,
+        string? projectedValueExpression = null)
+    {
+        var filterClauses = BuildDiscoveryFilterClauses(command, request.Filters, ignoredKinds);
+        var topic = request.TopicText.Trim().ToLowerInvariant();
+        var scoreExpression = BuildDiscoveryScoreExpression(command, topic);
+        var topicClause = string.IsNullOrEmpty(topic) ? string.Empty : $"AND ({scoreExpression}) > 0";
+        var projectedValue = projectedValueExpression is null
+            ? string.Empty
+            : $", {projectedValueExpression} AS facet_value";
+        return $"""
+            WITH matching AS (
+                SELECT f.id{projectedValue}
+                FROM index_files f
+                JOIN index_sources s ON s.id = f.source_id
+                LEFT JOIN index_content c ON c.content_hash = f.content_hash
+                LEFT JOIN index_media_content m ON m.content_hash = f.content_hash
+                LEFT JOIN index_privacy_rules p
+                  ON p.source_id = f.source_id
+                 AND p.relative_path_key = f.relative_path_key
+                WHERE f.deleted_utc_ticks IS NULL
+                  AND s.enabled = 1
+                  AND COALESCE(p.is_excluded, 0) = 0
+                  {filterClauses}
+                  {topicClause}
+            )
+            """;
+    }
+
+    private static IReadOnlyList<DiscoveryFacetValue> ReadFacetValues(
+        SqliteCommand command,
+        IReadOnlyList<SearchFilter> filters,
+        SearchFilterKind filterKind)
+    {
+        var selected = filters
+            .Where(filter => filter.Kind == filterKind)
+            .Select(filter => filter.Value)
+            .ToHashSet(StringComparer.Ordinal);
+        using var reader = command.ExecuteReader();
+        var values = new List<DiscoveryFacetValue>();
+        while (reader.Read())
+        {
+            var canonicalId = reader.GetString(0);
+            values.Add(new DiscoveryFacetValue(
+                canonicalId,
+                FacetValueDisplayName(filterKind, reader.GetString(1)),
+                reader.GetInt64(2),
+                selected.Contains(canonicalId)));
+        }
+
+        return Array.AsReadOnly(values.ToArray());
+    }
+
+    private static string FacetDisplayName(DiscoveryFacetKind kind) => kind switch
+    {
+        DiscoveryFacetKind.Theme => "Themes",
+        DiscoveryFacetKind.DocumentType => "Document types",
+        DiscoveryFacetKind.UserTag => "Your tags",
+        DiscoveryFacetKind.FileType => "File types",
+        DiscoveryFacetKind.CreatedYear => "Created years",
+        DiscoveryFacetKind.ModifiedYear => "Modified years",
+        _ => kind.ToString(),
+    };
+
+    private static string FacetValueDisplayName(SearchFilterKind kind, string value) => kind switch
+    {
+        SearchFilterKind.FileType => value.Length == 0
+            ? "Other"
+            : char.ToUpperInvariant(value[0]) + value[1..],
+        _ => value,
+    };
 
     /// <inheritdoc />
     public Task<IReadOnlyList<ProgressiveSearchDocument>> GetSearchDocumentsByIdsAsync(
@@ -1603,12 +2221,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
 
                 reader.Close();
                 var chunks = ReadChunks(connection, hashes.Values.Distinct(StringComparer.Ordinal));
+                var smartTags = ReadEffectiveSmartTags(connection, documents.Select(document => document.FileId).ToArray());
                 return documents
-                    .Select(document =>
-                        hashes.TryGetValue(document.FileId, out var hash) &&
-                        chunks.TryGetValue(hash, out var selected)
-                            ? document with { SelectedChunks = selected }
-                            : document)
+                    .Select(document => ApplySearchProjection(document, hashes, chunks, smartTags))
                     .ToArray();
             },
             cancellationToken);
@@ -2282,6 +2897,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFourIndexes);
                 EnsureColumn(connection, transaction, "index_content", "content_intelligence_json", "TEXT");
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
+                ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -2292,6 +2908,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                     transaction,
                     $"PRAGMA user_version = {DeepIndexingVersion.SchemaVersion};");
                 transaction.Commit();
+                SeedBuiltInSmartTagTaxonomy(connection, SmartTagTaxonomy.LoadBuiltIn());
                 EnsureIntegrity(connection);
                 PruneBackups(backupDirectory);
                 return recoveryPath;
@@ -2662,6 +3279,11 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ("$now", completedAtUtc.UtcTicks));
         }
 
+        if (output.SmartTagClassification is not null)
+        {
+            PersistGeneratedSmartTags(connection, transaction, work.FileId, output.SmartTagClassification, completedAtUtc);
+        }
+
         if (output.SelectedChunks is not null)
         {
             ExecuteNonQuery(
@@ -3018,6 +3640,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         var contentIntelligence = ScalarInt64(
             connection,
             "SELECT COALESCE(SUM(LENGTH(content_intelligence_json)), 0) FROM index_content;");
+        var smartTags = ScalarInt64(
+            connection,
+            "SELECT COALESCE(SUM(LENGTH(tag_id) + LENGTH(canonical_key) + LENGTH(display_name) + 64), 0) FROM smart_tag_definitions;") +
+            ScalarInt64(
+                connection,
+                "SELECT COALESCE(SUM(LENGTH(file_id) + LENGTH(tag_id) + LENGTH(evidence_json) + 96), 0) FROM file_smart_tag_assignments;") +
+            ScalarInt64(connection, "SELECT COALESCE(COUNT(*) * 64, 0) FROM file_smart_tag_decisions;");
         var summaries = ScalarInt64(
             connection,
             "SELECT COALESCE(SUM(LENGTH(summary) + LENGTH(keywords_json)), 0) FROM index_content;");
@@ -3055,6 +3684,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
         {
             MediaDerivedDataBytes = media,
             ContentIntelligenceBytes = contentIntelligence,
+            SmartTagBytes = smartTags,
         };
     }
 
@@ -3093,7 +3723,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                    (SELECT COUNT(*) FROM index_relationships r
                     WHERE r.first_file_id = f.id OR r.second_file_id = f.id),
                    (SELECT COUNT(*) FROM smart_collection_members m WHERE m.file_id = f.id)
-                   , mc.evidence_json, c.content_intelligence_json
+                   , mc.evidence_json, c.content_intelligence_json,
+                   (SELECT COUNT(*) FROM file_smart_tag_assignments ta
+                    WHERE ta.file_id = f.id AND ta.active = 1)
             FROM index_files f
             JOIN index_sources s ON s.id = f.source_id
             LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -3149,6 +3781,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 HasContentIntelligence = contentIntelligence is not null,
                 ContentTopicCount = contentIntelligence?.Topics.Count ?? 0,
                 ContentEntityCount = contentIntelligence?.Entities.Count ?? 0,
+                SmartTagCount = reader.GetInt32(30),
                 IsFullyIndexed = reader.GetBoolean(18),
                 LastIndexedUtc = new DateTimeOffset(reader.GetInt64(19), TimeSpan.Zero),
                 ProcessorVersion = DeepIndexingVersion.ProcessorVersion,
@@ -3413,6 +4046,27 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 ("$file", fileId));
         }
 
+        if (data.HasFlag(IndexedDataKind.SmartTags))
+        {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                """
+                DELETE FROM file_smart_tag_assignments
+                WHERE file_id = $file AND origin <> $user
+                  AND NOT EXISTS (
+                      SELECT 1 FROM file_smart_tag_decisions d
+                      WHERE d.file_id = file_smart_tag_assignments.file_id
+                        AND d.tag_id = file_smart_tag_assignments.tag_id
+                        AND d.decision = $accepted
+                  );
+                DELETE FROM file_smart_tag_status WHERE file_id = $file;
+                """,
+                ("$file", fileId),
+                ("$user", (int)SmartTagOrigin.User),
+                ("$accepted", (int)SmartTagDecision.Accepted));
+        }
+
         if (data.HasFlag(IndexedDataKind.Relationships))
         {
             DeleteFileRelationshipData(connection, transaction, fileId, keepManualRelationships: false);
@@ -3447,7 +4101,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks;
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.OcrText))
@@ -3455,22 +4110,23 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
             data |= IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks;
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.SummaryAndKeywords))
         {
-            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks | IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.MediaDerived))
         {
-            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+            data |= IndexedDataKind.ContentIntelligence | IndexedDataKind.SemanticData | IndexedDataKind.Chunks | IndexedDataKind.SmartTags;
         }
 
         if (data.HasFlag(IndexedDataKind.ContentIntelligence))
         {
-            data |= IndexedDataKind.SemanticData | IndexedDataKind.Chunks;
+            data |= IndexedDataKind.SemanticData | IndexedDataKind.Chunks | IndexedDataKind.SmartTags;
         }
 
         return data;
@@ -3595,18 +4251,21 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IIndexPrivac
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks,
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags,
             IndexingStage.OcrProcessed =>
                 IndexedDataKind.OcrText |
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks,
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags,
             IndexingStage.SummaryKeywordsGenerated =>
                 IndexedDataKind.SummaryAndKeywords |
                 IndexedDataKind.ContentIntelligence |
                 IndexedDataKind.SemanticData |
-                IndexedDataKind.Chunks,
+                IndexedDataKind.Chunks |
+                IndexedDataKind.SmartTags,
             IndexingStage.SemanticRepresentationGenerated =>
                 IndexedDataKind.SemanticData | IndexedDataKind.Chunks,
             _ => IndexedDataKind.ProcessingHistory,

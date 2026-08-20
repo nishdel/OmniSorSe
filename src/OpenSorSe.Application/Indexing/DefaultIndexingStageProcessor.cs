@@ -4,6 +4,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Scanner;
 using OpenSorSe.Scanner.Models;
@@ -26,6 +27,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
     private readonly IRelationshipService? _relationshipService;
     private readonly IMediaIntelligenceService? _mediaIntelligenceService;
     private readonly IContentIntelligenceProvider? _contentIntelligenceProvider;
+    private readonly ISmartTagClassifier? _smartTagClassifier;
 
     /// <summary>Initializes the provider-independent application stage processor.</summary>
     public DefaultIndexingStageProcessor(
@@ -37,7 +39,8 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         IIndexingEnrichmentProvider? enrichmentProvider = null,
         IRelationshipService? relationshipService = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
-        IContentIntelligenceProvider? contentIntelligenceProvider = null)
+        IContentIntelligenceProvider? contentIntelligenceProvider = null,
+        ISmartTagClassifier? smartTagClassifier = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _fileHasher = fileHasher ?? throw new ArgumentNullException(nameof(fileHasher));
@@ -48,6 +51,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         _relationshipService = relationshipService;
         _mediaIntelligenceService = mediaIntelligenceService;
         _contentIntelligenceProvider = contentIntelligenceProvider;
+        _smartTagClassifier = smartTagClassifier;
     }
 
     /// <inheritdoc />
@@ -69,6 +73,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
                 IndexingStage.TextExtracted => await ExtractTextAsync(workItem, settings, ocr: false, cancellationToken).ConfigureAwait(false),
                 IndexingStage.OcrProcessed => await ExtractTextAsync(workItem, settings, ocr: true, cancellationToken).ConfigureAwait(false),
                 IndexingStage.SummaryKeywordsGenerated => await EnrichAsync(workItem, settings, cancellationToken).ConfigureAwait(false),
+                IndexingStage.SmartTagsClassified => await ClassifySmartTagsAsync(workItem, cancellationToken).ConfigureAwait(false),
                 IndexingStage.SemanticRepresentationGenerated => ProcessSemanticRepresentation(workItem, settings),
                 IndexingStage.SearchIndexUpdated or
                 IndexingStage.FileFullyIndexed => Complete(),
@@ -498,6 +503,62 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         {
             Status = IndexingStageStatus.Complete,
             SemanticRepresentation = _embeddingProvider.Embed(input),
+        };
+    }
+
+    private async Task<IndexingStageOutput> ClassifySmartTagsAsync(
+        IndexingWorkItem workItem,
+        CancellationToken cancellationToken)
+    {
+        if (_smartTagClassifier is null)
+        {
+            return new IndexingStageOutput { Status = IndexingStageStatus.Skipped };
+        }
+
+        var contentRecord = await _contentStore.GetAsync(workItem.FullPath, cancellationToken).ConfigureAwait(false);
+        var metadataText = string.Join(
+            ' ',
+            contentRecord is null
+                ? [MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence)]
+                : contentRecord.Metadata.Select(field => $"{field.Name} {field.Value}")
+                    .Append(MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence)));
+        var fingerprintValue = string.Join(
+            "|",
+            workItem.ContentHash ?? workItem.Observation.MetadataFingerprint,
+            workItem.Observation.MetadataFingerprint,
+            contentRecord?.ExtractionFingerprint ?? string.Empty,
+            workItem.ContentIntelligence?.ProcessingFingerprint ?? string.Empty,
+            workItem.MediaEvidence?.ProcessingFingerprint ?? string.Empty,
+            _smartTagClassifier.Name,
+            _smartTagClassifier.Version);
+        var fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(fingerprintValue)))
+            .ToLowerInvariant();
+        var result = await _smartTagClassifier.ClassifyAsync(
+            new SmartTagClassificationRequest
+            {
+                FileId = workItem.FileId,
+                FileName = Path.GetFileName(workItem.FullPath),
+                RelativePath = workItem.RelativePath,
+                ExtractedText = workItem.ExtractedText,
+                OcrText = workItem.OcrText,
+                Transcript = workItem.MediaEvidence?.Transcript,
+                MediaOcrText = workItem.MediaEvidence?.OcrText,
+                MetadataText = metadataText,
+                ContentIntelligence = workItem.ContentIntelligence,
+                InputFingerprint = fingerprint,
+            },
+            cancellationToken).ConfigureAwait(false);
+        return new IndexingStageOutput
+        {
+            Status = IndexingStageStatus.Complete,
+            SmartTagClassification = result,
+            ErrorCode = result.State switch
+            {
+                SmartTagClassificationState.NoEvidence => "smart-tags-no-evidence",
+                SmartTagClassificationState.InsufficientEvidence => "smart-tags-insufficient-evidence",
+                SmartTagClassificationState.ConflictingEvidence => "smart-tags-conflicting-evidence",
+                _ => null,
+            },
         };
     }
 

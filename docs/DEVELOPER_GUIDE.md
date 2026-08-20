@@ -2,7 +2,9 @@
 
 This guide takes a new contributor from clone to a small, safely tested change.
 Use it with the [Repository Structure](REPOSITORY_STRUCTURE.md) and
-[Architecture Overview](ARCHITECTURE_OVERVIEW.md). Read the root
+[Architecture Overview](ARCHITECTURE_OVERVIEW.md). Check
+[Current State](CURRENT-STATE.md) before relying on a version, runtime, schema,
+protocol, or release-status statement. Read the root
 [Engineering Principles](../ENGINEERING_PRINCIPLES.md) before a cross-cutting
 change.
 
@@ -18,7 +20,7 @@ dotnet --info
 
 Windows is the primary Desktop target. macOS Intel and Apple Silicon have
 native package paths for read-only and non-mutating functionality; Linux x64
-remains a source-build preview. The solution targets .NET 8 and the exact SDK
+remains a source-build preview. The solution targets .NET 10 LTS and the exact SDK
 selection is in `global.json`. Linux contributors should also read
 [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md), while release maintainers
 should read [Native Release Packaging](RELEASE_PACKAGING_v2.0.md).
@@ -178,13 +180,17 @@ Application contracts without exposing database details.
 
 Relationship code must never derive an explanation that was not retained as
 evidence. Keep candidate, edge, evidence, member, and expansion bounds intact.
-Manual corrections and source ownership are compatibility data. The v2.0
+Explicit Related/Not Related pair authority always wins; Use automatic result
+removes that authority and requests bounded reanalysis. Clearing generated
+relationship intelligence must preserve explicit pair and authored Smart
+Collection authority. Manual corrections and source ownership are
+compatibility data. The v2.0
 Knowledge Graph is a separate provider-neutral projection and sidecar, not an
-unbounded recursive query added to the schema-3 provider.
+unbounded recursive query added to the current schema-6 relationship provider.
 
-## Trace the Knowledge Graph candidate
+## 8. Trace the current Knowledge Graph
 
-1. The schema-3 projection-source adapter captures only a completed canonical
+1. The schema-6 projection-source adapter captures only a completed canonical
    manifest with a stable ID, row count, hash, revision, legacy-decision
    manifest, and privacy sequence.
 2. `GraphProjectionCoordinator` pages that manifest into durable inbox/jobs,
@@ -207,8 +213,10 @@ unbounded recursive query added to the schema-3 provider.
    caps graph-only targets at 50 and all contextual targets at 100, preserving
    exact/literal and v1.9 direct-relationship priority.
 
-Keep `deep-index.db` at schema 3. Its v1.9 decisions remain authoritative; the
-graph mirror is derived. Do not collapse ingested and applied source, decision,
+Keep `deep-index.db` at schema 6 unless an explicit migration design changes
+it. Schema-6 relationship, pair, Smart Collection, Smart Tag, and privacy
+authority remains upstream; the graph mirror is derived. Do not collapse
+ingested and applied source, decision,
 or privacy watermarks. Do not turn stale or repair-required graph data into a
 successful read. The four independent axes are run control, job execution,
 freshness, and integrity.
@@ -236,7 +244,12 @@ a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md).
    `PhysicalFileSystemGateway`.
 7. Results are verified and persisted after each action. A blocking failure
    triggers reverse-order rollback where safe.
-8. Startup calls `RecoverInterruptedAsync`. Operation History and Undo use the
+8. `ChangePlanReconciliationService` combines verified journal outcomes with
+   current filesystem truth, updates Files/duplicate review/selection state,
+   and requests targeted index refresh when an outcome is ambiguous or mixed.
+   The same reconciliation runs after Undo; it does not assume the plan's
+   intended destination won.
+9. Startup calls `RecoverInterruptedAsync`. Operation History and Undo use the
    same journal facts.
 
 Never add a shortcut from a suggestion service or ViewModel to raw

@@ -160,7 +160,7 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <TextBlock Text="Sorting recipes (zero or more)" FontWeight="SemiBold" />
+                            <TextBlock Text="Organization recipes (zero or more; never auto-applied)" FontWeight="SemiBold" />
                             <ItemsControl ItemsSource="{Binding WorkflowRecipes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>

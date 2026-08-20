@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="PDFtoImage" Version="5.2.1" />
@@ -14,5 +13,8 @@
     <ProjectReference Include="..\OpenSorSe.Executor\OpenSorSe.Executor.csproj" />
     <ProjectReference Include="..\OpenSorSe.Scanner\OpenSorSe.Scanner.csproj" />
     <ProjectReference Include="..\OpenSorSe.Rules\OpenSorSe.Rules.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SmartTags\Resources\smart-tags.en.v1.json" />
   </ItemGroup>
 </Project>

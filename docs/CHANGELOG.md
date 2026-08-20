@@ -7,7 +7,256 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
-## v2.4.0 â€” OmniSorSe Transition & Explorer Foundation
+## Unreleased — OmniSorSe v2.12 Trusted Relationships & Context
+
+Implementation branch: `v2.12-trusted-relationships-context`. This work is not
+a published release and builds directly on the committed v2.11 candidate.
+
+### Added and changed
+
+- Cap independent identity, content, named-context, lexical, tag,
+  structural/temporal, and semantic evidence families; semantic/AI evidence
+  cannot qualify alone.
+- Add reversible Related, Not Related, and Use automatic pair authority plus a
+  bounded correction view.
+- Aggregate multiple typed edges into one direct Related Files/Explorer target
+  without discarding persisted detail.
+- Use bounded indexed candidate buckets, compact batch hydration, and
+  resumable relationship-only version refresh for large libraries.
+- Make direct Related Files independent of the optional Knowledge Graph and add
+  Search/Files entry points.
+- Write `.oms-state` format 2 with authored Smart Collection authority while
+  retaining exact format-1 import.
+
+### Boundaries
+
+- Schema remains 6 and Explorer Protocol remains 1.0.
+- Knowledge Graph remains optional/derived; Smart Collections remain grouping
+  authority.
+- No new AI relationship inference, production dependency, clustering engine,
+  Search-ranker redesign, or file-mutation path is included.
+
+## Unreleased — OmniSorSe v2.11 Supported Runtime & Platform Readiness
+
+Implementation branch: `v2.11-supported-runtime-platform-readiness`. This work
+is not a published release and builds directly on the committed v2.10 candidate.
+
+### Added and changed
+
+- Move every solution project and package path to .NET 10 LTS (`net10.0`) using
+  one SDK/runtime authority.
+- Preserve the existing package set; remove only net8-specific transitive
+  compatibility entries that no longer resolve.
+- Record and validate target framework, RID, bundled runtime, self-contained
+  status, semantic version, configuration, and exact source commit in packages.
+- Add bounded native package-smoke validation to Windows, Ubuntu, and macOS CI
+  and pin critical Actions to immutable commits.
+- Make Created range filters use filesystem-created time consistently with the
+  Created Year facet while keeping media capture evidence distinct.
+- Preserve managed legacy `net8.0` plugin manifests while current manifests
+  advertise `net10.0`.
+
+### Boundaries
+
+- Schema remains 6 and Explorer Protocol remains v1.
+- No Search-ranker, classifier, Smart Tag, recipe, Change Plan, AI, graph,
+  OmniBrille, updater, Linux-package, or production-dependency expansion is
+  included.
+- macOS/Linux mutation support remains conservative; cross-target compilation
+  is not represented as native runtime or interactive evidence.
+
+## Unreleased — OmniSorSe v2.10 Production Hardening & Operational Resilience
+
+Implementation branch: `v2.10-production-hardening-operational-resilience`.
+This work is not a published release and builds directly on the committed v2.9
+release candidate.
+
+### Added and changed
+
+- Enforce one current-user writer per profile and record abnormal shutdowns.
+- Preserve and fail closed on corrupt Change Plan or Operation Journal state.
+- Add bounded schema/store/profile/source/job/storage health inspection.
+- Bound managed PDF extraction and PDFium rasterization inputs and work.
+- Add reviewed logical export/restore for difficult-to-reconstruct user state,
+  including exact-pair manual relationship decisions.
+- Coordinate Forget across schema-6 SQLite and rebuildable compatibility caches.
+- Centralize product version/source provenance and validate packaged metadata.
+- Preserve all unrelated configuration during logging/diagnostic normalization.
+- Harden Ollama prompts against instructions embedded in untrusted file data.
+- Add high-blast-radius corruption, rollback, deletion, parser, profile-lock,
+  configuration, provenance, and backup/restore regression coverage.
+
+### Boundaries
+
+- Schema remains 6 and Explorer Protocol remains v1.
+- No Search, classifier, organization, graph, OmniBrille, cloud, autonomous,
+  mutation-engine, protocol, or production-dependency expansion is included.
+- PdfPig extraction and PDFium rasterization remain in process behind strict
+  bounds; parser-internal allocation and native crash/hang risk are not claimed
+  eliminated and remain manual/native validation gates.
+
+## Unreleased — OmniSorSe v2.9 Reviewed Intelligent Organization
+
+Implementation branch: `v2.9-reviewed-intelligent-organization`. This work is
+not a published release and builds directly on the committed v2.8 release
+candidate.
+
+### Added and changed
+
+- Connect explicit bounded Files, Search, and current Saved View selections to
+  the existing persistent recipe authority using stable indexed file IDs.
+- Add a cancellable ephemeral Organization recipe preview with trusted evidence
+  mappings, literal coverage, Reliable/Needs review/Cannot propose states,
+  fallbacks, privacy warnings, and conflict-first bounded rows.
+- Promote a small modern token picker for original name, accepted/uniquely
+  Strong deterministic Theme and Document Type, explicit filesystem-created and
+  filesystem-modified dates, and coarse file category.
+- Preserve naming and destination as independent patterns and always retain the
+  exact original extension in the reviewed Organization workflow.
+- Budget file and deduplicated directory-creation actions together before Change
+  Plan creation, with a hard 1,000-file and 1,000-total-action limit.
+- Re-resolve stable IDs, evidence, targets, collisions, and bounds before
+  handing the explicit request to the existing Change Plan.
+- Use **Organization recipe** as the user-facing name for the compatible
+  `SortingRecipe` library and add safe built-in examples with honest date
+  semantics.
+
+### Boundaries
+
+- Schema 6, the atomic workflow-library JSON store, Search/facets/Saved Views,
+  Smart Tag authority, Change Plan execution/journal/reconciliation/Undo,
+  Explorer Protocol v1, and OmniBrille remain unchanged.
+- No autonomous/watched-folder recipe execution, cross-root moves, metadata
+  writeback, new AI behavior, cloud service, schema migration, protocol field,
+  mutation engine, or production dependency is included.
+
+## Unreleased — OmniSorSe v2.8 Guided Workflows & Product Coherence
+
+Implementation branch: `v2.8-guided-workflows-product-coherence`. This work is
+not a published release and builds directly on the committed v2.7 release
+candidate.
+
+### Added and changed
+
+- Add a bounded discovery context that opens a Search result in Files by stable
+  file ID and restores query, canonical facets, Saved View, and review mode.
+- Add continuous unresolved Moderate Smart Tag review with bounded evidence,
+  previous/next navigation, and automatic current-membership refresh after an
+  explicit Keep or Dismiss decision.
+- Replace session-only Home status with bounded durable library, readiness,
+  pending-review, Saved View, and optional-capability projections.
+- Add Find, Understand, Review, and Organize entry points into existing product
+  surfaces without adding destinations or bypassing prerequisites.
+- Retire redundant legacy Smart Tag Search selectors; v2.7 facets remain the
+  sole canonical Theme, Document Type, and User Tag filter model.
+- Allow accepted, explicit User Tag, and Strong deterministic classification
+  evidence to inform bounded editable rename suggestions with visible authority.
+- Move ordinary Search maintenance and repair actions behind collapsed advanced
+  disclosure while retaining critical readiness and safety information.
+
+### Boundaries
+
+- Schema 6, deterministic Search ranking/candidate selection, facet SQL, Saved
+  View rules, progressive indexing, Smart Tag taxonomy/authority, Change
+  Plans/Undo, Explorer Protocol v1, and OmniBrille remain unchanged.
+- No cloud service, new production dependency, automatic organization,
+  protocol field, schema migration, classifier redesign, or metadata writeback
+  is included.
+
+## Unreleased — OmniSorSe v2.7 Scalable Faceted Discovery
+
+Implementation branch: `v2.7-scalable-faceted-discovery`. This work is not a
+published release and builds directly on the committed v2.6 release candidate.
+
+### Added and changed
+
+- Select complete-library Search candidate eligibility in SQLite before
+  bounded hydration into the existing filename-first deterministic ranker.
+- Report candidate eligibility, plausible matches, hydration count, and any
+  deliberate bound separately from indexing coverage and displayed results.
+- Add database-backed Theme, Document Type, User Tag, file-type,
+  filesystem-created-year, and filesystem-modified-year facets with contextual
+  counts, OR-within-type, and AND-across-type semantics.
+- Add dynamic local Saved Views that persist canonical query/filter rules and
+  reevaluate current index contents without copying result membership.
+- Add unresolved Moderate Smart Tag discovery using the existing user-authority
+  review actions.
+- Add bounded CSV/TSV native evidence and conservative XLSX/PPTX text evidence
+  without executing formulas, macros, embedded objects, or external resources.
+
+### Boundaries
+
+- Schema 6, Explorer Protocol v1, Smart Tag authority, filename ranking,
+  progressive indexing, Change Plans, and OmniBrille separation remain intact.
+- No entity facet, bulk dashboard, Ollama classifier, embeddings, metadata
+  writeback, automatic organization, cloud service, or new production
+  dependency is included.
+
+## Unreleased — OmniSorSe v2.6 Explainable Smart Tags
+
+Implementation branch: `v2.6-explainable-smart-tags`. This work is not a
+published release and builds on the committed v2.5 release candidate.
+
+### Added and changed
+
+- Add schema-6 normalized Smart Tag definitions, file assignments, user
+  decisions, classification status, indexed canonical filters, transactional
+  schema-5 migration, and conservative legacy authority import.
+- Add small versioned English-first Theme and Document Type taxonomies plus
+  bounded freeform local User Tags.
+- Add deterministic grouped-evidence classification with Strong, Moderate, and
+  Limited bands; no-evidence/conflict states; bounded reasons; and protection
+  against filename dominance and correlated-evidence double counting.
+- Add a durable deferred Smart Tag stage that reuses retained document, OCR,
+  transcript, metadata, and Content Intelligence evidence without delaying
+  v2.5 Fast/searchable-first coverage.
+- Add exact Smart Tag Search evidence and typed canonical filters with OR within
+  one type and AND across types while preserving filename-first ranking.
+- Add Files details actions for accepting/rejecting suggestions, User Tags,
+  decision reset, generated-tag clearing, and View files with this tag.
+- Add bounded native `.txt`, `.md`, `.markdown`, and `.text` extraction.
+
+### Boundaries
+
+- No source metadata writeback, embeddings/vector database, cloud classifier,
+  automatic file mutation, Smart Tags dashboard, OmniBrille modification, or
+  Explorer Protocol v1 change is included.
+
+## Unreleased — OmniSorSe v2.5 Workflow Completion & Indexing Quality
+
+Implementation branch: `v2.5-workflow-indexing-quality`. This work is not a
+published release.
+
+### Added and changed
+
+- Reconcile Files, Search/index refresh inputs, duplicate projections, details,
+  and logical selection from terminal Apply/Undo journal outcomes rather than
+  assuming the reviewed Change Plan fully succeeded.
+- Preserve stable file identity for successful rename/move projection updates;
+  mixed rollback outcomes remain explicit and refresh only affected configured
+  sources.
+- Add persisted **Fast — searchable first** and **Deep initial analysis**
+  scheduling choices while retaining existing capability switches and durable
+  jobs.
+- Distinguish discovery, usable base Search coverage, and continuing deeper
+  analysis in progress presentation.
+- Clarify the Suggest → Review Changes → execute journey and the bounded
+  current-page scope of folder suggestions.
+- Add an optional **Open in OmniBrille** action that discovers a separately
+  installed companion only on demand, authorizes enabled indexed sources, and
+  transfers one independent short-lived Protocol v1 session through the
+  companion's established one-time current-user handoff pipe. Bearer material
+  is not placed on the command line or disk.
+
+### Boundaries
+
+- Explorer Protocol v1 wire contracts/version and schema 5 are unchanged; the
+  companion bootstrap is an additive desktop integration boundary.
+- No server/cloud architecture, autonomous organization, embeddings/vector
+  store, graph renderer, voice, or OmniBrille rendering/Context functionality
+  is included.
+
+## v2.4.0 — OmniSorSe Transition & Explorer Foundation
 
 Release branch: `v2.4-omnisorse-transition`. Published after genuine Windows
 profile/installer transition, external two-process protocol, full automated,

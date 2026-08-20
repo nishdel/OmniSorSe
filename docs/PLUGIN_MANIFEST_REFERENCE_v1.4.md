@@ -18,7 +18,7 @@ unknown properties, excessive nesting, and files over 256 KiB are rejected.
   "licenseIdentifier": "MIT",
   "minimumOpenSorSeVersion": "1.4.0",
   "maximumOpenSorSeVersion": "1.4.99",
-  "runtimeCompatibility": "net8.0",
+  "runtimeCompatibility": "net10.0",
   "entryAssembly": "Example.Plugin.dll",
   "entryType": "Example.Plugin.ExamplePlugin",
   "contributions": [
@@ -51,6 +51,10 @@ unknown properties, excessive nesting, and files over 256 KiB are rejected.
 | `pluginVersion` | Required numeric version |
 | `minimumOpenSorSeVersion`, `maximumOpenSorSeVersion` | Required minimum, optional maximum |
 | `runtimeCompatibility` | Required runtime identifier compatible with the host |
+
+The v2.11 host emits `net10.0`. Managed legacy `net8.0` manifests remain an
+explicit compatibility bridge; native dependencies must still declare and
+match the active runtime identifier.
 | `entryAssembly` | Required normalized relative managed assembly path |
 | `entryType` | Required fully qualified `IOpenSorSePlugin` type |
 | `contributions` | 1–64 unique declarations |

@@ -3,6 +3,7 @@ using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Media;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Configuration;
 
 namespace OpenSorSe.Application.Semantic;
@@ -64,6 +65,18 @@ public enum SearchFilterKind
     SemanticAvailability,
     /// <summary>Filters by retained indexing failure state.</summary>
     FailureState,
+    /// <summary>Filters by an exact canonical Theme Smart Tag identifier.</summary>
+    SmartTagTheme,
+    /// <summary>Filters by an exact canonical Document Type Smart Tag identifier.</summary>
+    SmartTagDocumentType,
+    /// <summary>Filters by an exact canonical User Tag identifier.</summary>
+    SmartTagUser,
+    /// <summary>Filters by an explicit filesystem-created calendar year.</summary>
+    CreatedYear,
+    /// <summary>Filters by an explicit filesystem-modified calendar year.</summary>
+    ModifiedYear,
+    /// <summary>Filters to unresolved Moderate Smart Tag suggestions awaiting user review.</summary>
+    UnresolvedModerateSmartTag,
 }
 
 /// <summary>Describes one visible, removable interpreted Search filter.</summary>
@@ -175,6 +188,12 @@ public enum SearchRankingSignalKind
     ContentEntity,
     /// <summary>A source-grounded bounded content-intelligence summary matched.</summary>
     ContentIntelligenceSummary,
+    /// <summary>An eligible Theme Smart Tag matched.</summary>
+    SmartTagTheme,
+    /// <summary>An eligible Document Type Smart Tag matched.</summary>
+    SmartTagDocumentType,
+    /// <summary>An explicit User Tag matched.</summary>
+    SmartTagUser,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -306,6 +325,9 @@ public sealed record SearchCandidateDocument
     /// <summary>Gets accepted user or system tags.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    /// <summary>Gets typed effective Smart Tags used by exact canonical filters and explanations.</summary>
+    public IReadOnlyList<FileSmartTag> SmartTags { get; init; } = [];
+
     /// <summary>Gets bounded searchable metadata.</summary>
     public string MetadataText { get; init; } = string.Empty;
 
@@ -385,6 +407,12 @@ public sealed record SearchExecutionResult(
     SearchInterpretation Interpretation,
     SearchCoverage Coverage)
 {
+    /// <summary>
+    /// Gets query-candidate coverage independently from indexing-stage coverage. This prevents a
+    /// bounded hydration limit from being presented as complete-library query coverage.
+    /// </summary>
+    public SearchCandidateCoverage CandidateCoverage { get; init; } = SearchCandidateCoverage.Unknown;
+
     /// <summary>Gets the outcome of the optional bounded AI-assistance layer.</summary>
     public AiSearchAssistanceResult AiAssistance { get; init; } = AiSearchAssistanceResult.NotRequested;
 
@@ -393,6 +421,25 @@ public sealed record SearchExecutionResult(
     /// A null value means no graph provider was configured.
     /// </summary>
     public GraphProjectionCoverage? GraphCoverage { get; init; }
+}
+
+/// <summary>Describes complete-library eligibility and bounded ranker hydration for one query.</summary>
+public sealed record SearchCandidateCoverage(
+    long EligibleFileCount,
+    long MatchingFileCount,
+    int HydratedCandidateCount,
+    bool WasTruncated,
+    bool UsedCompleteLibrarySelection)
+{
+    /// <summary>Gets the compatibility value used when a provider cannot report candidate coverage.</summary>
+    public static SearchCandidateCoverage Unknown { get; } = new(0, 0, 0, false, false);
+
+    /// <summary>Gets a truthful display-safe summary.</summary>
+    public string Message => !UsedCompleteLibrarySelection
+        ? "Query candidate coverage is unavailable from the current Search provider."
+        : WasTruncated
+            ? $"All {EligibleFileCount:N0} eligible indexed files were considered; {HydratedCandidateCount:N0} relevance-selected candidates were hydrated for deterministic ranking."
+            : $"All {EligibleFileCount:N0} eligible indexed files were considered and {HydratedCandidateCount:N0} candidates were hydrated for deterministic ranking.";
 }
 
 /// <summary>Identifies the user-visible outcome of optional local-AI Search assistance.</summary>

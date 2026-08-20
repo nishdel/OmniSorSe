@@ -97,6 +97,24 @@ database, duplicate source content, or modify source files. Unsupported newer
 schemas and malformed bounded evidence continue to fail closed under the
 existing recovery policy.
 
+Unreleased v2.6 advances the embedded Search index to schema 6. It adds
+normalized `smart_tag_definitions`, `file_smart_tag_assignments`,
+`file_smart_tag_decisions`, and `file_smart_tag_status` tables keyed by stable
+file identity. Assignments retain canonical tag identity, type, confidence
+band, bounded evidence, origin, classifier/taxonomy versions, input fingerprint,
+state, and timestamps. Decisions remain separate so accepted/rejected user
+authority survives generated-evidence replacement and moves/renames. Indexed
+joins support file-to-tag, tag-to-file, type, and active-state filtering without
+loading the full association graph. Existing schema-5 Content Intelligence and
+relationship features remain their own evidence sources rather than being
+overloaded as tag persistence.
+
+Unreleased v2.7 keeps schema 6. Complete-library candidate eligibility, typed
+filter intersection, and facet counts query these existing normalized tables
+and file/source/date columns. Dynamic Saved Views are bounded versioned
+application JSON rules and do not persist result membership. No schema 7
+migration is required.
+
 ---
 
 # Core Entities

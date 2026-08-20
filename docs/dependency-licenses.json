@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-29",
-  "generatedFrom": "OpenSorSe.sln restored for net8.0",
+  "generatedAt": "2026-08-17",
+  "generatedFrom": "OpenSorSe.sln restored for net10.0",
   "policyDocument": "docs/FOSS_DEPENDENCY_POLICY.md",
   "noticeDocument": "THIRD_PARTY_NOTICES.md",
   "disclaimer": "Engineering inventory; not legal advice.",
@@ -178,22 +178,6 @@
         "Microsoft.NET.Test.Sdk@17.8.0",
         "Microsoft.TestPlatform.ObjectModel@17.8.0",
         "Microsoft.TestPlatform.TestHost@17.8.0"
-      ]
-    },
-    {
-      "name": ".NET compatibility runtime",
-      "purpose": "Transitive .NET Standard compatibility and runtime assets.",
-      "upstream": "https://github.com/dotnet/runtime",
-      "license": "MIT",
-      "licenseEvidence": "NuGet MIT license expressions/files or legacy Microsoft license links resolving to the .NET Foundation MIT license.",
-      "notice": "THIRD_PARTY_NOTICES.md#microsoft-net",
-      "distributionStatus": "transitive-build-assets",
-      "optional": false,
-      "redistribution": "Retain the MIT copyright and permission notice.",
-      "packages": [
-        "System.Memory@4.5.3",
-        "System.IO.Pipelines@8.0.0",
-        "System.Reflection.Metadata@1.6.0"
       ]
     },
     {

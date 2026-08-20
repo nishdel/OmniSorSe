@@ -32,7 +32,7 @@ public sealed class WorkflowLibraryTests : IDisposable
         var initialProfiles = await service.ListProfilesAsync(true, CancellationToken.None);
         var initialRecipes = await service.ListRecipesAsync(true, CancellationToken.None);
         Assert.Equal(5, initialProfiles.Count(profile => profile.IsBuiltIn));
-        Assert.Equal(4, initialRecipes.Count(recipe => recipe.IsBuiltIn));
+        Assert.Equal(5, initialRecipes.Count(recipe => recipe.IsBuiltIn));
         var invoiceRecipe = initialRecipes.Single(
             recipe => recipe.Id == BuiltInWorkflowIds.InvoiceRecipe);
         var invoicePreview = new WorkflowTemplateEngine().Evaluate(
@@ -42,11 +42,10 @@ public sealed class WorkflowLibraryTests : IDisposable
                 Path.Combine(_workspace, "invoice.pdf"),
                 new Dictionary<string, RecipeFieldValue>
                 {
-                    ["date"] = new("2026-07-26T00:00:00Z", "test metadata"),
-                    ["documentType"] = new("Invoice", "test classification"),
+                    ["filesystemModifiedDate"] = new("2026-07-26T00:00:00Z", "test metadata"),
                 }));
         Assert.True(invoicePreview.IsValid);
-        Assert.Contains("UnknownVendor", invoicePreview.ProposedDestinationPath!);
+        Assert.Contains(Path.Combine("Invoices", "2026"), invoicePreview.ProposedDestinationPath!);
 
         var duplicate = await service.DuplicateProfileAsync(
             BuiltInWorkflowIds.GeneralDocuments,

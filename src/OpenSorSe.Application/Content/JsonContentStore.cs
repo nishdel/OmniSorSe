@@ -127,6 +127,40 @@ public sealed class JsonContentStore : IContentStore
     }
 
     /// <inheritdoc />
+    public async Task RemoveAsync(
+        IReadOnlyCollection<string> fullPaths,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(fullPaths);
+        var removed = new HashSet<string>(fullPaths.Select(NormalizePath), PathComparer);
+        if (removed.Count == 0)
+        {
+            return;
+        }
+
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var records = await LoadCoreAsync(cancellationToken).ConfigureAwait(false);
+            var remaining = records.Where(record => !removed.Contains(record.FullPath)).ToArray();
+            foreach (var path in removed)
+            {
+                _diagnosticSessions.Remove(path);
+            }
+
+            if (remaining.Length != records.Count)
+            {
+                await SaveCoreAsync(remaining, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
         using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);

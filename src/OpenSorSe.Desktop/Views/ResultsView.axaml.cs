@@ -71,6 +71,14 @@ public partial class ResultsView : UserControl
         ApplySplitLayout();
     }
 
+    private void OnFilesSelectionChanged(object? sender, SelectionChangedEventArgs eventArgs)
+    {
+        if (_viewModel is not null && sender is ListBox listBox)
+        {
+            _viewModel.SetOrganizationSelection(listBox.SelectedItems?.OfType<ResultsFileRow>() ?? []);
+        }
+    }
+
     private void ApplySplitLayout()
     {
         if (_viewModel?.HasSelectedDetails != true)

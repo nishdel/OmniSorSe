@@ -172,7 +172,7 @@ public sealed class PluginsViewModelTests : IDisposable
             "MIT",
             "1.4.0",
             null,
-            "net8.0",
+            "net10.0",
             "plugin.dll",
             "Example.Plugin",
             [

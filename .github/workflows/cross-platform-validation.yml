@@ -4,15 +4,7 @@ on:
   push:
     branches:
       - main
-      - v1.7-deep-indexing-foundation
-      - v1.8-search-intelligence-privacy
-      - v1.9-relationships-context
-      - v2.0-knowledge-graph-design
-      - v2.0-knowledge-graph
-      - v2.1-search-ai-quality
-      - v2.2-media-intelligence
-      - v2.3-content-intelligence
-      - v2.4-omnisorse-transition
+      - "v*"
   pull_request:
 
 permissions:
@@ -28,17 +20,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
-          - macos-latest
+        include:
+          - os: windows-latest
+            rid: win-x64
+            host: OmniSorSe.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            host: OmniSorSe
+          - os: macos-15-intel
+            rid: osx-x64
+            host: OmniSorSe
+          - os: macos-15
+            rid: osx-arm64
+            host: OmniSorSe
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Use repository .NET SDK
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           global-json-file: global.json
 
@@ -87,3 +90,43 @@ jobs:
 
       - name: Verify documentation and dependency policy
         run: dotnet test tests/OpenSorSe.Core.Tests/OpenSorSe.Core.Tests.csproj --configuration Release --no-build --no-restore --filter FullyQualifiedName~RepositoryDocumentationTests
+
+      - name: Audit direct and transitive NuGet vulnerabilities
+        shell: pwsh
+        run: |
+          dotnet list OpenSorSe.sln package --vulnerable --include-transitive --format json | Set-Content -LiteralPath .artifacts/vulnerability-audit.json
+          $audit = Get-Content -Raw -LiteralPath .artifacts/vulnerability-audit.json | ConvertFrom-Json
+          $vulnerabilities = @($audit.projects.frameworks.topLevelPackages.vulnerabilities) + @($audit.projects.frameworks.transitivePackages.vulnerabilities)
+          if (@($vulnerabilities | Where-Object { $null -ne $_ }).Count -ne 0) {
+            throw 'NuGet vulnerability audit found one or more vulnerable packages.'
+          }
+
+      - name: Restore native runtime graph
+        run: dotnet restore src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj --runtime '${{ matrix.rid }}' --force --no-cache
+
+      - name: Publish and run native package smoke
+        shell: pwsh
+        run: |
+          $publishRoot = [System.IO.Path]::GetFullPath(".artifacts/native-smoke/${{ matrix.rid }}/publish")
+          $dataRoot = [System.IO.Path]::GetFullPath(".artifacts/native-smoke/${{ matrix.rid }}/profile")
+          dotnet publish src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj --configuration Release --runtime '${{ matrix.rid }}' --self-contained true --no-restore --output $publishRoot -p:PublishSingleFile=false
+          if ($LASTEXITCODE -ne 0) { throw 'Native publish failed.' }
+          $hostPath = Join-Path $publishRoot '${{ matrix.host }}'
+          if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) { throw "Native host is missing: $hostPath" }
+          $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $hostPath
+          $startInfo.UseShellExecute = $false
+          $startInfo.ArgumentList.Add('--package-smoke-test')
+          $startInfo.ArgumentList.Add($dataRoot)
+          $process = [System.Diagnostics.Process]::Start($startInfo)
+          if ($null -eq $process) { throw 'Native package smoke did not start.' }
+          try {
+            if (-not $process.WaitForExit(60000)) {
+              if (-not $process.HasExited) { $process.Kill($true) }
+              throw 'Native package smoke did not finish within 60 seconds.'
+            }
+            if ($process.ExitCode -ne 0) { throw "Native package smoke failed with exit code $($process.ExitCode)." }
+          }
+          finally {
+            $process.Dispose()
+          }

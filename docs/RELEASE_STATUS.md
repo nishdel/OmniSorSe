@@ -49,8 +49,17 @@ source history. The
 | v2.2 Media Intelligence | Released as v2.2.0 from `v2.2-media-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,603 tests passed in each configuration with zero failures/skips before integration. Search/media/index/migration/duplicate/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows native-provider evidence includes real Tesseract OCR, ffprobe/ffmpeg media processing, and schema-3-to-4 migration; broad interactive and native Linux/macOS media validation is not claimed. | First-class bounded image/audio/video evidence, EXIF/GPS, OCR, lazy thumbnails, optional ffprobe metadata, optional capped ffmpeg frames, unified Search, conservative media relationships, scan ETA, batch duplicate review, clearer navigation/privacy, and schema 4. |
 | v2.3 Content Intelligence & Local Understanding | Released as v2.3.0 from `v2.3-content-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,637 tests passed in each configuration with zero failures/skips. Search/Content Intelligence/transcription/media/index/migration/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows-native evidence includes official whisper.cpp 1.9.2 audio/video transcription, Transcript-to-Search, cancellation, ffprobe/ffmpeg, and a genuine schema-4-to-5 migration; native Tesseract was not repeated and broad interactive/native Linux/macOS validation is not claimed. | Bounded deterministic topics/textual entities/extractive summaries with provenance, schema 5, grounded Search and cross-media Related Files signals, generic-topic suppression, and an optional user-managed whisper.cpp CLI/model process adapter. No bundled model/runtime or visual-description provider. |
 | v2.4 OmniSorSe Transition & Explorer Foundation | Released as v2.4.0 from `v2.4-omnisorse-transition` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,671 tests passed in each configuration with zero failures/skips. Genuine Windows published-v2.3 profile reuse and installer transition, external two-process protocol lifecycle/security, four-runtime compile, exact-main, and native packaging gates passed. Broad interactive accessibility and native Linux/macOS protocol execution are not claimed. | Active OmniSorSe branding with compatibility-in-place legacy profiles/schema 5 and a dormant authenticated/source-scoped/bounded/read-only Explorer Protocol v1 for the future optional OmniExplorer. |
+| v2.11 Supported Runtime & Platform Readiness | Implementation candidate on `v2.11-supported-runtime-platform-readiness`; not merged, tagged, packaged as a release, or published | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
+| v2.12 Trusted Relationships & Context | Implementation candidate on `v2.12-trusted-relationships-context`; not merged, tagged, packaged as a release, or published | Forced no-cache restore; zero-warning Debug/Release builds; 1,856 tests passed in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, formatting, policy, vulnerability, and diff gates passed. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
 
 ## Current product boundary
+
+The current implementation candidate is v2.12 on top of the linear v2.5-v2.11
+release-candidate stack. It targets .NET 10 LTS and strengthens the existing
+relationship authority without changing schema, protocol, AI, or mutation
+authority. v2.4.0 remains the
+latest published release until explicit integration, tag, package, and release
+work occurs.
 
 OmniSorSe v2.4.0 is the current release, based on the safe, local-first
 OpenSorSe v2.3.0 release. It continues understanding,
@@ -182,6 +191,104 @@ filesystem, display scaling, or accessibility technology. See the
 [transition/protocol guide](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md),
 and [manual checklist](MANUAL_TESTING_v2.4.md). OpenSorSe v2.3.0 and earlier
 documents, tags, releases, and validation records remain historical evidence.
+
+## Current development
+
+OmniSorSe v2.10 **Production Hardening & Operational Resilience** is implemented
+on `v2.10-production-hardening-operational-resilience` from the committed v2.9
+release candidate. It is not released, merged, tagged, packaged, or published.
+It adds single-writer profile ownership, fail-closed mutation/recovery stores,
+bounded hostile-PDF handling, reviewed logical state export/restore, complete
+Forget coordination, bounded health/lifecycle checks, and exact build
+provenance. Schema remains 6, Explorer Protocol remains v1, OmniBrille is not
+modified, and no production dependency or new product capability is added.
+Automated results are recorded only after definitive validation; every item in
+the [master manual checklist](MANUAL_TESTING_v2.10.md) remains unchecked. See
+[v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md) and the
+[operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md).
+
+Definitive Windows-host automated validation passed a forced no-cache restore,
+non-incremental Debug and Release builds with zero warnings/errors, and 1,829
+tests in each configuration with zero failures/skips. Focused Release reruns
+passed profile/configuration/policy (34), mutation/recovery (66), parser/prompt/
+health/Explorer/workflow (144), SQLite backup/indexing/performance (92),
+discovery/Smart Tag/workflow (165), desktop accessibility/navigation (111),
+SQLite Smart Tag authority (7), migration/recovery/Forget (31), and performance
+(24). Formatting/style/analyzers, the direct/transitive vulnerability audit,
+release-script syntax, and diff validation passed. Release compilation passed
+for `win-x64`, `linux-x64`, `osx-x64`, and `osx-arm64`, with injected 2.10.0
+version/source metadata verified on the Windows artifact. This does not claim
+native Linux/macOS runtime or interactive desktop validation.
+
+OmniSorSe v2.9 **Reviewed Intelligent Organization** is implemented on
+`v2.9-reviewed-intelligent-organization` from the committed v2.8 release
+candidate. It is not released, merged, tagged, packaged, or published. Existing
+persistent recipes now preview an explicit bounded stable-ID selection from
+Files, Search, or current Saved View results with trusted evidence, action
+budgeting, collision/privacy/readiness explanations, and fresh validation before
+the existing Change Plan boundary. Schema remains 6, Explorer Protocol remains
+v1, and no production dependency or autonomous mutation is added. Interactive
+desktop, screen-reader, DPI, permissions/filesystem, partial-failure, and native
+platform execution remain manual release gates.
+
+Definitive Windows-host automated validation passed a forced restore,
+non-incremental Debug and Release builds with zero warnings/errors, and 1,795
+tests in each configuration with zero failures/skips. Focused Release reruns
+passed reviewed organization/workflow/Change Plan (72), Search/facet/Saved
+View/Smart Tag/index/content/media (404), Explorer/companion (48),
+migration/recovery/reconciliation/Undo (89), accessibility/layout (21),
+performance (24), and documentation/dependency policy (8). Formatting/style/
+analyzers, vulnerability audit, `git diff --check`, and `git fsck --full`
+passed. Release compilation passed for `win-x64`, `linux-x64`, `osx-x64`, and
+`osx-arm64`; this does not claim native Linux/macOS runtime validation. See
+[v2.9 Reviewed Intelligent Organization](REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
+and the [manual checklist](MANUAL_TESTING_v2.9.md).
+
+OmniSorSe v2.8 **Guided Workflows & Product Coherence** is implemented on
+`v2.8-guided-workflows-product-coherence` from the committed v2.7 release
+candidate. It is not released, merged, tagged, packaged, or published. It
+connects Search, Files, Smart Tag review, durable Home readiness, Saved Views,
+and reviewed organization through stable-identity navigation while preserving
+schema 6, Search/facet semantics, Smart Tag authority, progressive indexing,
+Explorer Protocol v1, and OmniBrille separation. Interactive desktop,
+screen-reader, DPI, optional-tool, and native-platform execution remain manual
+release gates. See [v2.8 Guided Workflows](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
+and the [manual checklist](MANUAL_TESTING_v2.8.md).
+
+OmniSorSe v2.7 **Scalable Faceted Discovery** is implemented and locally
+validated on
+`v2.7-scalable-faceted-discovery` from the committed v2.6 release candidate. It
+is not released, merged, tagged, packaged, or published. Complete-library
+SQLite candidate selection precedes bounded hydration into the unchanged
+deterministic ranker. Canonical facets/counts and dynamic Saved Views share one
+query model; schema 6 and Explorer Protocol v1 remain unchanged. Debug and
+Release each pass 1,753 tests with zero failures/skips, and all four supported
+RID-specific Release compilations pass. Interactive desktop, DPI, screen-reader,
+and native Linux/macOS execution remain manual release gates. See
+[v2.7 Scalable Faceted Discovery](SCALABLE_FACETED_DISCOVERY_v2.7.md) and the
+[manual checklist](MANUAL_TESTING_v2.7.md).
+
+OmniSorSe v2.6 **Explainable Smart Tags** is a committed release candidate on
+`v2.6-explainable-smart-tags` from the committed v2.5 release candidate. It is
+not released, merged, tagged, packaged, or published. Schema 6 becomes the
+durable authority for versioned Theme/Document Type definitions, generated
+assignments, explicit User Tags, and accept/reject decisions. Classification
+reuses bounded local evidence and runs as a deferred stage so v2.5 base-first
+Search remains usable first. Explorer Protocol remains v1 and OmniBrille is not
+modified. See [v2.6 Explainable Smart Tags](EXPLAINABLE_SMART_TAGS_v2.6.md) and
+[manual checklist](MANUAL_TESTING_v2.6.md).
+
+OmniSorSe v2.5 **Workflow Completion & Indexing Quality** is implemented on
+`v2.5-workflow-indexing-quality` for review and is not released. Its scope is
+post-Change-Plan/Undo Files and indexing reconciliation, progressive
+base-search-first scheduling, truthful indexing phases, and small organization
+clarity improvements. It also includes an optional lazy, scoped desktop handoff
+to the separately installed OmniBrille companion. Explorer Protocol v1's wire
+contract/version, schema 5, release tags, packages, and the published v2.4.0
+state are unchanged. See the
+[v2.5 implementation record](WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) and
+[manual checklist](MANUAL_TESTING_v2.5.md), plus the
+[companion handoff contract](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md).
 
 ## Release identity
 

@@ -16,6 +16,7 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
     public const string LegacyXdgStorageName = "opensorse";
 
     private readonly IPathSemantics _pathSemantics;
+    private readonly HostPlatformKind _platform;
 
     /// <summary>Creates paths for the current process environment.</summary>
     public ApplicationPathProvider()
@@ -39,6 +40,7 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
         string? localApplicationDataPath = null)
     {
         ArgumentNullException.ThrowIfNull(environmentVariableReader);
+        _platform = platform;
         _pathSemantics = PlatformServices.CreatePathSemantics(platform);
         var userProfile = RequireAbsolute(userProfilePath, nameof(userProfilePath));
 
@@ -73,6 +75,12 @@ public sealed class ApplicationPathProvider : IApplicationPathProvider
         foreach (var directory in directories.Distinct(_pathSemantics.Comparer))
         {
             Directory.CreateDirectory(directory);
+            if (_platform is HostPlatformKind.Linux or HostPlatformKind.MacOS && !OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(
+                    directory,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
         }
     }
 

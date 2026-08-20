@@ -186,7 +186,17 @@ public sealed record AiConnectionResult(
 /// <summary>Describes safe metadata for one explicit file-rename request.</summary>
 public sealed record AiFileRenameRequest(
     ResultFile File,
-    IReadOnlyList<string> SiblingFileNames);
+    IReadOnlyList<string> SiblingFileNames)
+{
+    /// <summary>Gets bounded user-authoritative or Strong deterministic evidence supplied for this explicit request.</summary>
+    public IReadOnlyList<AiOrganizationEvidence> GroundedEvidence { get; init; } = [];
+}
+
+/// <summary>Contains one bounded classification fact permitted to inform a reviewed organization proposal.</summary>
+public sealed record AiOrganizationEvidence(
+    string Type,
+    string DisplayName,
+    string Authority);
 
 /// <summary>Describes a bounded in-memory collection supplied to a folder-structure workflow.</summary>
 public sealed record AiFolderStructureRequest(

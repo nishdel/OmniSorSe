@@ -54,6 +54,7 @@ public sealed class SettingsDraft : ViewModelBase
     private int _maximumSemanticResults = 200;
     private bool _deepIndexingEnabled = true;
     private IndexingLevel _defaultIndexingLevel = IndexingLevel.Basic;
+    private InitialScanDepth _initialScanDepth = InitialScanDepth.BaseFirst;
     private IndexingResourceMode _indexingResourceMode = IndexingResourceMode.Balanced;
     private int _maximumIndexSizeMiB = 1024;
     private int _maximumExtractedTextCharacters = 131_072;
@@ -116,12 +117,20 @@ public sealed class SettingsDraft : ViewModelBase
     private int _maximumContentKeywords = 32;
     private int _maximumContentSummaryCharacters = 512;
     private int _maximumContentEvidenceExcerptCharacters = 160;
+    private string? _omniBrilleExecutablePath;
 
     /// <summary>Gets or sets whether specialist and troubleshooting interface features are shown.</summary>
     public bool ShowAdvancedFeatures
     {
         get => _showAdvancedFeatures;
         set => SetProperty(ref _showAdvancedFeatures, value);
+    }
+
+    /// <summary>Gets or sets an optional absolute path to the separately installed OmniBrille executable.</summary>
+    public string? OmniBrilleExecutablePath
+    {
+        get => _omniBrilleExecutablePath;
+        set => SetProperty(ref _omniBrilleExecutablePath, value);
     }
 
     /// <summary>Gets or sets whether media-specific local indexing may run.</summary>
@@ -549,6 +558,13 @@ public sealed class SettingsDraft : ViewModelBase
         set => SetProperty(ref _defaultIndexingLevel, value);
     }
 
+    /// <summary>Gets or sets the scheduling policy for initial durable indexing.</summary>
+    public InitialScanDepth InitialScanDepth
+    {
+        get => _initialScanDepth;
+        set => SetProperty(ref _initialScanDepth, value);
+    }
+
     /// <summary>Gets or sets the background resource mode.</summary>
     public IndexingResourceMode IndexingResourceMode
     {
@@ -802,6 +818,7 @@ public sealed class SettingsDraft : ViewModelBase
             MaximumSemanticResults = settings.SemanticSearch.MaximumResultCount,
             DeepIndexingEnabled = settings.DeepIndexing.Enabled,
             DefaultIndexingLevel = settings.DeepIndexing.DefaultLevel,
+            InitialScanDepth = settings.DeepIndexing.InitialScanDepth,
             IndexingResourceMode = settings.DeepIndexing.ResourceMode,
             MaximumIndexSizeMiB = settings.DeepIndexing.MaximumIndexSizeMiB,
             MaximumExtractedTextCharacters = settings.DeepIndexing.MaximumExtractedTextCharacters,
@@ -864,6 +881,7 @@ public sealed class SettingsDraft : ViewModelBase
             MaximumContentKeywords = settings.ContentIntelligence.MaximumKeywords,
             MaximumContentSummaryCharacters = settings.ContentIntelligence.MaximumSummaryCharacters,
             MaximumContentEvidenceExcerptCharacters = settings.ContentIntelligence.MaximumEvidenceExcerptCharacters,
+            OmniBrilleExecutablePath = settings.ExplorerCompanion.ExecutablePath,
         };
     }
 
@@ -991,6 +1009,7 @@ public sealed class SettingsDraft : ViewModelBase
             {
                 Enabled = DeepIndexingEnabled,
                 DefaultLevel = DefaultIndexingLevel,
+                InitialScanDepth = InitialScanDepth,
                 ResourceMode = IndexingResourceMode,
                 MaximumIndexSizeMiB = MaximumIndexSizeMiB,
                 MaximumExtractedTextCharacters = MaximumExtractedTextCharacters,
@@ -1021,6 +1040,12 @@ public sealed class SettingsDraft : ViewModelBase
                 MaximumRelationshipCandidates = MaximumRelationshipCandidates,
                 MaximumRelationshipsPerFile = MaximumRelationshipsPerFile,
                 MaximumSmartCollectionMembers = MaximumSmartCollectionMembers,
+            },
+            ExplorerCompanion = new ExplorerCompanionSettings
+            {
+                ExecutablePath = string.IsNullOrWhiteSpace(OmniBrilleExecutablePath)
+                    ? null
+                    : OmniBrilleExecutablePath.Trim(),
             },
         };
     }

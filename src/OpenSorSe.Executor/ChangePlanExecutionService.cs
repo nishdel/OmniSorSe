@@ -19,6 +19,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
     private readonly IChangePlanStore _planStore;
     private readonly IOperationJournalStore _journal;
     private readonly ILogger _logger;
+    private readonly IRecoverySafetyState _recoverySafety;
 
     public ChangePlanExecutionService(
         IFileSystemGateway fileSystem,
@@ -26,13 +27,26 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         IChangePlanStore planStore,
         IOperationJournalStore journal,
         ILoggingService loggingService)
+        : this(fileSystem, validator, planStore, journal, loggingService, RecoverySafetyState.Unmanaged)
+    {
+    }
+
+    /// <summary>Initializes execution with explicit process-wide recovery safety state.</summary>
+    public ChangePlanExecutionService(
+        IFileSystemGateway fileSystem,
+        IChangePlanValidator validator,
+        IChangePlanStore planStore,
+        IOperationJournalStore journal,
+        ILoggingService loggingService,
+        IRecoverySafetyState recoverySafety)
         : this(
             fileSystem,
             validator,
             planStore,
             journal,
             (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
-            .CreateLogger(nameof(ChangePlanExecutionService)))
+            .CreateLogger(nameof(ChangePlanExecutionService)),
+            recoverySafety)
     {
     }
 
@@ -42,7 +56,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         IChangePlanValidator validator,
         IChangePlanStore planStore,
         IOperationJournalStore journal)
-        : this(fileSystem, validator, planStore, journal, NullLogger.Instance)
+        : this(fileSystem, validator, planStore, journal, NullLogger.Instance, RecoverySafetyState.Unmanaged)
     {
     }
 
@@ -51,13 +65,15 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         IChangePlanValidator validator,
         IChangePlanStore planStore,
         IOperationJournalStore journal,
-        ILogger logger)
+        ILogger logger,
+        IRecoverySafetyState recoverySafety)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _planStore = planStore ?? throw new ArgumentNullException(nameof(planStore));
         _journal = journal ?? throw new ArgumentNullException(nameof(journal));
         _logger = logger;
+        _recoverySafety = recoverySafety ?? throw new ArgumentNullException(nameof(recoverySafety));
     }
 
     /// <inheritdoc />
@@ -67,6 +83,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         IProgress<ChangeExecutionProgress>? progress,
         CancellationToken cancellationToken)
     {
+        EnsureMutationAllowed();
         ArgumentNullException.ThrowIfNull(plan);
         if (string.IsNullOrWhiteSpace(initiatingFeature))
         {
@@ -324,6 +341,7 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         IProgress<ChangeExecutionProgress>? progress,
         CancellationToken cancellationToken)
     {
+        EnsureMutationAllowed();
         if (string.IsNullOrWhiteSpace(operationId))
         {
             throw new ArgumentException("An operation identity is required.", nameof(operationId));
@@ -509,6 +527,15 @@ public sealed class ChangePlanExecutionService : IChangePlanExecutionService
         }
 
         return Array.AsReadOnly(recovered.ToArray());
+    }
+
+    private void EnsureMutationAllowed()
+    {
+        if (_recoverySafety.IsMutationBlocked)
+        {
+            throw new InvalidOperationException(
+                _recoverySafety.Message ?? "File changes are blocked until authoritative recovery state is repaired.");
+        }
     }
 
     private async Task<OperationJournalAction> ExecuteOneAsync(

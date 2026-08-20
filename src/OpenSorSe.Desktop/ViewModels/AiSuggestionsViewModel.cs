@@ -23,6 +23,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<string> _existingFolderNames = Array.Empty<string>();
     private IReadOnlyList<string> _siblingFileNames = Array.Empty<string>();
     private IReadOnlyList<ResultFile> _pageFiles = Array.Empty<ResultFile>();
+    private IReadOnlyList<AiOrganizationEvidence> _organizationEvidence = Array.Empty<AiOrganizationEvidence>();
     private ResultFile? _selectedFile;
     private string? _sourceScanId;
     private WorkflowConfigurationSnapshot? _workflow;
@@ -105,11 +106,19 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     {
         0 => "No files from the current results page are available for a folder request.",
         > AiPromptLimits.MaximumFolderStructureFiles =>
-            $"{_pageFiles.Count} files are in the current results-page selection. The safe request limit is " +
-            $"{AiPromptLimits.MaximumFolderStructureFiles}; none will be sent until the selection is reduced.",
+            $"{_pageFiles.Count} files are on the current bounded results page. This is not the entire indexed library. " +
+            $"The safe request limit is {AiPromptLimits.MaximumFolderStructureFiles}; none will be sent until the page is reduced.",
         _ =>
-            $"{_pageFiles.Count} of {_pageFiles.Count} files will be sent using opaque IDs and must be assigned exactly once.",
+            $"This folder proposal covers only the {_pageFiles.Count} files on the current bounded results page, not the entire indexed library. " +
+            "Opaque IDs are used and every included file must be assigned exactly once.",
     };
+
+    /// <summary>Gets the bounded accepted/Strong evidence allowed to inform the selected-file proposal.</summary>
+    public string OrganizationEvidenceText => _organizationEvidence.Count == 0
+        ? "No accepted or Strong Smart Tag evidence is available for this proposal."
+        : "Suggestion may use: " + string.Join(
+            "; ",
+            _organizationEvidence.Select(item => $"{item.Type}: {item.DisplayName} — {item.Authority}"));
 
     /// <summary>Provides a concise review-before-send summary for the currently available AI tasks.</summary>
     public string AiRequestContextText
@@ -447,7 +456,11 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand RetryConnectionCommand { get; }
 
     /// <summary>Replaces in-memory review context without reading file content or retaining paths for provider requests.</summary>
-    public void SetContext(ResultFile? selectedFile, ResultsSnapshot? snapshot, IReadOnlyList<ResultFile>? pageFiles)
+    public void SetContext(
+        ResultFile? selectedFile,
+        ResultsSnapshot? snapshot,
+        IReadOnlyList<ResultFile>? pageFiles,
+        IReadOnlyList<AiOrganizationEvidence>? organizationEvidence = null)
     {
         if (IsBusy)
         {
@@ -460,11 +473,15 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         var eligibleSelectedFile = IsWorkflowFileAllowed(selectedFile) ? selectedFile : null;
         var fileChanged = !string.Equals(_selectedFile?.Id, eligibleSelectedFile?.Id, StringComparison.Ordinal);
         _selectedFile = eligibleSelectedFile;
+        _organizationEvidence = eligibleSelectedFile is null
+            ? Array.Empty<AiOrganizationEvidence>()
+            : Array.AsReadOnly((organizationEvidence ?? []).Take(4).ToArray());
         _pageFiles = pageFiles is null
             ? Array.Empty<ResultFile>()
             : Array.AsReadOnly(pageFiles.Where(IsWorkflowFileAllowed).ToArray());
         OnPropertyChanged(nameof(FolderStructureContextText));
         OnPropertyChanged(nameof(AiRequestContextText));
+        OnPropertyChanged(nameof(OrganizationEvidenceText));
         _existingFolderNames = snapshot is null
             ? Array.Empty<string>()
             : Array.AsReadOnly(snapshot.Directories
@@ -564,7 +581,10 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         try
         {
             var result = await _aiSuggestionService.GenerateFileRenameAsync(
-                new AiFileRenameRequest(_selectedFile, _siblingFileNames),
+                new AiFileRenameRequest(_selectedFile, _siblingFileNames)
+                {
+                    GroundedEvidence = _organizationEvidence,
+                },
                 _configurationService.Current.Ai,
                 progress,
                 cancellation.Token);

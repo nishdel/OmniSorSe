@@ -7,7 +7,7 @@
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
             <StackPanel Spacing="3">
-                <TextBlock Classes="page-title" Text="Collections" />
+                <TextBlock Classes="page-title" Text="Related Files &amp; Collections" />
                 <TextBlock Classes="page-subtitle"
                            Text="Virtual groups built from retained evidence. Collections never move or change original files."
                            TextWrapping="Wrap" />
@@ -196,8 +196,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- Compatibility bindings remain in CollectionsViewModel, but Related Files has one visible home in primary navigation. -->
-            <TabItem Header="Related Files" IsVisible="False">
+            <TabItem Header="Related Files">
                 <ScrollViewer Margin="0,10,0,0">
                     <StackPanel Spacing="12">
                         <Border Classes="card">
@@ -236,6 +235,7 @@
                                             Command="{Binding RefreshRelatedFilesCommand}" />
                                 </Grid>
                                 <ListBox ItemsSource="{Binding RelatedFiles}"
+                                         SelectedItem="{Binding SelectedRelatedFile, Mode=TwoWay}"
                                          AutomationProperties.Name="Related files with evidence">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate x:DataType="rel:RelatedFile">
@@ -244,11 +244,59 @@
                                                 <TextBlock Text="{Binding Relationship.Type, StringFormat='Relationship: {0}'}" />
                                                 <TextBlock Text="{Binding Relationship.Explanation, StringFormat='Evidence: {0}'}" TextWrapping="Wrap" />
                                                 <TextBlock Text="{Binding Relationship.Confidence, StringFormat='Confidence: {0}'}" />
+                                                <TextBlock Text="{Binding EvidenceClassification, StringFormat='Evidence classes: {0}'}" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding AuthorityState}" />
                                                 <TextBlock Text="{Binding Relationship.Algorithm, StringFormat='Origin: {0}'}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,0"
+                                            Classes="secondary"
+                                            Content="Related"
+                                            Command="{Binding MarkRelatedCommand}"
+                                            AutomationProperties.Name="Mark selected files as related"
+                                            AutomationProperties.HelpText="Stores reversible user authority for this exact pair without changing either file." />
+                                    <Button Margin="0,0,8,0"
+                                            Classes="secondary"
+                                            Content="Not Related"
+                                            Command="{Binding MarkNotRelatedCommand}"
+                                            AutomationProperties.Name="Mark selected files as not related"
+                                            AutomationProperties.HelpText="Hides automatic relationships for this exact pair until the correction is reset." />
+                                    <Button Classes="secondary"
+                                            Content="Use automatic result"
+                                            Command="{Binding UseAutomaticCommand}"
+                                            AutomationProperties.Name="Clear selected relationship correction" />
+                                </WrapPanel>
+
+                                <Border Classes="card">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Corrections for this file" FontWeight="SemiBold" />
+                                        <TextBlock Text="Includes Not Related corrections even when the pair is hidden from Related Files."
+                                                   Classes="page-subtitle"
+                                                   TextWrapping="Wrap" />
+                                        <ListBox ItemsSource="{Binding Corrections}"
+                                                 SelectedItem="{Binding SelectedCorrection, Mode=TwoWay}"
+                                                 MaxHeight="180"
+                                                 AutomationProperties.Name="Relationship corrections for selected file">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="rel:RelationshipPairCorrection">
+                                                    <StackPanel Margin="4" Spacing="2">
+                                                        <TextBlock Text="{Binding OtherFileName}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding Decision, StringFormat='Decision: {0}'}" />
+                                                        <TextBlock Text="{Binding Type, StringFormat='Relationship: {0}'}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        <Button Classes="secondary"
+                                                HorizontalAlignment="Left"
+                                                Content="Use automatic result"
+                                                Command="{Binding UseAutomaticCorrectionCommand}"
+                                                AutomationProperties.Name="Clear selected hidden or visible correction" />
+                                    </StackPanel>
+                                </Border>
                                 <WrapPanel>
                                     <Button Margin="0,0,8,0"
                                             Classes="secondary"
