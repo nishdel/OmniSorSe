@@ -29,10 +29,10 @@ For concise dates, test totals, and links to historical evidence, see
 
 ## Completed
 
-`main` contains the released implementation lineage through v2.4.0. Local
-`main` also contains the unreleased v2.5-v2.12 candidate lineage after the
-2026-08-20 source integration; those milestones remain in progress because
-remote publication and applicable manual/package/release gates remain open.
+`main` contains the released implementation lineage through v2.4.0. GitHub
+`main` also contains the unreleased v2.5-v2.12 candidate lineage after
+the 2026-08-20 source integration and publication. Those milestones remain in
+progress because applicable manual/package/release gates remain open.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -428,8 +428,8 @@ See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 
 **Branch:** `v2.5-workflow-indexing-quality`, created from released v2.4.0.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20; remains an
-unreleased candidate awaiting remote publication and applicable maintainer
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20; remains an unreleased candidate awaiting applicable maintainer
 release sign-off. It does not alter Explorer Protocol v1.
 
 v2.5 completes existing workflows rather than introducing another subsystem.
@@ -454,8 +454,8 @@ and [v2.5 manual testing](docs/MANUAL_TESTING_v2.5.md).
 release candidate because v2.5 had not yet been merged when this branch was
 created.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20; remains an
-unreleased candidate awaiting remote publication and applicable maintainer
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20; remains an unreleased candidate awaiting applicable maintainer
 release sign-off. It does not alter Explorer Protocol v1.
 
 v2.6 consolidates generated classifications, existing user tags, and explicit
@@ -480,10 +480,10 @@ See [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) and the
 **Branch:** `v2.7-scalable-faceted-discovery`, created directly from the
 committed v2.6 release candidate.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20 after local
-automated validation; it remains an unreleased candidate awaiting remote
-publication and applicable manual release sign-off. It does not bump schema 6
-or alter Explorer Protocol v1.
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20 after local automated validation; it remains an unreleased candidate
+awaiting applicable manual release sign-off. It does not bump schema 6 or alter
+Explorer Protocol v1.
 
 v2.7 makes existing intelligence usable at ordinary-library scale. SQLite
 selects plausible candidates across the complete authorized index before a
@@ -506,8 +506,8 @@ and [v2.7 manual testing](docs/MANUAL_TESTING_v2.7.md).
 **Branch:** `v2.8-guided-workflows-product-coherence`, created directly from
 the committed v2.7 release candidate.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20; remains an
-unreleased candidate awaiting remote publication and applicable maintainer
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20; remains an unreleased candidate awaiting applicable maintainer
 release sign-off. The integration preserves the v2.5–v2.7 candidate chain.
 
 v2.8 is a consolidation release. A small explicit discovery context connects
@@ -535,8 +535,8 @@ and [v2.8 manual testing](docs/MANUAL_TESTING_v2.8.md).
 **Branch:** `v2.9-reviewed-intelligent-organization`, created directly from
 the committed v2.8 release candidate.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20; remains an
-unreleased candidate awaiting remote publication and applicable maintainer
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20; remains an unreleased candidate awaiting applicable maintainer
 release sign-off. The integration preserves the v2.5–v2.8 candidate chain.
 
 v2.9 consolidates existing organization infrastructure. Files, Search, and a
@@ -565,8 +565,8 @@ and [v2.9 manual testing](docs/MANUAL_TESTING_v2.9.md).
 **Branch:** `v2.10-production-hardening-operational-resilience`, created
 directly from the committed v2.9 release candidate.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20; remains an
-unreleased candidate awaiting remote publication and applicable maintainer
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20; remains an unreleased candidate awaiting applicable maintainer
 release sign-off. The integration preserves the v2.5–v2.9 candidate chain.
 
 v2.10 adds one-writer profile ownership, fail-closed mutation/recovery stores,
@@ -583,8 +583,8 @@ See [v2.10 Production Hardening](docs/PRODUCTION_HARDENING_v2.10.md) and the
 **Branch:** `v2.11-supported-runtime-platform-readiness`, created directly from
 the committed v2.10 release candidate.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20; remains an
-unreleased candidate awaiting remote publication and the still-open native,
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20; remains an unreleased candidate awaiting the still-open native,
 manual, package, signing, notarization, and release gates.
 
 v2.11 moves all projects and package paths to .NET 10 LTS, strengthens
@@ -601,9 +601,10 @@ and the [v2.11 manual addendum](docs/MANUAL_TESTING_v2.11.md).
 **Branch:** `v2.12-trusted-relationships-context`, created directly from the
 committed v2.11 release candidate.
 
-**Merged status:** Source integrated into local `main` on 2026-08-20 after the
-recorded automated gates; remains an unreleased candidate awaiting remote
-publication and the still-open manual, native, package, and release gates.
+**Merged status:** Source integrated into and published from GitHub `main` on
+2026-08-20 after the recorded automated gates; remains an unreleased candidate
+awaiting resolution of the exact-main hosted macOS failures and the
+still-open manual, native, package, and release gates.
 
 v2.12 extends the existing schema-6 relationship authority rather than adding
 a second graph or clustering system. Independent capped evidence families,

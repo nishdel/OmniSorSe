@@ -12,10 +12,10 @@ complete. It is not the product roadmap or the concise version history.
   planned, research, and backlog work.
 - Use [Changelog](CHANGELOG.md) for detailed user-visible changes.
 
-Repository history places the released lineage through v2.4.0 in `main`. Local
-`main` now also contains the linear v2.5-v2.12 candidate history and the
+Repository history places the released lineage through v2.4.0 in `main`.
+GitHub `main` now also contains the linear v2.5-v2.12 candidate history and the
 validated engineering system through an explicit history-preserving source
-integration. Source integration does not create a release: v2.4.0 remains the
+integration. Source publication does not create a release: v2.4.0 remains the
 latest tag, package, and GitHub Release, and all still-open manual, native,
 installer, signing, and notarization gates remain open.
 
@@ -27,15 +27,30 @@ On 2026-08-20 local `main` advanced from the released v2.4.0 integration commit
 contains the complete linear v2.5-v2.12 candidate stack plus the accepted
 engineering-infrastructure patch.
 
-At the time of this record, `origin/main` still resolves to `40552b9`; the
-normal push has not yet been performed, remote ref equality has not been
-observed, and a disposable fresh clone has not been verified. The later named
-branches are absent from GitHub because their refs were never pushed. Their
-commits will be cloneable from `main` once the intended remote update succeeds;
-publishing each historical branch name is not required for that source
-availability. See the retained
+An atomic normal push advanced `origin/main` from `40552b9` to
+`cc6c331c984a6298f74fbc8ed7fb8e0681974ff2` without force or history rewrite.
+The remote default HEAD is `main` at that exact commit, and local/remote equality
+was verified for `main` and every v2.5-v2.12 branch ref. Those later branches had
+been absent because their refs were never pushed; the normal publication created
+each at its exact local tip without deleting any branch or tag.
+
+A disposable clone from `https://github.com/nishdel/OmniSorSe.git` checked out a
+clean `main` at `cc6c331`, contained `AGENTS.md` and `docs/CURRENT-STATE.md`,
+passed a no-cache restore and zero-warning/zero-error Release build, and passed
+the full Release suite independently: 1,861 passed, zero failed, zero not
+executed. See the retained
 [source-publication report](engineering/reports/2026-08-20-source-publication.md)
-for the exact evidence and remaining gate.
+for the exact evidence boundary.
+
+Hosted validation of the published commit is not fully green. In
+[Actions run 32360140293](https://github.com/nishdel/OmniSorSe/actions/runs/32360140293),
+Ubuntu completed successfully, while both `macos-15` ARM and `macos-15-intel`
+failed the same three Application Debug tests: reviewed-organization
+execute/Undo, separate-process Explorer companion start, and the single-use
+named-pipe test whose Unix-domain socket path exceeded the 104-character host
+limit. The Intel job reported 1,005 passed and three failed; Windows was still
+running at the observation point. Diagnose this separately before making
+cross-platform validation or release-readiness claims.
 
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
@@ -64,17 +79,17 @@ for the exact evidence and remaining gate.
 | v2.2 Media Intelligence | Released as v2.2.0 from `v2.2-media-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,603 tests passed in each configuration with zero failures/skips before integration. Search/media/index/migration/duplicate/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows native-provider evidence includes real Tesseract OCR, ffprobe/ffmpeg media processing, and schema-3-to-4 migration; broad interactive and native Linux/macOS media validation is not claimed. | First-class bounded image/audio/video evidence, EXIF/GPS, OCR, lazy thumbnails, optional ffprobe metadata, optional capped ffmpeg frames, unified Search, conservative media relationships, scan ETA, batch duplicate review, clearer navigation/privacy, and schema 4. |
 | v2.3 Content Intelligence & Local Understanding | Released as v2.3.0 from `v2.3-content-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,637 tests passed in each configuration with zero failures/skips. Search/Content Intelligence/transcription/media/index/migration/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows-native evidence includes official whisper.cpp 1.9.2 audio/video transcription, Transcript-to-Search, cancellation, ffprobe/ffmpeg, and a genuine schema-4-to-5 migration; native Tesseract was not repeated and broad interactive/native Linux/macOS validation is not claimed. | Bounded deterministic topics/textual entities/extractive summaries with provenance, schema 5, grounded Search and cross-media Related Files signals, generic-topic suppression, and an optional user-managed whisper.cpp CLI/model process adapter. No bundled model/runtime or visual-description provider. |
 | v2.4 OmniSorSe Transition & Explorer Foundation | Released as v2.4.0 from `v2.4-omnisorse-transition` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,671 tests passed in each configuration with zero failures/skips. Genuine Windows published-v2.3 profile reuse and installer transition, external two-process protocol lifecycle/security, four-runtime compile, exact-main, and native packaging gates passed. Broad interactive accessibility and native Linux/macOS protocol execution are not claimed. | Active OmniSorSe branding with compatibility-in-place legacy profiles/schema 5 and a dormant authenticated/source-scoped/bounded/read-only Explorer Protocol v1 for the future optional OmniExplorer. |
-| v2.11 Supported Runtime & Platform Readiness | Integrated into local `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
-| v2.12 Trusted Relationships & Context | Integrated into local `main` as unreleased candidate source; remote `main` synchronization remains pending; not tagged, packaged, or published as a GitHub Release | Pre-integration validation passed a forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, vulnerability, local `win-x64` publish/smoke, and diff gates. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
+| v2.11 Supported Runtime & Platform Readiness | Published from GitHub `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
+| v2.12 Trusted Relationships & Context | Published from GitHub `main` as unreleased candidate source; exact v2.12 branch ref also published; not tagged, packaged, or published as a GitHub Release | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests. Exact-main hosted validation is not green because both macOS ARM and Intel Debug jobs failed the same three Application tests; see the publication section. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
 
 ## Current product boundary
 
-Local `main` now contains the v2.12 implementation candidate on top of the
+GitHub `main` now contains the v2.12 implementation candidate on top of the
 linear v2.5-v2.11 release-candidate stack. It targets .NET 10 LTS and
 strengthens the existing relationship authority without changing schema,
 protocol, AI, or mutation authority. v2.4.0 remains the latest published
-release. Integrating candidate source does not satisfy the remaining remote,
-manual, native, package, tag, signing, or release gates.
+release. Publishing candidate source does not satisfy the remaining manual,
+native, package, tag, signing, or release gates.
 
 OmniSorSe v2.4.0 is the current release, based on the safe, local-first
 OpenSorSe v2.3.0 release. It continues understanding,
@@ -212,7 +227,7 @@ documents, tags, releases, and validation records remain historical evidence.
 OmniSorSe v2.10 **Production Hardening & Operational Resilience** was implemented
 on `v2.10-production-hardening-operational-resilience` from the committed v2.9
 release candidate and is now included in the unreleased candidate source on
-local `main`. It is not tagged, packaged, or released.
+GitHub `main`. It is not tagged, packaged, or released.
 It adds single-writer profile ownership, fail-closed mutation/recovery stores,
 bounded hostile-PDF handling, reviewed logical state export/restore, complete
 Forget coordination, bounded health/lifecycle checks, and exact build
@@ -238,7 +253,7 @@ native Linux/macOS runtime or interactive desktop validation.
 
 OmniSorSe v2.9 **Reviewed Intelligent Organization** was implemented on
 `v2.9-reviewed-intelligent-organization` from the committed v2.8 release
-candidate and is now included in the unreleased candidate source on local
+candidate and is now included in the unreleased candidate source on GitHub
 `main`. It is not tagged, packaged, or released. Existing persistent recipes
 now preview an explicit bounded stable-ID selection from
 Files, Search, or current Saved View results with trusted evidence, action
@@ -263,7 +278,7 @@ and the [manual checklist](MANUAL_TESTING_v2.9.md).
 
 OmniSorSe v2.8 **Guided Workflows & Product Coherence** was implemented on
 `v2.8-guided-workflows-product-coherence` from the committed v2.7 release
-candidate and is now included in the unreleased candidate source on local
+candidate and is now included in the unreleased candidate source on GitHub
 `main`. It is not tagged, packaged, or released. It connects Search, Files,
 Smart Tag review, durable Home readiness, Saved Views,
 and reviewed organization through stable-identity navigation while preserving
@@ -276,7 +291,7 @@ and the [manual checklist](MANUAL_TESTING_v2.8.md).
 OmniSorSe v2.7 **Scalable Faceted Discovery** was implemented and locally
 validated on
 `v2.7-scalable-faceted-discovery` from the committed v2.6 release candidate. It
-is now included in the unreleased candidate source on local `main`; it is not
+is now included in the unreleased candidate source on GitHub `main`; it is not
 tagged, packaged, or released. Complete-library SQLite candidate selection
 precedes bounded hydration into the unchanged
 deterministic ranker. Canonical facets/counts and dynamic Saved Views share one
@@ -289,7 +304,7 @@ and native Linux/macOS execution remain manual release gates. See
 
 OmniSorSe v2.6 **Explainable Smart Tags** was committed on
 `v2.6-explainable-smart-tags` from the committed v2.5 release candidate. It is
-now included in the unreleased candidate source on local `main`; it is not
+now included in the unreleased candidate source on GitHub `main`; it is not
 tagged, packaged, or released. Schema 6 becomes the durable authority for
 versioned Theme/Document Type definitions, generated
 assignments, explicit User Tags, and accept/reject decisions. Classification
@@ -300,7 +315,7 @@ modified. See [v2.6 Explainable Smart Tags](EXPLAINABLE_SMART_TAGS_v2.6.md) and
 
 OmniSorSe v2.5 **Workflow Completion & Indexing Quality** was implemented on
 `v2.5-workflow-indexing-quality` and is now included in the unreleased
-candidate source on local `main`. It is not tagged, packaged, or released. Its scope is
+candidate source on GitHub `main`. It is not tagged, packaged, or released. Its scope is
 post-Change-Plan/Undo Files and indexing reconciliation, progressive
 base-search-first scheduling, truthful indexing phases, and small organization
 clarity improvements. It also includes an optional lazy, scoped desktop handoff
@@ -322,11 +337,12 @@ state are unchanged. See the
 
 ## Default source identity
 
-- Local branch: `main`
-- Local integration commit: `be536a0354e5ea2c28c826ea24547ebbcdb0432f`
+- Local and remote default branch: `main`
+- Published source commit: `cc6c331c984a6298f74fbc8ed7fb8e0681974ff2`
 - Current source line: `v2.12.0-rc`
-- Remote `main`: still `40552b9` at this record; synchronization and fresh-clone
-  verification pending
+- Remote branch refs: `main` and v2.5-v2.12 exactly match their local tips
+- Fresh-clone evidence: clean default-branch checkout, no-cache restore,
+  zero-warning Release build, and 1,861/1,861 Release tests
 - Release boundary: v2.4.0 remains the latest tag, package, and GitHub Release
 
 Release branches normally use `v<version>-<primary-feature>`, as demonstrated

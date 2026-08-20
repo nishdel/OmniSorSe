@@ -42,11 +42,11 @@ and [Release History](RELEASE_HISTORY.md) for earlier milestones.
 
 The repository's current source is the unreleased **v2.12 Trusted Relationships
 & Context** candidate, built on the linear v2.5–v2.11 candidate stack. It
-targets .NET 10 and uses durable index schema 6 and Explorer Protocol 1.0. The
-validated candidate has been integrated into local `main` for normal Git source
-publication; [Release Status](docs/RELEASE_STATUS.md) records whether the remote
-default branch has been synchronized. It is not tagged, packaged, or published
-as a GitHub Release, and v2.4.0 remains the latest downloadable release. Start with
+targets .NET 10 and uses durable index schema 6 and Explorer Protocol 1.0.
+GitHub `main` now carries the validated candidate source, so a normal clone of
+the default branch contains it. This source publication is not a GitHub
+Release: it is not tagged or packaged, and v2.4.0 remains the latest
+downloadable release. Start with
 [Current State](docs/CURRENT-STATE.md) for the implemented boundary and known
 limitations, [Release Status](docs/RELEASE_STATUS.md) for validation/readiness
 evidence, and the
