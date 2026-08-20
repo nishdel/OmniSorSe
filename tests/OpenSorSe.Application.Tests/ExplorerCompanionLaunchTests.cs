@@ -60,7 +60,9 @@ public sealed class ExplorerCompanionLaunchTests
         var grant = Assert.Single(bootstrap.Grants);
         Assert.Equal(result.SessionId, grant.SessionId);
         Assert.DoesNotContain("enabled", grant.AuthorizationToken, StringComparison.Ordinal);
-        Assert.Equal("omnibrille-handoff-" + result.LaunchId, Assert.Single(bootstrap.HandoffEndpoints));
+        var handoffEndpoint = Assert.Single(bootstrap.HandoffEndpoints);
+        Assert.Equal("obh-" + result.LaunchId, handoffEndpoint);
+        Assert.Equal(36, handoffEndpoint.Length);
         process.Exit();
         await WaitUntilAsync(() => host.RevokedSessionIds.Contains(result.SessionId!));
     }
@@ -233,7 +235,7 @@ public sealed class ExplorerCompanionLaunchTests
     [Fact]
     public async Task NamedPipeHandoff_IsSingleUse()
     {
-        var endpoint = $"omnibrille-handoff-{Guid.NewGuid():N}";
+        var endpoint = $"obh-{Guid.NewGuid():N}";
         var grant = new ExplorerSessionGrant(
             "named-pipe",
             $"ose-{Guid.NewGuid():N}",
@@ -292,7 +294,9 @@ public sealed class ExplorerCompanionLaunchTests
         Assert.Equal(result.SessionId, grant.SessionId);
         Assert.False(grant.ExpiresAtUtc <= DateTimeOffset.UtcNow);
         Assert.True(grant.ExpiresAtUtc <= DateTimeOffset.UtcNow.AddMinutes(15));
-        Assert.StartsWith("omnibrille-handoff-", Assert.Single(transport.HandoffEndpoints), StringComparison.Ordinal);
+        var handoffEndpoint = Assert.Single(transport.HandoffEndpoints);
+        Assert.StartsWith("obh-", handoffEndpoint, StringComparison.Ordinal);
+        Assert.Equal(36, handoffEndpoint.Length);
         await WaitUntilAsync(() => host.State == ExplorerProtocolHostState.Disconnected);
     }
 

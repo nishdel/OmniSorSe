@@ -5,6 +5,7 @@ using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Logging;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Executor;
 using OpenSorSe.Executor.Models;
 
@@ -334,8 +335,15 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
     public async Task RecipePlan_ExecutesThroughExistingJournalAndUndoRestoresSource()
     {
         var document = await AddDocumentAsync("file:undo", "undo.txt");
-        var gateway = new PhysicalFileSystemGateway();
-        var validator = new ChangePlanValidator(gateway);
+        var pathSemantics = OperatingSystem.IsWindows()
+            ? (IPathSemantics)new WindowsPathSemantics()
+            : new LinuxPathSemantics();
+        var capabilities = new SupportedFileSystemCapabilities();
+        var gateway = new PhysicalFileSystemGateway(
+            pathSemantics,
+            FileIdentityProviderFactory.CreateCurrent(),
+            capabilities);
+        var validator = new ChangePlanValidator(gateway, pathSemantics, capabilities);
         var planStore = new InMemoryChangePlanStore();
         var journal = new InMemoryOperationJournalStore();
         var service = new ReviewedOrganizationService(
@@ -355,7 +363,7 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
         var executor = new ChangePlanExecutionService(gateway, validator, planStore, journal);
 
         var executed = await executor.ExecuteAsync(plan, "Reviewed organization", null, CancellationToken.None);
-        Assert.True(executed.Succeeded);
+        Assert.True(executed.Succeeded, executed.Summary);
         Assert.False(File.Exists(document.FullPath));
         Assert.True(File.Exists(Path.Combine(_root, "Organized", "undo_reviewed.txt")));
 
@@ -454,6 +462,29 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
                 : SmartTagDecision.None,
             UpdatedAtUtc = DateTimeOffset.UnixEpoch,
         };
+
+    private sealed class SupportedFileSystemCapabilities : IFileSystemCapabilities
+    {
+        public FileLinkInspection InspectLink(string path) =>
+            new(false, null, null, "Test paths are not links.");
+
+        public bool CanWriteDirectory(string path, out string explanation)
+        {
+            explanation = "The test directory is writable.";
+            return true;
+        }
+
+        public long? GetAvailableFreeSpace(string path) => long.MaxValue;
+
+        public bool AreOnSameFileSystem(
+            string firstPath,
+            string secondPath,
+            out string explanation)
+        {
+            explanation = "Temporary test paths share one filesystem.";
+            return true;
+        }
+    }
 
     private sealed class EvidenceSource : IReviewedOrganizationEvidenceSource
     {
