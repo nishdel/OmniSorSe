@@ -76,17 +76,27 @@ notification rather than potentially expanding work per recovered action.
 
 **Not verified / manual validation required**
 
-- Hosted Windows, Ubuntu, macOS Intel, and macOS ARM validation is pending
-  explicit authorization to commit/push a validation branch. Exact-`main`
-  validation therefore remains open.
+- [PR #36 run 32404295783](https://github.com/nishdel/OmniSorSe/actions/runs/32404295783)
+  ultimately passed the complete workflow on Ubuntu, macOS Intel, macOS ARM,
+  and Windows at unchanged implementation commit `1cf1910`. The first two
+  Windows Release attempts failed on different unchanged timing-sensitive
+  tests; the one controlled final Windows rerun passed without changing code,
+  thresholds, or workflow policy.
+- PR #36 was normally merged as `3bb3919`. The exact merge commit then passed
+  all four hosts in
+  [run 32408658961](https://github.com/nishdel/OmniSorSe/actions/runs/32408658961),
+  including Debug/Release builds and zero-skip tests, policy and vulnerability
+  checks, runtime restore, and native package smoke.
 - Interactive Operation History Undo and forced interrupted-startup recovery
   were not exercised through the GUI on disposable real files.
 - Signing, tagging, installers, GitHub Release, and package publication are out
   of scope. v2.4.0 remains the latest release and v2.12 remains a candidate.
 
-Code-level and local automated confidence are high. Windows native-package
-confidence is high for the smoke boundary. Cross-platform and interactive
-confidence remain open until the named evidence exists.
+Code-level, local automated, and hosted cross-platform confidence are high for
+the boundaries exercised. The shifting Windows timing failures remain useful
+validation-infrastructure evidence, but the unchanged implementation and exact
+merge commit both reached a complete green matrix. Interactive confidence
+remains open.
 
 ## 5. Problems found
 
@@ -120,6 +130,10 @@ scope, interaction, AI, and product policy did not change; the reviewer still
 caught the startup scale issue. The identity and startup-bound lessons were
 independently accepted and promoted as focused executable regressions. A
 production-executor-consumer inventory check remains a candidate, not a rule.
+The two different Windows timing failures are a separate candidate about
+hosted performance-test isolation; a controlled unchanged-code rerun cleared
+the gate, but the evidence was not folded into this patch or promoted to a
+permanent rule.
 
 ## 7. Documentation and diagrams
 
@@ -132,16 +146,21 @@ Accepted ADR-004 remains unchanged as a historical decision record.
 
 ## 8. Repository state
 
-**Branch:** `main`
+**Branch:** `main` after normal PR merge
 
-**HEAD:** `0fdcf54e2173b30073914d9502a9ce358d2df2b6`
+**Validated implementation HEAD:**
+`1cf1910` on [PR #36](https://github.com/nishdel/OmniSorSe/pull/36), normally
+merged as `3bb3919`; the report-only synchronization containing this final
+record is a later `main` commit
 
-**Working tree:** 23 intended modified files plus this report and its
-retrospective; no staged files or unrelated pre-existing work
+**Working tree:** Clean after the report-only synchronization
 
-**Commits created:** None; explicit authorization is required
+**Commits created:** `1cf1910` plus the report-only synchronization commit
 
-**Push performed:** No
+**Push performed:** Yes. The feature branch was pushed, PR #36 was normally
+merged, and this final report-only synchronization was pushed to `main`. Local
+and remote `main` were verified equal after each push. No force-push, tag,
+release, or package publication occurred.
 
 **Schema changed:** No
 
@@ -152,12 +171,12 @@ seam; the existing public reconciliation interface is unchanged.
 
 ## 9. Bottom line
 
-**Status:** Partial — pending hosted-validation authorization
+**Status:** Complete
 
-Both requested changes are implemented, independently reviewed, and fully
-green in local automated and Windows native-smoke validation. The tree is safe
-for a normal validation branch, but this report does not yet claim hosted
-cross-platform or exact-`main` confidence. The next action is to authorize a
-normal feature-branch commit/push/PR; if all four hosted jobs pass, merge
-normally, run exact-`main`, and update this evidence record without creating a
-release.
+Both requested changes are implemented, independently reviewed, normally
+merged, and green in local, native-smoke, PR, and exact-`main` cross-platform
+validation. The repository is safe to build on within the documented manual
+and recovery-edge uncertainties. The recommended next separate task is a
+Performance/DX investigation of the Windows hosted timing instability without
+weakening real performance guarantees; the separately recorded Folder
+Restructuring handoff remains a later product-correctness task.

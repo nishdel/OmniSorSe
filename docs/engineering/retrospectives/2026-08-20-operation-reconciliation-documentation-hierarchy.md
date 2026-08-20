@@ -8,7 +8,7 @@ documentation navigation
 **Risk domains:** Undo/recovery, filesystem/projection authority, startup
 bounds, current documentation hierarchy
 
-**Implementation/review commit:** uncommitted at `0fdcf54`
+**Implementation/review commit:** `1cf1910` on PR #36
 
 **Retrospective author:** Lead/Orchestrator after independent specialist review
 
@@ -18,11 +18,15 @@ bounds, current documentation hierarchy
   make the public documentation path understandable without changing product
   policy, schema, releases, or unrelated behavior.
 - Actual outcome: all in-scope paths now use shared reconciliation; startup
-  sequencing and index inputs are bounded; navigation is intent-based; local
-  validation is green.
-- Completion status: `Partial` pending authorization for hosted CI/integration.
-- Important remaining uncertainty: hosted cross-platform and interactive GUI
-  evidence has not yet run for this exact tree.
+  sequencing and index inputs are bounded; navigation is intent-based; local,
+  PR, and exact-merge validation are green.
+- Completion status: `Complete`; PR #36 was normally merged after its unchanged
+  implementation commit passed every hosted job, and exact merge commit
+  `3bb3919` then passed the complete four-host workflow.
+- Important remaining uncertainty: two earlier Windows Release attempts failed
+  on different unchanged timing-sensitive tests before a controlled final
+  rerun passed. Whether hosted suite contention exposes a validation-design
+  weakness remains unproven; interactive GUI evidence also remains unperformed.
 
 ## Assumptions and rediscovery
 
@@ -54,8 +58,10 @@ bounds, current documentation hierarchy
   selection; replaced unbounded action-path union with operation-root
   coalescing. Documentation review also restored immutable ADR-004 and corrected
   the Mermaid branch.
-- Corrective follow-up run required: `Yes` only for hosted CI/integration after
-  explicit Git authorization; not for another local implementation pass.
+- Corrective follow-up run required: `No` for this objective. A separate
+  Performance/DX investigation of Windows hosted timing/isolation is
+  recommended; no in-scope implementation correction was indicated by the
+  two differing failures.
 
 ## Specialist effectiveness
 
@@ -90,8 +96,9 @@ bounds, current documentation hierarchy
 - What automated tests failed to catch: historical fixtures made the two
   identities equal and tested service behavior without every production
   caller. New tests use distinct/colliding identities and composition seams.
-- What remains manual or platform-specific: hosted four-host matrix, exact
-  `main`, and interactive disposable-file History/restart scenarios.
+- What remains manual or platform-specific: interactive disposable-file
+  History/restart scenarios. The final PR attempt and exact merge commit passed
+  Windows, Ubuntu, macOS Intel, and macOS ARM.
 - Documentation/diagram synchronization completed: yes; 14/14 compiled policy
   tests, link/Mermaid rules, and `git diff --check` passed.
 
@@ -103,6 +110,7 @@ bounds, current documentation hierarchy
 | C2 | Startup initially unioned up to 500×1,000 action paths while prose called one call bounded | Performance/review failure: invocation count substituted for input-work bound | A bounded-work claim must name and test the actual cardinality cap or coalescing authority | Bound helper plus scale regression and current architecture docs | Assert 500-root maximum and reject overflow independent of action count | Accepted/promoted |
 | C3 | Earlier archaeology found two bypasses but missed `FolderRestructuringService.ApplyAsync` | Missing-context/review failure: documented paths were followed without enumerating interface consumers | For a critical authority handoff, enumerate production callers and make deliberate exceptions visible | Candidate low-noise architecture inventory test | Compare production `IChangePlanExecutionService` callers with reconciled/explicitly exempt routes | Candidate/deferred |
 | C4 | A flat README/docs catalog obscured current source, release, candidate, and history boundaries | Documentation failure: progressive disclosure existed as policy but not public navigation | Public routers should lead by reader intent and keep one owner per fact | Existing documentation-policy test | Require the six intent routes and their authority targets without pinning prose/order | Accepted/promoted |
+| C5 | Two Windows hosted attempts failed on different unchanged absolute-time tests while the same commit passed locally and on three other hosts; a final controlled unchanged-code rerun and exact-main run passed | Validation/performance candidate: full-solution parallel load may invalidate isolated wall-clock ceilings, but a green rerun does not establish root cause | Determine whether performance gates need controlled resource isolation or workload-relative evidence without relaxing real ceilings | Separate investigation; test/workflow correction only if evidence supports it | Reproduce on Windows runner, compare isolated versus concurrent assemblies, inspect machine-load correlation | Candidate/deferred |
 
 ## Independent lesson evaluation
 
@@ -112,6 +120,7 @@ bounds, current documentation hierarchy
 | C2 | Adversarial Validator | `Accept` | Verified journal/plan limits and `BackgroundIndexingService` path work; root overlap preserves affected-source coverage | `GetRecoveryRefreshRoots_CoalescesWithinJournalRetentionBound` plus composition/current architecture checks |
 | C3 | Adversarial Validator | `Defer` | The extra consumer is real, but the inventory check needs an explicit allowed-caller model and should accompany its separate fix | Retained as candidate and current limitation; no brittle source-count test added |
 | C4 | Documentation specialist and Adversarial Validator | `Accept` | Both verified the hierarchy problem and the low-noise authority routes | `DocumentationIndex_ContainsRequiredEntryPoints` route assertions; no new router file |
+| C5 | Adversarial Validator | `Defer` | Changed-path ownership, local/focused evidence, other hosts, and the shifting failure locus made patch attribution unlikely; the controlled rerun cleared the gate but did not establish a general root cause | Keep in this retrospective and hosted-run evidence; do not change thresholds or workflow yet |
 
 ## Compact run metrics
 
@@ -122,22 +131,23 @@ bounds, current documentation hierarchy
 | Duplicate exploration | Minor; independent consumer/claim verification only |
 | Substantive rework count | 2 algorithm/bound corrections; 2 documentation corrections |
 | Independent findings | 2 high, 4 medium/precision; all blockers fixed, deferred risks recorded |
-| Corrective follow-up needed | Yes—hosted CI/integration authorization only |
+| Corrective follow-up needed | No for this objective; separate Windows hosted timing/isolation investigation recommended |
 | Durable knowledge produced | Behavior/scale/documentation tests; current architecture/docs; report/retrospective |
 | Code confidence | High after independent GO |
-| Automated-validation confidence | High locally: 1,870 tests per configuration, all repository gates green |
+| Automated-validation confidence | High locally and on all four hosted platforms; prior Windows timing instability remains candidate evidence |
 | Interactive/manual confidence | Not exercised |
-| Platform/package confidence | Windows package smoke passed; hosted Linux/macOS/Windows pending |
+| Platform/package confidence | Local Windows native smoke plus exact-main Windows, Ubuntu, macOS Intel, and macOS ARM native smoke passed |
 | Release confidence | Not assessed; no release operation and v2.4.0 remains latest |
 
 ## Handoff to slow-loop review
 
-- Candidates awaiting evaluation: C3 only; possible Performance routing signal
-  remains too weak for promotion.
+- Candidates awaiting evaluation: C3 and C5; possible Performance routing
+  signals remain too weak for promotion.
 - Active knowledge that may need compaction: none after replacing the stale gap
   text with current truth.
 - Historical evidence worth retaining: old equal-ID tests, reviewer findings,
-  and eventual hosted run IDs.
+  PR #36 run 32404295783 attempts 1 and 2 plus its final green attempt, and
+  exact-main run 32408658961.
 - Skill, routing, ADR, test, or documentation item to reconsider periodically:
   evaluate an allowed production executor-consumer architecture inventory when
   the separate Folder Restructuring handoff is addressed; do not alter the
