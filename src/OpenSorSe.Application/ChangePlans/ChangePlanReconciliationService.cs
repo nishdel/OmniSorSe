@@ -32,6 +32,7 @@ public interface IChangePlanReconciliationService
         ChangePlan plan,
         OperationJournalRecord operation,
         bool isUndo);
+
 }
 
 /// <summary>
@@ -57,9 +58,28 @@ public sealed class ChangePlanReconciliationService : IChangePlanReconciliationS
             throw new ArgumentException("The operation does not belong to the supplied Change Plan.", nameof(operation));
         }
 
-        var planActions = plan.Actions.ToDictionary(action => action.ActionId, StringComparer.Ordinal);
+        return ReconcileCore(snapshot, operation, isUndo);
+    }
+
+    /// <summary>
+    /// Reconciles from durable journal facts when the shorter-retained source Change Plan is no longer available.
+    /// </summary>
+    internal ChangePlanReconciliationResult Reconcile(
+        ResultsSnapshot? snapshot,
+        OperationJournalRecord operation,
+        bool isUndo)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        return ReconcileCore(snapshot, operation, isUndo);
+    }
+
+    private static ChangePlanReconciliationResult ReconcileCore(
+        ResultsSnapshot? snapshot,
+        OperationJournalRecord operation,
+        bool isUndo)
+    {
         var outcomes = operation.Actions.Select(action =>
-            ResolveOutcome(action, planActions.GetValueOrDefault(action.ActionId), isUndo)).ToArray();
+            ResolveOutcome(action, isUndo)).ToArray();
         var affectedPaths = outcomes
             .SelectMany(outcome => new[] { outcome.OriginalPath, outcome.IntendedDestinationPath, outcome.CurrentPath })
             .Where(path => !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path))
@@ -70,8 +90,13 @@ public sealed class ChangePlanReconciliationService : IChangePlanReconciliationS
             operation.Status is not OperationStatus.Succeeded and
                 not OperationStatus.RolledBack and
                 not OperationStatus.Undone ||
-            outcomes.Any(outcome => outcome.IsAmbiguous || outcome.CurrentPath is null);
-        var reconciled = snapshot is null ? null : ApplySnapshot(snapshot, outcomes);
+            outcomes.Any(outcome =>
+                outcome.IsAmbiguous ||
+                outcome.CurrentPath is null ||
+                outcome.IsUndo && outcome.SuggestionSource == ChangeSuggestionSource.DuplicateAnalysis);
+        var reconciled = snapshot is null
+            ? null
+            : ApplySnapshot(snapshot, outcomes, operation.Actions);
         var summary = isUndo
             ? requiresRefresh
                 ? "Undo reached a mixed filesystem state. Visible results were reconciled to verified paths and affected indexed roots will be refreshed."
@@ -89,7 +114,6 @@ public sealed class ChangePlanReconciliationService : IChangePlanReconciliationS
 
     private static ChangePlanPathOutcome ResolveOutcome(
         OperationJournalAction action,
-        ProposedChangeAction? planAction,
         bool isUndo)
     {
         var original = action.OriginalPath;
@@ -138,7 +162,7 @@ public sealed class ChangePlanReconciliationService : IChangePlanReconciliationS
 
         return new ChangePlanPathOutcome(
             action.ActionId,
-            planAction?.SourceIdentity?.Identity,
+            SourceFileId: null,
             action.ActionType,
             action.SuggestionSource,
             original,
@@ -150,14 +174,25 @@ public sealed class ChangePlanReconciliationService : IChangePlanReconciliationS
 
     private static ResultsSnapshot ApplySnapshot(
         ResultsSnapshot snapshot,
-        IReadOnlyList<ChangePlanPathOutcome> outcomes)
+        ChangePlanPathOutcome[] outcomes,
+        IReadOnlyList<OperationJournalAction> journalActions)
     {
         var files = snapshot.Files.ToDictionary(file => file.Id, StringComparer.Ordinal);
         var affectedFileIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var outcome in outcomes.Where(item => item.ActionType != ChangeActionType.CreateDirectory))
+        for (var index = 0; index < outcomes.Length; index++)
         {
-            var match = outcome.SourceFileId is { Length: > 0 } id && files.TryGetValue(id, out var byId)
-                ? byId
+            var outcome = outcomes[index];
+            if (outcome.ActionType == ChangeActionType.CreateDirectory)
+            {
+                continue;
+            }
+
+            var journalAction = journalActions[index];
+            var postOperationPath = journalAction.ActualResultingPath ?? journalAction.IntendedDestinationPath;
+            var match = outcome.IsUndo
+                ? files.Values.FirstOrDefault(file => PathComparer.Equals(file.FullPath, postOperationPath)) ??
+                  files.Values.FirstOrDefault(file =>
+                      outcome.OriginalPath is not null && PathComparer.Equals(file.FullPath, outcome.OriginalPath))
                 : files.Values.FirstOrDefault(file =>
                     outcome.OriginalPath is not null && PathComparer.Equals(file.FullPath, outcome.OriginalPath));
             if (match is null)
@@ -165,6 +200,7 @@ public sealed class ChangePlanReconciliationService : IChangePlanReconciliationS
                 continue;
             }
 
+            outcomes[index] = outcome with { SourceFileId = match.Id };
             affectedFileIds.Add(match.Id);
             var movedToRecovery = !outcome.IsUndo &&
                                   outcome.SuggestionSource == ChangeSuggestionSource.DuplicateAnalysis &&

@@ -26,16 +26,18 @@ When documents overlap, use this order:
 
 ## Start here
 
-The normal orientation path is intentionally short. Load product vision,
-engineering policy, release history, and subsystem records only when the task
-needs them.
+Choose one route; do not read the repository as a flat document catalog. Each
+route links to deeper versioned or historical evidence only when it is useful.
 
-| Time | Read | What it answers | Status |
-| ---: | --- | --- | --- |
-| 5 min | [Repository README](../README.md) | What OmniSorSe is, what exists now, and the current branch/package boundary. | Living |
-| 5 min | [Current State](CURRENT-STATE.md) | Which version/runtime/schema/protocol is current, who owns durable state, and what remains unverified. | Living current-truth authority |
-| 10 min | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | How authorities, persistence, Search/indexing, relationships, Explorer, and the mutation boundary fit together. | Living |
-| As needed | [Engineering workflow](engineering/README.md) | How a substantial human/Codex task is routed, validated, documented, reviewed, learned from, and reported. | Living |
+| Intent | Read first | Continue with | Boundary |
+| --- | --- | --- | --- |
+| Current project state | [Repository README](../README.md), then [Current State](CURRENT-STATE.md) | [Product Vision](../PRODUCT_VISION.md) | Current source truth; not a release claim |
+| Use the latest published release | [Installation](INSTALLATION.md) | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | v2.4.0 is the latest tag/package/GitHub Release |
+| Develop or contribute | [Developer Guide](DEVELOPER_GUIDE.md) and [Contributing](../CONTRIBUTING.md) | [Repository Structure](REPOSITORY_STRUCTURE.md), [Architecture Library](Architecture/README.md), and [Engineering workflow](engineering/README.md) | Current `main` and scoped engineering policy |
+| Understand the current candidate | [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Current unreleased candidate lineage](#current-unreleased-candidate-lineage) | Integrated source; not tagged or packaged |
+| Validate or assess readiness | [Release Status](RELEASE_STATUS.md) | [Platform Compatibility](PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates | Observed evidence remains separate from unchecked gates |
+| Research releases or history | [Release History](../RELEASE_HISTORY.md) | [Changelog](CHANGELOG.md), [release records](#release-and-implementation-records), and specifications | Historical evidence; not current authority |
+| Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
 
 For product or architecture decisions, then read [Product Vision](../PRODUCT_VISION.md)
 and [Engineering Principles](../ENGINEERING_PRINCIPLES.md). For implementation,
@@ -48,7 +50,7 @@ The engineering router leads to the scoped
 [controlled learning system](engineering/LEARNING_SYSTEM.md); load only those
 needed for the task.
 
-## Living product and project documents
+## Current project authorities
 
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
@@ -58,9 +60,25 @@ needed for the task.
 | [Engineering Principles](../ENGINEERING_PRINCIPLES.md) | Reasoning for architecture, MVVM, stores/providers, testing, releases, CI, performance, safety, compatibility, and recovery. | Before a cross-cutting change or review. | Living and authoritative for cross-cutting engineering policy |
 | [Release History](../RELEASE_HISTORY.md) | Concise branch/date/test/merge history with links to detailed records. | When tracing how the product evolved. | Living historical index |
 | [Release Status](RELEASE_STATUS.md) | Exact current branch, integration, automated/manual validation, package, tag, and publication facts. | Before making a readiness or release claim. | Living and authoritative for current readiness |
+
+## Latest published release
+
+These records describe v2.4.0, the latest downloadable release. They do not
+describe every capability currently present on GitHub `main`.
+
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
 | [v2.4 OmniSorSe transition and Explorer Protocol](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md) | Rename compatibility, executable/package decisions, protocol contracts/transport/security/limits, and future companion boundary. | Before changing branding, profile paths, packaging identity, or Explorer integration. | Current released design and implementation record |
 | [v2.4 Manual Testing](MANUAL_TESTING_v2.4.md) | Separates genuine Windows profile/installer and external two-process protocol evidence from unchecked accessibility and native-platform scenarios. | During v2.4 review and maintenance. | Current release evidence tracker |
 | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | Downloads, transition/protocol changes, compatibility, trust status, limitations, and validation boundary. | Before installing or publishing v2.4.0. | Current release snapshot |
+
+## Current unreleased candidate lineage
+
+The following records explain the integrated v2.5-v2.12 source lineage. They
+are candidate implementation and validation records, not GitHub Releases.
+
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
 | [v2.5 Workflow & Indexing Quality](WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) | Post-operation reconciliation, scan-depth scheduling, progressive Search coverage, safety, and non-goals. | During v2.5 implementation and review. | Unreleased implementation record |
 | [OmniBrille companion handoff](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md) | Optional desktop discovery, one-time current-user handoff pipe, scoped Protocol v1 session, failure lifecycle, and threat model. | During v2.5 integration and security review. | Unreleased additive integration contract |
 | [v2.5 Manual Testing](MANUAL_TESTING_v2.5.md) | Separates automated evidence from Windows interactive scrolling and workflow checks. | During v2.5 review. | Unreleased evidence tracker |
@@ -82,6 +100,15 @@ needed for the task.
 | [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | Evidence families, pair authority, bounded candidates/reanalysis, direct UX, format-2 backup, privacy, and Protocol 1.0 integration. | During v2.12 implementation and review. | Unreleased implementation record |
 | [v2.12 Manual Testing](MANUAL_TESTING_v2.12.md) | Relationship-specific quality, lifecycle, accessibility, scale, and companion gates. | During maintainer sign-off. | Unreleased evidence tracker |
 | [v2.12.0 Release Notes](RELEASE_NOTES_v2.12.0.md) | User-visible relationship changes, preserved architecture, and validation boundary. | Before reviewing or publishing v2.12.0. | Unreleased candidate snapshot |
+
+## Released, inherited, and supporting documentation
+
+These guides remain useful because their subsystem behavior is inherited by
+the current source, or because they preserve released evidence. Their version
+labels do not make them the authority for current version/readiness facts.
+
+| Document | What it contains | When to read it | Status |
+| --- | --- | --- | --- |
 | [v2.3.0 Release Notes](RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence/local-transcription release snapshot. | When reviewing v2.3.0. | Historical release snapshot |
 | [v2.2.0 Release Notes](RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence/UX changes and validation boundary. | When reviewing the v2.2 milestone. | Historical release snapshot |
 | [v2.1.0 Release Notes](RELEASE_NOTES_v2.1.0.md) | Historical Search/AI downloads, changes, and validation boundary. | When reviewing the v2.1 milestone. | Historical release snapshot |

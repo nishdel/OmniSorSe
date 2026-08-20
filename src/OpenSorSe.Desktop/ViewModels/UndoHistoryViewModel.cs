@@ -71,6 +71,12 @@ public sealed class UndoHistoryViewModel : ViewModelBase
     public event EventHandler<IReadOnlyList<UndoRecord>>? UndoRequested;
 
     /// <summary>
+    /// Publishes the exact terminal journal record returned by a confirmed persistent Undo so the shell can
+    /// reconcile every derived projection from the same durable facts.
+    /// </summary>
+    internal event EventHandler<OperationJournalRecord>? OperationUndoCompleted;
+
+    /// <summary>
     /// Gets caller-supplied undo sessions in caller-supplied order.
     /// </summary>
     public ReadOnlyObservableCollection<UndoHistorySession> Sessions { get; }
@@ -379,6 +385,7 @@ public sealed class UndoHistoryViewModel : ViewModelBase
                 null,
                 CancellationToken.None);
             StatusText = result.Summary;
+            OperationUndoCompleted?.Invoke(this, result.Operation);
         }
         finally
         {

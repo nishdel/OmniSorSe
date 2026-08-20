@@ -417,15 +417,17 @@ flowchart TB
     Complete["Persist action and operation result"]
     Failure{"Blocking failure?"}
     Rollback["Reverse-order rollback of verified reversible work"]
-    Reconcile["Review Changes result reconciliation"]
-    Refresh["Refresh Files, duplicates, Search, and affected index roots"]
+    Reconcile["Interactive journal-result reconciliation"]
+    Refresh["Refresh Files/duplicates; submit affected paths to indexing"]
     History["Operation History"]
     UndoCheck["Undo revalidates current result and original path"]
     Undo["Conflict-aware inverse"]
     UndoComplete["Persist verified Undo result"]
-    UndoOrigin{"Invoked from Review Changes?"}
-    JournalOnly["Journal view refresh only; projections await later scan/index"]
-    Startup["Startup interrupted-operation recovery"]
+    StartupPreflight["Startup plan/journal preflight"]
+    IndexReady["Background index initialized"]
+    StartupRecover["Inspect interrupted operations"]
+    StartupReconcile["Reconcile exact recovered journal records"]
+    StartupBatch["One deduplicated operation-root batch<br/>maximum 500 roots"]
 
     Suggestion --> Capture --> Draft --> Review --> Decision
     Decision -- No or pending --> Draft
@@ -436,14 +438,16 @@ flowchart TB
     Revalidate -- Safe --> Pending
     Pending ==>|journal durable| Execute
     Execute --> Gateway --> Verify --> Failure
-    Failure -- No --> Complete --> Reconcile --> Refresh --> History
+    Failure -- No --> Complete
     Failure -- Yes --> Rollback --> Complete
+    Complete --> History
+    Complete -->|Review Changes terminal record| Reconcile --> Refresh
     History --> UndoCheck
-    UndoCheck -- Safe --> Undo --> UndoComplete --> UndoOrigin
-    UndoOrigin -- Yes --> Reconcile
-    UndoOrigin -- Operation History --> JournalOnly
-    UndoCheck -- Changed or occupied --> Blocked["Undo blocked; no overwrite"]
-    Startup --> JournalOnly
+    UndoCheck -- Safe --> Undo --> UndoComplete --> History
+    UndoComplete -->|Review Changes or Operation History terminal record| Reconcile
+    UndoCheck -- Changed or occupied --> Blocked["Persist blocked Undo; no overwrite"] --> History
+    Blocked -->|terminal record| Reconcile
+    StartupPreflight --> IndexReady --> StartupRecover --> StartupReconcile --> StartupBatch
 ```
 
 No service upstream of `ChangePlanExecutionService` owns production user-file
@@ -451,19 +455,25 @@ mutation. Journal persistence precedes mutation. A failed journal write blocks
 Apply. Undo and recovery use recorded facts plus current verification; they do
 not guess. `ChangePlanReconciliationService` follows verified journal outcomes
 and current filesystem truth rather than plan intent when `MainViewModel`
-receives the Review Changes completion event, including mixed failure, rollback,
-duplicate-recovery moves, and Review Changes Undo.
+receives exact terminal records from Review Changes or Operation History and
+exact interruption-recovery records at startup, including mixed failure,
+rollback, and blocked/partial Undo. Startup reconciles those same records but
+coalesces indexing work to one root per retained journal operation, for at most
+500 roots in one refresh submission after background-index initialization.
 
-The diagram also exposes a current integration gap: Operation History Undo and
-startup interruption recovery do not publish their returned records to
-reconciliation. They refresh/persist journal truth, but Results and targeted
-index projections can remain stale until a later scan/index pass.
+Ordinary rename/move Undo preserves the existing Results logical ID by matching
+the recorded destination row before the original-path fallback; filesystem
+identity is not that UI identity. Duplicate-recovery Undo cannot recreate a row
+removed during Apply from journal schema 1, so it requests targeted refresh.
+Startup recover/reconcile is adjacent but not crash-atomic, and Folder
+Restructuring Apply remains a separately recorded missing publisher. An Undo
+journal-persistence failure after the inverse filesystem action can likewise
+leave disk restored without a terminal record reaching reconciliation.
 
 Navigate to `src/OpenSorSe.Executor/` for plan/journal/execution/Undo authority,
 `src/OpenSorSe.Application/ChangePlans/ChangePlanReconciliationService.cs` for
 post-operation state convergence, and `MainViewModel` for presentation
-orchestration. `UndoHistoryViewModel` and `App.axaml.cs` are the two known
-unreconciled entry paths. Principal coverage is in
+orchestration. Principal coverage is in
 `tests/OpenSorSe.Executor.Tests/ChangePlanSafetyTests.cs`,
 `tests/OpenSorSe.Application.Tests/ChangePlanReconciliationServiceTests.cs`,
 and focused `MainViewModelTests`.

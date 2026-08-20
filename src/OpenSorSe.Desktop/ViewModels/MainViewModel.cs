@@ -23,6 +23,7 @@ using OpenSorSe.Application.Plugins;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Diagnostics;
+using OpenSorSe.Core.Platform;
 using OpenSorSe.Scanner.Models;
 using OpenSorSe.Desktop.Services;
 using OpenSorSe.Executor;
@@ -74,7 +75,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     private readonly IWatchedFolderCoordinator? _watchedFolderCoordinator;
     private readonly IBackgroundIndexingService? _backgroundIndexingService;
     private DiscoveryWorkflowContext? _discoveryContext;
-    private readonly IChangePlanReconciliationService _changePlanReconciliationService =
+    private readonly ChangePlanReconciliationService _changePlanReconciliationService =
         new ChangePlanReconciliationService();
     private readonly SemaphoreSlim _shellFeatureSaveGate = new(1, 1);
     private readonly ObservableCollection<NavigationItem> _navigationItems = [];
@@ -541,6 +542,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Workflows.LibraryChanged += OnWorkflowLibraryChanged;
         ReviewChanges.ReturnRequested += OnReviewChangesReturnRequested;
         ReviewChanges.OperationCompleted += OnChangePlanOperationCompleted;
+        UndoHistory.OperationUndoCompleted += OnOperationHistoryUndoCompleted;
         ScanProgress.PropertyChanged += OnHostedOperationPropertyChanged;
         Results.AiSuggestions.PropertyChanged += OnHostedOperationPropertyChanged;
         ReviewChanges.PropertyChanged += OnHostedOperationPropertyChanged;
@@ -1195,6 +1197,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Dashboard.OrganizeRequested -= OnOrganizeRequested;
         Dashboard.SavedViewRequested -= OnDashboardSavedViewRequested;
         ReviewChanges.OperationCompleted -= OnChangePlanOperationCompleted;
+        UndoHistory.OperationUndoCompleted -= OnOperationHistoryUndoCompleted;
         WatchedFolders.ReviewPlanRequested -= OnWatchedFolderReviewPlanRequested;
         WatchedFolders.NotificationRequested -= OnWatchedFolderNotificationRequested;
         Workflows.RunScanRequested -= OnWorkflowRunScanRequested;
@@ -1457,38 +1460,157 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         object? sender,
         ChangePlanOperationCompleted completed)
     {
+        await ReconcileChangePlanOperationAsync(
+            completed.Operation,
+            completed.IsUndo,
+            CancellationToken.None,
+            completed.Plan);
+    }
+
+    private async void OnOperationHistoryUndoCompleted(
+        object? sender,
+        OperationJournalRecord operation)
+    {
+        await ReconcileChangePlanOperationAsync(
+            operation,
+            isUndo: true,
+            CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Reconciles the exact interrupted-operation records inspected before the shell was created.
+    /// </summary>
+    internal async Task ReconcileRecoveredOperationsAsync(
+        IReadOnlyList<OperationJournalRecord> operations,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(operations);
+        var affectedRoots = GetRecoveryRefreshRoots(operations);
+        var reconciliationFailed = false;
+        foreach (var operation in operations)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var reconciliation = await ReconcileChangePlanOperationAsync(
+                operation,
+                isUndo: false,
+                cancellationToken,
+                reconcileIndex: false,
+                publishOutcome: false);
+            if (reconciliation is null)
+            {
+                reconciliationFailed = true;
+            }
+        }
+
+        if (_backgroundIndexingService is not null && affectedRoots.Count > 0)
+        {
+            try
+            {
+                _ = await _backgroundIndexingService.ReconcilePathsAsync(
+                    affectedRoots,
+                    cancellationToken);
+            }
+            catch (Exception exception) when (
+                exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+            {
+                reconciliationFailed = true;
+            }
+        }
+
+        if (operations.Count > 0)
+        {
+            if (reconciliationFailed)
+            {
+                PublishProjectionReconciliationWarning();
+            }
+            else
+            {
+                StatusText = _backgroundIndexingService is not null && affectedRoots.Count > 0
+                    ? $"Recovered and reconciled {operations.Count} interrupted file operation(s). Affected indexed sources were submitted from {affectedRoots.Count} retained operation root(s) in one bounded refresh batch."
+                    : $"Recovered and reconciled {operations.Count} interrupted file operation(s).";
+                Notifications.Publish(new NotificationRequest(NotificationSeverity.Warning, StatusText));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Coalesces startup indexing work to one root per retained journal operation. The journal's
+    /// 500-operation limit therefore remains the hard input bound even when every operation has 1,000 actions.
+    /// </summary>
+    internal static IReadOnlyList<string> GetRecoveryRefreshRoots(
+        IReadOnlyList<OperationJournalRecord> operations)
+    {
+        ArgumentNullException.ThrowIfNull(operations);
+        if (operations.Count > OperationJournalSchema.MaximumOperations)
+        {
+            throw new ArgumentException(
+                $"Startup recovery cannot exceed the {OperationJournalSchema.MaximumOperations}-operation journal limit.",
+                nameof(operations));
+        }
+
+        return Array.AsReadOnly(operations
+            .Select(operation => operation.AffectedRootFolder)
+            .Where(path => !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path))
+            .Select(Path.GetFullPath)
+            .Distinct(PlatformServices.CurrentPathSemantics.Comparer)
+            .ToArray());
+    }
+
+    private async Task<ChangePlanReconciliationResult?> ReconcileChangePlanOperationAsync(
+        OperationJournalRecord operation,
+        bool isUndo,
+        CancellationToken cancellationToken,
+        ChangePlan? plan = null,
+        bool reconcileIndex = true,
+        bool publishOutcome = true)
+    {
         try
         {
-            var reconciliation = _changePlanReconciliationService.Reconcile(
-                Results.Snapshot,
-                completed.Plan,
-                completed.Operation,
-                completed.IsUndo);
+            var reconciliation = plan is null
+                ? _changePlanReconciliationService.Reconcile(Results.Snapshot, operation, isUndo)
+                : _changePlanReconciliationService.Reconcile(Results.Snapshot, plan, operation, isUndo);
             if (reconciliation.Snapshot is not null)
             {
                 await Results.ApplyReconciledSnapshotAsync(reconciliation.Snapshot);
             }
 
-            if (_backgroundIndexingService is not null && reconciliation.AffectedPaths.Count > 0)
+            if (reconcileIndex &&
+                _backgroundIndexingService is not null &&
+                reconciliation.AffectedPaths.Count > 0)
             {
                 _ = await _backgroundIndexingService.ReconcilePathsAsync(
                     reconciliation.AffectedPaths,
-                    CancellationToken.None);
+                    cancellationToken);
             }
 
-            StatusText = reconciliation.Summary;
-            Notifications.Publish(new NotificationRequest(
-                reconciliation.RequiresTargetedRefresh
-                    ? NotificationSeverity.Warning
-                    : NotificationSeverity.Success,
-                reconciliation.Summary));
+            if (publishOutcome)
+            {
+                StatusText = reconciliation.Summary;
+                Notifications.Publish(new NotificationRequest(
+                    reconciliation.RequiresTargetedRefresh
+                        ? NotificationSeverity.Warning
+                        : NotificationSeverity.Success,
+                    reconciliation.Summary));
+            }
+
+            return reconciliation;
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
         {
-            StatusText = "File changes completed, but one or more local projections could not be refreshed immediately. A later scan will reconcile the affected paths.";
-            Notifications.Publish(new NotificationRequest(NotificationSeverity.Warning, StatusText));
+            if (publishOutcome)
+            {
+                PublishProjectionReconciliationWarning();
+            }
+
+            return null;
         }
+    }
+
+    private void PublishProjectionReconciliationWarning()
+    {
+        StatusText = "File changes completed, but one or more local projections could not be refreshed immediately. A later scan will reconcile the affected paths.";
+        Notifications.Publish(new NotificationRequest(NotificationSeverity.Warning, StatusText));
     }
 
     private async void OnWatchedFolderReviewPlanRequested(object? sender, ChangePlan plan)

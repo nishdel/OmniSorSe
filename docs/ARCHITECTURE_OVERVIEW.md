@@ -404,22 +404,29 @@ Responsibilities along this path:
   empty-directory operations used by this boundary.
 - `ChangePlanExecutionService.UndoAsync` revalidates recorded result identity
   and refuses overwrite or unsafe reversal.
-- `RecoverInterruptedAsync` inspects journalled state on startup and reports
-  what can be safely recovered or undone.
+- Startup preflights the authoritative plan/journal stores, initializes the
+  targeted index, then calls `RecoverInterruptedAsync` and immediately forwards
+  its exact returned records for reconciliation.
 - `ChangePlanReconciliationService` combines verified journal outcomes with
   current filesystem truth, updates the completed-scan projection and duplicate
   groups, and supplies affected paths for targeted index refresh. `MainViewModel`
-  currently invokes it for terminal Apply/Undo events published by Review
-  Changes. It follows actual results, including mixed/rollback states, rather
-  than plan intent.
+  invokes the same path for terminal Apply/Undo events from Review Changes,
+  exact Undo records from Operation History, and recovered startup records. It
+  follows actual results, including mixed/rollback states, rather than plan
+  intent; startup coalesces indexing work to the affected root of each retained
+  journal operation, so the single refresh submission is bounded at 500 roots.
 
-Current integration has a known stale-consumer gap. Operation History Undo
-calls the same safe executor but only refreshes its journal projection, and
-startup `RecoverInterruptedAsync` results are not forwarded to the
-reconciliation service. Those paths can leave Results or the targeted durable
-index stale until a later scan/index reconciliation. The executor/journal
-outcome remains authoritative; this is missing projection wiring, not a second
-mutation authority.
+The internal journal-only entry point is necessary because 500 operations are retained
+but only 100 source plans. It matches a live Undo projection by the recorded
+post-operation path before the original-path fallback and preserves the Results
+row's own logical ID; filesystem identity is never treated as that UI identity.
+Duplicate-recovery Apply deliberately removes the visible duplicate row, so its
+later Undo cannot reconstruct that row ID from journal schema 1 and requests a
+targeted refresh instead. Startup recover/reconcile calls are adjacent but not
+crash-atomic. `FolderRestructuringService.ApplyAsync` is a separately recorded
+direct executor consumer that still lacks this shell projection handoff. An
+Undo journal-persistence failure after the inverse filesystem action can also
+leave disk restored without a terminal record reaching shell reconciliation.
 
 The older `ActionExecutor` and `UndoEngine` remain as unregistered compatibility
 code. They are not the production route for current Desktop suggestions.

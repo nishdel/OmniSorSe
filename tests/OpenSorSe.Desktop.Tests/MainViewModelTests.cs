@@ -4,6 +4,7 @@ using OpenSorSe.Application;
 using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Catalog;
 using OpenSorSe.Application.CatalogSearch;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Guidance;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.Models;
@@ -11,6 +12,7 @@ using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Executor.Models;
 using OpenSorSe.Rules.Models;
 using OpenSorSe.Scanner.Models;
 using DesktopScanRequest = OpenSorSe.Desktop.ViewModels.ScanRequest;
@@ -22,6 +24,130 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class MainViewModelTests
 {
+    /// <summary>
+    /// Verifies startup recovery consumes journal facts even when no retained Change Plan is available.
+    /// </summary>
+    [Fact]
+    public async Task ReconcileRecoveredOperationsAsync_ProjectsInspectedJournalPathWithoutPlan()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OmniSorSe.MainRecovery.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var original = Path.Combine(root, "before.txt");
+            var destination = Path.Combine(root, "after.txt");
+            await File.WriteAllTextAsync(destination, "content");
+            var file = new ResultFile(
+                "file:startup-recovery",
+                original,
+                Path.GetFileName(original),
+                ".txt",
+                7,
+                DateTimeOffset.UtcNow,
+                FileCategory.Document,
+                "Document",
+                DuplicateStatus.Unique,
+                null,
+                true);
+            var snapshot = new ResultsSnapshot(
+                "scan:startup-recovery",
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                [file],
+                [new ResultDirectory(root, Path.GetFileName(root))],
+                [],
+                [],
+                [],
+                new ResultsSnapshotStatistics(1, 1, 0, 0, 0, 0, 0),
+                IsDuplicateDataAvailable: true);
+            var action = new OperationJournalAction(
+                "action:startup-recovery",
+                ChangeActionType.RenameFile,
+                ChangeSuggestionSource.DeterministicRule,
+                original,
+                destination,
+                destination,
+                new FileIdentitySnapshot("filesystem:startup-recovery", 7, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, null),
+                null,
+                ChangeValidationState.Valid,
+                JournalActionResult.Succeeded,
+                WasSkipped: false,
+                ChangeConflictCategory.InterruptedStateAmbiguous,
+                "Recovered after interruption.",
+                [],
+                RollbackAttempted: false,
+                JournalRollbackResult.NotRequired,
+                UndoAvailable: true,
+                JournalUndoStatus.Available,
+                UndoTimestampUtc: null,
+                UndoConflictDetails: null,
+                AiModel: null,
+                AiRequestCorrelationId: null,
+                DirectoryCreatedByOpenSorSe: false);
+            var operation = new OperationJournalRecord(
+                OperationJournalSchema.CurrentVersion,
+                "operation:startup-recovery",
+                "plan:pruned",
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                "2.12.0",
+                OperationStatus.Interrupted,
+                "startup",
+                root,
+                [action],
+                CancellationRequested: false,
+                "Recovered.");
+            using var viewModel = new MainViewModel();
+            await viewModel.Results.LoadSnapshotAsync(snapshot);
+
+            await viewModel.ReconcileRecoveredOperationsAsync([operation], CancellationToken.None);
+
+            var reconciled = Assert.Single(viewModel.Results.Snapshot!.Files);
+            Assert.Equal("file:startup-recovery", reconciled.Id);
+            Assert.Equal(destination, reconciled.FullPath);
+            Assert.True(viewModel.Notifications.HasNotifications);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Protects the startup indexing bound independently of the number of actions in each retained operation.
+    /// </summary>
+    [Fact]
+    public void GetRecoveryRefreshRoots_CoalescesWithinJournalRetentionBound()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OmniSorSe.MainRecovery.Roots");
+        var prototype = new OperationJournalRecord(
+            OperationJournalSchema.CurrentVersion,
+            "operation:prototype",
+            "plan:prototype",
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            "2.12.0",
+            OperationStatus.Interrupted,
+            "startup",
+            root,
+            [],
+            CancellationRequested: false,
+            "Recovered.");
+        var retained = Enumerable.Range(0, OperationJournalSchema.MaximumOperations)
+            .Select(index => prototype with
+            {
+                OperationId = $"operation:{index}",
+                AffectedRootFolder = Path.Combine(root, index.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            })
+            .ToArray();
+
+        var refreshRoots = MainViewModel.GetRecoveryRefreshRoots(retained);
+
+        Assert.Equal(OperationJournalSchema.MaximumOperations, refreshRoots.Count);
+        Assert.Throws<ArgumentException>(() =>
+            MainViewModel.GetRecoveryRefreshRoots([.. retained, prototype with { OperationId = "operation:overflow" }]));
+    }
+
     /// <summary>
     /// Verifies the shell starts on Dashboard and exposes only regular destinations by default.
     /// </summary>

@@ -163,6 +163,89 @@ public sealed class ChangePlanReconciliationServiceTests : IDisposable
     }
 
     [Fact]
+    public void JournalOnlyUndo_PreservesLogicalIdentityWhenSourcePlanWasPruned()
+    {
+        var original = FileAt("journal-restored.txt");
+        var destination = Path.Combine(_root, "journal-post-operation.txt");
+        var action = Action("action:journal-only", "filesystem:identity", original, destination);
+        var context = Context([FileResult("file:logical-result", destination)], [action]);
+        var journalAction = JournalAction(action, JournalActionResult.Succeeded, destination) with
+        {
+            UndoStatus = JournalUndoStatus.Succeeded,
+            UndoTimestampUtc = DateTimeOffset.UtcNow,
+            UndoAvailable = false,
+        };
+        var journal = Journal(OperationStatus.Undone, [journalAction]);
+
+        var result = new ChangePlanReconciliationService().Reconcile(
+            context.Snapshot,
+            journal,
+            isUndo: true);
+
+        var file = Assert.Single(result.Snapshot!.Files);
+        Assert.Equal("file:logical-result", file.Id);
+        Assert.Equal(original, file.FullPath);
+        Assert.False(result.RequiresTargetedRefresh);
+    }
+
+    [Fact]
+    public void FilesystemIdentityCollision_DoesNotSelectAnUnrelatedResultsRow()
+    {
+        var original = FileAt("collision-source.txt");
+        var unrelated = FileAt("collision-unrelated.txt");
+        var destination = Path.Combine(_root, "collision-destination.txt");
+        File.Move(original, destination);
+        var action = Action("action:collision", "filesystem:collision", original, destination);
+        var context = Context(
+            [
+                FileResult("file:logical-source", original, planned: true),
+                FileResult("filesystem:collision", unrelated, planned: true),
+            ],
+            [action]);
+        var journal = Journal(
+            OperationStatus.Succeeded,
+            [JournalAction(action, JournalActionResult.Succeeded, destination)]);
+
+        var result = new ChangePlanReconciliationService().Reconcile(
+            context.Snapshot,
+            journal,
+            isUndo: false);
+
+        Assert.Equal(destination, result.Snapshot!.Files.Single(file => file.Id == "file:logical-source").FullPath);
+        Assert.Equal(unrelated, result.Snapshot.Files.Single(file => file.Id == "filesystem:collision").FullPath);
+        Assert.Equal("file:logical-source", Assert.Single(result.ActionOutcomes).SourceFileId);
+    }
+
+    [Fact]
+    public void DuplicateRecoveryUndo_RequestsTargetedRefreshWhenApplyRemovedVisibleRow()
+    {
+        var original = FileAt("duplicate-restored.txt");
+        var recoveryPath = Path.Combine(_root, "Duplicate Recovery", "duplicate-restored.txt");
+        var action = Action("action:duplicate", "filesystem:duplicate", original, recoveryPath) with
+        {
+            SuggestionSource = ChangeSuggestionSource.DuplicateAnalysis,
+        };
+        var context = Context([], [action]);
+        var journalAction = JournalAction(action, JournalActionResult.Succeeded, recoveryPath) with
+        {
+            UndoStatus = JournalUndoStatus.Succeeded,
+            UndoTimestampUtc = DateTimeOffset.UtcNow,
+            UndoAvailable = false,
+        };
+        var journal = Journal(OperationStatus.Undone, [journalAction]);
+
+        var result = new ChangePlanReconciliationService().Reconcile(
+            context.Snapshot,
+            journal,
+            isUndo: true);
+
+        Assert.Empty(result.Snapshot!.Files);
+        Assert.True(result.RequiresTargetedRefresh);
+        Assert.Contains(original, result.AffectedPaths);
+        Assert.Contains(recoveryPath, result.AffectedPaths);
+    }
+
+    [Fact]
     public void MissingResult_RemovesStaleProjectionAndRequestsRefresh()
     {
         var original = Path.Combine(_root, "missing-old.txt");
@@ -207,13 +290,18 @@ public sealed class ChangePlanReconciliationServiceTests : IDisposable
             .Distinct()
             .Select(path => new ResultDirectory(path, Path.GetFileName(path)))
             .ToArray();
-        var planned = actions.Where(action => action.SourceIdentity is not null)
+        var filesByPath = files.ToDictionary(
+            file => file.FullPath,
+            OpenSorSe.Core.Platform.PlatformServices.CurrentPathSemantics.Comparer);
+        var planned = actions
+            .Where(action =>
+                action.SourcePath is not null && filesByPath.ContainsKey(action.SourcePath))
             .Select(action => new ResultPlannedOperation(
                 action.ActionId,
                 action.ActionType == ChangeActionType.RenameFile
                     ? OpenSorSe.Rules.Models.PlannedOperationKind.Rename
                     : OpenSorSe.Rules.Models.PlannedOperationKind.Move,
-                action.SourceIdentity!.Identity,
+                filesByPath[action.SourcePath!].Id,
                 action.DestinationPath,
                 "Test"))
             .ToArray();

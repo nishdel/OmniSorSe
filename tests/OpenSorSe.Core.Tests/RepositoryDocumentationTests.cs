@@ -210,6 +210,24 @@ public sealed partial class RepositoryDocumentationTests
         {
             Assert.Contains($"({target})", index, StringComparison.Ordinal);
         }
+
+        foreach (var route in new[]
+                 {
+                     "Current project state",
+                     "Use the latest published release",
+                     "Develop or contribute",
+                     "Understand the current candidate",
+                     "Validate or assess readiness",
+                     "Research releases or history",
+                 })
+        {
+            Assert.Contains(route, index, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("## Current project authorities", index, StringComparison.Ordinal);
+        Assert.Contains("## Latest published release", index, StringComparison.Ordinal);
+        Assert.Contains("## Current unreleased candidate lineage", index, StringComparison.Ordinal);
+        Assert.Contains("## Release and implementation records", index, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies native release automation names every supported artifact and no Linux installer.</summary>

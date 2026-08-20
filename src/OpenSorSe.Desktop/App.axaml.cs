@@ -51,7 +51,7 @@ namespace OpenSorSe.Desktop;
 /// </summary>
 /// <remarks>
 /// This is the production composition root. Startup deliberately completes
-/// Core initialization and interrupted-operation inspection before activating
+/// Core initialization and authoritative mutation-store preflight before activating
 /// plugins, then initializes workflows before Watched Folders so an exact
 /// plugin/profile dependency cannot race the watcher. Feature behavior belongs
 /// in Application/domain services rather than this registration method.
@@ -113,16 +113,18 @@ public partial class App : Avalonia.Application
         _serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
             _serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
                 .Current.Diagnostics);
+        var mutationRecoveryStateValidated = false;
         try
         {
             _serviceProvider.GetRequiredService<IChangePlanStore>()
                 .ListAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
-            _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
-                .RecoverInterruptedAsync(CancellationToken.None)
+            _serviceProvider.GetRequiredService<IOperationJournalStore>()
+                .ListAsync(CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
+            mutationRecoveryStateValidated = true;
         }
         catch (AuthoritativeStoreCorruptionException exception)
         {
@@ -155,6 +157,24 @@ public partial class App : Avalonia.Application
             .GetResult();
         _ = _serviceProvider.GetRequiredService<AdvancedDiagnosticsWindowCoordinator>();
         var mainViewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+        try
+        {
+            if (mutationRecoveryStateValidated)
+            {
+                var recoveredOperations = _serviceProvider.GetRequiredService<IChangePlanExecutionService>()
+                    .RecoverInterruptedAsync(CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+                mainViewModel.ReconcileRecoveredOperationsAsync(recoveredOperations, CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+            }
+        }
+        catch (AuthoritativeStoreCorruptionException exception)
+        {
+            _serviceProvider.GetRequiredService<IRecoverySafetyState>().Block(exception);
+            RecordLifecycleFailure("Authoritative mutation recovery state", exception);
+        }
         desktop.MainWindow = new MainWindow(mainViewModel);
         StartRelationshipRefreshInBackground(_serviceProvider);
         StartKnowledgeGraphInBackground(_serviceProvider);
