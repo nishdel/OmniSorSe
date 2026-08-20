@@ -602,9 +602,11 @@ and the [v2.11 manual addendum](docs/MANUAL_TESTING_v2.11.md).
 committed v2.11 release candidate.
 
 **Merged status:** Source integrated into and published from GitHub `main` on
-2026-08-20 after the recorded automated gates; remains an unreleased candidate
-awaiting resolution of the exact-main hosted macOS failures and the
-still-open manual, native, package, and release gates.
+2026-08-20 after the recorded automated gates. The initial hosted macOS test-
+portability failures were corrected, and the correction-tip and exact-main
+Windows, Ubuntu, macOS ARM, and macOS Intel matrices passed. It remains an
+unreleased candidate with manual, native-interactive, installer, signing,
+package-publication, and release gates still open.
 
 v2.12 extends the existing schema-6 relationship authority rather than adding
 a second graph or clustering system. Independent capped evidence families,

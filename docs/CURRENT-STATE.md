@@ -77,26 +77,28 @@ change a source file or override durable user-authored relationship/tag state.
 ### Verified in recorded automated evidence
 
 Release Status records forced no-cache restore, zero-warning Debug and Release
-builds, and 1,861 passing tests in each configuration for exact integrated
-source commit `cc6c331`. Focused relationship, Search, SQLite lifecycle/backup/
-Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration,
-formatting, dependency/policy, vulnerability, local `win-x64` publish/smoke,
-and diff gates also passed. Treat those as evidence for the recorded commit/
-environment, not as a guarantee for an unvalidated later working tree. Release
-Status separately records exact local/remote ref equality and an independent
-clean-clone Release restore/build/test at the published source commit.
+builds, and 1,861 passing tests in each configuration for correction commit
+`d81f154`. Focused affected and neighboring Change Plan/platform regressions,
+documentation/configuration, formatting, analyzers, dependency policy,
+vulnerability, Skill, diff, and repository-integrity gates also passed. Pull
+request #35 and exact-main merge commit `542e14a` then passed the complete
+Windows, Ubuntu, macOS ARM, and macOS Intel hosted matrix, including Debug and
+Release builds/tests and native package smoke. Treat those results as evidence
+for the recorded commits/environments, not as a guarantee for an unvalidated
+later working tree. Release Status separately records original publication
+fresh-clone evidence and the exact correction and merge runs.
 
 ### Not verified or still manual
 
 The v2.12 manual addendum remains unchecked. Interactive relationship quality,
 desktop accessibility, actual OmniBrille integration, removable-source
-identity, installer lifecycle, and native Linux/macOS behavior remain outside
-the recorded confidence boundary. Exact-main hosted validation is also not
-fully green: Ubuntu passed, but both `macos-15` ARM and `macos-15-intel` in
-[Actions run 32360140293](https://github.com/nishdel/OmniSorSe/actions/runs/32360140293)
-failed the same three Application Debug tests while Windows was still running.
-Cross-target compilation is not native runtime, packaging, UX, accessibility,
-or release evidence.
+identity, installer lifecycle, and broader native Linux/macOS behavior remain
+outside the recorded confidence boundary. The initial published-main run
+exposed three macOS test-portability/fixture failures; the correction retained
+the handoff's 128-bit random identity and did not enable production mutation on
+macOS. Follow-up pull-request and exact-main hosted runs passed all four hosts.
+Automated host and package-smoke evidence is not interactive UX, accessibility,
+installer-lifecycle, signing, notarization, or release evidence.
 
 Read [Release Status](RELEASE_STATUS.md), the
 [v2.12 implementation record](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md), and the

@@ -42,15 +42,34 @@ executed. See the retained
 [source-publication report](engineering/reports/2026-08-20-source-publication.md)
 for the exact evidence boundary.
 
-Hosted validation of the published commit is not fully green. In
+Initial hosted validation of the published commit was not fully green. In
 [Actions run 32360140293](https://github.com/nishdel/OmniSorSe/actions/runs/32360140293),
 Ubuntu completed successfully, while both `macos-15` ARM and `macos-15-intel`
 failed the same three Application Debug tests: reviewed-organization
 execute/Undo, separate-process Explorer companion start, and the single-use
 named-pipe test whose Unix-domain socket path exceeded the 104-character host
 limit. The Intel job reported 1,005 passed and three failed; Windows was still
-running at the observation point. Diagnose this separately before making
-cross-platform validation or release-readiness claims.
+running at the observation point.
+
+Correction commit `d81f15482f20d674f77b0aba51ccd00896fee36e`
+shortened only the opaque one-time handoff endpoint to `obh-` plus the unchanged
+128-bit/32-hex launch ID, for a 36-character logical name. The reviewed-
+organization execute/Undo test now injects explicit supported test
+capabilities instead of inheriting the production host policy. Production
+source-file mutation remains unavailable on macOS; schema 6, Explorer Protocol
+1.0, and public interfaces are unchanged.
+
+[Pull request #35's run 32373697544](https://github.com/nishdel/OmniSorSe/actions/runs/32373697544)
+passed on `macos-15` ARM, `macos-15-intel`, `windows-latest`, and
+`ubuntu-latest`. The pull request was merged normally as
+`542e14a50885523543e80c9f593bb35a5f7ef844`, and
+[exact-main run 32375495795](https://github.com/nishdel/OmniSorSe/actions/runs/32375495795)
+also passed all four hosts. Each run completed the repository's Debug and
+Release 1,861-test suites without failures or skips, plus formatting/analyzers,
+documentation/dependency policy, advisory audit, runtime restore, and native
+package-smoke gates. This closes the hosted automated follow-up; interactive,
+installer, signing, notarization, tag, package-publication, and release gates
+remain separate.
 
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
@@ -80,7 +99,7 @@ cross-platform validation or release-readiness claims.
 | v2.3 Content Intelligence & Local Understanding | Released as v2.3.0 from `v2.3-content-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,637 tests passed in each configuration with zero failures/skips. Search/Content Intelligence/transcription/media/index/migration/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows-native evidence includes official whisper.cpp 1.9.2 audio/video transcription, Transcript-to-Search, cancellation, ffprobe/ffmpeg, and a genuine schema-4-to-5 migration; native Tesseract was not repeated and broad interactive/native Linux/macOS validation is not claimed. | Bounded deterministic topics/textual entities/extractive summaries with provenance, schema 5, grounded Search and cross-media Related Files signals, generic-topic suppression, and an optional user-managed whisper.cpp CLI/model process adapter. No bundled model/runtime or visual-description provider. |
 | v2.4 OmniSorSe Transition & Explorer Foundation | Released as v2.4.0 from `v2.4-omnisorse-transition` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,671 tests passed in each configuration with zero failures/skips. Genuine Windows published-v2.3 profile reuse and installer transition, external two-process protocol lifecycle/security, four-runtime compile, exact-main, and native packaging gates passed. Broad interactive accessibility and native Linux/macOS protocol execution are not claimed. | Active OmniSorSe branding with compatibility-in-place legacy profiles/schema 5 and a dormant authenticated/source-scoped/bounded/read-only Explorer Protocol v1 for the future optional OmniExplorer. |
 | v2.11 Supported Runtime & Platform Readiness | Published from GitHub `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
-| v2.12 Trusted Relationships & Context | Published from GitHub `main` as unreleased candidate source; exact v2.12 branch ref also published; not tagged, packaged, or published as a GitHub Release | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests. Exact-main hosted validation is not green because both macOS ARM and Intel Debug jobs failed the same three Application tests; see the publication section. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
+| v2.12 Trusted Relationships & Context | Published from GitHub `main` as unreleased candidate source; exact v2.12 branch ref also published; not tagged, packaged, or published as a GitHub Release | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests at the original publication commit. After the first published-main run exposed three macOS portability/fixture failures, correction commit `d81f154` and exact-main merge `542e14a` passed the full Windows, Ubuntu, macOS ARM, and macOS Intel hosted matrix in Debug and Release, including package smoke. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or broader native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
 
 ## Current product boundary
 
@@ -338,11 +357,15 @@ state are unchanged. See the
 ## Default source identity
 
 - Local and remote default branch: `main`
-- Published source commit: `cc6c331c984a6298f74fbc8ed7fb8e0681974ff2`
+- Latest exact-main validated source commit:
+  `542e14a50885523543e80c9f593bb35a5f7ef844`
 - Current source line: `v2.12.0-rc`
 - Remote branch refs: `main` and v2.5-v2.12 exactly match their local tips
-- Fresh-clone evidence: clean default-branch checkout, no-cache restore,
-  zero-warning Release build, and 1,861/1,861 Release tests
+- Original publication fresh-clone evidence at `cc6c331`: clean default-branch
+  checkout, no-cache restore, zero-warning Release build, and 1,861/1,861
+  Release tests
+- Current exact-main hosted evidence at `542e14a`: Windows, Ubuntu, macOS ARM,
+  and macOS Intel passed the complete repository matrix
 - Release boundary: v2.4.0 remains the latest tag, package, and GitHub Release
 
 Release branches normally use `v<version>-<primary-feature>`, as demonstrated
