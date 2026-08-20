@@ -247,10 +247,14 @@ a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md).
 8. `ChangePlanReconciliationService` combines verified journal outcomes with
    current filesystem truth, updates Files/duplicate review/selection state,
    and requests targeted index refresh when an outcome is ambiguous or mixed.
-   The same reconciliation runs after Undo; it does not assume the plan's
-   intended destination won.
-9. Startup calls `RecoverInterruptedAsync`. Operation History and Undo use the
-   same journal facts.
+   Review Changes, Operation History Undo, and startup recovery use this same
+   path. Undo matches the existing post-operation path before the original path
+   and preserves the Results row's logical ID rather than equating it with a
+   filesystem identity.
+9. Startup preflights the plan/journal stores, initializes the background
+   index, calls `RecoverInterruptedAsync`, then reconciles the exact returned
+   records and submits one deduplicated operation-root refresh batch, bounded by
+   the journal's 500-operation retention limit.
 
 Never add a shortcut from a suggestion service or ViewModel to raw
 `File.Move`, `Directory.Move`, or the compatibility executor.

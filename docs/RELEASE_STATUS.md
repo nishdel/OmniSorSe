@@ -19,6 +19,14 @@ integration. Source publication does not create a release: v2.4.0 remains the
 latest tag, package, and GitHub Release, and all still-open manual, native,
 installer, signing, and notarization gates remain open.
 
+## Current release and source
+
+- **Latest published release:** v2.4.0 (tagged and packaged).
+- **Current GitHub source:** integrated v2.12 candidate on `main` (not tagged,
+  packaged, or published as a GitHub Release).
+- **Implemented behavior authority:** [Current State](CURRENT-STATE.md).
+- **Readiness evidence authority:** this document.
+
 ## Default-source publication state
 
 On 2026-08-20 local `main` advanced from the released v2.4.0 integration commit
@@ -71,6 +79,8 @@ package-smoke gates. This closes the hosted automated follow-up; interactive,
 installer, signing, notarization, tag, package-publication, and release gates
 remain separate.
 
+## Per-version validation ledger
+
 | Release | Status | Validation | Scope |
 | --- | --- | --- | --- |
 | v0.1 Foundation | Complete | Restore, build, automated tests, and manual UI validation complete. | Read-only scan pipeline, metadata, hashing, deterministic rules, Dashboard, Settings, Diagnostics, and supporting application infrastructure. |
@@ -101,7 +111,10 @@ remain separate.
 | v2.11 Supported Runtime & Platform Readiness | Published from GitHub `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
 | v2.12 Trusted Relationships & Context | Published from GitHub `main` as unreleased candidate source; exact v2.12 branch ref also published; not tagged, packaged, or published as a GitHub Release | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests at the original publication commit. After the first published-main run exposed three macOS portability/fixture failures, correction commit `d81f154` and exact-main merge `542e14a` passed the full Windows, Ubuntu, macOS ARM, and macOS Intel hosted matrix in Debug and Release, including package smoke. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or broader native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
 
-## Current product boundary
+## Release/readiness boundary for current source
+
+[Current State](CURRENT-STATE.md) owns the concise implemented-behavior
+boundary. This section records only the release and validation implications.
 
 GitHub `main` now contains the v2.12 implementation candidate on top of the
 linear v2.5-v2.11 release-candidate stack. It targets .NET 10 LTS and

@@ -21,7 +21,8 @@ For concise dates, test totals, and links to historical evidence, see
 | State | Meaning |
 | --- | --- |
 | Completed | The implementation lineage is integrated into `main`. Manual or package caveats remain recorded in the release evidence. |
-| In progress | Source implementation exists, but integration or required release gates remain open. |
+| Integrated candidate | Source implementation is in published `main`, but it is not tagged, packaged, or published as a release and applicable gates remain open. |
+| In progress | Source implementation exists outside `main`, or integration work is still open. |
 | Design in progress | An isolated design branch and review package exist, but no runtime implementation is claimed. |
 | Planned concept | A named direction with no implementation branch or commitment. Scope and order may change. |
 | Research | A question that needs evidence before it can become versioned work. |
@@ -31,8 +32,9 @@ For concise dates, test totals, and links to historical evidence, see
 
 `main` contains the released implementation lineage through v2.4.0. GitHub
 `main` also contains the unreleased v2.5-v2.12 candidate lineage after
-the 2026-08-20 source integration and publication. Those milestones remain in
-progress because applicable manual/package/release gates remain open.
+the 2026-08-20 source integration and publication. Those milestones are
+integrated candidates because applicable manual/package/release gates remain
+open.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -422,7 +424,7 @@ primary Search navigation, and clearer privacy wording.
 See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 [v2.2.0 release notes](docs/RELEASE_NOTES_v2.2.0.md).
 
-## In progress
+## Integrated unreleased candidate lineage
 
 ### v2.5 — Workflow Completion & Indexing Quality
 

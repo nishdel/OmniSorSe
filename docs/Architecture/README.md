@@ -12,7 +12,22 @@ exist, and [Engineering Principles](../../ENGINEERING_PRINCIPLES.md) defines
 the cross-cutting reasoning for MVVM, providers, testing, validation,
 compatibility, and recovery.
 
-## Current implementation references
+## Choose the right architecture level
+
+| Need | Start with | What it owns |
+| --- | --- | --- |
+| Current narrative | [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) | Components, flows, persistence, failure behavior, and current debt |
+| Visual navigation | [System Map](OpenSorSe_System_Map.md) | Five current Mermaid views and important code boundaries |
+| Ownership and sources of truth | [Architecture Authority Map](../engineering/ARCHITECTURE_AUTHORITY.md) | Owns/reads/derives/mutates/persists/publishes rules |
+| Code location | [Repository Structure](../REPOSITORY_STRUCTURE.md) | Project graph, responsibilities, tests, and change locations |
+| Durable decisions | [ADR Index](99_Appendix/ADR.md) | Accepted decisions and reconstructed rationale |
+| One subsystem or version | Detailed library below | Scoped current contracts, candidate overlays, or historical foundations as labelled |
+
+## Detailed implementation references
+
+The list is intentionally layered: the overview and system map remain
+cumulative authority; versioned records add scoped detail and retain the status
+stated in their description.
 
 - `00_System/00_Overview.md`: concise current component summary.
 - `00_System/08_v1.5_Platform_Architecture.md`: current Windows/Linux platform,
@@ -77,9 +92,10 @@ compatibility, and recovery.
   `12_Catalog_Comparison_Page.md`, `13_Structure_History.md`, and
   `14_Review_Changes.md`: current implemented feature summaries.
 - `10_Plugins/06_v1.4_Plugin_Foundation.md`: current plugin host and SDK.
-- `99_Appendix/ADR-001` through `ADR-003`: accepted architectural decisions.
+- [ADR Index](99_Appendix/ADR.md): accepted decisions; use the index rather
+  than assuming a fixed numerical range.
 
-## v2.0 implemented architecture
+## Released foundation: v2.0 implemented architecture
 
 - `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: accepted isolated,
   deterministic, bounded Knowledge Graph design released in v2.0. Source and

@@ -53,8 +53,11 @@ internal static class PackageSmokeTest
             await applicationHost.InitializeAsync().ConfigureAwait(false);
             serviceProvider.GetRequiredService<IDiagnosticsCollector>().Configure(
                 serviceProvider.GetRequiredService<IConfigurationService>().Current.Diagnostics);
-            await serviceProvider.GetRequiredService<IChangePlanExecutionService>()
-                .RecoverInterruptedAsync(CancellationToken.None)
+            _ = await serviceProvider.GetRequiredService<IChangePlanStore>()
+                .ListAsync(CancellationToken.None)
+                .ConfigureAwait(false);
+            _ = await serviceProvider.GetRequiredService<IOperationJournalStore>()
+                .ListAsync(CancellationToken.None)
                 .ConfigureAwait(false);
             await serviceProvider.GetRequiredService<IPluginManager>()
                 .InitializeAsync(CancellationToken.None)
@@ -68,7 +71,14 @@ internal static class PackageSmokeTest
             await serviceProvider.GetRequiredService<IBackgroundIndexingService>()
                 .InitializeAsync(CancellationToken.None)
                 .ConfigureAwait(false);
-            _ = serviceProvider.GetRequiredService<MainViewModel>();
+            var mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
+            var recoveredOperations = await serviceProvider.GetRequiredService<IChangePlanExecutionService>()
+                .RecoverInterruptedAsync(CancellationToken.None)
+                .ConfigureAwait(false);
+            await mainViewModel.ReconcileRecoveredOperationsAsync(
+                    recoveredOperations,
+                    CancellationToken.None)
+                .ConfigureAwait(false);
             graphRuntime = serviceProvider.GetRequiredService<IGraphBackgroundRuntime>();
             await graphRuntime.StartAsync(CancellationToken.None).ConfigureAwait(false);
             graphStarted = true;

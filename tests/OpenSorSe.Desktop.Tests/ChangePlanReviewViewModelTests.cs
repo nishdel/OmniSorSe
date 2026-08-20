@@ -227,6 +227,8 @@ public sealed class ChangePlanReviewViewModelTests
             context.Executor,
             new OperationReportExporter(),
             clipboard);
+        OperationJournalRecord? completedUndo = null;
+        history.OperationUndoCompleted += (_, operation) => completedUndo = operation;
 
         await history.RefreshAsync();
         Assert.True(history.HasOperations);
@@ -241,7 +243,47 @@ public sealed class ChangePlanReviewViewModelTests
         Assert.True(history.IsUndoConfirmationPending);
         await history.ConfirmOperationUndoCommand.ExecuteAsync(null);
         Assert.Equal(OperationStatus.Undone, history.SelectedOperation!.Status);
+        Assert.NotNull(completedUndo);
+        Assert.Equal(history.SelectedOperation.OperationId, completedUndo.OperationId);
+        Assert.Equal(OperationStatus.Undone, completedUndo.Status);
         Assert.True(File.Exists(directory.PathOf("source.txt")));
+    }
+
+    [Fact]
+    public async Task OperationHistoryPublishesBlockedUndoForProjectionReconciliation()
+    {
+        using var directory = new TemporaryDirectory();
+        var context = await CreateContextAsync(directory, "source.txt", "renamed.txt");
+        var approved = context.Plan with
+        {
+            Actions = Array.AsReadOnly(context.Plan.Actions
+                .Select(action => action with { ApprovalState = ChangeApprovalState.Approved })
+                .ToArray()),
+        };
+        approved = (await context.Validator.ValidateAsync(
+            approved,
+            ChangePlanValidationPhase.Review,
+            CancellationToken.None)).Plan;
+        var execution = await context.Executor.ExecuteAsync(
+            approved,
+            "Review Changes",
+            null,
+            CancellationToken.None);
+        File.AppendAllText(directory.PathOf("renamed.txt"), "newer data");
+        var history = new UndoHistoryViewModel(context.Journal, context.Executor, null, null);
+        OperationJournalRecord? completedUndo = null;
+        history.OperationUndoCompleted += (_, operation) => completedUndo = operation;
+
+        await history.RefreshAsync();
+        history.RequestOperationUndoCommand.Execute(null);
+        await history.ConfirmOperationUndoCommand.ExecuteAsync(null);
+
+        Assert.NotNull(completedUndo);
+        Assert.Equal(execution.Operation.OperationId, completedUndo.OperationId);
+        Assert.Equal(OperationStatus.UndoBlockedByConflicts, completedUndo.Status);
+        Assert.Equal(JournalUndoStatus.Blocked, Assert.Single(completedUndo.Actions).UndoStatus);
+        Assert.False(File.Exists(directory.PathOf("source.txt")));
+        Assert.True(File.Exists(directory.PathOf("renamed.txt")));
     }
 
     private static async Task<TestContext> CreateContextAsync(

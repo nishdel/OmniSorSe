@@ -33,8 +33,9 @@ flowchart LR
     Plan["Change Plan<br/>reviewed mutation intent"]
     Exec["Shared executor<br/>only production mutation path"]
     Journal[("Operation Journal<br/>actual outcome / rollback / Undo")]
-    Reconcile["Review Changes completion reconciliation"]
-    OtherMutationEntry["Operation History Undo / startup recovery<br/>known projection-wiring gap"]
+    Reconcile["Shared post-operation reconciliation"]
+    ReconciledEntries["Review Changes / Operation History Undo<br/>startup recovery"]
+    StructureGap["Folder Restructuring Apply<br/>recorded handoff gap"]
 
     Deep[("deep-index.db<br/>current indexed library and<br/>Smart Tag / relationship authority")]
     Search["Unified Search<br/>deterministic-first projection"]
@@ -50,8 +51,10 @@ flowchart LR
     Results --> Plan --> Exec
     Exec -->|"verified mutation"| FS
     Exec --> Journal
-    Journal -->|"Review Changes publishes terminal record"| Reconcile
-    OtherMutationEntry --> Journal
+    ReconciledEntries -->|"invoke execution / recovery"| Exec
+    Journal -->|"return exact records"| ReconciledEntries
+    ReconciledEntries -->|"forward exact records"| Reconcile
+    StructureGap --> Exec
     FS --> Reconcile --> Results
     Reconcile -->|"affected paths"| Deep
     Deep --> Graph
@@ -124,14 +127,14 @@ persistence or mutation authority.
 | --- | --- |
 | Purpose and owner | The shared production `IChangePlanExecutionService` is the only source-file mutation boundary. Validator, plan store, journal, filesystem gateway, recovery-safety state, and reconciliation service have separate responsibilities. |
 | Reads / inputs | Reviewed plan with explicit per-action approval, immediate filesystem identity/path state, current journal dependencies, cancellation, and initiating feature identity. |
-| Derives / outputs / consumers | Publishes durable operation/action outcomes, rollback/Undo availability, reports, and user-visible status. Review Changes publishes terminal records to `MainViewModel`, which derives reconciled Results and affected paths for index refresh. Operation History reads the journal independently. |
+| Derives / outputs / consumers | Publishes durable operation/action outcomes, rollback/Undo availability, reports, and user-visible status. Review Changes and Operation History publish exact terminal records to `MainViewModel`; startup passes exact recovered records after index initialization. The shell derives reconciled Results and submits affected paths for targeted index refresh. |
 | Mutates / persists | The executor may create directories, move/rename files, and move duplicate copies into managed recovery. Plans persist in `change-plans.json`; action-level outcomes persist in `operation-journal.json`. Reconciliation updates projections, not source intent. |
 | Does not own | Suggestions, rules, AI output, duplicate classification, or a guarantee that an externally changed path remains unchanged. |
 | Invariants | Only approved, revalidated actions execute. A journal record must reach Pending and Running durably before filesystem mutation. Pre/post identities are verified. Undo never overwrites an occupied original path or reverses a materially changed result. Authoritative-store corruption blocks mutation. |
 | Failure / cancellation / rollback | Cancellation is observed at action boundaries. Blocking failure triggers reverse-order rollback. Journal failure triggers emergency rollback. Partial rollback and ambiguous interrupted states are durable, user-visible outcomes. Startup inspects interrupted operations. Undo is reverse-order, identity- and dependency-aware, and can complete partially. |
-| Bounds | 1,000 actions/plan, 100 retained plans, 64 MiB plan file; 500 journal operations, 128 MiB journal, bounded messages/paths. |
+| Bounds | 1,000 actions/plan, 100 retained plans, 64 MiB plan file; 500 journal operations, 128 MiB journal, bounded messages/paths. Startup index submission is coalesced to at most one affected root per retained journal operation (500), independent of action count. |
 | Source / tests | [`ChangePlanExecutionService`](../../src/OpenSorSe.Executor/ChangePlanExecutionService.cs), [`ChangePlanReconciliationService`](../../src/OpenSorSe.Application/ChangePlans/ChangePlanReconciliationService.cs), [`MainViewModel` reconciliation handler](../../src/OpenSorSe.Desktop/ViewModels/MainViewModel.cs); `ChangePlanSafetyTests`, `ChangePlanReconciliationServiceTests`, Change Plan and Undo ViewModel tests. See [ADR-004](../Architecture/99_Appendix/ADR-004_Change_Plan_Mutation_Authority.md). |
-| Known limitations | The older standalone `IUndoEngine` and an in-memory compatibility constructor for folder restructuring remain public/tested but are not the production authority. Immediate projection refresh can fail after a valid filesystem outcome. More seriously, Operation History Undo and startup interruption recovery do not currently publish their returned journal records to reconciliation, so those two entry paths can leave Results/index projections stale until later scan/index work. |
+| Known limitations | The older standalone `IUndoEngine` and an in-memory compatibility constructor for folder restructuring remain public/tested but are not the production authority. Immediate projection refresh can fail after a valid filesystem outcome. Duplicate-recovery Undo cannot recreate a Results row removed during Apply because journal schema 1 does not own that logical row ID. Startup recover/reconcile is adjacent but not crash-atomic. The active `FolderRestructuringService.ApplyAsync` direct executor consumer remains a recorded shell-handoff gap. If journal persistence fails after Undo has already reversed a filesystem action, the disk change can precede the terminal record and projection handoff. |
 
 ### Related Files and Smart Collections
 
@@ -262,7 +265,7 @@ flowchart TD
 | Who owns indexed file state? | Schema-6 `SqliteDeepIndexStore`; the filesystem remains source-file truth. |
 | Who owns filesystem mutation intent? | Reviewed `ChangePlan` in `IChangePlanStore`. |
 | Who owns actual mutation outcome and Undo eligibility? | The Operation Journal plus current filesystem identity verification. |
-| Who reconciles after mutation? | `MainViewModel` invokes `ChangePlanReconciliationService` for terminal records published by Review Changes, then supplies paths to `BackgroundIndexingService.ReconcilePathsAsync`. Operation History Undo and startup recovery are known missing consumers. |
+| Who reconciles after mutation? | `MainViewModel` invokes `ChangePlanReconciliationService` for Review Changes, Operation History Undo, and startup-recovered records. Interactive operations submit affected paths; startup coalesces to at most 500 retained operation roots before calling `BackgroundIndexingService.ReconcilePathsAsync`. Folder Restructuring remains a recorded missing publisher. |
 | Who owns user-authored relationship decisions? | Schema-6 relationship/collection tables behind `IRelationshipStore`. |
 | Who may modify persistence? | The provider/service that owns that store; UI and plugins do not acquire general persistence authority. |
 | Which behavior remains deterministic without AI? | Scanning, exact duplicates, rules/plans, indexing, Smart Tags, Content Intelligence, relationship analysis, Search interpretation/ranking, graph projection, and all mutation safety. |
@@ -275,12 +278,13 @@ flowchart TD
 These findings are evidence-based review conclusions, not accepted invariants or
 reproduced product defects. They should be investigated before related changes.
 
-1. **Two mutation consumers bypass projection reconciliation.** Operation
-   History Undo calls the shared safe executor but refreshes only its journal
-   view; startup recovery discards the recovered-operation list. The journal and
-   filesystem remain authoritative, but Results and targeted index projections
-   may remain stale until later reconciliation. No focused integration test
-   currently covers either entry path.
+1. **A mutation consumer and an Undo failure path still bypass complete
+   projection handoff.** `FolderRestructuringService.ApplyAsync` directly calls
+   the shared executor but its result contract omits the terminal journal
+   record, so the shell cannot reconcile it immediately. Separately, an Undo
+   journal-persistence failure after the inverse filesystem action can escape
+   before Operation History receives a terminal record. Both are recorded
+   follow-ups; neither creates another mutation authority.
 2. **Two active Search stores.** `SemanticSearchService` loads legacy
    `semantic-index.json` and progressive SQLite concurrently. `SemanticIndexer`
    remains user-invokable and rebuilds legacy data from `content-index.json`.

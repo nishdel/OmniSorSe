@@ -133,9 +133,10 @@ Projection of verified Operation Journal outcomes plus current filesystem truth
 back into Files, duplicate groups, selection, Search, and targeted index-refresh
 inputs. It follows actual outcomes rather than Change Plan intent. Current
 Desktop wiring invokes this projection after terminal Apply/Undo in Review
-Changes. Operation History Undo and startup interruption recovery do not yet
-publish their returned journal records to this projection, so those paths can
-remain stale until a later scan/index pass.
+Changes, after Operation History Undo, and immediately after startup
+interruption recovery. The internal journal-only form remains usable after its source
+plan is pruned and preserves an existing Results logical identity by path; it
+does not reinterpret filesystem identity as UI identity.
 
 ### Search
 
