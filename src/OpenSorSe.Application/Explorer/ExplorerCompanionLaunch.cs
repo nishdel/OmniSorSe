@@ -513,7 +513,9 @@ public sealed class ExplorerCompanionLaunchService : IExplorerCompanionLaunchSer
                 cancellationToken).ConfigureAwait(false);
             sessionId = grant.SessionId;
             var launchId = RandomId();
-            var handoffEndpoint = "omnibrille-handoff-" + launchId;
+            // Keep the opaque name compact because Unix named pipes map to domain-socket paths
+            // whose platform limit includes the operating system's temporary-directory prefix.
+            var handoffEndpoint = "obh-" + launchId;
             var acknowledgementStopwatch = Stopwatch.StartNew();
             var result = await _bootstrap.LaunchAsync(
                 discovery.Executable,
