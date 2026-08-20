@@ -136,6 +136,47 @@ public sealed class ChangePlanReviewViewModelTests
     }
 
     [Fact]
+    public async Task QueuedProgressAfterVerifiedExecutionDoesNotOverwriteTerminalPresentation()
+    {
+        using var directory = new TemporaryDirectory();
+        var context = await CreateContextAsync(directory, "source.txt", "renamed.txt");
+        var executor = new QueuedProgressExecutionService();
+        using var viewModel = new ChangePlanReviewViewModel(
+            context.Validator,
+            executor,
+            context.PlanStore);
+        await viewModel.LoadAsync(context.Plan);
+        viewModel.ApproveAllSafeCommand.Execute(null);
+        await viewModel.ValidatePlanCommand.ExecuteAsync(null);
+        viewModel.RequestApplyCommand.Execute(null);
+
+        var queuedContext = new QueuedSynchronizationContext();
+        var originalContext = SynchronizationContext.Current;
+        Task applyTask;
+        SynchronizationContext.SetSynchronizationContext(queuedContext);
+        try
+        {
+            applyTask = viewModel.ConfirmApplyCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(originalContext);
+        }
+
+        await applyTask;
+        Assert.Equal(1, queuedContext.PendingCount);
+        Assert.Equal(OperationStatus.Succeeded, viewModel.LastExecution!.Operation.Status);
+        Assert.Equal(QueuedProgressExecutionService.TerminalSummary, viewModel.StatusText);
+        Assert.Equal("Succeeded", viewModel.ProgressText);
+
+        queuedContext.Drain();
+
+        Assert.Equal(OperationStatus.Succeeded, viewModel.LastExecution.Operation.Status);
+        Assert.Equal(QueuedProgressExecutionService.TerminalSummary, viewModel.StatusText);
+        Assert.Equal("Succeeded", viewModel.ProgressText);
+    }
+
+    [Fact]
     public async Task PartialExecutionStillPublishesJournalForProjectionReconciliation()
     {
         using var directory = new TemporaryDirectory();
@@ -342,6 +383,75 @@ public sealed class ChangePlanReviewViewModelTests
         public Task<IReadOnlyList<OperationJournalRecord>> RecoverInterruptedAsync(
             CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<OperationJournalRecord>>([]);
+    }
+
+    private sealed class QueuedProgressExecutionService : IChangePlanExecutionService
+    {
+        public const string TerminalSummary = "Verified terminal execution state.";
+
+        public Task<ChangePlanExecutionResult> ExecuteAsync(
+            ChangePlan plan,
+            string initiatingFeature,
+            IProgress<ChangeExecutionProgress>? progress,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report(new ChangeExecutionProgress(
+                OperationStatus.Running,
+                TotalActions: 1,
+                AttemptedActions: 1,
+                SucceededActions: 0,
+                FailedActions: 0,
+                CurrentActionId: plan.Actions.Single().ActionId,
+                Message: "Stale queued progress."));
+            var operation = new OperationJournalRecord(
+                OperationJournalSchema.CurrentVersion,
+                "operation:queued-progress",
+                plan.PlanId,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                "2.12.0",
+                OperationStatus.Succeeded,
+                initiatingFeature,
+                plan.RootPath,
+                [],
+                CancellationRequested: false,
+                Summary: TerminalSummary);
+            return Task.FromResult(new ChangePlanExecutionResult(
+                operation,
+                Succeeded: true,
+                WasCancelled: false,
+                Summary: TerminalSummary));
+        }
+
+        public Task<ChangePlanUndoResult> UndoAsync(
+            string operationId,
+            IReadOnlyCollection<string>? actionIds,
+            IProgress<ChangeExecutionProgress>? progress,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<OperationJournalRecord>> RecoverInterruptedAsync(
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<OperationJournalRecord>>([]);
+    }
+
+    private sealed class QueuedSynchronizationContext : SynchronizationContext
+    {
+        private readonly Queue<(SendOrPostCallback Callback, object? State)> _callbacks = [];
+
+        public int PendingCount => _callbacks.Count;
+
+        public override void Post(SendOrPostCallback callback, object? state) =>
+            _callbacks.Enqueue((callback, state));
+
+        public void Drain()
+        {
+            while (_callbacks.TryDequeue(out var queued))
+            {
+                queued.Callback(queued.State);
+            }
+        }
     }
 
     private sealed class RecordingClipboard : IClipboardService

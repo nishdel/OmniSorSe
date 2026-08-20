@@ -28,9 +28,10 @@ empty profile or require a branding-only reindex.
 
 This release also introduces Explorer Protocol v1: an on-demand,
 authenticated, source-scoped, bounded, read-only local named-pipe interface for
-a future separate OmniExplorer. OmniExplorer itself is not included, no graph
-renderer or GPU dependency was added, and ordinary OmniSorSe operation starts
-no protocol listener.
+a separate companion (called OmniExplorer in the v2.4 record and now delivered
+as OmniBrille). The companion itself is not included, no graph renderer or GPU
+dependency was added, and ordinary OmniSorSe operation starts no protocol
+listener.
 
 The release is automatically validated on Windows, Ubuntu, and macOS. Automated
 validation is not a claim of broad interactive testing on every host or with
@@ -39,66 +40,16 @@ for the evidence boundary,
 [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) for user-facing changes,
 and [Release History](RELEASE_HISTORY.md) for earlier milestones.
 
-Current development is the unreleased **v2.5 Workflow Completion & Indexing
-Quality** branch. It hardens reviewed Change Plan/Undo reconciliation and adds
-base-first progressive indexing. It also adds a lazy, scoped **Open in
-OmniBrille** handoff for the separately installed companion without changing
-Explorer Protocol v1. See the
-[v2.5 design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md); v2.4.0 remains the
-latest published release.
-
-The next implementation branch, **v2.6 Explainable Smart Tags**, builds on that
-committed v2.5 candidate. It consolidates local Theme, Document Type, and User
-Tag authority in schema 6, reuses retained Content/Media Intelligence evidence,
-and preserves base-first Search. It is not released. See the
-[v2.6 design](docs/EXPLAINABLE_SMART_TAGS_v2.6.md).
-
-The v2.7 release-candidate branch, **v2.7 Scalable Faceted Discovery**, builds
-on the committed v2.6 candidate. It restores complete-library candidate
-eligibility beyond the former 10,000-document projection, adds database-backed
-typed facets/counts and dynamic Saved Views, and keeps the established ranker,
-schema 6, progressive indexing, and Explorer Protocol v1. It is not released.
-See the [v2.7 design](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md).
-
-The v2.8 candidate, **Guided Workflows & Product
-Coherence**, builds on the committed v2.7 candidate. It connects durable Home
-readiness, Search, canonical facets/Saved Views, Files details, continuous Smart
-Tag review, and reviewed organization through stable file identity. It does not
-change schema 6, Search ranking, Explorer Protocol v1, or OmniBrille. It is not
-released. See the
-[v2.8 design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
-
-The v2.9 candidate, **Reviewed Intelligent Organization**,
-builds directly on the committed v2.8 candidate. It connects explicit bounded
-Files/Search/Saved View selections to the existing persistent recipe library,
-an ephemeral trusted-evidence preview, and the existing Change Plan,
-reconciliation, and Undo machinery. It adds no autonomous mutation, schema
-change, protocol change, or production dependency and is not released. See the
-[v2.9 design](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md).
-
-The v2.10 candidate, **Production Hardening & Operational
-Resilience**, builds directly on the committed v2.9 candidate. It adds
-single-writer profile ownership, fail-closed recovery stores, bounded hostile
-PDF handling, logical user-state export/restore, complete Forget coordination,
-bounded health checks, and traceable release provenance. It preserves schema 6,
-Explorer Protocol v1, OmniBrille separation, and all reviewed feature
-boundaries. It is not released. See the
-[v2.10 hardening record](docs/PRODUCTION_HARDENING_v2.10.md).
-
-The v2.11 candidate, **Supported Runtime & Platform Readiness**, builds directly
-on the committed v2.10 candidate. It moves every solution project and
-self-contained package path to .NET 10 LTS, strengthens runtime/RID/source
-provenance and native package smoke evidence, and leaves schema 6, product
-behavior, Explorer Protocol v1, and OmniBrille unchanged. It is not released.
-See the [v2.11 runtime record](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md).
-
-The v2.12 candidate, **Trusted Relationships & Context**, builds directly on
-the committed v2.11 candidate. It strengthens the existing schema-6
-relationship authority with capped evidence families, reversible pair
-corrections, graph-independent Related Files, bounded large-library candidate
-selection, and `.oms-state` format 2 for authored relationship/Smart Collection
-state. Schema 6 and Explorer Protocol 1.0 remain unchanged. It is not released.
-See the [v2.12 implementation record](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md).
+Current source is the unreleased **v2.12 Trusted Relationships & Context**
+candidate, built on the linear v2.5–v2.11 candidate stack. It targets .NET 10,
+uses durable index schema 6 and Explorer Protocol 1.0, and is not merged,
+tagged, packaged as a release, or published. Start with
+[Current State](docs/CURRENT-STATE.md) for the implemented boundary and known
+limitations, [Release Status](docs/RELEASE_STATUS.md) for validation/readiness
+evidence, and the
+[v2.12 implementation record](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) for
+release-specific detail. Earlier candidate records remain available through the
+[Documentation Index](docs/README.md) without being repeated here.
 
 The [transition and protocol guide](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 documents the compatibility and security boundaries. The

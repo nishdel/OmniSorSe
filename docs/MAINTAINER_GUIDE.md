@@ -10,8 +10,10 @@ behind these operational requirements and
 For current failure response use the
 [v2.10 operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md). For release sign-off
 use the deduplicated, entirely unchecked
-[v2.10 master manual matrix](MANUAL_TESTING_v2.10.md); historical version
-checklists remain evidence records rather than the current working checklist.
+[v2.10 master manual matrix](MANUAL_TESTING_v2.10.md) with the
+[v2.11](MANUAL_TESTING_v2.11.md) and [v2.12](MANUAL_TESTING_v2.12.md)
+addenda; historical version checklists remain evidence records rather than the
+current working checklist.
 
 ## Release checklist
 
@@ -29,11 +31,11 @@ checklists remain evidence records rather than the current working checklist.
 7. Only after all gates pass, follow an explicitly approved commit/tag/package/
    publish workflow. Source validation alone does not claim a release exists.
 
-The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) remains a
-frozen release snapshot. Apply the current
-[v2.0 manual checklist](MANUAL_TESTING_v2.0.md),
+The historical [v1.0 release checklist](RELEASE_CHECKLIST_v1.0.md) and
+[v2.0 manual checklist](MANUAL_TESTING_v2.0.md) remain evidence for those
+versions. Apply the current master matrix/addenda above, the
 [native packaging procedure](RELEASE_PACKAGING_v2.0.md), and
-[Release Status](RELEASE_STATUS.md) instead.
+[Release Status](RELEASE_STATUS.md) for a current release decision.
 
 Record Windows, Linux, and macOS results independently. A green local Windows
 run does not prove the Ubuntu workflow ran, and a successful Linux source build
@@ -67,6 +69,7 @@ write, corruption behavior, and tests.
 | --- | --- |
 | Settings and logs | Core |
 | Catalog, saved searches, content, semantic index, structure history | Application subsystem containing the store |
+| Saved discovery views | Application/Semantic; dynamic query rules, not file membership |
 | Durable Search index | Application contracts and `OpenSorSe.Indexing.Sqlite` provider |
 | Knowledge Graph derived sidecar | Application graph contracts and `OpenSorSe.Indexing.Sqlite.KnowledgeGraph` provider; rebuildable |
 | Knowledge Graph decision sidecar | Application graph decision/privacy contracts and `OpenSorSe.Indexing.Sqlite.KnowledgeGraph` provider; non-rebuildable |
@@ -75,6 +78,8 @@ write, corruption behavior, and tests.
 | Plugin state and controlled installed versions | Application/Plugins |
 | Change Plans and Operation Journal | Executor |
 | AI decision history | AI transport project |
+| Profile lock and run marker | Core platform/lifecycle; Desktop acquires and completes them around the profile-service lifetime |
+| Logical state backup/restore | Application/Resilience coordinates the owning stores; it does not become a duplicate authority |
 
 For a schema change:
 
@@ -110,7 +115,8 @@ retention, collection/member bounds, privacy filtering, source ownership,
 orphan/corrupt derived-row repair, exact-first Search expansion, and unchanged
 source files.
 
-v2.0 does not increment the durable Search index schema: `deep-index.db`
+At v2.0, the release did not increment the durable Search index schema:
+`deep-index.db`
 remains schema 3. It bootstraps independent schema-1
 `knowledge-graph.db` and `knowledge-decisions.db` sidecars with distinct
 application IDs, migration histories, integrity checks, and recovery behavior.
@@ -118,16 +124,26 @@ The graph store is derived and selectively rebuildable. The decision store is
 authoritative for graph-native user decisions and privacy state and must never
 be silently deleted, reset, or replaced by graph rebuild.
 
+Subsequent released/candidate migrations advance the current durable index:
+schema 4 adds shared bounded media evidence, schema 5 adds bounded Content
+Intelligence, and schema 6 adds normalized Smart Tag authority and canonical
+facet joins while retaining relationships, Smart Collections, pair/collection
+authority, and privacy. The current schema identity is
+`DeepIndexingVersion.SchemaVersion`; do not infer it from a versioned graph or
+relationship document. Validate each intervening migration/recovery-copy path,
+future-schema rejection, and preservation of user-authored authority.
+
 For Knowledge Graph changes, validate completed manifest ID/count/hash and
 bounded paging; separate ingested/applied source, decision, and privacy
 watermarks; four-axis state; atomic generation publication; fencing epoch plus
 claim token; 5-second heartbeat, 30-second TTL, and 5-second shutdown grace;
-legacy v1.9 decision authority; point-of-use privacy; verified backup privacy
+current schema-6 relationship/Smart Collection authority; point-of-use privacy;
+verified backup privacy
 floor; unsupported/corrupt/busy/low-resource behavior; deterministic rebuild;
 and unchanged source files. Cross-store lifecycle work must take the outer
 application-data lock and must not pretend to use a nested atomic transaction.
 
-The v2.0 candidate exposes decision recovery through the provider-neutral
+The v2.0 implementation exposes decision recovery through the provider-neutral
 `IGraphDecisionRecoveryService` maintainer/integration path; there is no claimed
 end-user restore button. List recovery points through that service so only
 bounded identifiers, sequences, generations, times, and status codes are
@@ -171,8 +187,11 @@ For relationship changes, additionally inspect the deterministic evidence
 matrix, false-positive/false-negative fixtures, algorithm version, feature
 indexes/query plans, candidate and member caps, cancellation, user override
 semantics, virtual collection tombstones, Search fallback, diagnostics
-redaction, and `MANUAL_TESTING_v1.9.md`. Never replace evidence with a model's
-unsupported explanation or present a rule score as a probability.
+redaction, format-2 logical backup/format-1 read compatibility, and the current
+[v2.12 manual addendum](MANUAL_TESTING_v2.12.md). Use
+`MANUAL_TESTING_v1.9.md` only for inherited historical scenarios. Never replace
+evidence with a model's unsupported explanation or present a rule score as a
+probability.
 
 Never silently reinterpret a field in a way that could authorize broader file
 operations.
@@ -241,8 +260,11 @@ Every release must keep these entry points current:
 - Product Vision, Product Roadmap, Engineering Principles, and Release History
   when their scope changes;
 - `docs/README.md`;
+- Current State and the glossary when volatile facts or terminology change;
 - User Guide, Troubleshooting, Manual Testing, and Version Notes;
 - Architecture Overview, Repository Structure, and System Map;
+- relevant ADRs and Mermaid diagrams when ownership, boundaries, or durable
+  reasoning change;
 - Safety and Privacy;
 - Changelog and Release Status;
 - relevant implementation specification and subsystem architecture;
@@ -268,8 +290,8 @@ Never commit:
 
 ## v2.2 media maintenance
 
-- Treat [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md) as the exact
-  candidate boundary. Check an item in [its manual checklist](MANUAL_TESTING_v2.2.md)
+- Treat [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md) as the released
+  subsystem boundary. Check an item in [its manual checklist](MANUAL_TESTING_v2.2.md)
   only after recording the exact native or interactive observation; keep
   automated-only, unavailable-dependency, and untested-platform claims clearly
   distinguishable.
@@ -288,7 +310,7 @@ Never commit:
 ## v2.3 Content Intelligence maintenance
 
 - Treat [Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md) as the
-  unmerged implementation boundary and keep
+  released subsystem boundary and keep
   [its manual checklist](MANUAL_TESTING_v2.3.md) honest about fake-provider,
   native-provider, interactive, and cross-target evidence.
 - Preserve exact/literal Search tiers when changing topic/entity/summary

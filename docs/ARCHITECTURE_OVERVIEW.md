@@ -2,7 +2,7 @@
 
 This is the authoritative top-level architecture for the OmniSorSe v2.12
 implementation candidate. It extends the released v2.4.0 baseline through the
-linear v2.5-v2.9 candidates while retaining established profile locations.
+linear v2.5-v2.12 candidates while retaining established profile locations.
 The durable Search index is schema 6 and Explorer Protocol remains v1.
 The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
@@ -41,8 +41,9 @@ health, job/source summaries, profile ownership, writability, and storage
 pressure without scanning document contents.
 
 Logical state export/restore covers reviewed user-authored settings, sources,
-recipes, Saved Views, User Tags, and tag decisions, not the rebuildable index or
-active mutation history. Schema-6 SQLite remains authoritative; Forget is
+recipes, Saved Views, User Tags, tag decisions, and—at format 2—exact-pair and
+authored Smart Collection authority, not the rebuildable index/graph projection
+or active mutation history. Schema-6 SQLite remains authoritative; Forget is
 coordinated across it and the legacy rebuildable content/semantic/thumbnail
 caches. Product version and source commit are centralized build inputs. PDF
 extraction and in-process rasterization have hard input/work/output bounds;
@@ -75,10 +76,10 @@ while generated edges/evidence remain rebuildable. See
 | Basic analysis | `FileMetadataReader`, `FileHasher`, `FileClassifier`, and `DuplicateDetector`. |
 | Text and OCR | `ContentIndexingService` → `MetadataExtractionPipeline`; `OcrService`, `PdfPageRasterizer`, and `TesseractCliOcrEngine` supply bounded local OCR where enabled and needed. |
 | Durable background indexing | `BackgroundIndexingService` coordinates `IIndexFileDiscovery`, `IIndexingStageProcessor`, and provider-neutral `IDeepIndexStore`; `OpenSorSe.Indexing.Sqlite` supplies the embedded provider. |
-| Media Intelligence candidate | `IMediaIntelligenceService` coordinates capability-based metadata, transcription, representative-frame, OCR, visual-description, and thumbnail providers. Structured evidence enters the existing durable stage/store/Search contracts; providers never own traversal, ranking, or source-file mutation. |
-| Content Intelligence candidate | `IContentIntelligenceProvider` receives only bounded retained evidence and returns normalized topics, textual entities, keywords, an extractive summary, provenance, and a processing fingerprint. `WhisperCppTranscriptionProvider` is an optional user-managed local process adapter; no runtime/model is bundled or downloaded. |
-| Explainable Smart Tags candidate | `ISmartTagClassifier` consumes already retained bounded evidence; `ISmartTagService` is the application authority; and the SQLite provider owns schema-6 taxonomy definitions, assignments, decisions, status, and canonical filter joins. Classification is deferred behind base Search and does not repeat extraction or modify source metadata. |
-| Explorer Protocol v1 | The dependency-free `OmniSorSe.ExplorerProtocol` project owns only DTOs/enums/version/capabilities. Application `IExplorerDataSource`, `ExplorerReadService`, and the on-demand current-user local named-pipe host project authorized indexed Structure/Search/Context without exposing SQLite or write operations. The host remains dormant unless an explicit session is requested. Unreleased v2.5 adds a desktop-only `ExplorerCompanionLaunchService` that discovers a separate OmniBrille executable on demand and transfers one scoped session through OmniBrille's established one-time current-user handoff pipe; Protocol v1 itself is unchanged. |
+| Media Intelligence | `IMediaIntelligenceService` coordinates capability-based metadata, transcription, representative-frame, OCR, visual-description, and thumbnail providers. Structured evidence enters the existing durable stage/store/Search contracts; providers never own traversal, ranking, or source-file mutation. |
+| Content Intelligence | `IContentIntelligenceProvider` receives only bounded retained evidence and returns normalized topics, textual entities, keywords, an extractive summary, provenance, and a processing fingerprint. `WhisperCppTranscriptionProvider` is an optional user-managed local process adapter; no runtime/model is bundled or downloaded. |
+| Smart Tags and faceted discovery | `ISmartTagClassifier` consumes already retained bounded evidence; `ISmartTagService` coordinates user authority; and the SQLite provider owns schema-6 taxonomy definitions, assignments, decisions, status, complete-index candidates, and canonical facet joins. `JsonSavedDiscoveryViewStore` owns dynamic query rules, never file membership. Classification is deferred behind base Search and does not repeat extraction or modify source metadata. |
+| Explorer Protocol v1 | The dependency-free `OmniSorSe.ExplorerProtocol` project owns only DTOs/enums/version/capabilities. Application `IExplorerDataSource`, `ExplorerReadService`, and the on-demand current-user local named-pipe host project authorized indexed Structure/Search/Context without exposing SQLite or write operations. The host remains dormant unless an explicit session is requested. `ExplorerCompanionLaunchService` discovers a separate OmniBrille executable only on demand and transfers one scoped session through OmniBrille's established one-time current-user handoff pipe; Protocol 1.0 itself is unchanged. |
 | Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
 | Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
 | Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
@@ -253,11 +254,12 @@ records this additive input. Unresolved Moderate, Limited, and rejected
 classifications are excluded, and the existing suggestion-to-Change-Plan
 boundary is unchanged. See [Guided Workflows v2.8](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
 
-## v1.9 relationships and context boundary
+## Inherited v1.9 relationships and current schema-6 authority
 
 `IRelationshipEngine` compares only bounded retained index projections and
 publishes automatic edges only with actual evidence. `IRelationshipStore`
-isolates schema 3 persistence, while `IRelationshipService` coordinates durable
+isolates provider persistence; the current SQLite implementation is schema 6,
+while `IRelationshipService` coordinates durable
 analysis, manual decisions, virtual collection control, privacy, Search
 expansion, diagnostics, and repair. Views and ViewModels do not use SQL or
 calculate confidence.
@@ -404,15 +406,32 @@ Responsibilities along this path:
   and refuses overwrite or unsafe reversal.
 - `RecoverInterruptedAsync` inspects journalled state on startup and reports
   what can be safely recovered or undone.
+- `ChangePlanReconciliationService` combines verified journal outcomes with
+  current filesystem truth, updates the completed-scan projection and duplicate
+  groups, and supplies affected paths for targeted index refresh. `MainViewModel`
+  currently invokes it for terminal Apply/Undo events published by Review
+  Changes. It follows actual results, including mixed/rollback states, rather
+  than plan intent.
+
+Current integration has a known stale-consumer gap. Operation History Undo
+calls the same safe executor but only refreshes its journal projection, and
+startup `RecoverInterruptedAsync` results are not forwarded to the
+reconciliation service. Those paths can leave Results or the targeted durable
+index stale until a later scan/index reconciliation. The executor/journal
+outcome remains authoritative; this is missing projection wiring, not a second
+mutation authority.
 
 The older `ActionExecutor` and `UndoEngine` remain as unregistered compatibility
 code. They are not the production route for current Desktop suggestions.
 
 ## Persistence view
 
-Production stores remain rooted under `%LOCALAPPDATA%\OpenSorSe` unless the user
-chooses an allowed log directory. Source files remain where the user selected
-them.
+`IApplicationPathProvider` owns production locations while retaining the
+OpenSorSe/opensorse compatibility identity: Windows uses
+`%LOCALAPPDATA%\OpenSorSe`; Linux separates XDG configuration, data, state, and
+cache roots; macOS separates Application Support, Caches, and Logs. The paths
+below are relative to the provider-owned category unless stated otherwise.
+Source files remain where the user selected them.
 
 | Data | Owner | Default location | Version/corruption behavior |
 | --- | --- | --- | --- |
@@ -420,9 +439,10 @@ them.
 | Ordinary logs | `LocalFileLoggerProvider` | `Logs/` | Daily bounded owned files with retention; no source content or secrets. |
 | Saved scans/catalogues | `JsonResultsCatalogStore` | `catalog.json` | Schema v2, reads supported older schema, bounded atomic replacement. |
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
+| Saved Views | `JsonSavedDiscoveryViewStore` | data/`saved-discovery-views.json` | Schema v1 bounded dynamic query rules; membership is evaluated against the current index and is not persisted. |
 | Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
 | Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
-| Durable Search index | `SqliteDeepIndexStore` | `index/deep-index.db` | v2.2 schema v4 uses a transactional recovery-copy migration from v2.1 schema v3 and content-hash-shared bounded media evidence. Existing stages, privacy rules, relationships/collections, repair, integrity, recovery, retention, quotas, and rebuildability remain. |
+| Durable Search index | `SqliteDeepIndexStore` | data/`index/deep-index.db` | Current schema v6 owns durable stages, bounded media/content evidence, Smart Tag taxonomy/assignment/decision state, canonical facet joins, relationships, pair/Smart Collection authority, privacy, repair, integrity, recovery, retention, quotas, and migrations from supported older schemas. Generated index evidence remains rebuildable; user-authored authority does not. |
 | Knowledge Graph projection | `SqliteGraphStore` | `index/knowledge-graph.db` | Schema v1; rebuildable completed-manifest projection, jobs, generations, nodes/edges/evidence, applied/ingested watermarks, repair, and bounded diagnostics. |
 | Knowledge Graph decisions | `SqliteGraphDecisionStore` | `index/knowledge-decisions.db` | Schema v1; append-only graph-native decisions, checkpoints, exclusions, privacy floor, and verified recovery points; never silently reset. |
 | AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
@@ -433,6 +453,9 @@ them.
 | Watched activity | `JsonWatchedActivityStore` | `watched-activity.json` | Schema v1 grouped activity; raw events are not persisted. |
 | Change Plans | `JsonChangePlanStore` | `change-plans.json` | Schema v1; bounded drafts; corruption blocks use rather than executing. |
 | Operation Journal / History | `JsonOperationJournalStore` | `operation-journal.json` | Schema v1; durable action facts, rollback, recovery, and Undo state. |
+| Profile ownership marker | `ProfileOwnershipLease` | state/`profile.owner.lock` plus an OS mutex | One current-user writer per profile; process death releases the mutex, while the bounded marker is informational. |
+| Application run marker | `ApplicationRunStateMarker` | state/`application-run-state.json` | Atomic active/clean marker used to surface a prior abnormal shutdown; not telemetry. |
+| Logical state transfer | `StateBackupService` | user-selected `.oms-state` | Current format 2, exact format-1 read compatibility, validated digests/bounds/schema, stable-ID restore, and a pre-restore recovery point; excludes rebuildable generated index/graph state, the separate Knowledge Graph decision sidecar, and active mutation history. |
 | Plugin state/integrity | `JsonPluginStateStore` | `plugins-state.json` | Schema v1; atomic enabled/grants/hash/failure/quarantine state. |
 | Installed plugins | `PluginPackageService` | `plugins/<id>/<version>/` | Controlled exact-version directories; not user documents. |
 | Advanced Diagnostics | `InMemoryDiagnosticsCollector` | Memory unless explicitly exported | Cleared on disable/exit; bounded and redacted by default. |

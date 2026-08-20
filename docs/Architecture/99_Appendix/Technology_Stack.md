@@ -1,4 +1,4 @@
-# OpenSorSe technology stack
+# OmniSorSe technology stack
 
 **Document type:** Living technology inventory
 
@@ -77,7 +77,9 @@ Current source does not use or claim:
 - a plugin marketplace, automatic plugin download/update, publisher signature
   authority, or OS sandbox;
 - Python/PySide as an application runtime;
-- a signed installer, automatic updater, or v2.0 distribution package;
+- an automatic updater or automatic package distribution. Published v2.4
+  Windows/macOS packages exist, but their release record identifies them as
+  unsigned and the macOS artifacts as not notarized;
 - OpenSorSe Server, collaboration, remote/unrestricted graph service, or a
   conversational assistant.
 

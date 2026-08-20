@@ -2,10 +2,10 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OmniSorSe System Map](OpenSorSe_System_Map.md). They describe the current
-released OmniSorSe v2.4 implementation over the historical OpenSorSe v2.3
-baseline and take
-precedence when an older document uses future-oriented
-language.
+OmniSorSe v2.12 implementation candidate over the published v2.4 baseline and
+take precedence when an older document uses future-oriented or now-stale
+language. [Current State](../CURRENT-STATE.md) owns volatile runtime, schema,
+protocol, source-line, and confidence facts.
 
 The [Product Vision](../../PRODUCT_VISION.md) defines why these boundaries
 exist, and [Engineering Principles](../../ENGINEERING_PRINCIPLES.md) defines
@@ -24,23 +24,37 @@ compatibility, and recovery.
 - `06_Search/09_v1.8_Search_Intelligence_Privacy.md`: current hybrid ranking,
   interpreted-filter, explanation/snippet, privacy, repair, and Search
   diagnostics boundaries.
-- `06_Search/10_v1.9_Relationships_Context.md`: current relationship evidence,
-  virtual collection, contextual Search, schema 3, privacy, repair, and graph
-  bound architecture.
-- `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: implemented-candidate
+- `06_Search/10_v1.9_Relationships_Context.md`: inherited relationship and
+  virtual-collection foundation at its historical schema-3 boundary. Use the
+  v2.12 record for current schema-6 evidence and pair authority.
+- `06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`: released v2.0
   graph/decision isolation, conservative identity, deterministic projection,
   concurrency, bounds, privacy, and mandatory RC contract.
 - `06_Search/12_v2.1_Search_AI_Quality.md`: released boundary for
   filename tiers, bounded optional Ollama reranking, model runtime discovery,
   fallback, indexing clarity, result commands, and compatibility.
-- `../OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`: current rename,
-  compatibility-in-place, public protocol, transport, authorization, scope,
-  threat-model, and future companion boundary.
+- `../OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`: released v2.4
+  rename, compatibility-in-place, and Protocol 1.0 foundation. It is a version
+  snapshot; use Current State and the System Map for cumulative behavior.
+- `../WORKFLOW_AND_INDEXING_QUALITY_v2.5.md` and
+  `../OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`: post-operation reconciliation,
+  base-first indexing, and the optional explicit OmniBrille launch/handoff.
 - `../EXPLAINABLE_SMART_TAGS_v2.6.md`: unreleased schema-6 Smart Tag authority,
   taxonomy, classifier, deferred stage, Search/filter, privacy, UI, and
   user-decision boundaries.
 - `../SCALABLE_FACETED_DISCOVERY_v2.7.md`: unreleased complete-library candidate
   selection, faceted discovery, Saved Views, and bounded extraction boundaries.
+- `../GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md`: durable readiness and stable
+  Search/Files/Smart Tag/review workflow context without a new authority.
+- `../REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md`: bounded stable-ID recipe
+  preview and handoff into the existing Change Plan boundary.
+- `../PRODUCTION_HARDENING_v2.10.md`: profile ownership, fail-closed recovery
+  stores, logical state transfer, Forget, health, and provenance.
+- `../SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md`: .NET 10 and current
+  runtime/package evidence boundaries.
+- `../TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`: current schema-6 relationship
+  evidence/pair authority, direct Related Files, bounded reanalysis, and
+  format-2 authored state.
 - `01_Core/10_Advanced_Diagnostics.md`: implemented unified diagnostics.
 - `02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`: current
   watcher/reconciliation boundary.
@@ -91,11 +105,15 @@ but they are not a statement of current product behavior.
 
 When changing the implementation:
 
-1. update the top-level architecture overview and system map;
-2. update the relevant versioned subsystem document;
-3. preserve historical documents unless their useful information has been
+1. identify Current State, architecture, diagram, glossary, ADR, safety, and
+   validation impact during planning;
+2. update Current State only when its volatile facts changed, and update the
+   top-level architecture/system map only when their boundaries changed;
+3. update the current subsystem document; create or update a version record
+   only when the work belongs to that release boundary;
+4. preserve historical documents unless their useful information has been
    consolidated and there is clear evidence they are obsolete;
-4. label future architecture explicitly rather than presenting it as shipped.
+5. label future architecture explicitly rather than presenting it as shipped.
 
 The remaining historical/long-term files are retained deliberately. Their
 presence is not a roadmap commitment. See the

@@ -9,29 +9,44 @@ is living guidance or a historical/version snapshot.
 When documents overlap, use this order:
 
 1. current source and tests define implemented behavior;
-2. current living product, architecture, engineering, safety, and release-status
+2. [Current State](CURRENT-STATE.md) owns volatile version, runtime, schema,
+   protocol, authority, and confidence facts;
+3. current living product, architecture, engineering, safety, and release-status
    documents explain that behavior;
-3. current version-specific guides/specifications explain their subsystem or
+4. current version-specific guides/specifications explain their subsystem or
    release boundary;
-4. older versioned documents and the packaged v1.0 tree are historical
+5. older versioned documents and the packaged v1.0 tree are historical
    evidence;
-5. planned roadmap concepts and old long-term architecture are not evidence of
+6. planned roadmap concepts and old long-term architecture are not evidence of
    implementation.
 
 [Release Status](RELEASE_STATUS.md) is authoritative for current readiness.
 [Release History](../RELEASE_HISTORY.md) is the concise historical index.
 [Product Roadmap](../PRODUCT_ROADMAP.md) is authoritative for future planning.
 
-## Understand the project in one hour
+## Start here
+
+The normal orientation path is intentionally short. Load product vision,
+engineering policy, release history, and subsystem records only when the task
+needs them.
 
 | Time | Read | What it answers | Status |
 | ---: | --- | --- | --- |
 | 5 min | [Repository README](../README.md) | What OmniSorSe is, what exists now, and the current branch/package boundary. | Living |
-| 10 min | [Product Vision](../PRODUCT_VISION.md) | Why the project exists; AI, privacy, Search, review, Undo, SQLite, and provider principles. | Living |
-| 10 min | [Product Roadmap](../PRODUCT_ROADMAP.md) | What is completed, in progress, planned, research, or backlog. | Living |
-| 15 min | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | How components, storage, Search, plugins, and the mutation boundary fit together. | Living |
-| 10 min | [Engineering Principles](../ENGINEERING_PRINCIPLES.md) and [Repository Structure](REPOSITORY_STRUCTURE.md) | Why the engineering model exists and where code belongs. | Living |
-| 10 min | [Contributing](../CONTRIBUTING.md) and [Developer Guide](DEVELOPER_GUIDE.md) | How to branch, build, test, validate, document, and submit a focused change. | Living |
+| 5 min | [Current State](CURRENT-STATE.md) | Which version/runtime/schema/protocol is current, who owns durable state, and what remains unverified. | Living current-truth authority |
+| 10 min | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | How authorities, persistence, Search/indexing, relationships, Explorer, and the mutation boundary fit together. | Living |
+| As needed | [Engineering workflow](engineering/README.md) | How a substantial human/Codex task is routed, validated, documented, reviewed, learned from, and reported. | Living |
+
+For product or architecture decisions, then read [Product Vision](../PRODUCT_VISION.md)
+and [Engineering Principles](../ENGINEERING_PRINCIPLES.md). For implementation,
+continue with [Repository Structure](REPOSITORY_STRUCTURE.md),
+[Contributing](../CONTRIBUTING.md), and the [Developer Guide](DEVELOPER_GUIDE.md).
+The engineering router leads to the scoped
+[architecture-authority map](engineering/ARCHITECTURE_AUTHORITY.md),
+[development system](engineering/DEVELOPMENT_SYSTEM.md),
+[risk/validation matrix](engineering/RISK_VALIDATION_MATRIX.md), and
+[controlled learning system](engineering/LEARNING_SYSTEM.md); load only those
+needed for the task.
 
 ## Living product and project documents
 
@@ -82,14 +97,14 @@ When documents overlap, use this order:
 | [Safety and Privacy](SAFETY_AND_PRIVACY.md) | Complete current source-file mutation, AI, watcher, workflow, plugin, storage, diagnostics, Search, recovery, and Undo boundaries. | Before any privacy, persistence, provider, plugin, or file-operation change. | Living and authoritative |
 | [v2.0 Security Notes](SECURITY_v2.0.md) | Knowledge Graph trust boundaries, hostile-input/resource defenses, store recovery, and explicit non-claims. | Before graph provider, query, suggestion, diagnostics, or recovery changes. | Current implemented security boundary |
 | [Changelog](CHANGELOG.md) | Detailed user-visible changes by historical version. | When release-by-release detail is required. | Cumulative historical record |
-| [Documentation Inventory](DOCUMENTATION_INVENTORY.md) | Exhaustive family classification, overlap, retention, consolidation, and known documentation debt. | When adding, moving, superseding, or removing documentation. | Living |
+| [Documentation Inventory](DOCUMENTATION_INVENTORY.md) | v2.4-basis family classification, overlap, retention, consolidation, and documentation debt. | For historical audit evidence before removing or consolidating an old path. | Historical v2.4 audit snapshot |
 
 The former [project philosophy](project_philosophy.md) and
 [roadmap](roadmap.md) paths are retained as compatibility navigation pages.
 Their authoritative content now lives in the root Product Vision and Product
 Roadmap.
 
-## Current user documentation
+## User guidance and release evidence
 
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
@@ -97,14 +112,14 @@ Roadmap.
 | [OpenSorSe 1.9 User Guide](USER_GUIDE_v1.9.md) | Inherited v1.9 relationships, Smart Collections, Search context, privacy, and repair. | When using inherited v1.9 workflows. | Current inherited guidance |
 | [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence/confidence, virtual collections, user control, Search context, privacy, and limits. | Before relying on or changing relationship behavior. | Current feature guide |
 | [OpenSorSe 2.0 Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) | Graph scope, consent, storage, lifecycle, browsing/Search, privacy, repair, limits, and deferred work. | When using, testing, or changing Knowledge Graph. | Current feature guide |
-| [OpenSorSe 2.0 Version Notes](VERSION_NOTES_v2.0.md) | Concise changes, compatibility, defaults, and limits. | For the v2.0 overview. | Current version snapshot |
+| [OpenSorSe 2.0 Version Notes](VERSION_NOTES_v2.0.md) | Concise changes, compatibility, defaults, and limits. | For the v2.0 overview. | Historical released-version snapshot |
 | [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) | Inherited Search/index failure, coverage, privacy, repair, and diagnostic guidance. | When Search or indexing is unclear or fails. | Current inherited guidance |
-| [OpenSorSe 1.9 Manual Testing](MANUAL_TESTING_v1.9.md) | Interactive relationship/collection scenarios, intentionally unchecked until observed. | During maintainer manual validation. | Current version-specific evidence template |
-| [OpenSorSe 1.9 Version Notes](VERSION_NOTES_v1.9.md) | Concise v1.9 user-visible changes and limits. | For the v1.9 milestone overview. | Current version snapshot |
-| [v1.9 Implementation Report](V1.9_IMPLEMENTATION_REPORT.md) | What v1.9 changed and reused. | For implementation evidence, not general onboarding. | Current version snapshot |
-| [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.9 validation totals. | Current version snapshot |
-| [v2.0 Implementation Report](V2.0_IMPLEMENTATION_REPORT.md) | Architecture and compatibility implemented by the candidate. | For v2.0 implementation evidence. | Current candidate snapshot |
-| [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md) | Exact automated, native-target, packaging, and explicit manual-exclusion evidence. | Before citing v2.0 validation. | Current release evidence |
+| [OpenSorSe 1.9 Manual Testing](MANUAL_TESTING_v1.9.md) | Interactive relationship/collection scenarios, intentionally unchecked until observed. | When auditing the v1.9 evidence boundary. | Historical version-specific evidence template |
+| [OpenSorSe 1.9 Version Notes](VERSION_NOTES_v1.9.md) | Concise v1.9 user-visible changes and limits. | For the v1.9 milestone overview. | Historical released-version snapshot |
+| [v1.9 Implementation Report](V1.9_IMPLEMENTATION_REPORT.md) | What v1.9 changed and reused. | For historical implementation evidence, not general onboarding. | Historical implementation snapshot |
+| [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.9 validation totals. | Historical validation snapshot |
+| [v2.0 Implementation Report](V2.0_IMPLEMENTATION_REPORT.md) | Architecture and compatibility described before final v2.0 integration corrections. | For historical candidate archaeology; do not use for current status or final test totals. | Historical pre-integration candidate snapshot; superseded for status |
+| [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md) | Exact automated, native-target, packaging, and explicit manual-exclusion evidence. | Before citing v2.0 validation. | Historical released-version evidence |
 | [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md) | Current support vocabulary and Windows/Linux/macOS capability evidence. | Before making a platform claim. | Living |
 | [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) | Linux source validation, run, and framework-dependent publish steps. | For Linux source work. | Living, conservative preview guidance |
 
@@ -112,7 +127,7 @@ The v1.9 guide builds on stable earlier workflows. Use the versioned v1.1-v1.8
 guides only when the current guide links to an inherited subsystem or when
 researching that release.
 
-## Current architecture
+## Current architecture and inherited subsystem records
 
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
@@ -120,13 +135,13 @@ researching that release.
 | [System Map](Architecture/OpenSorSe_System_Map.md) | Five Mermaid views of adapters, communication, processing, safe execution, and plugins. | When relationships are easier to understand visually. | Living and authoritative |
 | [Repository Structure](REPOSITORY_STRUCTURE.md) | Actual project reference graph, project responsibilities, tests, and change locations. | Before selecting a project to edit. | Living and authoritative |
 | [Architecture Library Index](Architecture/README.md) | Which detailed subsystem documents are current versus historical/long-term design. | Before reading any detailed architecture file. | Living |
-| [v1.7 Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md) | Provider-neutral durable stages, SQLite boundary, recovery, identity, quota, and coverage. | For indexing/provider/storage work. | Current subsystem contract inherited by v1.9 |
-| [v1.8 Search Intelligence and Privacy Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md) | Ranking, filters, snippets, concurrency, schema 2, privacy, and repair. | For Search and index-privacy work. | Current subsystem contract inherited by v1.9 |
+| [v1.7 Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md) | Provider-neutral durable stages, SQLite boundary, recovery, identity, quota, and coverage. | For historical foundations; verify current schema/authority in Current State and the Architecture Overview. | Historical inherited foundation |
+| [v1.8 Search Intelligence and Privacy Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md) | Ranking, filters, snippets, concurrency, schema 2, privacy, and repair. | For historical Search/privacy foundations; verify current behavior in source and current architecture. | Historical inherited foundation |
 | [v2.1 Search and AI Quality](SEARCH_AND_AI_QUALITY_v2.1.md) | Filename ranking, optional bounded Ollama ordering, model states, indexing clarity, result commands, privacy, fallback, and limitations. | For current v2.1 behavior and user guidance. | Current released subsystem |
 | [v2.1 Search and AI Quality Architecture](Architecture/06_Search/12_v2.1_Search_AI_Quality.md) | Deterministic authority, provider boundaries, bounded reranking protocol, cancellation, diagnostics, and compatibility. | For current Search or Ollama implementation work. | Current released subsystem architecture |
 | [v2.2 Media Intelligence](MEDIA_INTELLIGENCE_v2.2.md) | Provider-neutral extraction, schema-4 media evidence, bounded optional tools, Search, relationships, privacy, and diagnostics. | For media/index provider work. | Current released subsystem |
 | [v2.3 Content Intelligence](CONTENT_INTELLIGENCE_v2.3.md) | Provider-neutral bounded concepts, extractive summaries, optional local whisper.cpp process boundary, schema 5, ranking, relationships, privacy, and failure isolation. | For current v2.3 content/provider/index work. | Current released subsystem |
-| [v1.9 Relationships and Context Architecture](Architecture/06_Search/10_v1.9_Relationships_Context.md) | Evidence, confidence, incremental discovery, schema 3, virtual collections, Search context, privacy, and graph bounds. | For current relationship/collection work. | Current subsystem contract |
+| [v1.9 Relationships and Context Architecture](Architecture/06_Search/10_v1.9_Relationships_Context.md) | Evidence, confidence, incremental discovery, schema 3, virtual collections, Search context, privacy, and graph bounds. | For the inherited relationship foundation; use Current State and the v2.12 record for current schema-6 authority. | Historical schema-3 foundation |
 | [Advanced Diagnostics](Architecture/01_Core/10_Advanced_Diagnostics.md) | Current detailed diagnostics model and privacy. | For instrumentation/export changes. | Current subsystem contract |
 | [OCR and Metadata](Architecture/03_Readers/10_v1_OCR_and_Metadata.md) | Implemented extraction/OCR capability and bounds. | For extraction or OCR work. | Current subsystem contract |
 | [Small-model Prompt Contracts](Architecture/04_AI/11_Small_Model_Prompt_Contracts.md) | Implemented prompt/structured-output rules. | For optional AI changes. | Current subsystem contract |
@@ -141,9 +156,9 @@ plus [implementation specification 061](Implementation_Spec/v1.9/061_Relationshi
 are release-specific implementation records. Use the architecture documents
 above for the living subsystem model.
 
-## v2.0 release and design authority
+## v2.0 release and design evidence
 
-The design package remains the rationale and acceptance authority for the
+The design package remains historical rationale and acceptance evidence for the
 v2.0 implementation. Source and tests define what is actually implemented;
 unchecked manual or historical RC gates remain incomplete.
 
@@ -229,5 +244,6 @@ living-document duplicates.
 - Link to authoritative detail instead of copying it.
 - Label planned and research material explicitly.
 - Run documentation link/Mermaid tests and `git diff --check` after changes.
-- Consult the [Documentation Inventory](DOCUMENTATION_INVENTORY.md) before
-  removing or consolidating a path.
+- Consult the historical v2.4
+  [Documentation Inventory](DOCUMENTATION_INVENTORY.md) and current Git/source
+  evidence before removing or consolidating a path.

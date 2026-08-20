@@ -1,6 +1,12 @@
 # Documentation inventory
 
-**Document type:** Living documentation architecture and audit record
+**Document type:** Historical documentation audit snapshot
+
+**Status:** Frozen to its v2.4 repository basis. Use
+[`docs/README.md`](README.md) for the current documentation hierarchy and
+[`docs/engineering/README.md`](engineering/README.md) for the current
+engineering-knowledge system. The counts and classifications below remain
+useful archaeology but are not a current inventory.
 
 **Audit date:** 2026-08-03
 

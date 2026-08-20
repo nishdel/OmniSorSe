@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -143,6 +144,12 @@ public sealed partial class RepositoryDocumentationTests
         {
             "../README.md",
             "../CONTRIBUTING.md",
+            "CURRENT-STATE.md",
+            "engineering/README.md",
+            "engineering/ARCHITECTURE_AUTHORITY.md",
+            "engineering/DEVELOPMENT_SYSTEM.md",
+            "engineering/RISK_VALIDATION_MATRIX.md",
+            "engineering/LEARNING_SYSTEM.md",
             "USER_GUIDE_v1.9.md",
             "TROUBLESHOOTING_v1.8.md",
             "MANUAL_TESTING_v1.9.md",
@@ -224,6 +231,15 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68", validationWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/checkout@v", validationWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/setup-dotnet@v", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("- \"v*\"", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("[System.IO.Path]::GetFullPath", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("[System.Diagnostics.ProcessStartInfo]::new()", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("ArgumentList.Add($dataRoot)", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("WaitForExit(60000)", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Kill($true)", validationWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("WaitForExit()", validationWorkflow, StringComparison.Ordinal);
+        Assert.Contains("$process.ExitCode", validationWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("& $hostPath --package-smoke-test $dataRoot", validationWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/checkout@v", releaseWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/setup-dotnet@v", releaseWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/upload-artifact@v", releaseWorkflow, StringComparison.Ordinal);
@@ -480,6 +496,179 @@ public sealed partial class RepositoryDocumentationTests
             $"Skipped test declarations:{Environment.NewLine}{string.Join(Environment.NewLine, skipped)}");
     }
 
+    /// <summary>Verifies volatile version, runtime, schema, and protocol facts have one checked current-state entry point.</summary>
+    [Fact]
+    public void CurrentState_MatchesRepositoryRuntimeAndContractAuthorities()
+    {
+        var currentState = File.ReadAllText(Path.Combine(RepositoryRoot, "docs", "CURRENT-STATE.md"));
+        var buildProperties = XDocument.Load(Path.Combine(RepositoryRoot, "Directory.Build.props"));
+        var targetFramework = buildProperties.Descendants("TargetFramework").Single().Value;
+        var version = buildProperties.Descendants("OmniSorSeVersion").Single().Value;
+        var indexModels = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "src",
+            "OpenSorSe.Application",
+            "Indexing",
+            "DeepIndexingModels.cs"));
+        var protocol = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "src",
+            "OmniSorSe.ExplorerProtocol",
+            "ExplorerProtocolContracts.cs"));
+        var schema = Regex.Match(indexModels, @"SchemaVersion\s*=\s*(?<value>\d+)")
+            .Groups["value"].Value;
+        var protocolDisplay = Regex.Match(protocol, "Display\\s*=\\s*\"(?<value>[^\"]+)\"")
+            .Groups["value"].Value;
+
+        Assert.NotEmpty(schema);
+        Assert.NotEmpty(protocolDisplay);
+        Assert.Contains(version, currentState, StringComparison.Ordinal);
+        var runtimeMajor = targetFramework.StartsWith("net", StringComparison.Ordinal)
+            ? targetFramework[3..].Split('.', 2)[0]
+            : targetFramework;
+        Assert.Contains(
+            $".NET {runtimeMajor}",
+            currentState,
+            StringComparison.Ordinal);
+        Assert.Contains($"schema {schema}", currentState, StringComparison.Ordinal);
+        Assert.Contains($"Protocol is **{protocolDisplay}**", currentState, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies project agents and the substantial-run Skill stay discoverable and structurally complete.</summary>
+    [Fact]
+    public void CodexConfiguration_DefinesScopedAgentsAndOneProjectRunSkill()
+    {
+        var agentDirectory = Path.Combine(RepositoryRoot, ".codex", "agents");
+        var expectedAgents = new[]
+        {
+            "adversarial-reviewer.toml",
+            "architecture.toml",
+            "ax.toml",
+            "documentation.toml",
+            "dx-maintainability.toml",
+            "implementation.toml",
+            "performance.toml",
+            "product-strategy.toml",
+            "ux.toml",
+        };
+        var actualAgents = Directory.EnumerateFiles(agentDirectory, "*.toml")
+            .Select(path => Path.GetFileName(path)!)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(expectedAgents.Order(StringComparer.Ordinal), actualAgents);
+        var writableAgents = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "documentation.toml",
+            "implementation.toml",
+        };
+
+        foreach (var agent in actualAgents)
+        {
+            var content = File.ReadAllText(Path.Combine(agentDirectory, agent));
+            var normalized = content.Replace("\r\n", "\n").TrimEnd('\n');
+            var lines = normalized.Split('\n');
+            Assert.StartsWith("name = \"", lines[0], StringComparison.Ordinal);
+            Assert.StartsWith("description = \"Use ", lines[1], StringComparison.Ordinal);
+            Assert.Equal(
+                writableAgents.Contains(agent)
+                    ? "sandbox_mode = \"workspace-write\""
+                    : "sandbox_mode = \"read-only\"",
+                lines[2]);
+            Assert.Equal("developer_instructions = \"\"\"", lines[3]);
+            Assert.Equal("\"\"\"", lines[^1]);
+            Assert.Equal(1, lines.Count(line => line.StartsWith("name = ", StringComparison.Ordinal)));
+            Assert.Equal(1, lines.Count(line => line.StartsWith("description = ", StringComparison.Ordinal)));
+            Assert.Equal(1, lines.Count(line => line.StartsWith("sandbox_mode = ", StringComparison.Ordinal)));
+            Assert.Equal(1, lines.Count(line => line.StartsWith("developer_instructions = ", StringComparison.Ordinal)));
+        }
+
+        var skillRoot = Path.Combine(RepositoryRoot, ".agents", "skills");
+        var skillPath = Assert.Single(Directory.EnumerateFiles(
+            skillRoot,
+            "SKILL.md",
+            SearchOption.AllDirectories));
+        Assert.Equal(Path.Combine(
+            RepositoryRoot,
+            ".agents",
+            "skills",
+            "omnisorse-engineering-run",
+            "SKILL.md"), skillPath);
+        var skill = File.ReadAllText(skillPath);
+        var normalizedSkill = skill.Replace("\r\n", "\n");
+        Assert.Matches(
+            "^---\\nname: omnisorse-engineering-run\\ndescription: [^\\n]+\\n---\\n",
+            normalizedSkill);
+        Assert.Contains("docs/engineering/RISK_VALIDATION_MATRIX.md", skill, StringComparison.Ordinal);
+        Assert.Contains("docs/engineering/templates/OWNER_REPORT.md", skill, StringComparison.Ordinal);
+    }
+
+    /// <summary>Verifies ADR identifiers are unique, indexed, and preserve the required decision evidence.</summary>
+    [Fact]
+    public void ArchitectureDecisionRecords_HaveUniqueIdsAndRequiredSections()
+    {
+        var directory = Path.Combine(RepositoryRoot, "docs", "Architecture", "99_Appendix");
+        var records = Directory.EnumerateFiles(directory, "ADR-*.md")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var identifiers = records
+            .Select(path => Regex.Match(Path.GetFileName(path), @"^ADR-(?<id>\d{3})_").Groups["id"].Value)
+            .ToArray();
+        Assert.All(identifiers, identifier => Assert.False(string.IsNullOrWhiteSpace(identifier)));
+        Assert.Equal(identifiers.Length, identifiers.Distinct(StringComparer.Ordinal).Count());
+
+        var index = File.ReadAllText(Path.Combine(directory, "ADR.md"));
+        foreach (var record in records)
+        {
+            var identifier = Regex.Match(Path.GetFileName(record), @"^(ADR-\d{3})_").Groups[1].Value;
+            var content = File.ReadAllText(record);
+            Assert.StartsWith($"# {identifier}", content, StringComparison.Ordinal);
+            Assert.Contains("| Status |", content, StringComparison.Ordinal);
+            Assert.Contains("## Context", content, StringComparison.Ordinal);
+            Assert.Contains("## Decision", content, StringComparison.Ordinal);
+            Assert.Contains("## Consequences", content, StringComparison.Ordinal);
+            Assert.Contains("## Alternatives considered", content, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains($"[{identifier}]", index, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Prevents generated validation clones and artifacts from becoming tracked parallel authorities.</summary>
+    [Fact]
+    public void GeneratedValidationRoots_AreIgnoredAndUntracked()
+    {
+        var ignoreLines = File.ReadAllLines(Path.Combine(RepositoryRoot, ".gitignore"))
+            .Select(line => line.Trim())
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.Contains(".audit-validation/", ignoreLines);
+        Assert.Contains(".artifacts/", ignoreLines);
+
+        var gitMetadata = Path.Combine(RepositoryRoot, ".git");
+        if (!Directory.Exists(gitMetadata) && !File.Exists(gitMetadata))
+        {
+            return;
+        }
+
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo("git")
+            {
+                WorkingDirectory = RepositoryRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("ls-files");
+        process.StartInfo.ArgumentList.Add("--");
+        process.StartInfo.ArgumentList.Add(".audit-validation");
+        process.StartInfo.ArgumentList.Add(".artifacts");
+        Assert.True(process.Start(), "Unable to start git for tracked generated-root validation.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        Assert.True(process.WaitForExit(10_000), "git ls-files did not finish within ten seconds.");
+        Assert.True(process.ExitCode == 0, $"git ls-files failed: {error}");
+        Assert.True(string.IsNullOrWhiteSpace(output), $"Generated validation files are tracked:{Environment.NewLine}{output}");
+    }
+
     private static IEnumerable<string> MarkdownFiles() =>
         Directory.EnumerateFiles(RepositoryRoot, "*.md", SearchOption.AllDirectories)
             .Where(path => !IsExcluded(path))
@@ -490,6 +679,7 @@ public sealed partial class RepositoryDocumentationTests
         var relative = Relative(path).Replace('\\', '/');
         return relative.StartsWith(".git/", StringComparison.Ordinal) ||
                relative.StartsWith(".artifacts/", StringComparison.Ordinal) ||
+               relative.StartsWith(".audit-validation/", StringComparison.Ordinal) ||
                relative.StartsWith("release/", StringComparison.Ordinal) ||
                relative.Contains("/bin/", StringComparison.Ordinal) ||
                relative.Contains("/obj/", StringComparison.Ordinal);
@@ -561,10 +751,10 @@ public sealed partial class RepositoryDocumentationTests
     [GeneratedRegex(@"(?:src|href)=""(?<target>[^""]+)""", RegexOptions.IgnoreCase)]
     private static partial Regex HtmlLinkRegex();
 
-    [GeneratedRegex(@"^```mermaid\s*$", RegexOptions.Multiline)]
+    [GeneratedRegex(@"^```mermaid(?:[ \t]+[^\r\n`]*)?[ \t]*$", RegexOptions.Multiline)]
     private static partial Regex MermaidOpeningRegex();
 
-    [GeneratedRegex(@"^```mermaid\s*\r?\n(?<body>.*?)^```\s*$", RegexOptions.Multiline | RegexOptions.Singleline)]
+    [GeneratedRegex(@"^```mermaid(?:[ \t]+[^\r\n`]*)?[ \t]*\r?\n(?<body>.*?)^```[ \t]*$", RegexOptions.Multiline | RegexOptions.Singleline)]
     private static partial Regex MermaidBlockRegex();
 
     [GeneratedRegex(@"^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph|C4)\b")]

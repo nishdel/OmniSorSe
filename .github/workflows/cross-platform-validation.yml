@@ -4,22 +4,7 @@ on:
   push:
     branches:
       - main
-      - v1.7-deep-indexing-foundation
-      - v1.8-search-intelligence-privacy
-      - v1.9-relationships-context
-      - v2.0-knowledge-graph-design
-      - v2.0-knowledge-graph
-      - v2.1-search-ai-quality
-      - v2.2-media-intelligence
-      - v2.3-content-intelligence
-      - v2.4-omnisorse-transition
-      - v2.5-workflow-indexing-quality
-      - v2.6-explainable-smart-tags
-      - v2.7-scalable-faceted-discovery
-      - v2.8-guided-workflows-product-coherence
-      - v2.9-reviewed-intelligent-organization
-      - v2.10-production-hardening-operational-resilience
-      - v2.11-supported-runtime-platform-readiness
+      - "v*"
   pull_request:
 
 permissions:
@@ -122,11 +107,26 @@ jobs:
       - name: Publish and run native package smoke
         shell: pwsh
         run: |
-          $publishRoot = ".artifacts/native-smoke/${{ matrix.rid }}/publish"
-          $dataRoot = ".artifacts/native-smoke/${{ matrix.rid }}/profile"
+          $publishRoot = [System.IO.Path]::GetFullPath(".artifacts/native-smoke/${{ matrix.rid }}/publish")
+          $dataRoot = [System.IO.Path]::GetFullPath(".artifacts/native-smoke/${{ matrix.rid }}/profile")
           dotnet publish src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj --configuration Release --runtime '${{ matrix.rid }}' --self-contained true --no-restore --output $publishRoot -p:PublishSingleFile=false
           if ($LASTEXITCODE -ne 0) { throw 'Native publish failed.' }
           $hostPath = Join-Path $publishRoot '${{ matrix.host }}'
           if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) { throw "Native host is missing: $hostPath" }
-          & $hostPath --package-smoke-test $dataRoot
-          if ($LASTEXITCODE -ne 0) { throw 'Native package smoke failed.' }
+          $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = $hostPath
+          $startInfo.UseShellExecute = $false
+          $startInfo.ArgumentList.Add('--package-smoke-test')
+          $startInfo.ArgumentList.Add($dataRoot)
+          $process = [System.Diagnostics.Process]::Start($startInfo)
+          if ($null -eq $process) { throw 'Native package smoke did not start.' }
+          try {
+            if (-not $process.WaitForExit(60000)) {
+              if (-not $process.HasExited) { $process.Kill($true) }
+              throw 'Native package smoke did not finish within 60 seconds.'
+            }
+            if ($process.ExitCode -ne 0) { throw "Native package smoke failed with exit code $($process.ExitCode)." }
+          }
+          finally {
+            $process.Dispose()
+          }
