@@ -40,13 +40,15 @@ foreach ($artifact in $requiredArtifacts) {
 }
 if (-not $PortableOnly) {
     $installerVersionInfo = (Get-Item -LiteralPath $installer).VersionInfo
-    if ($installerVersionInfo.FileVersion -ne $fileVersion -or
-        $installerVersionInfo.ProductVersion -ne $Version -or
+    $installerFileVersion = $installerVersionInfo.FileVersion.TrimEnd()
+    $installerProductVersion = $installerVersionInfo.ProductVersion.TrimEnd()
+    if ($installerFileVersion -ne $fileVersion -or
+        $installerProductVersion -ne $Version -or
         $installerVersionInfo.ProductMajorPart -ne [int]$baseVersion.Split('.')[0] -or
         $installerVersionInfo.ProductMinorPart -ne [int]$baseVersion.Split('.')[1] -or
         $installerVersionInfo.ProductBuildPart -ne [int]$baseVersion.Split('.')[2] -or
         $installerVersionInfo.ProductPrivatePart -ne 0) {
-        throw "Installer version metadata is inconsistent: file '$($installerVersionInfo.FileVersion)', product '$($installerVersionInfo.ProductVersion)'."
+        throw "Installer version metadata is inconsistent: file '$installerFileVersion', product '$installerProductVersion'."
     }
 }
 
