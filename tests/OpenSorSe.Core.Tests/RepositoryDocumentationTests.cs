@@ -359,6 +359,8 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("InfoBeforeFile={#ValidationNotice}", installer, StringComparison.Ordinal);
         Assert.Contains("{app}\\OpenSorSe.exe", installer, StringComparison.Ordinal);
         Assert.Contains("Installer version metadata is inconsistent", windowsValidation, StringComparison.Ordinal);
+        Assert.Contains("$installerVersionInfo.FileVersion.TrimEnd()", windowsValidation, StringComparison.Ordinal);
+        Assert.Contains("$installerVersionInfo.ProductVersion.TrimEnd()", windowsValidation, StringComparison.Ordinal);
         Assert.Contains("not a published release", windowsValidation, StringComparison.Ordinal);
         Assert.Contains("CFBundleGetInfoString", macValidation, StringComparison.Ordinal);
         Assert.Contains("not a published release", macValidation, StringComparison.Ordinal);
