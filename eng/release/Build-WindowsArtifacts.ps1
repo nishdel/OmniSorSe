@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '2.11.0',
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
+    [string]$Version = '2.12.0-rc',
 
     [Parameter()]
     [ValidatePattern('^[0-9a-fA-F]{40}$')]
@@ -20,6 +20,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$baseVersion = $Version.Split('-', 2)[0]
+$fileVersion = "$baseVersion.0"
 
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
     throw 'Windows release artifacts must be built on native Windows.'
@@ -60,7 +62,7 @@ $publishArguments = @(
     '-p:DebugSymbols=false',
     '-p:PublishSingleFile=false'
     "-p:OmniSorSeVersion=$Version"
-    "-p:OmniSorSeFileVersion=$Version.0"
+    "-p:OmniSorSeFileVersion=$fileVersion"
     "-p:SourceRevisionId=$SourceRevision"
     '-p:ContinuousIntegrationBuild=true'
 )
@@ -73,11 +75,17 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination $appli
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'THIRD_PARTY_NOTICES.md') -Destination $applicationDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\dependency-licenses.json') -Destination $applicationDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\INSTALLATION.md') -Destination $applicationDirectory
-$releaseNotes = Join-Path $repositoryRoot "docs\RELEASE_NOTES_v$Version.md"
+$releaseNotes = Join-Path $repositoryRoot "docs\RELEASE_NOTES_v$baseVersion.md"
 if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
-    throw "Release notes for v$Version are missing: $releaseNotes"
+    throw "Release notes for v$baseVersion are missing: $releaseNotes"
 }
 Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $applicationDirectory 'RELEASE_NOTES.md')
+if ($Version -ne $baseVersion) {
+    [IO.File]::WriteAllText(
+        (Join-Path $applicationDirectory 'VALIDATION_BUILD.md'),
+        "# OmniSorSe $Version validation build`n`nThis is an unsigned release-candidate test build from exact source ``$SourceRevision``. It is not a published release. Installing it can replace an existing OmniSorSe installation, and opening it can migrate the retained OpenSorSe profile and schema. Use a disposable machine/profile or make a reviewed backup before manual validation.`n",
+        [Text.UTF8Encoding]::new($false))
+}
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\OpenSorSe.Desktop\Assets\opensorse-app-icon.ico') -Destination (Join-Path $applicationDirectory 'OmniSorSe.ico')
 $runtimeConfiguration = Get-Content -Raw -LiteralPath (Join-Path $applicationDirectory 'OmniSorSe.runtimeconfig.json') | ConvertFrom-Json
 $runtimeFramework = $runtimeConfiguration.runtimeOptions.includedFrameworks |
@@ -91,6 +99,7 @@ $runtimeVersion = $runtimeFramework.version
     (Join-Path $applicationDirectory 'OmniSorSe.build.json'),
     ([ordered]@{
         productVersion = $Version
+        baseVersion = $baseVersion
         sourceRevision = $SourceRevision
         configuration = 'Release'
         targetFramework = 'net10.0'
@@ -151,7 +160,17 @@ if ([string]::IsNullOrWhiteSpace($InnoSetupCompiler) -or
 }
 
 $installerScript = Join-Path $PSScriptRoot 'OpenSorSe.iss'
-& $InnoSetupCompiler "/DAppVersion=$Version" "/DAppSource=$applicationDirectory" "/DOutputDirectory=$outputRoot" $installerScript
+$compilerArguments = @(
+    "/DAppVersion=$Version",
+    "/DAppFileVersion=$fileVersion",
+    "/DAppSource=$applicationDirectory",
+    "/DOutputDirectory=$outputRoot"
+)
+if ($Version -ne $baseVersion) {
+    $compilerArguments += "/DValidationNotice=$(Join-Path $applicationDirectory 'VALIDATION_BUILD.md')"
+}
+$compilerArguments += $installerScript
+& $InnoSetupCompiler @compilerArguments
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }

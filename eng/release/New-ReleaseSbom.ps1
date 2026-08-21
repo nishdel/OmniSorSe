@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
     [string]$Version,
 
     [Parameter(Mandatory)]
@@ -14,6 +14,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$baseVersion = $Version.Split('-', 2)[0]
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $inventoryPath = Join-Path $repositoryRoot 'docs\dependency-licenses.json'
@@ -53,6 +54,7 @@ $bom = [ordered]@{
         }
         properties = @(
             [ordered]@{ name = 'omnisorse:sourceRevision'; value = $SourceRevision },
+            [ordered]@{ name = 'omnisorse:baseVersion'; value = $baseVersion },
             [ordered]@{ name = 'omnisorse:targetFramework'; value = 'net10.0' },
             [ordered]@{ name = 'omnisorse:inventorySource'; value = 'docs/dependency-licenses.json' }
         )
@@ -74,6 +76,8 @@ $verified = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json
 if ($verified.bomFormat -ne 'CycloneDX' -or
     $verified.specVersion -ne '1.6' -or
     $verified.metadata.component.version -ne $Version -or
+    ($verified.metadata.properties | Where-Object { $_.name -eq 'omnisorse:sourceRevision' }).value -ne $SourceRevision -or
+    ($verified.metadata.properties | Where-Object { $_.name -eq 'omnisorse:baseVersion' }).value -ne $baseVersion -or
     @($verified.components).Count -ne $packages.Count) {
     throw 'Generated CycloneDX SBOM failed validation.'
 }

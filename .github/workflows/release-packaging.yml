@@ -1,15 +1,16 @@
 name: Native release packaging
+run-name: Native package validation v${{ inputs.version }} from ${{ inputs.ref }}
 
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Exact main commit or annotated release tag to package
+        description: Exact 40-character main commit to package
         required: true
       version:
-        description: Three-part product version
+        description: Exact source product version, including any prerelease label
         required: true
-        default: 2.12.0
+        default: 2.12.0-rc
 
 permissions:
   contents: read
@@ -24,7 +25,35 @@ jobs:
     timeout-minutes: 45
     outputs:
       source_revision: ${{ steps.source.outputs.sha }}
+      base_version: ${{ steps.inputs.outputs.base_version }}
     steps:
+      - name: Validate packaging inputs
+        id: inputs
+        shell: bash
+        env:
+          SOURCE_REF: ${{ inputs.ref }}
+          PACKAGE_VERSION: ${{ inputs.version }}
+          WORKFLOW_REF: ${{ github.ref }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$WORKFLOW_REF" != 'refs/heads/main' ]]; then
+            echo "Native packaging must be dispatched from main, not '$WORKFLOW_REF'." >&2
+            exit 2
+          fi
+          if [[ ! "$SOURCE_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo 'The packaging ref must be an exact 40-character commit.' >&2
+            exit 2
+          fi
+          if [[ "${SOURCE_REF,,}" != "${WORKFLOW_SHA,,}" ]]; then
+            echo "Requested source '$SOURCE_REF' is not the dispatched main commit '$WORKFLOW_SHA'." >&2
+            exit 2
+          fi
+          if [[ ! "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo 'The package version must be a filename-safe semantic version.' >&2
+            exit 2
+          fi
+          echo "base_version=${PACKAGE_VERSION%%-*}" >> "$GITHUB_OUTPUT"
+
       - name: Check out exact release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -35,7 +64,31 @@ jobs:
       - name: Resolve exact source identity
         id: source
         shell: bash
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          SOURCE_REF: ${{ inputs.ref }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          if [[ "${sha,,}" != "${SOURCE_REF,,}" ]]; then
+            echo "Checked out '$sha' instead of exact requested commit '$SOURCE_REF'." >&2
+            exit 1
+          fi
+          remote_main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [[ "${sha,,}" != "${remote_main,,}" ]]; then
+            echo "Requested source '$sha' is no longer the live origin/main commit '$remote_main'." >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Match package version to source authority
+        shell: pwsh
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: |
+          [xml] $properties = Get-Content -Raw -LiteralPath 'Directory.Build.props'
+          $sourceVersion = [string] $properties.Project.PropertyGroup.OmniSorSeVersion
+          if ($sourceVersion -ne $env:PACKAGE_VERSION) {
+            throw "Requested package version '$env:PACKAGE_VERSION' does not match source version '$sourceVersion'."
+          }
 
       - name: Use repository .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
@@ -46,8 +99,12 @@ jobs:
         run: dotnet restore OpenSorSe.sln --force --no-cache
 
       - name: Build and test authoritative Release metadata
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+          BASE_VERSION: ${{ steps.inputs.outputs.base_version }}
+          SOURCE_REVISION: ${{ steps.source.outputs.sha }}
         run: |
-          dotnet build OpenSorSe.sln --configuration Release --no-restore -p:OmniSorSeVersion='${{ inputs.version }}' -p:OmniSorSeFileVersion='${{ inputs.version }}.0' -p:SourceRevisionId='${{ steps.source.outputs.sha }}' -p:ContinuousIntegrationBuild=true
+          dotnet build OpenSorSe.sln --configuration Release --no-restore "-p:OmniSorSeVersion=$PACKAGE_VERSION" "-p:OmniSorSeFileVersion=$BASE_VERSION.0" "-p:SourceRevisionId=$SOURCE_REVISION" -p:ContinuousIntegrationBuild=true
           dotnet test OpenSorSe.sln --configuration Release --no-build --no-restore
 
       - name: Run release architecture and recovery gates
@@ -90,27 +147,31 @@ jobs:
             "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
             "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
           ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
-          if (-not $compiler) {
-            choco install innosetup --no-progress -y
-            $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if ([string]::IsNullOrWhiteSpace($compiler) -or
+              -not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw 'The maintained runner does not provide Inno Setup 6; refusing mutable fallback installation.'
           }
-          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
-            throw "Inno Setup 6 is unavailable."
-          }
+          Write-Host "Using $((Get-Item -LiteralPath $compiler).VersionInfo.ProductVersion) at $compiler"
           "INNO_SETUP_COMPILER=$compiler" >> $env:GITHUB_ENV
 
       - name: Build Windows artifacts
         shell: pwsh
-        run: ./eng/release/Build-WindowsArtifacts.ps1 -Version '${{ inputs.version }}' -SourceRevision '${{ needs.release-validation.outputs.source_revision }}' -OutputDirectory '.artifacts/release' -InnoSetupCompiler "$env:INNO_SETUP_COMPILER"
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+          SOURCE_REVISION: ${{ needs.release-validation.outputs.source_revision }}
+        run: ./eng/release/Build-WindowsArtifacts.ps1 -Version $env:PACKAGE_VERSION -SourceRevision $env:SOURCE_REVISION -OutputDirectory '.artifacts/release' -InnoSetupCompiler "$env:INNO_SETUP_COMPILER"
 
       - name: Install, start, stop, and uninstall package
         shell: pwsh
-        run: ./eng/release/Validate-WindowsArtifacts.ps1 -Version '${{ inputs.version }}' -SourceRevision '${{ needs.release-validation.outputs.source_revision }}' -ArtifactDirectory '.artifacts/release'
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+          SOURCE_REVISION: ${{ needs.release-validation.outputs.source_revision }}
+        run: ./eng/release/Validate-WindowsArtifacts.ps1 -Version $env:PACKAGE_VERSION -SourceRevision $env:SOURCE_REVISION -ArtifactDirectory '.artifacts/release'
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: windows-release
+          name: OmniSorSe-v${{ inputs.version }}-windows-package
           path: |
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64.zip
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe
@@ -148,15 +209,23 @@ jobs:
         run: dotnet restore OpenSorSe.sln --runtime '${{ matrix.rid }}' --force --no-cache
 
       - name: Build native app bundle and disk image
-        run: bash ./eng/release/Build-MacArtifacts.sh '${{ inputs.version }}' '${{ matrix.rid }}' '.artifacts/release' '${{ needs.release-validation.outputs.source_revision }}'
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+          RUNTIME_IDENTIFIER: ${{ matrix.rid }}
+          SOURCE_REVISION: ${{ needs.release-validation.outputs.source_revision }}
+        run: bash ./eng/release/Build-MacArtifacts.sh "$PACKAGE_VERSION" "$RUNTIME_IDENTIFIER" '.artifacts/release' "$SOURCE_REVISION"
 
       - name: Inspect, mount, and smoke-test disk image
-        run: bash ./eng/release/Validate-MacArtifact.sh '${{ inputs.version }}' '${{ matrix.rid }}' '.artifacts/release' '${{ needs.release-validation.outputs.source_revision }}'
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+          RUNTIME_IDENTIFIER: ${{ matrix.rid }}
+          SOURCE_REVISION: ${{ needs.release-validation.outputs.source_revision }}
+        run: bash ./eng/release/Validate-MacArtifact.sh "$PACKAGE_VERSION" "$RUNTIME_IDENTIFIER" '.artifacts/release' "$SOURCE_REVISION"
 
       - name: Upload macOS disk image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: macos-${{ matrix.suffix }}-release
+          name: OmniSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}-package
           path: .artifacts/release/OmniSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}.dmg
           if-no-files-found: error
           retention-days: 14
@@ -178,22 +247,27 @@ jobs:
       - name: Download native artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          pattern: '*-release'
+          pattern: 'OmniSorSe-v${{ inputs.version }}-*-package'
           path: .artifacts/release
           merge-multiple: true
 
       - name: Generate source-bound CycloneDX dependency SBOM
         shell: pwsh
-        run: ./eng/release/New-ReleaseSbom.ps1 -Version '${{ inputs.version }}' -SourceRevision '${{ needs.release-validation.outputs.source_revision }}' -ArtifactDirectory '.artifacts/release'
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+          SOURCE_REVISION: ${{ needs.release-validation.outputs.source_revision }}
+        run: ./eng/release/New-ReleaseSbom.ps1 -Version $env:PACKAGE_VERSION -SourceRevision $env:SOURCE_REVISION -ArtifactDirectory '.artifacts/release'
 
-      - name: Generate and independently verify SHA-256 checksums
+      - name: Generate and verify SHA-256 checksums
         shell: pwsh
-        run: ./eng/release/New-ReleaseChecksums.ps1 -Version '${{ inputs.version }}' -ArtifactDirectory '.artifacts/release'
+        env:
+          PACKAGE_VERSION: ${{ inputs.version }}
+        run: ./eng/release/New-ReleaseChecksums.ps1 -Version $env:PACKAGE_VERSION -ArtifactDirectory '.artifacts/release'
 
-      - name: Upload complete verified release bundle
+      - name: Upload complete verified package bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: OmniSorSe-v${{ inputs.version }}-release-bundle
+          name: OmniSorSe-v${{ inputs.version }}-package-bundle
           path: |
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64.zip
             .artifacts/release/OmniSorSe-v${{ inputs.version }}-win-x64-setup.exe

@@ -272,6 +272,17 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-macos-arm64.dmg", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-sbom.cdx.json", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe-v${{ inputs.version }}-SHA256SUMS.txt", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-package-bundle", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-windows-package", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSe-v${{ inputs.version }}-macos-${{ matrix.suffix }}-package", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("name: windows-release", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("Native package validation v${{ inputs.version }} from ${{ inputs.ref }}", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("The packaging ref must be an exact 40-character commit.", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("refs/heads/main", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("${{ github.sha }}", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("git ls-remote origin refs/heads/main", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("does not match source version", releaseWorkflow, StringComparison.Ordinal);
+        Assert.DoesNotContain("choco install innosetup", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".deb", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".rpm", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("AppImage", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
@@ -307,21 +318,50 @@ public sealed partial class RepositoryDocumentationTests
             "eng",
             "release",
             "OpenSorSe.iss"));
-        Assert.Contains("RELEASE_NOTES_v$Version.md", windowsPackaging, StringComparison.Ordinal);
-        Assert.Contains("RELEASE_NOTES_v$version.md", macPackaging, StringComparison.Ordinal);
+        var windowsValidation = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "eng",
+            "release",
+            "Validate-WindowsArtifacts.ps1"));
+        var macValidation = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "eng",
+            "release",
+            "Validate-MacArtifact.sh"));
+        var sbomGeneration = File.ReadAllText(Path.Combine(
+            RepositoryRoot,
+            "eng",
+            "release",
+            "New-ReleaseSbom.ps1"));
+        Assert.Contains("RELEASE_NOTES_v$baseVersion.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("RELEASE_NOTES_v$base_version.md", macPackaging, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("VALIDATION_BUILD.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("VALIDATION_BUILD.md", macPackaging, StringComparison.Ordinal);
+        Assert.Contains("baseVersion = $baseVersion", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("\"baseVersion\":\"%s\"", macPackaging, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe.exe", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("targetFramework = 'net10.0'", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("runtimeIdentifier = 'win-x64'", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("OmniSorSe.app", macPackaging, StringComparison.Ordinal);
         Assert.Contains("\"targetFramework\":\"net10.0\"", macPackaging, StringComparison.Ordinal);
         Assert.Contains("io.github.nishdel.OpenSorSe", macPackaging, StringComparison.Ordinal);
+        Assert.Contains("OmniSorSeProductVersion", macPackaging, StringComparison.Ordinal);
         Assert.Contains("AppId={{3F3BCA7E-38A1-45D3-B068-B22D25BCECF4}", installer, StringComparison.Ordinal);
         Assert.Contains("DefaultDirName={localappdata}\\Programs\\OpenSorSe", installer, StringComparison.Ordinal);
         Assert.Contains("AppName=OmniSorSe", installer, StringComparison.Ordinal);
         Assert.Contains("DefaultGroupName=OmniSorSe", installer, StringComparison.Ordinal);
         Assert.Contains("UsePreviousGroup=no", installer, StringComparison.Ordinal);
+        Assert.Contains("AppFileVersion", installer, StringComparison.Ordinal);
+        Assert.Contains("VersionInfoProductTextVersion={#AppVersion}", installer, StringComparison.Ordinal);
+        Assert.Contains("InfoBeforeFile={#ValidationNotice}", installer, StringComparison.Ordinal);
         Assert.Contains("{app}\\OpenSorSe.exe", installer, StringComparison.Ordinal);
+        Assert.Contains("Installer version metadata is inconsistent", windowsValidation, StringComparison.Ordinal);
+        Assert.Contains("not a published release", windowsValidation, StringComparison.Ordinal);
+        Assert.Contains("CFBundleGetInfoString", macValidation, StringComparison.Ordinal);
+        Assert.Contains("not a published release", macValidation, StringComparison.Ordinal);
+        Assert.Contains("omnisorse:sourceRevision", sbomGeneration, StringComparison.Ordinal);
+        Assert.Contains("-ne $SourceRevision", sbomGeneration, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", macPackaging, StringComparison.Ordinal);
     }
 
@@ -352,7 +392,7 @@ public sealed partial class RepositoryDocumentationTests
             ".github",
             "workflows",
             "release-packaging.yml"));
-        Assert.Contains("default: 2.12.0", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("default: 2.12.0-rc", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("global-json-file: global.json", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-WindowsArtifacts.ps1", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-MacArtifacts.sh", releaseWorkflow, StringComparison.Ordinal);

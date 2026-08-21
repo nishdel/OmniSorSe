@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
     [string]$Version,
 
     [Parameter(Mandatory)]
@@ -16,6 +16,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$baseVersion = $Version.Split('-', 2)[0]
+$fileVersion = "$baseVersion.0"
 
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
     throw 'Windows package validation must run on native Windows.'
@@ -34,6 +36,17 @@ foreach ($artifact in $requiredArtifacts) {
     }
     if ((Get-Item -LiteralPath $artifact).Length -le 0) {
         throw "Required Windows artifact is empty: $artifact"
+    }
+}
+if (-not $PortableOnly) {
+    $installerVersionInfo = (Get-Item -LiteralPath $installer).VersionInfo
+    if ($installerVersionInfo.FileVersion -ne $fileVersion -or
+        $installerVersionInfo.ProductVersion -ne $Version -or
+        $installerVersionInfo.ProductMajorPart -ne [int]$baseVersion.Split('.')[0] -or
+        $installerVersionInfo.ProductMinorPart -ne [int]$baseVersion.Split('.')[1] -or
+        $installerVersionInfo.ProductBuildPart -ne [int]$baseVersion.Split('.')[2] -or
+        $installerVersionInfo.ProductPrivatePart -ne 0) {
+        throw "Installer version metadata is inconsistent: file '$($installerVersionInfo.FileVersion)', product '$($installerVersionInfo.ProductVersion)'."
     }
 }
 
@@ -64,7 +77,7 @@ if (-not (Test-Path -LiteralPath $portableExecutable -PathType Leaf)) {
     throw 'The Windows portable archive does not contain OmniSorSe.exe at its root.'
 }
 $versionInfo = (Get-Item -LiteralPath $portableExecutable).VersionInfo
-if ($versionInfo.FileVersion -ne "$Version.0" -or $versionInfo.ProductVersion -notlike "$Version*") {
+if ($versionInfo.FileVersion -ne $fileVersion -or $versionInfo.ProductVersion -notlike "$Version*") {
     throw "OmniSorSe.exe version metadata is inconsistent: file '$($versionInfo.FileVersion)', product '$($versionInfo.ProductVersion)'."
 }
 $provenancePath = Join-Path $portableRoot 'OmniSorSe.build.json'
@@ -73,6 +86,7 @@ if (-not (Test-Path -LiteralPath $provenancePath -PathType Leaf)) {
 }
 $provenance = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json
 if ($provenance.productVersion -ne $Version -or
+    $provenance.baseVersion -ne $baseVersion -or
     $provenance.sourceRevision -ne $SourceRevision -or
     $provenance.configuration -ne 'Release' -or
     $provenance.targetFramework -ne 'net10.0' -or
@@ -81,6 +95,22 @@ if ($provenance.productVersion -ne $Version -or
     $provenance.selfContained -ne $true -or
     $versionInfo.ProductVersion -notlike "$Version+$SourceRevision*") {
     throw 'Package filename, binary metadata, and build provenance do not identify the same source.'
+}
+if ($Version -ne $baseVersion) {
+    $validationNoticePath = Join-Path $portableRoot 'VALIDATION_BUILD.md'
+    if (-not (Test-Path -LiteralPath $validationNoticePath -PathType Leaf)) {
+        throw 'The prerelease package is missing its validation-build notice.'
+    }
+    $validationNotice = Get-Content -Raw -LiteralPath $validationNoticePath
+    if ($validationNotice -notlike "*OmniSorSe $Version validation build*" -or
+        $validationNotice -notlike "*$SourceRevision*" -or
+        $validationNotice -notlike '*not a published release*' -or
+        $validationNotice -notlike '*unsigned*' -or
+        $validationNotice -notlike '*disposable machine/profile*' -or
+        $validationNotice -notlike '*can replace an existing OmniSorSe installation*' -or
+        $validationNotice -notlike '*migrate the retained OpenSorSe profile and schema*') {
+        throw 'The prerelease package validation notice does not match its version, source, or release boundary.'
+    }
 }
 $runtimeConfiguration = Get-Content -Raw -LiteralPath (Join-Path $portableRoot 'OmniSorSe.runtimeconfig.json') | ConvertFrom-Json
 if ($runtimeConfiguration.runtimeOptions.tfm -ne 'net10.0') {
