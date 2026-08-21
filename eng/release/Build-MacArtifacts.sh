@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:-2.11.0}"
+version="${1:-2.12.0-rc}"
 rid="${2:?A macOS runtime identifier is required.}"
 output_directory="${3:?A release output directory is required.}"
 source_revision="${4:-}"
+
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+  echo 'The package version must be a filename-safe semantic version.' >&2
+  exit 2
+fi
+base_version="${version%%-*}"
+file_version="$base_version.0"
 
 case "$rid" in
   osx-x64) architecture="x86_64" ;;
@@ -40,7 +47,7 @@ dotnet publish "$repository_root/src/OpenSorSe.Desktop/OpenSorSe.Desktop.csproj"
   -p:DebugSymbols=false \
   -p:PublishSingleFile=false \
   -p:OmniSorSeVersion="$version" \
-  -p:OmniSorSeFileVersion="$version.0" \
+  -p:OmniSorSeFileVersion="$file_version" \
   -p:SourceRevisionId="$source_revision" \
   -p:ContinuousIntegrationBuild=true
 
@@ -55,6 +62,13 @@ cp "$repository_root/LICENSE" "$resources_directory/LICENSE"
 cp "$repository_root/THIRD_PARTY_NOTICES.md" "$resources_directory/THIRD_PARTY_NOTICES.md"
 cp "$repository_root/docs/dependency-licenses.json" "$resources_directory/dependency-licenses.json"
 cp "$repository_root/docs/INSTALLATION.md" "$resources_directory/INSTALLATION.md"
+if [[ "$version" != "$base_version" ]]; then
+  cat > "$resources_directory/VALIDATION_BUILD.md" <<NOTICE
+# OmniSorSe $version validation build
+
+This is an unsigned and unnotarized release-candidate test build from exact source \`$source_revision\`. It is not a published release. Opening it can migrate the retained OpenSorSe profile and schema. Use a disposable machine/profile or make a reviewed backup before manual validation.
+NOTICE
+fi
 runtime_version="$(python3 - "$macos_directory/OmniSorSe.runtimeconfig.json" <<'PY'
 import json, sys
 path = sys.argv[1]
@@ -66,11 +80,11 @@ if len(matches) != 1:
 print(matches[0])
 PY
 )"
-printf '{"productVersion":"%s","sourceRevision":"%s","configuration":"Release","targetFramework":"net10.0","runtimeIdentifier":"%s","runtimeVersion":"%s","selfContained":true}\n' \
-  "$version" "$source_revision" "$rid" "$runtime_version" > "$resources_directory/OmniSorSe.build.json"
-release_notes="$repository_root/docs/RELEASE_NOTES_v$version.md"
+printf '{"productVersion":"%s","baseVersion":"%s","sourceRevision":"%s","configuration":"Release","targetFramework":"net10.0","runtimeIdentifier":"%s","runtimeVersion":"%s","selfContained":true}\n' \
+  "$version" "$base_version" "$source_revision" "$rid" "$runtime_version" > "$resources_directory/OmniSorSe.build.json"
+release_notes="$repository_root/docs/RELEASE_NOTES_v$base_version.md"
 if [[ ! -f "$release_notes" ]]; then
-  echo "Release notes for v$version are missing: $release_notes" >&2
+  echo "Release notes for v$base_version are missing: $release_notes" >&2
   exit 1
 fi
 cp "$release_notes" "$resources_directory/RELEASE_NOTES.md"
@@ -99,8 +113,10 @@ cat > "$contents/Info.plist" <<PLIST
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>OmniSorSe</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>$version</string>
-  <key>CFBundleVersion</key><string>$version</string>
+  <key>CFBundleShortVersionString</key><string>$base_version</string>
+  <key>CFBundleVersion</key><string>$base_version</string>
+  <key>CFBundleGetInfoString</key><string>OmniSorSe $version</string>
+  <key>OmniSorSeProductVersion</key><string>$version</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>NSHighResolutionCapable</key><true/>

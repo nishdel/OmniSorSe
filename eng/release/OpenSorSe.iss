@@ -1,5 +1,8 @@
 #ifndef AppVersion
-  #define AppVersion "2.11.0"
+  #define AppVersion "2.12.0-rc"
+#endif
+#ifndef AppFileVersion
+  #define AppFileVersion "2.12.0.0"
 #endif
 #ifndef AppSource
   #error AppSource must identify the validated self-contained publish directory.
@@ -17,11 +20,12 @@ AppPublisher=OmniSorSe contributors
 AppPublisherURL=https://github.com/nishdel/OpenSorSe
 AppSupportURL=https://github.com/nishdel/OpenSorSe/issues
 AppUpdatesURL=https://github.com/nishdel/OpenSorSe/releases
-VersionInfoVersion={#AppVersion}.0
+VersionInfoVersion={#AppFileVersion}
 VersionInfoCompany=OmniSorSe contributors
 VersionInfoDescription=OmniSorSe Windows installer
 VersionInfoProductName=OmniSorSe
-VersionInfoProductVersion={#AppVersion}
+VersionInfoProductVersion={#AppFileVersion}
+VersionInfoProductTextVersion={#AppVersion}
 DefaultDirName={localappdata}\Programs\OpenSorSe
 DefaultGroupName=OmniSorSe
 UsePreviousGroup=no
@@ -42,6 +46,9 @@ RestartApplications=no
 ChangesAssociations=no
 ChangesEnvironment=no
 LicenseFile={#AppSource}\LICENSE
+#ifdef ValidationNotice
+InfoBeforeFile={#ValidationNotice}
+#endif
 
 [Files]
 Source: "{#AppSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

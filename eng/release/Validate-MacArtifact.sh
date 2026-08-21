@@ -6,6 +6,12 @@ rid="${2:?A macOS runtime identifier is required.}"
 artifact_directory="${3:?An artifact directory is required.}"
 source_revision="${4:?An exact source revision is required.}"
 
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+  echo 'The package version must be a filename-safe semantic version.' >&2
+  exit 2
+fi
+base_version="${version%%-*}"
+
 case "$rid" in
   osx-x64) suffix="x64"; architecture="x86_64" ;;
   osx-arm64) suffix="arm64"; architecture="arm64" ;;
@@ -30,14 +36,18 @@ executable="$app/Contents/MacOS/OmniSorSe"
 test -x "$executable"
 plutil -lint "$app/Contents/Info.plist"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = 'io.github.nishdel.OpenSorSe'
-test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$version"
-python3 - "$app/Contents/Resources/OmniSorSe.build.json" "$version" "$source_revision" "$rid" <<'PY'
+test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "$base_version"
+test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")" = "$base_version"
+test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleGetInfoString' "$app/Contents/Info.plist")" = "OmniSorSe $version"
+test "$(/usr/libexec/PlistBuddy -c 'Print :OmniSorSeProductVersion' "$app/Contents/Info.plist")" = "$version"
+python3 - "$app/Contents/Resources/OmniSorSe.build.json" "$version" "$base_version" "$source_revision" "$rid" <<'PY'
 import json, sys
-path, version, revision, rid = sys.argv[1:]
+path, version, base_version, revision, rid = sys.argv[1:]
 with open(path, encoding="utf-8") as stream:
     value = json.load(stream)
 expected = {
     "productVersion": version,
+    "baseVersion": base_version,
     "sourceRevision": revision,
     "configuration": "Release",
     "targetFramework": "net10.0",
@@ -49,6 +59,16 @@ if any(value.get(key) != expected_value for key, expected_value in expected.item
 if not str(value.get("runtimeVersion", "")).startswith("10."):
     raise SystemExit("macOS package does not identify a .NET 10 runtime")
 PY
+if [[ "$version" != "$base_version" ]]; then
+  validation_notice="$app/Contents/Resources/VALIDATION_BUILD.md"
+  test -f "$validation_notice"
+  grep -Fq "OmniSorSe $version validation build" "$validation_notice"
+  grep -Fq "$source_revision" "$validation_notice"
+  grep -Fq 'not a published release' "$validation_notice"
+  grep -Fq 'unsigned and unnotarized' "$validation_notice"
+  grep -Fq 'disposable machine/profile' "$validation_notice"
+  grep -Fq 'migrate the retained OpenSorSe profile and schema' "$validation_notice"
+fi
 file "$executable" | grep -q "$architecture"
 find "$app/Contents/MacOS" -type f -name 'libe_sqlite3.dylib' | grep -q .
 python3 - "$app/Contents/MacOS/OmniSorSe.runtimeconfig.json" <<'PY'

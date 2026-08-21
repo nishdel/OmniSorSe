@@ -17,6 +17,24 @@ The native packaging workflow produces exactly:
 
 No Linux installer is produced. Linux x64 remains a source-build preview.
 
+`<version>` is the exact semantic product version from `Directory.Build.props`.
+It may be a filename-safe prerelease such as `2.12.0-rc`. Prerelease identity
+appears in package filenames, installer presentation, managed product metadata,
+the build manifest, SBOM, checksums, and the Actions bundle name. Windows file
+and assembly versions and standard macOS bundle-version fields use the numeric
+core (`2.12.0.0` and `2.12.0` respectively); the full semantic identity remains
+separately recorded and validated. Release-note lookup also uses the numeric
+core so an RC embeds the reviewed notes for its intended release.
+
+Prerelease packages contain `VALIDATION_BUILD.md`, which identifies the exact
+source commit and states that the unsigned/unnotarized build is for validation,
+not a published release. The retained AppId, install directory, and profile are
+required for genuine upgrade testing, so prerelease installers show that notice
+before installation and warn that opening the build can migrate retained state.
+Use a disposable machine/profile or make a reviewed backup. Producing or
+downloading this temporary bundle does not change Current State, create a tag,
+publish packages, or create a GitHub Release.
+
 ## Reproducible entry points
 
 - `eng/release/Build-WindowsArtifacts.ps1` creates the self-contained Windows
@@ -53,10 +71,11 @@ UX, accessibility, watcher, OCR, Ollama, battery, or real-filesystem behavior.
 ## Native CI
 
 `.github/workflows/release-packaging.yml` is manually dispatched only after an
-exact main commit is green. Its required `ref` input should be the exact release
-commit or final annotated tag. Windows packages run on `windows-latest`; Intel
+exact main commit is green. Its required `ref` input is the full 40-character
+commit, and its version input must exactly match that source's
+`OmniSorSeVersion`. Windows packages run on `windows-latest`; Intel
 and Apple Silicon packages run on native macOS runner families. The checksum
-job downloads only the native job outputs and publishes one complete release
+job downloads only the native job outputs and publishes one complete package
 bundle.
 
 The regular and release-validation workflows use least-privilege read
@@ -71,6 +90,10 @@ code.
 Every release build receives an explicit semantic version and exact 40-character
 source commit. Binary product/file metadata, package filenames, app-bundle
 metadata, and `OmniSorSe.build.json` must agree before checksums are created.
+Shell-facing workflow inputs are validated and passed through environment
+variables rather than interpolated into commands. The workflow fails closed if
+the maintained Windows runner does not already provide Inno Setup; it does not
+install a mutable compiler fallback during trusted packaging.
 
 ## Installer and data policy
 
