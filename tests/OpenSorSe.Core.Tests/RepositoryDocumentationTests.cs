@@ -281,6 +281,8 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("refs/heads/main", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("${{ github.sha }}", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("git ls-remote origin refs/heads/main", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("SelectNodes('/Project/PropertyGroup/OmniSorSeVersion')", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("must define exactly one OmniSorSeVersion authority", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("does not match source version", releaseWorkflow, StringComparison.Ordinal);
         Assert.DoesNotContain("choco install innosetup", releaseWorkflow, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(".deb", releaseWorkflow, StringComparison.OrdinalIgnoreCase);

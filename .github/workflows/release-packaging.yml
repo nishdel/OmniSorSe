@@ -85,7 +85,11 @@ jobs:
           PACKAGE_VERSION: ${{ inputs.version }}
         run: |
           [xml] $properties = Get-Content -Raw -LiteralPath 'Directory.Build.props'
-          $sourceVersion = [string] $properties.Project.PropertyGroup.OmniSorSeVersion
+          $versionNodes = @($properties.SelectNodes('/Project/PropertyGroup/OmniSorSeVersion'))
+          if ($versionNodes.Count -ne 1) {
+            throw "Directory.Build.props must define exactly one OmniSorSeVersion authority; found $($versionNodes.Count)."
+          }
+          $sourceVersion = $versionNodes[0].InnerText.Trim()
           if ($sourceVersion -ne $env:PACKAGE_VERSION) {
             throw "Requested package version '$env:PACKAGE_VERSION' does not match source version '$sourceVersion'."
           }
