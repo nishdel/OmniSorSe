@@ -1,6 +1,8 @@
 # Implementation Specification Index
 
-This index distinguishes historical foundation specifications from release-specific packages. Implemented code and the latest release proposal are authoritative when an older planning document describes a then-future boundary.
+This index distinguishes historical foundation specifications from
+release-specific packages. Current source and tests are authoritative when an
+older planning document describes a then-future boundary.
 
 Specifications record intended and delivered implementation boundaries; they
 are not the roadmap or current release-readiness authority. Use
@@ -30,24 +32,15 @@ are not the roadmap or current release-readiness authority. Use
 | v1.7 Deep Indexing Foundation | Source implementation complete; exact final validation tracked in the v1.7 report | [Specification 059](v1.7/059_Deep_Indexing_Foundation.md), [deep-indexing architecture](../Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md), [implementation report](../V1.7_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.7.md) |
 | v1.8 Search Intelligence, Quality and Privacy | Source implementation complete; final automated validation and interactive manual verification tracked separately | [Specification 060](v1.8/060_Search_Intelligence_Quality_and_Privacy.md), [Search architecture](../Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md), [implementation report](../V1.8_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.8.md) |
 | v1.9 Relationships, Context & Smart Collections | Source implementation complete; final automated validation and interactive manual verification tracked separately | [Specification 061](v1.9/061_Relationships_Context_and_Smart_Collections.md), [relationship architecture](../Architecture/06_Search/10_v1.9_Relationships_Context.md), [implementation report](../V1.9_IMPLEMENTATION_REPORT.md), and [manual checklist](../MANUAL_TESTING_v1.9.md) |
-| v2.0 Knowledge Graph | Source implementation candidate; clean local automated validation complete; exact-tip hosted, RC, and interactive validation pending | [Design proposal](v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md), [specification 062](v2.0/062_Knowledge_Graph_Stability_Design.md), [architecture](../Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md), [implementation report](../V2.0_IMPLEMENTATION_REPORT.md), [release-readiness checklist](../RELEASE_READINESS_v2.0.md), and [unchecked manual checklist](../MANUAL_TESTING_v2.0.md) |
+| v2.0 Knowledge Graph | Released as v2.0.0; retained historical specification and validation package | [Design proposal](v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md), [specification 062](v2.0/062_Knowledge_Graph_Stability_Design.md), [architecture](../Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md), [implementation report](../V2.0_IMPLEMENTATION_REPORT.md), [release-readiness checklist](../RELEASE_READINESS_v2.0.md), and [manual checklist](../MANUAL_TESTING_v2.0.md) |
 
-## Current boundary
+## Index scope
 
-v1.9 preserves the local-first, suggestion-only AI and v1.1 execution boundary,
-reuses v1.7 provider-independent durable indexing and v1.8 Search, and adds
-deterministic evidence-backed relationships, virtual collections/context, user
-corrections, contextual Search, and index-only privacy/repair controls.
-Reusable profiles and local plugin contributions resolve typed scan/analysis
-policy and recipes create proposals; neither grants approval. No specification
-authorizes autonomous AI filesystem control, permanent deletion, plugin direct
-mutation, cloud indexing, or unreviewed execution.
-
-The newest source milestone is the unmerged v2.0 Knowledge Graph
-implementation candidate on `v2.0-knowledge-graph`, created directly from the
-exact validated design tip. It adds isolated schema-1 graph and graph-native
-decision sidecars while leaving `deep-index.db` at schema 3. Clean local
-automated validation is complete; exact-tip hosted, RC stabilization, and
-interactive validation remain incomplete.
+This historical specification index ends at v2.0. It does not describe the
+current source, release, schema, or validation boundary. Use
+[Current State](../CURRENT-STATE.md) for implemented truth,
+[Release Status](../RELEASE_STATUS.md) for readiness evidence, and the main
+[Documentation Index](../README.md) for v2.1 and later current or versioned
+records.
 
 > Workflow profiles automate configuration and analysis, not approval or file modification.

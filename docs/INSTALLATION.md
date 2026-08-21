@@ -5,7 +5,7 @@
 ## Availability
 
 The latest published package is OmniSorSe v2.4.0 from the official
-[GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.4.0) as:
+[GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) as:
 
 - a self-contained Windows x64 portable ZIP;
 - a per-user Windows x64 installer;
@@ -86,8 +86,8 @@ Prerequisites:
 - Git when cloning the repository.
 
 ```powershell
-git clone https://github.com/nishdel/OpenSorSe.git
-Set-Location .\OpenSorSe
+git clone https://github.com/nishdel/OmniSorSe.git
+Set-Location .\OmniSorSe
 git switch main
 dotnet restore .\OpenSorSe.sln
 dotnet build .\OpenSorSe.sln --configuration Debug --no-restore
@@ -242,10 +242,12 @@ do not copy it into the repository.
 Do not overwrite a running installation. Each store/provider owns its schema,
 migration, newer-version rejection, corruption, and recovery behavior.
 
-Current v2.12 candidate Windows/macOS packages are self-contained with .NET 10;
-users do not install a separate runtime. OmniSorSe has no in-app updater. Obtain
-a trusted package, verify its checksum/signature status and embedded source
-identity, close the app, replace/install it, then review startup health.
+Published v2.4.0 Windows/macOS packages are self-contained; users do not install
+a separate runtime. Current v2.12 source builds require the repository-selected
+.NET 10 SDK. Any v2.12 package builds are validation artifacts unless a future
+release page explicitly publishes them. OmniSorSe has no in-app updater. Obtain
+a trusted published package, verify its checksum/signature status and embedded
+source identity, close the app, replace/install it, then review startup health.
 
 ## Uninstall
 

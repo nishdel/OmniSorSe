@@ -1,11 +1,11 @@
-# OpenSorSe project philosophy
+# OmniSorSe project philosophy — compatibility route
 
 **Document status:** Compatibility navigation page
 
 The authoritative living product philosophy is
 [PRODUCT_VISION.md](../PRODUCT_VISION.md). It explains:
 
-- why OpenSorSe exists and who it serves;
+- why OmniSorSe exists and who it serves;
 - current behavior versus future vision;
 - local-first privacy and user control;
 - optional, bounded, explainable AI;

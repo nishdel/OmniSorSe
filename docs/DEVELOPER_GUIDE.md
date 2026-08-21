@@ -11,8 +11,8 @@ change.
 ## 1. Clone and inspect
 
 ```powershell
-git clone https://github.com/nishdel/OpenSorSe.git
-Set-Location .\OpenSorSe
+git clone https://github.com/nishdel/OmniSorSe.git
+Set-Location .\OmniSorSe
 git status --short --branch
 git branch --all
 dotnet --info
@@ -188,7 +188,7 @@ compatibility data. The v2.0
 Knowledge Graph is a separate provider-neutral projection and sidecar, not an
 unbounded recursive query added to the current schema-6 relationship provider.
 
-## 8. Trace the current Knowledge Graph
+## 9. Trace the current Knowledge Graph
 
 1. The schema-6 projection-source adapter captures only a completed canonical
    manifest with a stable ID, row count, hash, revision, legacy-decision
@@ -228,7 +228,7 @@ watermark lag, privacy races, backup privacy floors, corruption/newer schemas,
 query/traversal bounds, Search fallback, and unchanged source files. Never scan
 a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md).
 
-## 9. Trace a Change Plan
+## 10. Trace a Change Plan
 
 1. A rule, Sorting Recipe, reviewed AI suggestion, or watched suggestion
    produces a proposal.
@@ -259,7 +259,7 @@ a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md).
 Never add a shortcut from a suggestion service or ViewModel to raw
 `File.Move`, `Directory.Move`, or the compatibility executor.
 
-## 10. Add a small feature
+## 11. Add a small feature
 
 1. Identify the owning project using `REPOSITORY_STRUCTURE.md`.
 2. Start with the narrow contract and domain behavior.
@@ -275,7 +275,7 @@ Avoid moving logic between projects merely for aesthetics. A small extraction
 is useful when it makes ownership or a safety phase explicit and preserves
 behavior.
 
-## 11. Add a test
+## 12. Add a test
 
 - Put deterministic domain tests beside the owning production project.
 - Use fakes for filesystem/provider/plugin failures unless the test explicitly
@@ -286,7 +286,7 @@ behavior.
   details.
 - Do not rely on test order or machine-installed Ollama/Tesseract.
 
-## 12. Add a plugin contribution
+## 13. Add a plugin contribution
 
 1. Reference `OpenSorSe.Extensions.Abstractions` only.
 2. Implement `IOpenSorSePlugin` and a supported contribution interface.
@@ -302,7 +302,7 @@ storage, or dependency injection. External plugin code still runs in-process
 with the current user's permissions. See the [Extension SDK](EXTENSION_SDK_v1.4.md)
 and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
 
-## 13. Add a media provider
+## 14. Add a media provider
 
 1. Implement the narrow capability contract in `OpenSorSe.Application.Media`;
    do not add SQL, traversal, ranking, or Desktop concerns to the provider.
@@ -321,7 +321,7 @@ and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
    and all runtime targets before adding a dependency. See
    [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
 
-## 14. Add a Content Intelligence provider
+## 15. Add a Content Intelligence provider
 
 1. Implement the capability-oriented contract in
    `OpenSorSe.Application.ContentIntelligence`; providers receive only bounded

@@ -34,10 +34,10 @@ route links to deeper versioned or historical evidence only when it is useful.
 | Current project state | [Repository README](../README.md), then [Current State](CURRENT-STATE.md) | [Product Vision](../PRODUCT_VISION.md) | Current source truth; not a release claim |
 | Use the latest published release | [Installation](INSTALLATION.md) | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | v2.4.0 is the latest tag/package/GitHub Release |
 | Develop or contribute | [Developer Guide](DEVELOPER_GUIDE.md) and [Contributing](../CONTRIBUTING.md) | [Repository Structure](REPOSITORY_STRUCTURE.md), [Architecture Library](Architecture/README.md), and [Engineering workflow](engineering/README.md) | Current `main` and scoped engineering policy |
+| Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
 | Understand the current candidate | [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Current unreleased candidate lineage](#current-unreleased-candidate-lineage) | Integrated source; not tagged or packaged |
 | Validate or assess readiness | [Release Status](RELEASE_STATUS.md) | [Platform Compatibility](PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates | Observed evidence remains separate from unchecked gates |
 | Research releases or history | [Release History](../RELEASE_HISTORY.md) | [Changelog](CHANGELOG.md), [release records](#release-and-implementation-records), and specifications | Historical evidence; not current authority |
-| Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
 
 For product or architecture decisions, then read [Product Vision](../PRODUCT_VISION.md)
 and [Engineering Principles](../ENGINEERING_PRINCIPLES.md). For implementation,
@@ -55,6 +55,7 @@ needed for the task.
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
 | [Repository README](../README.md) | Concise product/current-source boundary, capabilities, safety, platform, build, and navigation. | First contact with the project. | Living |
+| [Current State](CURRENT-STATE.md) | Current version/runtime/schema/protocol boundary, implemented behavior, active limits, and validation confidence. | First source of truth after the project overview. | Living and authoritative for current implementation state |
 | [Product Vision](../PRODUCT_VISION.md) | Purpose, audience, goals, current-versus-future behavior, AI/privacy/control philosophy, Search/storage reasoning. | Before product or architectural decisions. | Living and authoritative for product philosophy |
 | [Product Roadmap](../PRODUCT_ROADMAP.md) | Version branches, dependencies, merge state, completed/in-progress/planned concepts, research, and backlog. | Before describing or proposing future work. | Living and authoritative for roadmap status |
 | [Engineering Principles](../ENGINEERING_PRINCIPLES.md) | Reasoning for architecture, MVVM, stores/providers, testing, releases, CI, performance, safety, compatibility, and recovery. | Before a cross-cutting change or review. | Living and authoritative for cross-cutting engineering policy |
@@ -120,7 +121,8 @@ labels do not make them the authority for current version/readiness facts.
 | [v2.3 Content Intelligence](CONTENT_INTELLIGENCE_v2.3.md) | Bounded deterministic concepts/summaries, optional user-managed whisper.cpp, schema 5, Search/Related Files integration, privacy, evaluation decisions, and limitations. | When reviewing or changing v2.3 Content Intelligence. | Current feature guide |
 | [v2.3 Manual Testing](MANUAL_TESTING_v2.3.md) | Separate automated, native-provider, interactive, and platform scenarios with no unobserved result claimed. | During v2.3 maintainer/community validation. | Current evidence tracker |
 | [v2.0 Native Packaging](RELEASE_PACKAGING_v2.0.md) | Native artifact construction, validation, checksums, signing status, and publication order. | Before building or publishing release artifacts. | Living release procedure |
-| [v2.0 Screenshot Checklist](SCREENSHOT_CHECKLIST_v2.0.md) | Privacy-safe real-application capture requirements; intentionally unchecked. | Before adding screenshots to README or documentation. | Pending manual documentation task |
+| [Public Media Guide](images/README.md) | Current genuine-capture policy, screenshot locations, version labelling, and the short-video storyboard. | Before adding any public screenshot or usage video. | Living documentation-media guidance |
+| [v2.0 Screenshot Checklist](SCREENSHOT_CHECKLIST_v2.0.md) | Unchecked privacy-safe capture checklist retained from the v2.0 release cycle. | When auditing the historical v2.0 media evidence. | Historical manual evidence |
 | [Safety and Privacy](SAFETY_AND_PRIVACY.md) | Complete current source-file mutation, AI, watcher, workflow, plugin, storage, diagnostics, Search, recovery, and Undo boundaries. | Before any privacy, persistence, provider, plugin, or file-operation change. | Living and authoritative |
 | [v2.0 Security Notes](SECURITY_v2.0.md) | Knowledge Graph trust boundaries, hostile-input/resource defenses, store recovery, and explicit non-claims. | Before graph provider, query, suggestion, diagnostics, or recovery changes. | Current implemented security boundary |
 | [Changelog](CHANGELOG.md) | Detailed user-visible changes by historical version. | When release-by-release detail is required. | Cumulative historical record |

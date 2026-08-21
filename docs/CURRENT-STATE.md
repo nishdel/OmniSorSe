@@ -77,16 +77,21 @@ change a source file or override durable user-authored relationship/tag state.
 ### Verified in recorded automated evidence
 
 Release Status records forced no-cache restore, zero-warning Debug and Release
-builds, and 1,861 passing tests in each configuration for correction commit
-`d81f154`. Focused affected and neighboring Change Plan/platform regressions,
+builds, and 1,870 passing tests in each configuration for implementation commit
+`1cf1910`. Focused Change Plan reconciliation, Desktop recovery/Undo,
 documentation/configuration, formatting, analyzers, dependency policy,
-vulnerability, Skill, diff, and repository-integrity gates also passed. Pull
-request #35 and exact-main merge commit `542e14a` then passed the complete
-Windows, Ubuntu, macOS ARM, and macOS Intel hosted matrix, including Debug and
-Release builds/tests and native package smoke. Treat those results as evidence
-for the recorded commits/environments, not as a guarantee for an unvalidated
-later working tree. Release Status separately records original publication
-fresh-clone evidence and the exact correction and merge runs.
+vulnerability, Skill, diff, repository-integrity, and native package-smoke
+gates also passed. Pull request #36 and exact-main merge commit `3bb3919` then
+passed the complete Windows, Ubuntu, macOS ARM, and macOS Intel hosted matrix.
+The recorded report-only baseline `ffc29ed` passed that same matrix in
+[run 32410287837](https://github.com/nishdel/OmniSorSe/actions/runs/32410287837).
+The PR needed two controlled Windows reruns and the report-only baseline needed one
+after different unchanged timing-sensitive tests failed; final attempts passed
+without code, threshold, or workflow changes. This remains validation-
+infrastructure uncertainty rather than first-attempt stability evidence.
+Treat those results as evidence for the recorded commits and environments, not
+as a guarantee for an unvalidated later working tree. Release Status separately
+preserves the original publication and macOS-correction evidence.
 
 ### Not verified or still manual
 

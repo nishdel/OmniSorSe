@@ -7,7 +7,8 @@ Before a cross-cutting change, read the
 [Product Vision](PRODUCT_VISION.md),
 [Engineering Principles](ENGINEERING_PRINCIPLES.md), and
 [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md). The
-[Documentation Index](docs/README.md) provides a one-hour project reading path.
+[Documentation Index](docs/README.md) routes each change to the smallest
+relevant current, subsystem, validation, or historical context.
 
 ## Prerequisites
 
@@ -188,7 +189,8 @@ Every behavior change should update the smallest authoritative document:
 
 - product purpose or future direction: Product Vision or Product Roadmap;
 - cross-cutting engineering policy: Engineering Principles;
-- user-visible workflow: current User Guide and Troubleshooting if needed;
+- user-visible workflow: root README, Installation, and the routed current
+  feature or Troubleshooting guidance as applicable;
 - architecture or ownership: Architecture Overview/System Map;
 - safety/privacy/persistence: Safety and Privacy;
 - plugin contract: SDK, author guide, manifest/package documentation;

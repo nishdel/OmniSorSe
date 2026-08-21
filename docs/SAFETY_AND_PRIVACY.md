@@ -187,7 +187,7 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   state, not transcript/OCR/description contents. No telemetry, cloud service,
   facial recognition, or person identification is introduced.
 
-### Content Intelligence candidate
+### Content Intelligence
 
 - The v2.3 deterministic provider consumes only already bounded indexed
   metadata, document text, OCR, transcript, media OCR, and optional
@@ -273,10 +273,10 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 
 - The v2.4 protocol is an on-demand local named pipe (Unix-domain-backed on
   Unix hosts), not an HTTP/TCP/LAN/internet listener or cloud relay.
-- A future explicit launch flow must authorize currently configured indexed
-  source IDs. Raw paths are omitted unless that session separately authorizes
-  path projection. Clients cannot submit paths for reading or enumerate system
-  filesystem roots.
+- An explicit session or the optional v2.5 OmniBrille launch handoff authorizes
+  currently configured indexed source IDs. Raw paths are omitted unless that
+  session separately authorizes path projection. Clients cannot submit paths
+  for reading or enumerate system filesystem roots.
 - Sessions use random short-lived bearer secrets. OmniSorSe retains only a
   token hash, compares it in fixed time, never persists/logs it, and zeroes
   token/node secrets on revoke, expiry, or shutdown. Opaque node IDs are
@@ -294,8 +294,10 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
 - Advanced Diagnostics may retain operation, protocol, lifecycle, timing,
   count/truncation, and failure-category facts. It does not retain protocol
   tokens, queries, paths, snippets, content, OCR, transcripts, or payloads.
-- OmniExplorer is not shipped in v2.4. Absence of the companion leaves the host
-  dormant and does not affect normal OmniSorSe Search/indexing behavior.
+- The v2.4 record called the future companion OmniExplorer; it was not shipped
+  in that release. Current source can discover and launch separately installed
+  OmniBrille through a one-time current-user handoff. Absence of the companion
+  leaves the host dormant and does not affect normal Search/indexing behavior.
 
 See [v2.4 transition and protocol design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
 for the complete threat model and fixed limits.
