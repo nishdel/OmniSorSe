@@ -79,7 +79,7 @@ Repository tests cover navigation composition, workflow labels, plan context
 and bulk eligibility, duplicate selection bounds, disabled-AI discoverability,
 Smart Tag states, relationship confirmation, and recent indexing throughput.
 Local SDK 10.0.400 qualification passed zero-warning Debug/Release builds,
-1,877 tests in each configuration with no skips, focused relevance/performance/
+1,878 tests in each configuration with no skips, focused relevance/performance/
 policy checks, formatting/analyzers, an 18-project vulnerability audit, and a
 native Windows self-contained package smoke. The exact release commit must
 additionally pass hosted four-platform and complete native packaging workflows

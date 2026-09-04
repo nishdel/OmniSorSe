@@ -101,7 +101,7 @@ infrastructure uncertainty rather than first-attempt stability evidence.
 Treat those results as evidence for the recorded commits and environments, not
 as a guarantee for the current v2.13 candidate. On the v2.13 implementation
 worktree, SDK 10.0.400 produced zero-warning Debug and Release builds and
-1,877/1,877 passing tests in each configuration with no skips. The focused
+1,878/1,878 passing tests in each configuration with no skips. The focused
 Search-relevance test, 16 performance-regression tests, 14 repository-policy
 tests, formatting/style/analyzers, AXAML parsing, 18-project vulnerability
 audit, and native `win-x64` self-contained package smoke also passed. Hosted
