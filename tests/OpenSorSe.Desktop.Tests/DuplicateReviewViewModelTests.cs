@@ -47,9 +47,9 @@ public sealed class DuplicateReviewViewModelTests
         Assert.Equal(StatusKind.Success, viewModel.Status.Kind);
     }
 
-    /// <summary>Verifies large-group selection is capped at five and individual failures do not stop later items.</summary>
+    /// <summary>Verifies cleanup selection is independent from the bounded external-open operation.</summary>
     [Fact]
-    public async Task OpenSelectedFiles_LargeGroup_CapsSelectionAndReportsPartialSuccess()
+    public void OpenSelectedFiles_LargeGroup_AllowsCleanupSelectionButDisablesBulkOpenAboveFive()
     {
         var launcher = new RecordingLauncher { FailPath = "C:\\Duplicates\\file-1.txt" };
         using var viewModel = new DuplicateReviewViewModel(launcher);
@@ -61,13 +61,35 @@ public sealed class DuplicateReviewViewModelTests
             row.IsSelected = true;
         }
 
-        Assert.Equal(5, viewModel.SelectedMemberCount);
-        Assert.False(viewModel.MemberRows[^1].IsSelected);
-        await viewModel.OpenSelectedFilesCommand.ExecuteAsync(null);
+        Assert.Equal(6, viewModel.SelectedMemberCount);
+        Assert.True(viewModel.MemberRows[^1].IsSelected);
+        Assert.False(viewModel.CanOpenSelectedFiles);
+        Assert.False(viewModel.OpenSelectedFilesCommand.CanExecute(null));
+        Assert.Empty(launcher.OpenedFiles);
+    }
 
-        Assert.Equal(5, launcher.OpenedFiles.Count);
-        Assert.Equal(StatusKind.Warning, viewModel.Status.Kind);
-        Assert.Contains("4 opened; 1 unavailable", viewModel.Status.Message, StringComparison.Ordinal);
+    /// <summary>Verifies the keeper helper is explicit and the global recovery selection can be cleared.</summary>
+    [Fact]
+    public void SelectionHelpersKeepOneKnownCopyAndCanClearAcrossGroups()
+    {
+        using var viewModel = new DuplicateReviewViewModel(null, new RecordingRemovalPlanFactory());
+        viewModel.LoadSnapshot(CreateMultiGroupSnapshot());
+        viewModel.SelectedGroup = viewModel.VisibleGroups[0];
+
+        viewModel.SelectAllButFirstCommand.Execute(null);
+
+        Assert.False(viewModel.MemberRows[0].IsSelected);
+        Assert.True(viewModel.MemberRows[1].IsSelected);
+        Assert.Equal(1, viewModel.PendingRemovalCount);
+        Assert.True(viewModel.CanRequestRemovalPlan);
+
+        viewModel.SelectedGroup = viewModel.VisibleGroups[1];
+        viewModel.SelectAllButFirstCommand.Execute(null);
+        Assert.Equal(2, viewModel.PendingRemovalCount);
+
+        viewModel.ClearRemovalSelectionsCommand.Execute(null);
+        Assert.Equal(0, viewModel.PendingRemovalCount);
+        Assert.All(viewModel.MemberRows, row => Assert.False(row.IsSelected));
     }
 
     /// <summary>Verifies unknown rows cannot be routed into the launcher by a stale or internal command call.</summary>

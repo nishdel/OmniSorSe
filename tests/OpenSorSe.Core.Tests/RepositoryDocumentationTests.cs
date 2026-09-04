@@ -214,10 +214,10 @@ public sealed partial class RepositoryDocumentationTests
         foreach (var route in new[]
                  {
                      "Current project state",
-                     "Test the current prerelease",
+                     "Test the published prerelease",
                      "Use the latest stable release",
                      "Develop or contribute",
-                     "Understand the current prerelease",
+                     "Understand the current source candidate",
                      "Validate or assess readiness",
                      "Research releases or history",
                  })
@@ -227,7 +227,7 @@ public sealed partial class RepositoryDocumentationTests
 
         Assert.Contains("## Current project authorities", index, StringComparison.Ordinal);
         Assert.Contains("## Latest stable release", index, StringComparison.Ordinal);
-        Assert.Contains("## Current prerelease lineage", index, StringComparison.Ordinal);
+        Assert.Contains("## Current source and prerelease lineage", index, StringComparison.Ordinal);
         Assert.Contains("## Release and implementation records", index, StringComparison.Ordinal);
     }
 
@@ -397,15 +397,15 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("\"version\": \"10.0.400\"", globalJson, StringComparison.Ordinal);
         var buildProperties = XDocument.Load(Path.Combine(RepositoryRoot, "Directory.Build.props"));
         Assert.Equal("net10.0", buildProperties.Descendants("TargetFramework").Single().Value);
-        Assert.Equal("2.12.0-rc", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
-        Assert.Equal("2.12.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
+        Assert.Equal("2.13.0-rc", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
+        Assert.Equal("2.13.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
 
         var releaseWorkflow = File.ReadAllText(Path.Combine(
             RepositoryRoot,
             ".github",
             "workflows",
             "release-packaging.yml"));
-        Assert.Contains("default: 2.12.0-rc", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("default: 2.13.0-rc", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("global-json-file: global.json", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-WindowsArtifacts.ps1", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-MacArtifacts.sh", releaseWorkflow, StringComparison.Ordinal);

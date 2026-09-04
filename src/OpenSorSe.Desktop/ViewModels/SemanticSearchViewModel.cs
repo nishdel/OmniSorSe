@@ -594,9 +594,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
     public string OutcomeCountText =>
         $"Completed {BackgroundProgress.Completed:N0} · Skipped {BackgroundProgress.Skipped:N0} · Failed {BackgroundProgress.Failed:N0} · Waiting {BackgroundProgress.Waiting:N0} · Retrying {BackgroundProgress.RetryScheduled:N0}";
 
-    /// <summary>Gets recent throughput.</summary>
+    /// <summary>Gets terminal file throughput from the most recent one-minute sample window.</summary>
     public string ThroughputText => BackgroundProgress.FilesPerSecond > 0
-        ? $"{BackgroundProgress.FilesPerSecond:N2} files/second"
+        ? $"Recent throughput: {BackgroundProgress.FilesPerSecond:N2} files/second"
         : "Processing speed will appear after work starts.";
 
     /// <summary>Gets whether an estimate has enough samples to be meaningful.</summary>
@@ -924,7 +924,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         await LoadSavedViewsAsync(savedViewId);
         if (SelectedSavedView is null)
         {
-            ReportWorkflowFailure("The Saved View is no longer available. No Search state was changed.");
+            ReportWorkflowFailure("The saved search is no longer available. No Search state was changed.");
             return false;
         }
 
@@ -975,7 +975,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         }
         catch
         {
-            Status = StatusPresentation.Warning("Saved Views are temporarily unavailable. Search and files were not affected.");
+            Status = StatusPresentation.Warning("Saved searches are temporarily unavailable. Search and files were not affected.");
         }
     }
 
@@ -1051,11 +1051,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             var saved = await _savedViewStore.SaveAsync(view);
             await LoadSavedViewsAsync(saved.Id);
-            Status = StatusPresentation.Success("Saved View created. It will always evaluate against the current local index.");
+            Status = StatusPresentation.Success("Saved search created. It will always evaluate against the current local index.");
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or ArgumentException)
         {
-            Status = StatusPresentation.Warning("The Saved View could not be stored. Search and files were not affected.");
+            Status = StatusPresentation.Warning("The saved search could not be stored. Search and files were not affected.");
         }
     }
 
@@ -1099,11 +1099,11 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         {
             var saved = await _savedViewStore.SaveAsync(updated);
             await LoadSavedViewsAsync(saved.Id);
-            Status = StatusPresentation.Success("Saved View updated. No result membership was copied.");
+            Status = StatusPresentation.Success("Saved search updated. No result membership was copied.");
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or ArgumentException)
         {
-            Status = StatusPresentation.Warning("The Saved View could not be updated. Its previous rule was preserved.");
+            Status = StatusPresentation.Warning("The saved search could not be updated. Its previous rule was preserved.");
         }
     }
 
@@ -1122,12 +1122,12 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
                 SelectedSavedView = null;
                 SavedViewName = null;
                 await LoadSavedViewsAsync();
-                Status = StatusPresentation.Information("Saved View deleted. Indexed files and Search data were unchanged.");
+                Status = StatusPresentation.Information("Saved search deleted. Indexed files and Search data were unchanged.");
             }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or InvalidOperationException or ArgumentException)
         {
-            Status = StatusPresentation.Warning("The Saved View could not be deleted. Search and files were not affected.");
+            Status = StatusPresentation.Warning("The saved search could not be deleted. Search and files were not affected.");
         }
     }
 
@@ -1809,7 +1809,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
         OrganizationRequested?.Invoke(this, new OrganizationSelectionContext(
             SelectedSavedView is null ? OrganizationSelectionOrigin.Search : OrganizationSelectionOrigin.SavedView,
-            SelectedSavedView is null ? "Search" : $"Saved View {SelectedSavedView.Name}",
+            SelectedSavedView is null ? "Search" : $"Saved search {SelectedSavedView.Name}",
             Array.AsReadOnly(selectedHits
                 .Select(hit => hit.FileId!)
                 .Distinct(StringComparer.Ordinal)

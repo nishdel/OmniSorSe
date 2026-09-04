@@ -59,7 +59,7 @@
                             <StackPanel><TextBlock Text="Suggestions to review" FontWeight="SemiBold" /><TextBlock Text="{Binding PendingReviewCount}" FontSize="24" /></StackPanel>
                         </Border>
                         <Border Grid.Column="2" Classes="metric-tile" BorderBrush="{DynamicResource AccentOrganizationBrush}">
-                            <StackPanel><TextBlock Text="Saved Views" FontWeight="SemiBold" /><TextBlock Text="{Binding SavedViewCount}" FontSize="24" /></StackPanel>
+                            <StackPanel><TextBlock Text="Saved searches" FontWeight="SemiBold" /><TextBlock Text="{Binding SavedViewCount}" FontSize="24" /></StackPanel>
                         </Border>
                     </Grid>
                 </StackPanel>
@@ -67,26 +67,51 @@
 
             <Border Classes="card">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="What would you like to do?" FontSize="18" FontWeight="SemiBold" />
-                    <UniformGrid Columns="4">
-                        <Button Margin="0,0,8,8" Classes="primary" Content="Find" Command="{Binding FindCommand}"
-                                AutomationProperties.Name="Find files with Search, facets, and Saved Views" />
-                        <Button Margin="0,0,8,8" Classes="secondary" Content="Understand" Command="{Binding UnderstandCommand}"
+                    <TextBlock Text="Your workflow" FontSize="18" FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                        <Border Classes="workflow-step">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="1  SCAN" Classes="eyebrow" />
+                                <TextBlock Text="Choose folders" FontSize="17" FontWeight="SemiBold" />
+                                <TextBlock Text="Build or refresh the local library." Classes="page-subtitle" />
+                                <Button Classes="primary" Content="Scan folders" Command="{Binding ScanFolderCommand}"
+                                        AutomationProperties.Name="Step 1, scan folders into the local library" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Classes="workflow-step">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="2  REVIEW" Classes="eyebrow" />
+                                <TextBlock Text="Check suggestions" FontSize="17" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding PendingReviewCount, StringFormat='{}{0:N0} Smart Tag suggestion files need a decision.'}"
+                                           Classes="page-subtitle" />
+                                <Button Classes="primary" Content="Review suggestions" Command="{Binding ReviewCommand}"
+                                        AutomationProperties.Name="{Binding PendingReviewCount, StringFormat='Step 2, review {0} unresolved Smart Tag suggestion files'}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Classes="workflow-step">
+                            <StackPanel Spacing="6">
+                                <TextBlock Text="3  ORGANIZE" Classes="eyebrow" />
+                                <TextBlock Text="Create a Change Plan" FontSize="17" FontWeight="SemiBold" />
+                                <TextBlock Text="Preview first; files change only after review and confirmation." Classes="page-subtitle" />
+                                <Button Classes="primary" Content="Organize files" Command="{Binding OrganizeCommand}"
+                                        AutomationProperties.Name="Step 3, organize selected files through a reviewed Change Plan" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <WrapPanel>
+                        <TextBlock Margin="0,8,12,0" Text="Explore your library:" FontWeight="SemiBold" />
+                        <Button Margin="0,4,8,0" Classes="secondary" Content="Search" Command="{Binding FindCommand}"
+                                AutomationProperties.Name="Find files with Search, facets, and saved searches" />
+                        <Button Margin="0,4,0,0" Classes="secondary" Content="Understand a file" Command="{Binding UnderstandCommand}"
                                 AutomationProperties.Name="Understand a file using details, Smart Tags, evidence, and Related Files" />
-                        <Button Margin="0,0,8,8" Classes="secondary" Content="Review" Command="{Binding ReviewCommand}"
-                                AutomationProperties.Name="{Binding PendingReviewCount, StringFormat='Review {0} unresolved Smart Tag suggestion files'}" />
-                        <Button Margin="0,0,0,8" Classes="secondary" Content="Organize" Command="{Binding OrganizeCommand}"
-                                AutomationProperties.Name="Organize selected files through a reviewed Change Plan" />
-                    </UniformGrid>
-                    <TextBlock Text="Find uses Search and facets. Understand opens richer file details. Review resolves uncertain Smart Tags. Organize always requires Review Changes before any file mutation."
-                               Classes="page-subtitle" TextWrapping="Wrap" />
+                    </WrapPanel>
                 </StackPanel>
             </Border>
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                 <Border Classes="card" IsVisible="{Binding HasSavedViewShortcuts}">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Saved View shortcuts" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="Saved search shortcuts" FontSize="17" FontWeight="SemiBold" />
                         <TextBlock Text="Recently updated live query rules. They run only when opened."
                                    Classes="page-subtitle" TextWrapping="Wrap" />
                         <ItemsControl ItemsSource="{Binding SavedViewShortcuts}">
@@ -96,7 +121,7 @@
                                             Classes="secondary" Content="{Binding Name}"
                                             Command="{Binding DataContext.OpenSavedViewCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
-                                            AutomationProperties.Name="{Binding Name, StringFormat='Open Saved View {0}'}"
+                                            AutomationProperties.Name="{Binding Name, StringFormat='Open saved search {0}'}"
                                             x:CompileBindings="False" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -107,16 +132,24 @@
                     <StackPanel Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel><TextBlock Text="Optional capabilities" FontSize="17" FontWeight="SemiBold" />
-                                <TextBlock Text="Checked only when Home refreshes; no provider is contacted." Classes="page-subtitle" TextWrapping="Wrap" /></StackPanel>
+                                <TextBlock Text="Status only; open Settings to configure a capability." Classes="page-subtitle" TextWrapping="Wrap" /></StackPanel>
                             <Button Grid.Column="1" Classes="secondary" Content="Settings" Command="{Binding OpenSettingsCommand}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="210,140,*" ColumnSpacing="10" Margin="0,4,0,0">
+                            <TextBlock Text="Capability" Classes="eyebrow" />
+                            <TextBlock Grid.Column="1" Text="Status" Classes="eyebrow" />
+                            <TextBlock Grid.Column="2" Text="What it affects" Classes="eyebrow" />
                         </Grid>
                         <ItemsControl ItemsSource="{Binding Capabilities}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:HomeCapabilityRow">
                                     <Border Classes="result-row" Padding="0,5" AutomationProperties.Name="{Binding AccessibleName}">
-                                        <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8">
+                                        <Grid ColumnDefinitions="210,140,*" ColumnSpacing="10">
                                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                            <TextBlock Grid.Column="1" Text="{Binding State}" />
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{Binding Symbol}" FontWeight="Bold" />
+                                                <TextBlock Text="{Binding State}" />
+                                            </StackPanel>
                                             <TextBlock Grid.Column="2" Text="{Binding Explanation}" Classes="page-subtitle" TextWrapping="Wrap" />
                                         </Grid>
                                     </Border>

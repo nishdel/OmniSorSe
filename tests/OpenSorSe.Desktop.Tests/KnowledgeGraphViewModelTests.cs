@@ -35,7 +35,7 @@ public sealed class KnowledgeGraphViewModelTests
 
     /// <summary>Verifies a missing provider leaves an honest no-op surface and existing shell navigation intact.</summary>
     [Fact]
-    public async Task UnavailableProvider_IsSafeAndKnowledgeGraphNavigationRemainsReachable()
+    public async Task UnavailableProvider_IsSafeAndGraphDiagnosticsRemainAdvanced()
     {
         using var graph = new KnowledgeGraphViewModel();
 
@@ -49,11 +49,11 @@ public sealed class KnowledgeGraphViewModelTests
 
         using var shell = new MainViewModel();
         await shell.NavigateAsync(NavigationDestination.KnowledgeGraph);
-        Assert.Equal(NavigationDestination.KnowledgeGraph, shell.SelectedDestination);
-        Assert.Equal("Knowledge Graph", shell.CurrentPageTitle);
-        Assert.True(shell.IsKnowledgeGraphSelected);
-        Assert.Contains(shell.NavigationItems, item =>
-            item.Destination == NavigationDestination.KnowledgeGraph && item.Label == "Knowledge Graph");
+        Assert.Equal(NavigationDestination.Dashboard, shell.SelectedDestination);
+        Assert.Equal("Home", shell.CurrentPageTitle);
+        Assert.False(shell.IsKnowledgeGraphSelected);
+        Assert.DoesNotContain(shell.NavigationItems, item =>
+            item.Destination == NavigationDestination.KnowledgeGraph);
     }
 
     /// <summary>Verifies first enablement requires explicit consent before the coordinator is invoked.</summary>

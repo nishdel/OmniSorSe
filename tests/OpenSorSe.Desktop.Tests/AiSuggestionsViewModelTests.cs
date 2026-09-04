@@ -1,8 +1,10 @@
 using OpenSorSe.Application.AI;
+using OpenSorSe.Application.ChangePlans;
 using OpenSorSe.Application.Models;
 using OpenSorSe.Application.Workflows;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Desktop.ViewModels;
+using OpenSorSe.Executor.Models;
 using OpenSorSe.Scanner.Models;
 
 namespace OpenSorSe.Desktop.Tests;
@@ -10,7 +12,7 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies Results AI visibility, command enforcement, and review-only state.</summary>
 public sealed class AiSuggestionsViewModelTests
 {
-    /// <summary>Verifies disabled AI remains hidden and cannot invoke an injected service through commands.</summary>
+    /// <summary>Verifies disabled AI remains discoverable but cannot invoke an injected service through commands.</summary>
     [Fact]
     public async Task DisabledAi_WithValidContext_IsHiddenAndBlocked()
     {
@@ -23,7 +25,8 @@ public sealed class AiSuggestionsViewModelTests
         await viewModel.GenerateSuggestionCommand.ExecuteAsync(null);
         await viewModel.GenerateFolderStructureCommand.ExecuteAsync(null);
 
-        Assert.False(viewModel.IsVisible);
+        Assert.True(viewModel.IsVisible);
+        Assert.False(viewModel.HasAvailableCapability);
         Assert.False(viewModel.IsFileRenameVisible);
         Assert.False(viewModel.IsFolderStructureVisible);
         Assert.False(viewModel.GenerateSuggestionCommand.CanExecute(null));
@@ -70,6 +73,38 @@ public sealed class AiSuggestionsViewModelTests
         Assert.Contains("none will be sent", viewModel.FolderStructureContextText, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(AiPromptBuilder.FolderStructureTaskId, viewModel.AiRequestContextText, StringComparison.Ordinal);
         Assert.Equal(0, service.FolderCallCount);
+    }
+
+    /// <summary>Verifies one folder proposal can produce only one terminal review decision and Change Plan.</summary>
+    [Fact]
+    public async Task FolderSuggestion_ConcurrentAndRepeatedReview_ProducesOneDecisionAndPlan()
+    {
+        var configuration = new MutableConfigurationService(Settings(rename: false, folder: true));
+        var file = CreateFile();
+        var service = new RecordingService
+        {
+            FolderResult = FolderResult(file),
+            DecisionCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously),
+        };
+        var factory = new RecordingChangePlanFactory();
+        using var viewModel = new AiSuggestionsViewModel(configuration, service, changePlanFactory: factory);
+        viewModel.SetContext(file, CreateSnapshot(file), [file]);
+        await viewModel.GenerateFolderStructureCommand.ExecuteAsync(null);
+        Assert.True(viewModel.HasFolderStructurePlan);
+
+        var keep = viewModel.AcceptFolderStructureCommand.ExecuteAsync(null);
+        await service.DecisionStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await viewModel.RejectFolderStructureCommand.ExecuteAsync(null);
+        service.DecisionCompletion.SetResult(
+            new AiDecisionResult(AiAvailabilityState.ModelSelected, "Saved for review."));
+        await keep;
+        await viewModel.AcceptFolderStructureCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, service.DecisionCallCount);
+        Assert.Equal(1, factory.FolderCallCount);
+        Assert.False(viewModel.HasFolderStructurePlan);
+        Assert.False(viewModel.AcceptFolderStructureCommand.CanExecute(null));
+        Assert.False(viewModel.RejectFolderStructureCommand.CanExecute(null));
     }
 
     /// <summary>Verifies a generated rename remains editable and acceptance records only a local decision.</summary>
@@ -125,7 +160,8 @@ public sealed class AiSuggestionsViewModelTests
         configuration.Current = new ApplicationSettings();
         viewModel.RefreshFeatureAvailability();
 
-        Assert.False(viewModel.IsVisible);
+        Assert.True(viewModel.IsVisible);
+        Assert.False(viewModel.HasAvailableCapability);
         Assert.False(viewModel.HasRenameSuggestion);
         Assert.False(viewModel.AcceptRenameCommand.CanExecute(null));
     }
@@ -314,7 +350,8 @@ public sealed class AiSuggestionsViewModelTests
         await viewModel.GenerateSuggestionCommand.ExecuteAsync(null);
         await viewModel.GenerateFolderStructureCommand.ExecuteAsync(null);
 
-        Assert.False(viewModel.IsVisible);
+        Assert.True(viewModel.IsVisible);
+        Assert.False(viewModel.HasAvailableCapability);
         Assert.Contains("disables AI", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, service.RenameCallCount);
         Assert.Equal(0, service.FolderCallCount);
@@ -427,6 +464,14 @@ public sealed class AiSuggestionsViewModelTests
 
         public AiSuggestionDecision? RecordedDecision { get; private set; }
 
+        public int DecisionCallCount { get; private set; }
+
+        public TaskCompletionSource<bool> DecisionStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource<AiDecisionResult>? DecisionCompletion { get; init; }
+
+        public AiFolderStructureResult? FolderResult { get; init; }
+
         public TaskCompletionSource<bool> RenameStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource<AiFileRenameResult>? RenameCompletion { get; init; }
@@ -465,13 +510,17 @@ public sealed class AiSuggestionsViewModelTests
         public Task<AiFolderStructureResult> GenerateFolderStructureAsync(AiFolderStructureRequest request, AiSettings settings, CancellationToken cancellationToken)
         {
             FolderCallCount++;
-            return Task.FromResult(new AiFolderStructureResult(AiAvailabilityState.NoSuggestion, "No suggestion", null));
+            return Task.FromResult(FolderResult ?? new AiFolderStructureResult(AiAvailabilityState.NoSuggestion, "No suggestion", null));
         }
 
-        public Task<AiDecisionResult> RecordDecisionAsync(AiSuggestionDecision decision, AiSettings settings, CancellationToken cancellationToken)
+        public async Task<AiDecisionResult> RecordDecisionAsync(AiSuggestionDecision decision, AiSettings settings, CancellationToken cancellationToken)
         {
+            DecisionCallCount++;
             RecordedDecision = decision;
-            return Task.FromResult(new AiDecisionResult(AiAvailabilityState.ModelSelected, "The local review decision was saved. No file or folder was changed."));
+            DecisionStarted.TrySetResult(true);
+            return DecisionCompletion is null
+                ? new AiDecisionResult(AiAvailabilityState.ModelSelected, "The local review decision was saved. No file or folder was changed.")
+                : await DecisionCompletion.Task.WaitAsync(cancellationToken);
         }
 
         public Task<AiDecisionResult> ResetDecisionHistoryAsync(ApplicationSettings settings, CancellationToken cancellationToken) =>
@@ -482,4 +531,52 @@ public sealed class AiSuggestionsViewModelTests
         AiAvailabilityState.ModelSelected,
         "Review only",
         new AiFileRenameSuggestion("suggestion:1", sourceFileId, "renamed.pdf", "Clearer", 0.5, "Ollama", model, DateTimeOffset.UnixEpoch));
+
+    private static AiFolderStructureResult FolderResult(ResultFile file) => new(
+        AiAvailabilityState.ModelSelected,
+        "Review only",
+        new AiFolderStructurePlan(
+            "folder:1",
+            [new AiSuggestedFolder("folder:documents", "Documents", null, "Documents", "Reviewed grouping.", 0.8)],
+            [new AiFolderStructurePlanItem(file.Id, file.DisplayFileName, "Documents")],
+            "Group the selected document.",
+            "Ollama",
+            "local-model",
+            DateTimeOffset.UnixEpoch));
+
+    private sealed class RecordingChangePlanFactory : ISuggestionChangePlanFactory
+    {
+        public int FolderCallCount { get; private set; }
+
+        public Task<ChangePlan> CreateFolderStructurePlanAsync(
+            IReadOnlyList<ResultFile> files,
+            AiFolderStructurePlan suggestion,
+            string? sourceScanId,
+            CancellationToken cancellationToken)
+        {
+            FolderCallCount++;
+            return Task.FromResult(new ChangePlan(
+                ChangePlanSchema.CurrentVersion,
+                "plan:folder",
+                DateTimeOffset.UnixEpoch,
+                sourceScanId,
+                "C:\\Selected",
+                ChangePlanStatus.AwaitingReview,
+                [],
+                [],
+                null,
+                false));
+        }
+
+        public Task<ChangePlan> CreateRenamePlanAsync(
+            ResultFile file,
+            AiFileRenameSuggestion suggestion,
+            string reviewedFileName,
+            string? sourceScanId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<ChangePlan> CreateRulePlanAsync(
+            ResultsSnapshot snapshot,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+    }
 }

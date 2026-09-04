@@ -53,7 +53,7 @@
                                 Classes="secondary" Content="Next" Command="{Binding NextReviewItemCommand}"
                                 AutomationProperties.Name="Next unresolved Smart Tag review item" />
                         <Button Classes="primary" Content="Return to discovery" Command="{Binding ReturnToDiscoveryCommand}"
-                                AutomationProperties.Name="Return to preserved Search, facets, and Saved View" />
+                                AutomationProperties.Name="Return to preserved Search, facets, and saved search" />
                     </WrapPanel>
                 </Grid>
             </Border>
@@ -342,7 +342,18 @@
                             </StackPanel>
                             <Border Classes="separator" />
                             <StackPanel Spacing="5">
-                                <TextBlock Text="Smart Tags" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                    <TextBlock Text="Smart Tags" FontWeight="SemiBold" />
+                                    <Button Grid.Column="1"
+                                            Classes="secondary"
+                                            Content="Refresh"
+                                            Command="{Binding RefreshSmartTagsCommand}"
+                                            AutomationProperties.Name="Refresh Smart Tags for selected file" />
+                                </Grid>
+                                <TextBlock Text="{Binding SmartTagAvailabilityText}"
+                                           Classes="page-subtitle"
+                                           TextWrapping="Wrap"
+                                           AutomationProperties.LiveSetting="Polite" />
                                 <WrapPanel AutomationProperties.Name="Selected file Smart Tag summary">
                                     <ItemsControl ItemsSource="{Binding SmartTagPreview}">
                                         <ItemsControl.ItemsPanel>
@@ -560,8 +571,8 @@
                                             x:DataType="vm:AiSuggestionsViewModel">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <StackPanel Spacing="2">
-                                            <TextBlock Text="Organize selected files" FontSize="17" FontWeight="SemiBold" />
-                                            <TextBlock Text="Suggest → Review Changes → execute; nothing is changed automatically"
+                                            <TextBlock Text="Optional AI organization" FontSize="17" FontWeight="SemiBold" />
+                                            <TextBlock Text="Configure → suggest → Review Changes; nothing is enabled or changed automatically"
                                                        Classes="page-subtitle" />
                                         </StackPanel>
                                         <Button Grid.Column="1"
@@ -571,9 +582,16 @@
                                                 ToolTip.Tip="Suggestions never rename or move files automatically." />
                                     </Grid>
                                     <TextBlock Text="{Binding ReadinessText}" TextWrapping="Wrap" />
-                                    <Button Classes="secondary"
-                                            Content="Retry connection"
-                                            Command="{Binding RetryConnectionCommand}" />
+                                    <WrapPanel>
+                                        <Button Margin="0,0,8,8"
+                                                Classes="secondary"
+                                                Content="Open AI settings"
+                                                Command="{Binding OpenSettingsCommand}" />
+                                        <Button Margin="0,0,8,8"
+                                                Classes="secondary"
+                                                Content="Retry connection"
+                                                Command="{Binding RetryConnectionCommand}" />
+                                    </WrapPanel>
                                     <Border IsVisible="{Binding IsFileRenameVisible}" Classes="subtle-card">
                                         <StackPanel Spacing="5">
                                             <TextBlock Text="Rename Helper" FontWeight="SemiBold" />
@@ -607,6 +625,7 @@
                                         </StackPanel>
                                     </Border>
                                     <Expander IsVisible="{Binding IsFolderStructureVisible}"
+                                              IsExpanded="True"
                                               Header="Folder suggestion">
                                         <StackPanel Spacing="5">
                                             <TextBlock Text="{Binding FolderStructureContextText}"
@@ -625,6 +644,15 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
+                                            <WrapPanel IsVisible="{Binding HasFolderStructurePlan}">
+                                                <Button Margin="0,0,6,0"
+                                                        Classes="primary"
+                                                        Content="Keep proposal"
+                                                        Command="{Binding AcceptFolderStructureCommand}" />
+                                                <Button Classes="secondary"
+                                                        Content="Dismiss"
+                                                        Command="{Binding RejectFolderStructureCommand}" />
+                                            </WrapPanel>
                                         </StackPanel>
                                     </Expander>
                                     <Expander Header="AI request context">
@@ -771,6 +799,17 @@
                                 <TextBlock Text="{Binding SelectedMemberCountText}"
                                            TextWrapping="Wrap"
                                            AutomationProperties.LiveSetting="Polite" />
+                                <WrapPanel>
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Keep first; select the rest"
+                                            Command="{Binding SelectAllButFirstCommand}"
+                                            ToolTip.Tip="Keep the first displayed copy in this exact-match group and mark the others for the reviewed recovery plan." />
+                                    <Button Margin="0,0,8,8"
+                                            Classes="secondary"
+                                            Content="Clear all selections"
+                                            Command="{Binding ClearRemovalSelectionsCommand}" />
+                                </WrapPanel>
                                 <Border Classes="notice-card">
                                     <TextBlock Text="Safe removal moves selected copies into a hidden OmniSorSe recovery area under this scan root. It does not permanently delete them or reclaim disk space immediately. A successful move is journalled and can be undone while conflict checks pass."
                                                TextWrapping="Wrap" />

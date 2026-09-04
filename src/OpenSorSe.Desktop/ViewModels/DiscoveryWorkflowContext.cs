@@ -18,7 +18,7 @@ public sealed record DiscoveryWorkflowContext(
     public string DisplayName => IsUnresolvedReview
         ? "Unresolved Smart Tag review"
         : SavedViewId is not null
-            ? "Saved View results"
+            ? "Saved search results"
             : string.IsNullOrWhiteSpace(Query.QueryText)
                 ? "Filtered discovery"
                 : "Search results";

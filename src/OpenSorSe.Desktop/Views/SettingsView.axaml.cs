@@ -26,6 +26,24 @@ public partial class SettingsView : UserControl
     }
 
     /// <inheritdoc />
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs eventArgs)
+    {
+        base.OnAttachedToVisualTree(eventArgs);
+        if (_viewModel is null && DataContext is SettingsViewModel viewModel)
+        {
+            _viewModel = viewModel;
+            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+            _viewModel.FocusRequested += OnFocusRequested;
+            SubscribeDraft(_viewModel.Draft);
+        }
+
+        if (_viewModel?.LastFocusRequest is { } target)
+        {
+            OnFocusRequested(target);
+        }
+    }
+
+    /// <inheritdoc />
     protected override void OnDataContextChanged(EventArgs eventArgs)
     {
         Unsubscribe();
@@ -37,6 +55,7 @@ public partial class SettingsView : UserControl
         }
 
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.FocusRequested += OnFocusRequested;
         SubscribeDraft(_viewModel.Draft);
     }
 
@@ -58,6 +77,7 @@ public partial class SettingsView : UserControl
         if (_viewModel is not null)
         {
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _viewModel.FocusRequested -= OnFocusRequested;
         }
 
         if (_draft is not null)
@@ -67,6 +87,20 @@ public partial class SettingsView : UserControl
 
         _viewModel = null;
         _draft = null;
+    }
+
+    private void OnFocusRequested(SettingsFocusTarget target) =>
+        Dispatcher.UIThread.Post(
+            () => FocusRequestedTarget(target),
+            DispatcherPriority.Loaded);
+
+    private void FocusRequestedTarget(SettingsFocusTarget target)
+    {
+        var control = target == SettingsFocusTarget.AiAssistance
+            ? AiSettingsHeading
+            : SettingsPageHeading;
+        control.BringIntoView();
+        control.Focus();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)

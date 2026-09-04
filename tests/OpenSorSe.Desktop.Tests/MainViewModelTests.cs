@@ -168,7 +168,7 @@ public sealed class MainViewModelTests
         Assert.Contains(NavigationDestination.ReviewChanges, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Catalog, viewModel.Destinations);
         Assert.Contains(NavigationDestination.Duplicates, viewModel.Destinations);
-        Assert.Contains(NavigationDestination.KnowledgeGraph, viewModel.Destinations);
+        Assert.DoesNotContain(NavigationDestination.KnowledgeGraph, viewModel.Destinations);
         Assert.DoesNotContain(NavigationDestination.CatalogSearch, viewModel.Destinations);
         Assert.Contains(NavigationDestination.SemanticSearch, viewModel.Destinations);
     }
@@ -198,7 +198,7 @@ public sealed class MainViewModelTests
         using var viewModel = new MainViewModel();
 
         viewModel.KnowledgeGraph.HelpCommand.Execute(null);
-        Assert.Equal(HelpTopicId.RelatedFiles, viewModel.Help.SelectedTopic.Id);
+        Assert.Equal(HelpTopicId.GraphDiagnostics, viewModel.Help.SelectedTopic.Id);
         viewModel.Help.BackCommand.Execute(null);
 
         viewModel.WatchedFolders.HelpCommand.Execute(null);
@@ -292,11 +292,20 @@ public sealed class MainViewModelTests
         Assert.DoesNotContain(viewModel.NavigationItems, item => item.Destination == NavigationDestination.CatalogComparison);
         Assert.Contains(viewModel.NavigationItems, item => item.Destination == NavigationDestination.StructureHistory && item.Label == "Folder plans");
         Assert.Equal(
-            ["Home", "Scan", "Search", "Files", "Duplicates", "Related Files", "Review Changes"],
+            ["Home", "Scan", "Files", "Review Changes"],
             viewModel.PrimaryNavigationItems.Select(item => item.Label));
         Assert.Equal(
-            ["Knowledge Graph", "Saved scans", "Watched Folders", "Workflows", "Operation History", "Settings"],
+            ["Search", "Duplicates", "Related Files"],
             viewModel.SecondaryNavigationItems.Select(item => item.Label));
+        Assert.Equal(
+            ["Saved scans", "Watched Folders", "Workflows", "Operation History"],
+            viewModel.LibraryNavigationItems.Select(item => item.Label));
+        Assert.Contains(
+            viewModel.AdvancedNavigationItems,
+            item => item.Destination == NavigationDestination.KnowledgeGraph && item.Label == "Graph diagnostics");
+        Assert.Contains(
+            viewModel.FooterNavigationItems,
+            item => item.Destination == NavigationDestination.Settings);
         Assert.Contains(
             viewModel.NavigationItems,
             item => item.Destination == NavigationDestination.History && item.Label == "Operation History");
@@ -492,6 +501,19 @@ public sealed class MainViewModelTests
         Assert.NotEqual(initialStatistics, viewModel.Dashboard.Statistics);
         Assert.Equal(new DashboardStatistics(2, 1, 1, 0), viewModel.Dashboard.Statistics);
         Assert.True(viewModel.Dashboard.HasCompletedScan);
+    }
+
+    /// <summary>Verifies the optional-AI affordance routes to the exact Settings section without enabling AI.</summary>
+    [Fact]
+    public void AiSettingsRequest_NavigatesAndRequestsAiSectionFocusOnly()
+    {
+        using var viewModel = new MainViewModel();
+
+        viewModel.Results.AiSuggestions.OpenSettingsCommand.Execute(null);
+
+        Assert.Equal(NavigationDestination.Settings, viewModel.SelectedDestination);
+        Assert.Equal(SettingsFocusTarget.AiAssistance, viewModel.Settings.LastFocusRequest);
+        Assert.False(viewModel.EnableAi);
     }
 
     /// <summary>Verifies Home reflects durable state after restart without needing an in-session scan projection.</summary>

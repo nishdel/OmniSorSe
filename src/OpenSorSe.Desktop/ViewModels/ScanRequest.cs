@@ -22,7 +22,7 @@ public static class InitialScanDepthOptions
         new(
             InitialScanDepth.BaseFirst,
             "Fast — searchable first",
-            "Makes names, paths, metadata, and inexpensive document text searchable across the selection first. Enabled OCR, media, summaries, and related analysis continue durably afterward."),
+            "Makes names, paths, metadata, and inexpensive document text searchable across the selection first. Only deeper stages allowed by the source level and workflow continue afterward; Basic remains metadata-only."),
         new(
             InitialScanDepth.DeepInitialAnalysis,
             "Deep initial analysis",

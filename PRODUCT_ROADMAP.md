@@ -33,9 +33,9 @@ For concise dates, test totals, and links to historical evidence, see
 
 `main` contains the stable released implementation lineage through v2.4.0.
 GitHub `main` also contains the v2.5-v2.12 candidate lineage after the
-2026-08-20 source integration. That lineage is now the 2.12.0-rc prerelease
-candidate: automated package gates have passed while manual, trust, and GA gates
-remain open.
+2026-08-20 source integration. That lineage is published as the 2.12.0-rc
+prerelease from exact tagged commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`:
+automated package gates passed while manual, trust, and GA gates remain open.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -608,7 +608,8 @@ committed v2.11 release candidate.
 2026-08-20 after the recorded automated gates. The initial hosted macOS test-
 portability failures were corrected, and later exact-main Windows, Ubuntu,
 macOS ARM, and macOS Intel matrices passed. The 2.12.0-rc exact-source package
-set and scripted installer lifecycle are validated for prerelease publication;
+set and scripted installer lifecycle were validated and published as a GitHub
+prerelease from exact tagged `main` commit `4dd27d62`;
 manual, native-interactive, signing/notarization, and v2.12.0 GA gates remain
 open.
 
@@ -626,6 +627,27 @@ the Change Plan mutation boundary remain unchanged.
 
 See [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md)
 and the [v2.12 manual addendum](docs/MANUAL_TESTING_v2.12.md).
+
+## In progress
+
+### v2.13 — Product Clarity & Workflow
+
+**Branch:** `codex/product-clarity-issue-pass`, created directly from the
+published v2.12.0-rc tagged `main` commit.
+
+**Status:** Source candidate under validation. It is not tagged, packaged,
+published, stable, or GA.
+
+v2.13 restores Scan → Review → Organize as the primary path, simplifies Search
+and graph surfaces through progressive disclosure, keeps optional AI and Smart
+Tags discoverable, makes Change Plan and duplicate intent explicit, adds
+consistent accessible status hierarchy and confirmation for authority-removing
+relationship changes, and corrects recent indexing throughput/ETA calculation.
+It retains .NET 10, schema 6, Protocol 1.0, existing compatibility identifiers,
+local-first behavior, and the reviewed Change Plan mutation boundary.
+
+See [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) and the
+[v2.13 manual addendum](docs/MANUAL_TESTING_v2.13.md).
 
 ## Planned
 

@@ -70,17 +70,25 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
             () => DocumentInterpretation is not null && !IsBusy);
         CancelAiOperationCommand = new RelayCommand(CancelOperation, () => IsBusy);
         RetryConnectionCommand = new AsyncRelayCommand(RetryConnectionAsync, CanRetryConnection);
+        OpenSettingsCommand = new RelayCommand(() => SettingsRequested?.Invoke(this, EventArgs.Empty));
         RefreshFeatureAvailability();
     }
 
     /// <summary>Occurs after an accepted suggestion becomes a non-mutating Change Plan.</summary>
     public event EventHandler<ChangePlan>? ChangePlanCreated;
 
+    /// <summary>Occurs when the user requests the explicit AI configuration surface.</summary>
+    public event EventHandler? SettingsRequested;
+
     /// <summary>Gets the selected completed-scan file currently available for review.</summary>
     public ResultFile? SelectedFile => _selectedFile;
 
-    /// <summary>Gets whether any enabled AI capability should be presented.</summary>
-    public bool IsVisible => HasContext && (IsFileRenameVisible || IsFolderStructureVisible || IsDocumentInterpretationVisible);
+    /// <summary>Gets whether the stable, explanatory AI entry point should be presented.</summary>
+    public bool IsVisible => HasContext;
+
+    /// <summary>Gets whether at least one optional AI action is configured and available in this context.</summary>
+    public bool HasAvailableCapability =>
+        IsFileRenameVisible || IsFolderStructureVisible || IsDocumentInterpretationVisible;
 
     /// <summary>Gets whether the rename capability is enabled and available.</summary>
     public bool IsFileRenameVisible =>
@@ -455,6 +463,9 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the explicit bounded local-AI connection retry command.</summary>
     public IAsyncRelayCommand RetryConnectionCommand { get; }
 
+    /// <summary>Gets the command that opens AI configuration without enabling anything automatically.</summary>
+    public IRelayCommand OpenSettingsCommand { get; }
+
     /// <summary>Replaces in-memory review context without reading file content or retaining paths for provider requests.</summary>
     public void SetContext(
         ResultFile? selectedFile,
@@ -506,7 +517,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         FolderStructurePlan = null;
         _structureItems.Clear();
 
-        StatusText = IsVisible
+        StatusText = HasAvailableCapability
             ? "AI capabilities are ready for an explicit review-only request."
             : _workflow?.Ai.Enabled == false ||
               _workflow?.Ai.InvocationPolicy == WorkflowAiInvocationPolicy.Disabled
@@ -548,6 +559,7 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsFileRenameVisible));
         OnPropertyChanged(nameof(IsFolderStructureVisible));
         OnPropertyChanged(nameof(IsDocumentInterpretationVisible));
+        OnPropertyChanged(nameof(HasAvailableCapability));
         OnPropertyChanged(nameof(IsVisible));
         OnPropertyChanged(nameof(AiRequestContextText));
         RefreshReadinessFromConfiguration(preserveRetryableState: false);
@@ -854,52 +866,89 @@ public sealed class AiSuggestionsViewModel : ViewModelBase, IDisposable
     private async Task RecordFolderStructureAsync(AiSuggestionDecisionOutcome outcome)
     {
         var plan = FolderStructurePlan;
-        if (_aiSuggestionService is null || plan is null || !IsFolderStructureVisible)
+        if (_aiSuggestionService is null || plan is null || !IsFolderStructureVisible || IsBusy)
         {
             return;
         }
 
+        var pageFiles = Array.AsReadOnly(_pageFiles.ToArray());
+        var sourceScanId = _sourceScanId;
+        var (cancellation, version) = BeginOperation();
+        StatusText = outcome == AiSuggestionDecisionOutcome.Rejected
+            ? "Dismissing the reviewed folder suggestion..."
+            : "Saving the reviewed folder suggestion as a Change Plan...";
+        Status = StatusPresentation.Progress(StatusText);
         var value = string.Join(';', plan.Folders.Select(folder => folder.Name).Distinct(StringComparer.OrdinalIgnoreCase));
-        var result = await _aiSuggestionService.RecordDecisionAsync(
-            new AiSuggestionDecision(
-                AiSuggestionDecisionKind.FolderStructure,
-                outcome,
-                null,
-                value,
-                outcome == AiSuggestionDecisionOutcome.Rejected ? null : value,
-                plan.Provider,
-                plan.Model,
-                DateTimeOffset.UtcNow),
-            _configurationService.Current.Ai,
-            CancellationToken.None);
-        StatusText = outcome == AiSuggestionDecisionOutcome.Rejected && result.State == AiAvailabilityState.ModelSelected
-            ? "The AI-generated folder-structure suggestion was rejected. No folder or file was changed."
-            : result.Message;
-        Status = PresentResult(result.State, StatusText);
-        if (outcome != AiSuggestionDecisionOutcome.Rejected &&
-            _changePlanFactory is not null &&
-            result.State == AiAvailabilityState.ModelSelected)
+        try
         {
-            try
+            var result = await _aiSuggestionService.RecordDecisionAsync(
+                new AiSuggestionDecision(
+                    AiSuggestionDecisionKind.FolderStructure,
+                    outcome,
+                    null,
+                    value,
+                    outcome == AiSuggestionDecisionOutcome.Rejected ? null : value,
+                    plan.Provider,
+                    plan.Model,
+                    DateTimeOffset.UtcNow),
+                _configurationService.Current.Ai,
+                cancellation.Token);
+            if (!IsCurrentOperation(cancellation, version))
+            {
+                return;
+            }
+
+            StatusText = outcome == AiSuggestionDecisionOutcome.Rejected && result.State == AiAvailabilityState.ModelSelected
+                ? "The AI-generated folder-structure suggestion was dismissed. No folder or file was changed."
+                : result.Message;
+            Status = PresentResult(result.State, StatusText);
+            if (result.State != AiAvailabilityState.ModelSelected)
+            {
+                return;
+            }
+
+            FolderStructurePlan = null;
+            _structureItems.Clear();
+            if (outcome != AiSuggestionDecisionOutcome.Rejected && _changePlanFactory is not null)
             {
                 var changePlan = await _changePlanFactory.CreateFolderStructurePlanAsync(
-                    _pageFiles,
+                    pageFiles,
                     plan,
-                    _sourceScanId,
-                    CancellationToken.None);
+                    sourceScanId,
+                    cancellation.Token);
+                if (!IsCurrentOperation(cancellation, version))
+                {
+                    return;
+                }
+
                 ChangePlanCreated?.Invoke(this, changePlan);
                 StatusText = "The reviewed folder suggestion is now a Change Plan. Review and validate it before applying.";
                 Status = StatusPresentation.Information(StatusText);
             }
-            catch (Exception exception) when (
-                exception is ArgumentException or
-                InvalidDataException or
-                IOException or
-                UnauthorizedAccessException)
+        }
+        catch (OperationCanceledException)
+        {
+            if (version == Volatile.Read(ref _operationVersion))
+            {
+                StatusText = "The folder-suggestion review was cancelled. No folder or file was changed.";
+                Status = StatusPresentation.Information(StatusText);
+            }
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or
+            InvalidDataException or
+            IOException or
+            UnauthorizedAccessException)
+        {
+            if (version == Volatile.Read(ref _operationVersion))
             {
                 StatusText = "The folder suggestion could not be converted into a safe Change Plan. No folder or file was changed.";
                 Status = StatusPresentation.Error(StatusText);
             }
+        }
+        finally
+        {
+            EndOperation(cancellation, version);
         }
     }
 

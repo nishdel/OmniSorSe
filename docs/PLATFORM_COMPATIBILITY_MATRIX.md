@@ -2,8 +2,8 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** OmniSorSe 2.12.0-rc on the v2.5-v2.11 RC stack;
-v2.4.0 remains the latest stable release
+**Current source:** OmniSorSe 2.13.0-rc candidate on the published v2.12 RC
+lineage; v2.4.0 remains the latest stable release
 
 **Last reviewed:** 2026-09-04
 
@@ -26,11 +26,13 @@ filesystem validation.
 Framework portability, target compilation, native CI, desktop startup, and safe
 file mutation are separate claims.
 
-## Current RC evidence ledger
+## Published RC evidence ledger
 
-The 2.12.0-rc source targets .NET 10. Evidence must be read by column; a build
-does not imply a native launch, and a package smoke does not imply broad desktop
-or filesystem validation.
+The published 2.12.0-rc source targets .NET 10. Evidence must be read by column;
+a build does not imply a native launch, and a package smoke does not imply broad
+desktop or filesystem validation. The 2.13.0-rc source candidate inherits these
+platform boundaries but requires fresh exact-source evidence before any package
+or release claim.
 
 | Platform | Compiles/publishes | Full automated suite | Native bounded smoke | Package | Installer lifecycle | Mutation | Signing trust |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -73,7 +75,7 @@ reviewed and linked. Native/manual observations belong in the
   Its exact-source native package set passed Windows installer lifecycle and
   native macOS DMG smoke in
   [run 32492043785](https://github.com/nishdel/OmniSorSe/actions/runs/32492043785).
-  Release-preparation changes require fresh exact-main runs before publication.
+  The later 2.13 candidate requires fresh exact-main runs before publication.
 
 ## Current support matrix
 

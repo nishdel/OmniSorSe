@@ -288,10 +288,10 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.Contains("MaxHeight=\"300\"", source, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Clear all active Search filters\"", source, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Show files with unresolved Moderate Smart Tag suggestions\"", source, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Save current query and filters as a new Saved View\"", source, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Open selected Saved View\"", source, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Update selected Saved View from current query and filters\"", source, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Delete selected Saved View\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Save current query and filters as a new saved search\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Open selected saved search\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Update selected saved search from current query and filters\"", source, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Delete selected saved search\"", source, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding CandidateCoverageText}\"", source, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", source, StringComparison.Ordinal);
     }
@@ -306,10 +306,13 @@ public sealed class DesktopBrandingAndLayoutTests
         var files = File.ReadAllText(Path.Combine(views, "ResultsView.axaml"));
 
         Assert.Contains("AutomationProperties.Name=\"Home durable library overview\"", home, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Find files with Search, facets, and Saved Views\"", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Find files with Search, facets, and saved searches\"", home, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Understand a file using details, Smart Tags, evidence, and Related Files\"", home, StringComparison.Ordinal);
-        Assert.Contains("StringFormat='Review {0} unresolved Smart Tag suggestion files'", home, StringComparison.Ordinal);
-        Assert.Contains("AutomationProperties.Name=\"Organize selected files through a reviewed Change Plan\"", home, StringComparison.Ordinal);
+        Assert.Contains("Text=\"1  SCAN\"", home, StringComparison.Ordinal);
+        Assert.Contains("Text=\"2  REVIEW\"", home, StringComparison.Ordinal);
+        Assert.Contains("Text=\"3  ORGANIZE\"", home, StringComparison.Ordinal);
+        Assert.Contains("StringFormat='Step 2, review {0} unresolved Smart Tag suggestion files'", home, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Step 3, organize selected files through a reviewed Change Plan\"", home, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.LiveSetting=\"Polite\"", home, StringComparison.Ordinal);
 
         Assert.Contains("Content=\"Open in Files\"", search, StringComparison.Ordinal);
@@ -320,7 +323,7 @@ public sealed class DesktopBrandingAndLayoutTests
         Assert.DoesNotContain("UserTagChoices", search, StringComparison.Ordinal);
         Assert.DoesNotContain("AddSmartTagFiltersCommand", search, StringComparison.Ordinal);
 
-        Assert.Contains("AutomationProperties.Name=\"Return to preserved Search, facets, and Saved View\"", files, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.Name=\"Return to preserved Search, facets, and saved search\"", files, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Previous unresolved Smart Tag review item\"", files, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.Name=\"Next unresolved Smart Tag review item\"", files, StringComparison.Ordinal);
         Assert.Contains("Header=\"Why this classification?\"", files, StringComparison.Ordinal);
@@ -337,7 +340,9 @@ public sealed class DesktopBrandingAndLayoutTests
         var tags = HelpCatalog.Get(HelpTopicId.SmartTags);
 
         Assert.Contains("durable", home.Reads, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(home.Workflow, step => step.Contains("Find", StringComparison.Ordinal));
+        Assert.Contains(home.Workflow, step => step.Contains("Scan", StringComparison.Ordinal));
+        Assert.Contains(home.Workflow, step => step.Contains("Review", StringComparison.Ordinal));
+        Assert.Contains(home.Workflow, step => step.Contains("Organize", StringComparison.Ordinal));
         Assert.Contains(search.Workflow, step => step.Contains("Open in Files", StringComparison.Ordinal));
         Assert.Contains("Saved scans remain historical", search.SafetyNotes, StringComparison.Ordinal);
         Assert.Contains("stable file ID", files.SafetyNotes, StringComparison.Ordinal);

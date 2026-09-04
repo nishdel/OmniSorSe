@@ -8,7 +8,10 @@
         <StackPanel Spacing="12">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                 <StackPanel Spacing="3">
-                    <TextBlock Classes="page-title" Text="Settings" />
+                <TextBlock x:Name="SettingsPageHeading"
+                           Classes="page-title"
+                           Text="Settings"
+                           Focusable="True" />
                     <TextBlock Classes="page-subtitle" Text="Make OmniSorSe yours." />
                 </StackPanel>
                 <Button Grid.Column="1"
@@ -37,7 +40,7 @@
             <Border Classes="card">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Export or restore OmniSorSe state" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="The logical archive contains user-authored settings, source definitions, recipes, Saved Views, User Tags, and accept/reject decisions. It excludes extracted content, OCR, transcripts, generated intelligence, the Search index, and active operation journals. Treat the archive as sensitive."
+                    <TextBlock Text="The logical archive contains user-authored settings, source definitions, recipes, saved searches, User Tags, and accept/reject decisions. It excludes extracted content, OCR, transcripts, generated intelligence, the Search index, and active operation journals. Treat the archive as sensitive."
                                TextWrapping="Wrap" />
                     <WrapPanel>
                         <Button Margin="0,0,8,8"
@@ -295,7 +298,7 @@
                                  PlaceholderText="End hour 0–23"
                                  AutomationProperties.Name="Indexing window end hour" />
                     </Grid>
-                    <TextBlock Text="Idle, power, and battery controls use platform signals only when available; unsupported controls degrade safely without blocking Search."
+                    <TextBlock Text="Idle, power, and battery restrictions are fail-closed: when an enabled platform condition cannot be verified, new indexing waits. Existing Search data remains usable; turn off an unsupported restriction to resume indexing."
                                IsVisible="{Binding IsAdvancedSettingsVisible}"
                                TextWrapping="Wrap"
                                Classes="page-subtitle" />
@@ -572,7 +575,12 @@
 
             <Border Classes="card">
                 <StackPanel Spacing="8">
-                    <TextBlock Text="Optional AI assistance" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock x:Name="AiSettingsHeading"
+                               Text="Optional AI assistance"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Focusable="True"
+                               AutomationProperties.Name="Optional AI assistance settings" />
                     <CheckBox Content="Enable AI features"
                               IsChecked="{Binding Draft.AiEnabled, Mode=TwoWay}" />
                     <TextBlock Text="Off by default. When disabled, OmniSorSe hides AI actions and does not check Ollama, discover models, or send model requests."
@@ -715,7 +723,7 @@
                                   IsChecked="{Binding Draft.ScanningDiagnosticsEnabled, Mode=TwoWay}" />
                         <CheckBox Content="Duplicate detection diagnostics — not yet instrumented"
                                   IsChecked="{Binding Draft.DuplicateDetectionDiagnosticsEnabled, Mode=TwoWay}" />
-                        <CheckBox Content="Search and indexing diagnostics — not yet instrumented"
+                        <CheckBox Content="Search and indexing diagnostics"
                                   IsChecked="{Binding Draft.SearchAndIndexingDiagnosticsEnabled, Mode=TwoWay}" />
                         <CheckBox Content="Rules and organisation diagnostics — not yet instrumented"
                                   IsChecked="{Binding Draft.RulesAndOrganisationDiagnosticsEnabled, Mode=TwoWay}" />
@@ -723,7 +731,7 @@
                                   IsChecked="{Binding Draft.FileOperationDiagnosticsEnabled, Mode=TwoWay}" />
                         <CheckBox Content="Performance diagnostics — not yet instrumented"
                                   IsChecked="{Binding Draft.PerformanceDiagnosticsEnabled, Mode=TwoWay}" />
-                        <TextBlock Text="Duplicate detection, search and indexing, rules and organisation, file operations, and standalone performance sessions are planned extension points; their switches do not collect detailed sessions in this release."
+                        <TextBlock Text="Search and indexing records bounded run, queue, stage, retry, storage, and privacy-safe failure details. Duplicate detection, rules and organisation, file operations, and standalone performance sessions remain planned extension points and their switches do not collect detailed sessions in this release."
                                    TextWrapping="Wrap" />
                         <CheckBox Content="Show unredacted diagnostic content"
                                   IsChecked="{Binding Draft.ShowUnredactedDiagnosticContent, Mode=TwoWay}" />

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:-2.12.0-rc}"
+version="${1:-2.13.0-rc}"
 rid="${2:?A macOS runtime identifier is required.}"
 output_directory="${3:?A release output directory is required.}"
 source_revision="${4:-}"

@@ -7,6 +7,38 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v2.13.0-rc candidate — OmniSorSe Product Clarity & Workflow
+
+Release source: post-v2.12 candidate branch. This is not yet a tag, package, or
+GitHub Release.
+
+### Added and changed
+
+- Restore Scan → Review → Organize as the primary Home/navigation hierarchy.
+- Clarify Change Plan provenance and bulk eligibility; distinguish duplicate
+  recovery selection from the five-item shell-open limit.
+- Keep optional AI organization visible while disabled and link directly to AI
+  settings without enabling a provider.
+- Give Search results useful vertical space and progressively disclose facets,
+  saved searches, and maintenance.
+- Explain and refresh Smart Tag states; distinguish Related Files from advanced
+  graph diagnostics.
+- Require a target-specific confirmation before relationship/collection
+  authority is removed.
+- Calculate recent indexing throughput and ETA from bounded recent completions.
+- Preserve schema 6, Explorer Protocol 1.0, compatibility identifiers, and the
+  reviewed Change Plan file-mutation boundary.
+
+### Evidence boundary
+
+Local SDK 10.0.400 qualification passes zero-warning Debug/Release builds,
+1,877 tests in each configuration with no skips, focused relevance/performance/
+policy checks, formatting/analyzers, dependency audit, and native Windows
+package smoke. Exact-main hosted cross-platform, complete native packaging,
+public-asset, and manual validation remain release gates. See
+[v2.13 Release Notes](RELEASE_NOTES_v2.13.0.md) and
+[v2.13 Manual Testing](MANUAL_TESTING_v2.13.md).
+
 ## v2.12.0-rc prerelease — OmniSorSe Trusted Relationships & Context
 
 Release source: GitHub `main`, including the history from

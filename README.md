@@ -57,8 +57,8 @@ plugins are trusted in-process extensions, not a security sandbox.
 
 | Track | What it is | Start here |
 | --- | --- | --- |
-| **Current source: 2.12.0-rc** | GitHub `main` contains the integrated v2.12 Trusted Relationships & Context release candidate on .NET 10. | [Current State](docs/CURRENT-STATE.md) · [v2.12 record](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) · [Release Status](docs/RELEASE_STATUS.md) |
-| **Current prerelease: v2.12.0-rc** | Exact-source Windows and macOS packages have passed the automated release workflow and are validated and ready for GitHub prerelease publication. They are unsigned; macOS packages are also unnotarized. Manual and real-world validation remains before v2.12.0 GA. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.12.0.md) |
+| **Current source: 2.13.0-rc** | The next source candidate restores a clear Scan → Review → Organize workflow and simplifies discovery, relationship, AI, and diagnostic surfaces on top of v2.12. | [Current State](docs/CURRENT-STATE.md) · [v2.13 Release Notes](docs/RELEASE_NOTES_v2.13.0.md) · [Release Status](docs/RELEASE_STATUS.md) |
+| **Published prerelease: v2.12.0-rc** | The exact-source Windows and macOS packages were published from tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac` after automated release validation. They are unsigned; macOS packages are also unnotarized. Manual and real-world validation remains before any GA claim. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.12.0.md) |
 | **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
 
 The v2.4.0 package keeps established OpenSorSe application-data, schema,
@@ -84,12 +84,29 @@ build should use [v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4
 See [Installation](docs/INSTALLATION.md) for exact filenames, checksum commands,
 upgrade cautions, application-data locations, and Linux guidance.
 
-## Current prerelease highlights
+## Current source highlights
 
-The v2.12 source builds on the v2.5–v2.11 candidate lineage. Compared with the
-latest stable release, current `main` adds or strengthens:
+The v2.13 source candidate keeps the v2.12 architecture and safety boundary
+while making the product easier to understand and operate:
 
-- explainable Smart Tags, complete-index facets, and dynamic Saved Views;
+- Home and navigation lead with Scan, Review, and Organize; Search, Duplicates,
+  Related Files, library automation, and graph diagnostics have clearer roles;
+- Review Changes identifies plan origin and purpose, names bulk eligibility
+  precisely, and keeps Apply separate and explicit;
+- optional AI organization stays discoverable when disabled and links directly
+  to its settings without enabling or contacting a provider;
+- Search gives results useful vertical space and progressively discloses facets,
+  saved searches, and index maintenance;
+- Smart Tags explain selection/indexing/empty states and can be refreshed;
+- authority-removing relationship and collection operations require a specific
+  confirmation, while original files remain unchanged;
+- recent indexing throughput and ETA use recent completed work rather than the
+  age of a long-running indexing run.
+
+The published v2.12 prerelease builds on the v2.5–v2.11 candidate lineage.
+Compared with the latest stable release, that lineage adds or strengthens:
+
+- explainable Smart Tags, complete-index facets, and dynamic saved searches;
 - guided Search-to-Files workflows and reviewed organization previews;
 - direct Related Files, reversible relationship decisions, and authored Smart
   Collection state;
@@ -98,7 +115,7 @@ latest stable release, current `main` adds or strengthens:
   reconciliation;
 - .NET 10 runtime and package provenance validation.
 
-These are implemented release-candidate capabilities, not a v2.12.0 GA claim. Read
+These are release-candidate capabilities, not a GA claim. Read
 [Current State](docs/CURRENT-STATE.md) for the concise implemented boundary and
 [Release Status](docs/RELEASE_STATUS.md) for verified versus still-manual
 evidence.
@@ -149,7 +166,7 @@ intent-based map. The shortest routes are:
 | Use the latest stable release | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
 | Build or contribute | [Developer Guide](docs/DEVELOPER_GUIDE.md) | [Contributing](CONTRIBUTING.md) and [Engineering Principles](ENGINEERING_PRINCIPLES.md) |
 | Understand the architecture | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | [System Map](docs/Architecture/OpenSorSe_System_Map.md) and [Architecture Library](docs/Architecture/README.md) |
-| Review the current prerelease | [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Prerelease lineage](docs/README.md#current-prerelease-lineage) |
+| Review the current source candidate | [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) | [v2.13 manual checklist](docs/MANUAL_TESTING_v2.13.md) |
 | Check validation or readiness | [Release Status](docs/RELEASE_STATUS.md) | [Platform Compatibility](docs/PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates |
 | Research released or historical work | [Release History](RELEASE_HISTORY.md) | [Changelog](docs/CHANGELOG.md) and [historical records](docs/README.md#release-and-implementation-records) |
 

@@ -3,21 +3,29 @@
              xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
              x:Class="OpenSorSe.Desktop.Views.StatusBanner"
              x:DataType="vm:StatusPresentation">
-    <Border Padding="10"
-            CornerRadius="4"
-            BorderBrush="{DynamicResource ThemeBorderMidBrush}"
-            BorderThickness="1"
-            Background="{DynamicResource ThemeControlLowBrush}"
-            AutomationProperties.Name="{Binding AccessibleText}">
-        <StackPanel Spacing="3">
-            <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
-            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
-            <Expander Header="Technical details"
-                      IsVisible="{Binding HasTechnicalDetails}">
-                <TextBlock Text="{Binding TechnicalDetails}"
-                           TextWrapping="Wrap"
-                           FontFamily="Consolas" />
-            </Expander>
-        </StackPanel>
+    <Border Classes="status-banner"
+            Classes.warning="{Binding IsWarning}"
+            Classes.error="{Binding IsError}"
+            Classes.success="{Binding IsSuccess}"
+            Classes.progress="{Binding IsProgress}"
+            AutomationProperties.Name="{Binding AccessibleText}"
+            AutomationProperties.LiveSetting="Polite">
+        <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+            <TextBlock Text="{Binding Symbol}"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
+                       AutomationProperties.Name="{Binding Label}" />
+            <StackPanel Grid.Column="1" Spacing="3">
+                <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+                <Expander Header="Technical details"
+                          IsVisible="{Binding HasTechnicalDetails}">
+                    <TextBlock Text="{Binding TechnicalDetails}"
+                               TextWrapping="Wrap"
+                               FontFamily="Consolas" />
+                </Expander>
+            </StackPanel>
+        </Grid>
     </Border>
 </UserControl>
