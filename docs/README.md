@@ -104,7 +104,7 @@ validation.
 | [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | Evidence families, pair authority, bounded candidates/reanalysis, direct UX, format-2 backup, privacy, and Protocol 1.0 integration. | During v2.12 implementation and review. | Current prerelease implementation record |
 | [v2.12 Manual Testing](MANUAL_TESTING_v2.12.md) | Relationship-specific quality, lifecycle, accessibility, scale, and companion gates. | During maintainer sign-off. | Current unchecked prerelease evidence tracker |
 | [v2.12.0-rc Release Notes](RELEASE_NOTES_v2.12.0.md) | Downloads, user-visible relationship changes, trust status, automated evidence, and remaining manual validation. | Before installing or testing v2.12.0-rc. | Published prerelease snapshot |
-| [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | Product hierarchy, Review/Duplicates/AI/Search/Smart Tag/relationship clarity, preserved boundaries, and candidate evidence. | During v2.13 review and release engineering. | Current source candidate |
+| [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | Product hierarchy, Review/Duplicates/AI/Search/Smart Tag/relationship clarity, preserved boundaries, and candidate evidence. | During v2.13 review and release engineering. | Current prerelease |
 | [v2.13 Manual Testing](MANUAL_TESTING_v2.13.md) | Interactive workflow, resize/DPI, keyboard/screen-reader, real-library, provider, and package checks. | Before any v2.13 release-quality claim. | Current unchecked candidate evidence tracker |
 
 ## Released, inherited, and supporting documentation

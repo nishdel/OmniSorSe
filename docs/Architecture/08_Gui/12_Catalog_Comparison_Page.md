@@ -21,6 +21,9 @@ flowchart LR
 
 - Disabled and fewer-than-two-entry states explain how to proceed without reading snapshots.
 - Comparison and refresh are cancellable; selector changes cancel active work and cannot publish stale results.
+- The bounded synchronous comparison runs on a dedicated worker so UI
+  cancellation and selection-change control do not compete with comparison
+  work for a shared thread-pool slot.
 - Different/unknown scope and ignored duplicate path records are explicit text warnings.
 - Aggregate totals remain complete when the 500-row presentation cap or a filter applies.
 - Catalog changes, including tag updates and new snapshots, invalidate cached search/comparison state.

@@ -175,6 +175,26 @@ public sealed class CatalogComparisonViewModelTests
         Assert.Contains("selection changed", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Verifies bounded synchronous comparison work cannot starve the shared cancellation-control scheduler.</summary>
+    [Fact]
+    public async Task CompareAsync_SynchronousComparison_UsesDedicatedWorker()
+    {
+        var baseline = CreateEntry("baseline", []);
+        var current = CreateEntry("current", []);
+        var comparison = new ThreadRecordingComparisonService();
+        using var viewModel = new CatalogComparisonViewModel(
+            new TestConfigurationService(enabled: true),
+            new InMemoryCatalogStore(baseline, current),
+            comparison);
+        await viewModel.RefreshEntriesAsync();
+        viewModel.BaselineSelection = viewModel.Entries.Single(entry => entry.Id == baseline.Id);
+        viewModel.CurrentSelection = viewModel.Entries.Single(entry => entry.Id == current.Id);
+
+        await viewModel.CompareAsync();
+
+        Assert.False(comparison.RanOnThreadPoolThread);
+    }
+
     /// <summary>Verifies changed catalog data clears cached entries used by historical open commands.</summary>
     [Fact]
     public async Task InvalidateCatalog_AfterComparison_ClearsRowsAndOpenCommands()
@@ -333,6 +353,22 @@ public sealed class CatalogComparisonViewModelTests
             cancellationToken.WaitHandle.WaitOne();
             cancellationToken.ThrowIfCancellationRequested();
             throw new InvalidOperationException("Cancellation should have interrupted the test comparison.");
+        }
+    }
+
+    private sealed class ThreadRecordingComparisonService : ICatalogComparisonService
+    {
+        private readonly CatalogComparisonService _inner = new();
+
+        public bool RanOnThreadPoolThread { get; private set; }
+
+        public CatalogComparisonResult Compare(
+            CatalogEntry baseline,
+            CatalogEntry current,
+            CancellationToken cancellationToken)
+        {
+            RanOnThreadPoolThread = Thread.CurrentThread.IsThreadPoolThread;
+            return _inner.Compare(baseline, current, cancellationToken);
         }
     }
 }
