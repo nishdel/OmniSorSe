@@ -321,9 +321,7 @@ public sealed class CatalogComparisonViewModel : ViewModelBase, IDisposable
                 return;
             }
 
-            var result = await Task.Run(
-                () => _comparisonService.Compare(baseline, current, cancellation.Token),
-                cancellation.Token);
+            var result = await RunComparisonAsync(baseline, current, cancellation.Token);
             if (!IsCurrentOperation(cancellation, version) ||
                 !string.Equals(BaselineSelection?.Id, baselineRow.Id, StringComparison.Ordinal) ||
                 !string.Equals(CurrentSelection?.Id, currentRow.Id, StringComparison.Ordinal))
@@ -391,6 +389,20 @@ public sealed class CatalogComparisonViewModel : ViewModelBase, IDisposable
         !IsBusy && IsEnabled && _catalogStore is not null &&
         BaselineSelection is not null && CurrentSelection is not null &&
         !string.Equals(BaselineSelection.Id, CurrentSelection.Id, StringComparison.Ordinal);
+
+    private Task<CatalogComparisonResult> RunComparisonAsync(
+        CatalogEntry baseline,
+        CatalogEntry current,
+        CancellationToken cancellationToken)
+    {
+        // Comparison is synchronous and may run to the 2,000-file bound. A dedicated worker keeps
+        // UI/test cancellation control from competing with that work for a shared ThreadPool slot.
+        return Task.Factory.StartNew(
+            () => _comparisonService.Compare(baseline, current, cancellationToken),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach,
+            TaskScheduler.Default);
+    }
 
     private void PublishFilteredRows()
     {

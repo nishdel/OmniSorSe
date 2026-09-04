@@ -32,7 +32,7 @@ GitHub Release.
 ### Evidence boundary
 
 Local SDK 10.0.400 qualification passes zero-warning Debug/Release builds,
-1,877 tests in each configuration with no skips, focused relevance/performance/
+1,878 tests in each configuration with no skips, focused relevance/performance/
 policy checks, formatting/analyzers, dependency audit, and native Windows
 package smoke. Exact-main hosted cross-platform, complete native packaging,
 public-asset, and manual validation remain release gates. See
