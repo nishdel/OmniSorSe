@@ -7,10 +7,11 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
-## v2.13.0-rc candidate — OmniSorSe Product Clarity & Workflow
+## v2.13.0-rc prerelease — OmniSorSe Product Clarity & Workflow
 
-Release source: post-v2.12 candidate branch. This is not yet a tag, package, or
-GitHub Release.
+Release source: GitHub `main` after the Product Clarity & Workflow pull request.
+The annotated tag and GitHub prerelease own the exact packaged source identity;
+this remains an unsigned release candidate rather than stable/GA.
 
 ### Added and changed
 
@@ -35,7 +36,8 @@ Local SDK 10.0.400 qualification passes zero-warning Debug/Release builds,
 1,878 tests in each configuration with no skips, focused relevance/performance/
 policy checks, formatting/analyzers, dependency audit, and native Windows
 package smoke. Exact-main hosted cross-platform, complete native packaging,
-public-asset, and manual validation remain release gates. See
+public-asset, and manual validation remain release gates for publication; the
+GitHub prerelease records their final exact-commit evidence. See
 [v2.13 Release Notes](RELEASE_NOTES_v2.13.0.md) and
 [v2.13 Manual Testing](MANUAL_TESTING_v2.13.md).
 

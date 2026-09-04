@@ -53,6 +53,7 @@ evidence, not a current-suite comparison.
 | v2.10 candidate | `v2.10-production-hardening-operational-resilience` | 2026-08-16 | Production Hardening & Operational Resilience. | Single-writer profile ownership, fail-closed recovery stores, health/lifecycle checks, logical state backup/restore, and coordinated Forget. | 1,829 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
 | v2.11 candidate | `v2.11-supported-runtime-platform-readiness` | 2026-08-17 | Supported Runtime & Platform Readiness. | .NET 10 migration, stronger source/RID/runtime provenance, and clearer compile/native/package evidence boundaries. | 1,832 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
 | v2.12.0-rc | `main` (lineage from `v2.12-trusted-relationships-context`) | 2026-09-04 | Trusted Relationships & Context prerelease. | Stronger bounded relationship evidence, reversible pair authority, direct Related Files, relationship-only reanalysis, and format-2 authored-state backup. | 1,870 integrated tree | Candidate and engineering-system commits are ancestors of published GitHub `main`; the exact candidate branch ref remains remote. Exact-main four-host and native package workflows passed, including the six-file package set and scripted Windows installer lifecycle. Packages are unsigned/unnotarized and intended for final manual validation before GA. |
+| v2.13.0-rc | `main` (from `codex/product-clarity-issue-pass`) | 2026-09-04 | Product Clarity & Workflow prerelease. | Clear Scan → Review → Organize hierarchy, explicit Change Plan/duplicate intent, discoverable optional AI and Smart Tags, simplified Search/relationship/graph surfaces, accessible status hierarchy, guarded relationship authority, and recent indexing throughput/ETA. | 1,878 integrated tree | Integrated through normal pull-request review. Exact-main four-host and native package workflows gate the annotated tag and GitHub prerelease; published packages remain unsigned/unnotarized and intended for final manual validation before GA. |
 
 ## Evidence and detail
 
@@ -78,7 +79,7 @@ reports:
 - [v2.0 Implementation Report](docs/V2.0_IMPLEMENTATION_REPORT.md),
   [Validation Report](docs/V2.0_VALIDATION_REPORT.md), and
   [RC Stabilization Plan](docs/V2.0_RC_STABILIZATION_PLAN.md).
-- [Release Status](docs/RELEASE_STATUS.md) and the v2.5-v2.12 implementation,
+- [Release Status](docs/RELEASE_STATUS.md) and the v2.5-v2.13 implementation,
   manual-testing, and candidate release-note records indexed by the
   [documentation router](docs/README.md) own the later candidate detail.
 

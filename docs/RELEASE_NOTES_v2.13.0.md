@@ -8,7 +8,7 @@ publisher.
 
 ## Downloads
 
-If this candidate is published, use only the assets attached to the canonical
+Use only the assets attached to the canonical
 [v2.13.0-rc GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc):
 
 - `OmniSorSe-v2.13.0-rc-win-x64-setup.exe` — per-user Windows installer;
@@ -81,9 +81,10 @@ Smart Tag states, relationship confirmation, and recent indexing throughput.
 Local SDK 10.0.400 qualification passed zero-warning Debug/Release builds,
 1,878 tests in each configuration with no skips, focused relevance/performance/
 policy checks, formatting/analyzers, an 18-project vulnerability audit, and a
-native Windows self-contained package smoke. The exact release commit must
-additionally pass hosted four-platform and complete native packaging workflows
-before publication.
+native Windows self-contained package smoke. Publication additionally requires
+hosted four-platform and complete native packaging workflows against the exact
+tagged commit; the GitHub prerelease records those immutable run and asset
+details.
 
 Automation does not validate human-scale visual hierarchy, small-window and
 high-DPI layout, wheel/keyboard/focus behavior, screen readers, real-library
