@@ -60,6 +60,8 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
         OpenContainingFolderCommand = new AsyncRelayCommand<DuplicateFileRow>(OpenOneFolderAsync, CanOpenOne);
         CancelOpenCommand = new RelayCommand(CancelOpen, () => IsOpening);
         RequestRemovalPlanCommand = new AsyncRelayCommand(RequestRemovalPlanAsync, () => CanRequestRemovalPlan);
+        SelectAllButFirstCommand = new RelayCommand(SelectAllButFirst, () => MemberRows.Count > 1 && !IsCreatingRemovalPlan);
+        ClearRemovalSelectionsCommand = new RelayCommand(ClearRemovalSelections, () => PendingRemovalCount > 0 && !IsCreatingRemovalPlan);
         CancelRemovalPlanCommand = new RelayCommand(CancelRemovalPlan, () => IsCreatingRemovalPlan);
         CloseDrawerCommand = new RelayCommand(CloseDrawer, () => IsDrawerOpen);
     }
@@ -202,9 +204,9 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the number of explicitly selected member rows.</summary>
     public int SelectedMemberCount => _memberRows.Count(row => row.IsSelected);
 
-    /// <summary>Gets selection guidance for bounded open and safe-removal operations.</summary>
+    /// <summary>Gets selection guidance for distinct open and safe-removal operations.</summary>
     public string SelectedMemberCountText =>
-        $"{SelectedMemberCount} selected in this group (maximum {MaximumOpenCount}); {PendingRemovalCount} selected across {AffectedRemovalGroupCount} group(s); every group must retain a copy";
+        $"{SelectedMemberCount} selected in this group; {PendingRemovalCount} selected across {AffectedRemovalGroupCount} group(s) for reviewed recovery. Opening is limited to {MaximumOpenCount} at a time; every group must retain a copy.";
 
     /// <summary>Gets the number of copies selected for the combined review plan.</summary>
     public int PendingRemovalCount => _pendingRemovalIds.Count;
@@ -219,7 +221,7 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether selected unwanted copies can become a reviewable safe-removal plan.</summary>
     public bool CanRequestRemovalPlan =>
         _removalPlanFactory is not null &&
-        PendingRemovalCount > 0 &&
+        PendingRemovalCount is > 0 and <= ChangePlanSchema.MaximumActions &&
         HasKeeperForEveryAffectedGroup() &&
         !IsOpening &&
         !IsCreatingRemovalPlan;
@@ -234,6 +236,8 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(CanRequestRemovalPlan));
                 RequestRemovalPlanCommand.NotifyCanExecuteChanged();
+                SelectAllButFirstCommand.NotifyCanExecuteChanged();
+                ClearRemovalSelectionsCommand.NotifyCanExecuteChanged();
                 CancelRemovalPlanCommand.NotifyCanExecuteChanged();
             }
         }
@@ -293,6 +297,12 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that creates a reviewable Change Plan for selected unwanted copies.</summary>
     public IAsyncRelayCommand RequestRemovalPlanCommand { get; }
+
+    /// <summary>Gets the command that keeps the first displayed copy and selects the rest of the active group.</summary>
+    public IRelayCommand SelectAllButFirstCommand { get; }
+
+    /// <summary>Gets the command that clears recovery selections across all duplicate groups.</summary>
+    public IRelayCommand ClearRemovalSelectionsCommand { get; }
 
     /// <summary>Gets the command that cancels Change Plan creation before any filesystem change occurs.</summary>
     public IRelayCommand CancelRemovalPlanCommand { get; }
@@ -537,10 +547,11 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        if (sender is DuplicateFileRow row && row.IsSelected && SelectedMemberCount > MaximumOpenCount)
+        if (sender is DuplicateFileRow row && row.IsSelected && PendingRemovalCount >= ChangePlanSchema.MaximumActions)
         {
             row.IsSelected = false;
-            Status = StatusPresentation.Warning($"Select at most {MaximumOpenCount} files at a time.");
+            Status = StatusPresentation.Warning(
+                $"One Change Plan supports at most {ChangePlanSchema.MaximumActions} selected copies. Review this batch before selecting more.");
             return;
         }
 
@@ -577,12 +588,47 @@ public sealed class DuplicateReviewViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(CanOpenSelectedFolders));
         OnPropertyChanged(nameof(CanRequestRemovalPlan));
         RequestRemovalPlanCommand.NotifyCanExecuteChanged();
+        SelectAllButFirstCommand.NotifyCanExecuteChanged();
+        ClearRemovalSelectionsCommand.NotifyCanExecuteChanged();
         ShowGroupFilesCommand.NotifyCanExecuteChanged();
         CloseDrawerCommand.NotifyCanExecuteChanged();
         NotifyLaunchCommands();
     }
 
     private void CloseDrawer() => SelectedGroupRow = null;
+
+    private void SelectAllButFirst()
+    {
+        if (_memberRows.Count < 2)
+        {
+            return;
+        }
+
+        foreach (var row in _memberRows)
+        {
+            row.IsSelected = false;
+        }
+
+        foreach (var row in _memberRows.Skip(1))
+        {
+            row.IsSelected = true;
+        }
+
+        Status = StatusPresentation.Information(
+            $"Kept {MemberRows[0].FileName}; selected the other {SelectedMemberCount} known copy or copies for reviewed recovery.");
+    }
+
+    private void ClearRemovalSelections()
+    {
+        _pendingRemovalIds.Clear();
+        foreach (var row in _memberRows)
+        {
+            row.IsSelected = false;
+        }
+
+        NotifySelectionStateChanged();
+        Status = StatusPresentation.Information("Cleared all duplicate-removal selections. No file was changed.");
+    }
 
     private void NotifyLaunchCommands()
     {

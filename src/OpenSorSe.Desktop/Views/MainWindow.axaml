@@ -73,12 +73,37 @@
                         </ItemsControl>
 
                         <StackPanel IsVisible="{Binding HasSecondaryNavigationItems}" Spacing="4">
-                            <TextBlock Text="LIBRARY &amp; AUTOMATION"
+                            <TextBlock Text="DISCOVER"
                                        Margin="10,8,0,2"
                                        FontSize="10"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
                             <ItemsControl ItemsSource="{Binding SecondaryNavigationItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:NavigationItem">
+                                        <Button Classes="nav-item"
+                                                Classes.active="{Binding IsSelected}"
+                                                AutomationProperties.Name="{Binding Label}"
+                                                Click="OnNavigationButtonClick">
+                                            <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                                                <TextBlock Text="{Binding Icon}"
+                                                           Foreground="{DynamicResource AccentOrganizationBrush}"
+                                                           HorizontalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Label}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding HasLibraryNavigationItems}" Spacing="4">
+                            <TextBlock Text="LIBRARY &amp; AUTOMATION"
+                                       Margin="10,8,0,2"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <ItemsControl ItemsSource="{Binding LibraryNavigationItems}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:NavigationItem">
                                         <Button Classes="nav-item"

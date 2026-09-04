@@ -157,6 +157,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
             () => SelectedUserTag?.CanReject == true);
         ResetTagDecisionsCommand = new AsyncRelayCommand(ResetTagDecisionsAsync, () => _selectedSmartTagFileId is not null);
         ClearGeneratedSmartTagsCommand = new AsyncRelayCommand(ClearGeneratedSmartTagsAsync, () => _selectedSmartTagFileId is not null);
+        RefreshSmartTagsCommand = new AsyncRelayCommand(LoadContentDetailsAsync, () => SelectedRow is not null && !IsLoading);
         ViewFilesWithTagCommand = new RelayCommand(ViewFilesWithSelectedTag, () => SelectedUserTag?.TagType is not null);
         ReturnToDiscoveryCommand = new RelayCommand(
             () => ReturnToDiscoveryRequested?.Invoke(this, EventArgs.Empty),
@@ -231,6 +232,18 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets at most three compact rows for the selected-file summary.</summary>
     public IReadOnlyList<ResultTagRow> SmartTagPreview => UserTags.Take(3).ToArray();
+
+    /// <summary>Gets whether the selected file currently exposes any Smart Tag row.</summary>
+    public bool HasSmartTags => UserTags.Count > 0;
+
+    /// <summary>Explains a populated or empty Smart Tag state without implying failure.</summary>
+    public string SmartTagAvailabilityText => SelectedRow is null
+        ? "Select a file to inspect Smart Tags."
+        : UserTags.Count > 0
+            ? $"{UserTags.Count:N0} Smart Tag(s) are available from local evidence and retained decisions."
+            : _selectedSmartTagFileId is null && _smartTagService is not null
+                ? "This file has not reached the durable Smart Tag index yet. Background indexing may still be working."
+                : "No Smart Tags are available for this file. Basic indexing or insufficient supported evidence can legitimately produce none.";
 
     /// <summary>Gets whether the compact summary omits additional rows.</summary>
     public bool HasAdditionalSmartTags => UserTags.Count > 3;
@@ -410,6 +423,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 UpdateSelectedDetails();
                 UpdateAiSuggestionContext();
                 OpenRelatedFilesCommand.NotifyCanExecuteChanged();
+                RefreshSmartTagsCommand.NotifyCanExecuteChanged();
                 _ = LoadContentDetailsAsync();
             }
         }
@@ -424,7 +438,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets a concise description of the discovery state that Files can restore.</summary>
     public string DiscoveryContextText => _discoveryContext is null
         ? string.Empty
-        : $"Opened from {_discoveryContext.DisplayName}. Your query, facets, and Saved View are preserved.";
+        : $"Opened from {_discoveryContext.DisplayName}. Your query, facets, and saved search are preserved.";
 
     /// <summary>Gets the selected position within the bounded captured result order.</summary>
     public string ReviewPositionText
@@ -539,6 +553,7 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
                 RemoveSelectedTagCommand.NotifyCanExecuteChanged();
                 AcceptSuggestedTagCommand.NotifyCanExecuteChanged();
                 RejectSuggestedTagCommand.NotifyCanExecuteChanged();
+                RefreshSmartTagsCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -673,6 +688,9 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that removes generated classifications without erasing user authority.</summary>
     public IAsyncRelayCommand ClearGeneratedSmartTagsCommand { get; }
+
+    /// <summary>Gets the explicit selected-file Smart Tag and extracted-details refresh command.</summary>
+    public IAsyncRelayCommand RefreshSmartTagsCommand { get; }
 
     /// <summary>Gets the command that opens Search with the selected canonical tag filter.</summary>
     public IRelayCommand ViewFilesWithTagCommand { get; }
@@ -1595,6 +1613,8 @@ public sealed class ResultsViewModel : ViewModelBase, IDisposable
     private void RefreshSmartTagSummary()
     {
         OnPropertyChanged(nameof(SmartTagPreview));
+        OnPropertyChanged(nameof(HasSmartTags));
+        OnPropertyChanged(nameof(SmartTagAvailabilityText));
         OnPropertyChanged(nameof(HasAdditionalSmartTags));
         OnPropertyChanged(nameof(AdditionalSmartTagText));
     }

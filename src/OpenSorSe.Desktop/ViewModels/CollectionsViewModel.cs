@@ -30,12 +30,13 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     private bool _alwaysRelate;
     private string _renameText = string.Empty;
     private bool _isBusy;
-    private bool _isForgetCollectionPending;
+    private PendingRelationshipMutation? _pendingDestructiveMutation;
     private string _statusText = "Relationship data has not been inspected.";
     private string _diagnosticsText = "Relationship diagnostics have not been inspected.";
     private RelationshipType? _relationshipFilter;
     private RelationshipConfidence? _minimumConfidence;
     private RelatedFileSort _relatedFileSort = RelatedFileSort.Confidence;
+    private int _selectedSectionIndex = 1;
 
     /// <summary>Initializes a preview instance.</summary>
     public CollectionsViewModel()
@@ -60,47 +61,53 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => _service is not null && !IsBusy);
         CancelCommand = new RelayCommand(Cancel, () => IsBusy);
         LinkFilesCommand = new AsyncRelayCommand(LinkFilesAsync, CanLinkFiles);
-        UnlinkCommand = new AsyncRelayCommand(UnlinkAsync, () => SelectedRelationship is not null && !IsBusy);
+        UnlinkCommand = new AsyncRelayCommand(UnlinkAsync, () => SelectedRelationship is not null && !IsBusy && !IsDestructiveConfirmationPending);
         ConfirmRelationshipCommand = new AsyncRelayCommand(
             () => SetDecisionAsync(RelationshipDecision.Confirmed),
-            () => SelectedRelationship is not null && !IsBusy);
+            () => SelectedRelationship is not null && !IsBusy && !IsDestructiveConfirmationPending);
         AlwaysRelateRelationshipCommand = new AsyncRelayCommand(
             () => SetDecisionAsync(RelationshipDecision.AlwaysRelate),
-            () => SelectedRelationship is not null && !IsBusy);
+            () => SelectedRelationship is not null && !IsBusy && !IsDestructiveConfirmationPending);
         RejectRelationshipCommand = new AsyncRelayCommand(
             () => SetDecisionAsync(RelationshipDecision.Rejected),
-            () => SelectedRelationship is not null && !IsBusy);
+            () => SelectedRelationship is not null && !IsBusy && !IsDestructiveConfirmationPending);
         NeverRelateCommand = new AsyncRelayCommand(
             () => SetDecisionAsync(RelationshipDecision.NeverRelate),
-            () => SelectedRelationship is not null && !IsBusy);
+            () => SelectedRelationship is not null && !IsBusy && !IsDestructiveConfirmationPending);
         RenameCollectionCommand = new AsyncRelayCommand(RenameCollectionAsync, CanRenameCollection);
-        TogglePinCommand = new AsyncRelayCommand(TogglePinAsync, () => SelectedCollection is not null && !IsBusy);
+        TogglePinCommand = new AsyncRelayCommand(TogglePinAsync, () => SelectedCollection is not null && !IsBusy && !IsDestructiveConfirmationPending);
         MergeCollectionCommand = new AsyncRelayCommand(MergeCollectionAsync, CanMergeCollection);
-        SplitMemberCommand = new AsyncRelayCommand(SplitMemberAsync, () => SelectedCollection is not null && SelectedMember is not null && !IsBusy);
-        RequestForgetCollectionCommand = new RelayCommand(
-            () => IsForgetCollectionPending = true,
-            () => SelectedCollection is not null && !IsBusy && !IsForgetCollectionPending);
-        ConfirmForgetCollectionCommand = new AsyncRelayCommand(ForgetCollectionAsync, () => SelectedCollection is not null && !IsBusy && IsForgetCollectionPending);
-        CancelForgetCollectionCommand = new RelayCommand(() => IsForgetCollectionPending = false, () => IsForgetCollectionPending && !IsBusy);
+        SplitMemberCommand = new AsyncRelayCommand(SplitMemberAsync, () => SelectedCollection is not null && SelectedMember is not null && !IsBusy && !IsDestructiveConfirmationPending);
+        RequestForgetCollectionCommand = new RelayCommand(RequestForgetCollection, () => SelectedCollection is not null && !IsBusy && !IsDestructiveConfirmationPending);
+        ConfirmForgetCollectionCommand = new AsyncRelayCommand(ConfirmDestructiveMutationAsync, () => IsForgetCollectionPending && !IsBusy);
+        CancelForgetCollectionCommand = new RelayCommand(CancelDestructiveConfirmation, () => IsForgetCollectionPending && !IsBusy);
         RefreshRelatedFilesCommand = new AsyncRelayCommand(RefreshRelatedFilesAsync, () => SelectedFile is not null && !IsBusy);
         ForgetFileRelationshipsCommand = new AsyncRelayCommand(
             () => ForgetFileRelationshipsAsync(excludeFuture: true),
-            () => SelectedFile is not null && !IsBusy);
+            () => SelectedFile is not null && !IsBusy && !IsDestructiveConfirmationPending);
         ForgetSourceRelationshipsCommand = new AsyncRelayCommand(
             ForgetSourceRelationshipsAsync,
-            () => SelectedFile is not null && !IsBusy);
-        RebuildFileRelationshipsCommand = new AsyncRelayCommand(RebuildFileRelationshipsAsync, () => SelectedFile is not null && !IsBusy);
+            () => SelectedFile is not null && !IsBusy && !IsDestructiveConfirmationPending);
+        RebuildFileRelationshipsCommand = new AsyncRelayCommand(RebuildFileRelationshipsAsync, () => SelectedFile is not null && !IsBusy && !IsDestructiveConfirmationPending);
         MarkRelatedCommand = new AsyncRelayCommand(
             () => SetRelatedFileDecisionAsync(RelationshipDecision.AlwaysRelate),
-            () => SelectedRelatedFile is not null && !IsBusy);
+            () => SelectedRelatedFile is not null && !IsBusy && !IsDestructiveConfirmationPending);
         MarkNotRelatedCommand = new AsyncRelayCommand(
             () => SetRelatedFileDecisionAsync(RelationshipDecision.NeverRelate),
-            () => SelectedRelatedFile is not null && !IsBusy);
-        UseAutomaticCommand = new AsyncRelayCommand(UseAutomaticAsync, () => SelectedRelatedFile is not null && !IsBusy);
+            () => SelectedRelatedFile is not null && !IsBusy && !IsDestructiveConfirmationPending);
+        UseAutomaticCommand = new AsyncRelayCommand(
+            UseAutomaticAsync,
+            () => SelectedFile is not null && SelectedRelatedFile is not null && !IsBusy && !IsDestructiveConfirmationPending);
         UseAutomaticCorrectionCommand = new AsyncRelayCommand(
             UseAutomaticCorrectionAsync,
-            () => SelectedCorrection is not null && !IsBusy);
-        RepairCommand = new AsyncRelayCommand(RepairAsync, () => _service is not null && !IsBusy);
+            () => SelectedCorrection is not null && !IsBusy && !IsDestructiveConfirmationPending);
+        RepairCommand = new AsyncRelayCommand(RepairAsync, () => _service is not null && !IsBusy && !IsDestructiveConfirmationPending);
+        ConfirmDestructiveActionCommand = new AsyncRelayCommand(
+            ConfirmDestructiveMutationAsync,
+            () => IsDestructiveConfirmationPending && !IsBusy);
+        CancelDestructiveActionCommand = new RelayCommand(
+            CancelDestructiveConfirmation,
+            () => IsDestructiveConfirmationPending && !IsBusy);
     }
 
     /// <summary>Gets bounded virtual collections.</summary>
@@ -133,6 +140,13 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     /// <summary>Gets available Related Files sort orders.</summary>
     public IReadOnlyList<RelatedFileSort> RelatedFileSorts { get; }
 
+    /// <summary>Gets or sets the visible section; direct navigation defaults to Related Files.</summary>
+    public int SelectedSectionIndex
+    {
+        get => _selectedSectionIndex;
+        set => SetProperty(ref _selectedSectionIndex, value is 0 or 1 ? value : 1);
+    }
+
     /// <summary>Gets or sets the inspected collection.</summary>
     public SmartCollection? SelectedCollection
     {
@@ -142,7 +156,7 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _selectedCollection, value))
             {
                 RenameText = value?.Title ?? string.Empty;
-                IsForgetCollectionPending = false;
+                CancelDestructiveConfirmation();
                 NotifyCommands();
                 _ = LoadCollectionAsync();
             }
@@ -339,17 +353,14 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Gets whether collection forgetting awaits confirmation.</summary>
-    public bool IsForgetCollectionPending
-    {
-        get => _isForgetCollectionPending;
-        private set
-        {
-            if (SetProperty(ref _isForgetCollectionPending, value))
-            {
-                NotifyCommands();
-            }
-        }
-    }
+    public bool IsForgetCollectionPending =>
+        _pendingDestructiveMutation?.Kind == RelationshipMutationKind.ForgetCollection;
+
+    /// <summary>Gets whether any authority-removing relationship operation awaits confirmation.</summary>
+    public bool IsDestructiveConfirmationPending => _pendingDestructiveMutation is not null;
+
+    /// <summary>Gets an immutable-target description of the pending relationship operation.</summary>
+    public string DestructiveConfirmationText => _pendingDestructiveMutation?.Description ?? string.Empty;
 
     /// <summary>Gets the latest plain-language operation status.</summary>
     public string StatusText
@@ -413,6 +424,10 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand UseAutomaticCorrectionCommand { get; }
     /// <summary>Gets the relationship storage repair command.</summary>
     public IAsyncRelayCommand RepairCommand { get; }
+    /// <summary>Gets the universal confirmation command for authority-removing relationship operations.</summary>
+    public IAsyncRelayCommand ConfirmDestructiveActionCommand { get; }
+    /// <summary>Gets the universal cancellation command for authority-removing relationship operations.</summary>
+    public IRelayCommand CancelDestructiveActionCommand { get; }
 
     /// <summary>Refreshes files, collections, diagnostics, and the current inspection.</summary>
     public async Task RefreshAsync()
@@ -558,6 +573,7 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
 
     private bool CanLinkFiles() =>
         !IsBusy &&
+        !IsDestructiveConfirmationPending &&
         FirstLinkFile is not null &&
         SecondLinkFile is not null &&
         !string.Equals(FirstLinkFile.FileId, SecondLinkFile.FileId, StringComparison.Ordinal) &&
@@ -587,7 +603,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token => _service.UnlinkAsync(SelectedRelationship.Id, cancellationToken: token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.Unlink,
+            SelectedRelationship.Id,
+            null,
+            "Unlink this virtual relationship? Retained relationship authority/evidence for this exact record will be removed. Original files are unchanged."));
+        await Task.CompletedTask;
     }
 
     private async Task SetDecisionAsync(RelationshipDecision decision)
@@ -618,8 +639,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token =>
-            _service.UseAutomaticAsync(SelectedFile.FileId, SelectedRelatedFile.FileId, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.UseAutomatic,
+            SelectedFile.FileId,
+            SelectedRelatedFile.FileId,
+            "Use the automatic relationship result for this pair? The explicit correction will be removed and future results will again be derived from indexed evidence. Original files are unchanged."));
+        await Task.CompletedTask;
     }
 
     private async Task UseAutomaticCorrectionAsync()
@@ -629,8 +654,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token =>
-            _service.UseAutomaticAsync(SelectedCorrection.FirstFileId, SelectedCorrection.SecondFileId, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.UseAutomatic,
+            SelectedCorrection.FirstFileId,
+            SelectedCorrection.SecondFileId,
+            "Use the automatic relationship result for this corrected pair? The explicit correction will be removed and future results will again be derived from indexed evidence. Original files are unchanged."));
+        await Task.CompletedTask;
     }
 
     /// <summary>Selects one exact stable file identity as a direct Related Files entry point.</summary>
@@ -641,6 +670,7 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        SelectedSectionIndex = 1;
         if (_files.Count == 0)
         {
             await RefreshAsync();
@@ -650,7 +680,8 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     }
 
     private bool CanRenameCollection() =>
-        SelectedCollection is not null && !IsBusy && !string.IsNullOrWhiteSpace(RenameText) && RenameText.Length <= RelationshipLimits.MaximumCollectionTitleCharacters;
+        SelectedCollection is not null && !IsBusy && !IsDestructiveConfirmationPending &&
+        !string.IsNullOrWhiteSpace(RenameText) && RenameText.Length <= RelationshipLimits.MaximumCollectionTitleCharacters;
 
     private async Task RenameCollectionAsync()
     {
@@ -673,7 +704,7 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     }
 
     private bool CanMergeCollection() =>
-        SelectedCollection is not null && MergeCollection is not null && !IsBusy &&
+        SelectedCollection is not null && MergeCollection is not null && !IsBusy && !IsDestructiveConfirmationPending &&
         !string.Equals(SelectedCollection.Id, MergeCollection.Id, StringComparison.Ordinal);
 
     private async Task MergeCollectionAsync()
@@ -683,7 +714,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token => _service.MergeCollectionsAsync(SelectedCollection!.Id, MergeCollection!.Id, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.MergeCollection,
+            SelectedCollection!.Id,
+            MergeCollection!.Id,
+            $"Merge '{MergeCollection.Title}' into '{SelectedCollection.Title}'? The source virtual collection record will no longer remain separate. Original files are unchanged."));
+        await Task.CompletedTask;
     }
 
     private async Task SplitMemberAsync()
@@ -693,19 +729,26 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token => _service.SplitCollectionMemberAsync(SelectedCollection.Id, SelectedMember.FileId, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.SplitMember,
+            SelectedCollection.Id,
+            SelectedMember.FileId,
+            $"Remove '{SelectedMember.FileName}' from '{SelectedCollection.Title}'? This changes retained virtual membership only; the original file is unchanged."));
+        await Task.CompletedTask;
     }
 
-    private async Task ForgetCollectionAsync()
+    private void RequestForgetCollection()
     {
         if (_service is null || SelectedCollection is null)
         {
             return;
         }
 
-        var id = SelectedCollection.Id;
-        IsForgetCollectionPending = false;
-        await RunOperationAsync(token => _service.ForgetCollectionAsync(id, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.ForgetCollection,
+            SelectedCollection.Id,
+            null,
+            $"Forget '{SelectedCollection.Title}'? Its virtual collection record will be removed. Original files are unchanged."));
     }
 
     private async Task ForgetFileRelationshipsAsync(bool excludeFuture)
@@ -715,7 +758,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token => _service.ForgetFileAsync(SelectedFile.FileId, excludeFuture, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.ForgetFile,
+            SelectedFile.FileId,
+            excludeFuture.ToString(),
+            $"Forget relationship data for '{SelectedFile.FileName}' and exclude it from future relationship analysis? User corrections and derived relationships for this file will be removed; the original file is unchanged."));
+        await Task.CompletedTask;
     }
 
     private async Task RebuildFileRelationshipsAsync()
@@ -735,15 +783,81 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        await RunOperationAsync(token => _service.ForgetSourceAsync(SelectedFile.SourceId, true, token));
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.ForgetSource,
+            SelectedFile.SourceId,
+            null,
+            $"Forget relationship data for source '{SelectedFile.SourceName}' and exclude it from future relationship analysis? Original files and source ownership are unchanged."));
+        await Task.CompletedTask;
+    }
+
+    private void RequestDestructiveConfirmation(PendingRelationshipMutation mutation)
+    {
+        _pendingDestructiveMutation = mutation;
+        OnPropertyChanged(nameof(IsForgetCollectionPending));
+        OnPropertyChanged(nameof(IsDestructiveConfirmationPending));
+        OnPropertyChanged(nameof(DestructiveConfirmationText));
+        StatusText = "Review the pending relationship-data change, then confirm or cancel it.";
+        NotifyCommands();
+    }
+
+    private void CancelDestructiveConfirmation()
+    {
+        if (_pendingDestructiveMutation is null)
+        {
+            return;
+        }
+
+        _pendingDestructiveMutation = null;
+        OnPropertyChanged(nameof(IsForgetCollectionPending));
+        OnPropertyChanged(nameof(IsDestructiveConfirmationPending));
+        OnPropertyChanged(nameof(DestructiveConfirmationText));
+        StatusText = "The relationship-data change was cancelled. Nothing was changed.";
+        NotifyCommands();
+    }
+
+    private async Task ConfirmDestructiveMutationAsync()
+    {
+        if (_service is null || _pendingDestructiveMutation is not { } pending)
+        {
+            return;
+        }
+
+        _pendingDestructiveMutation = null;
+        OnPropertyChanged(nameof(IsForgetCollectionPending));
+        OnPropertyChanged(nameof(IsDestructiveConfirmationPending));
+        OnPropertyChanged(nameof(DestructiveConfirmationText));
+        NotifyCommands();
+        await RunOperationAsync(token => pending.Kind switch
+        {
+            RelationshipMutationKind.Unlink => _service.UnlinkAsync(pending.PrimaryId, cancellationToken: token),
+            RelationshipMutationKind.MergeCollection => _service.MergeCollectionsAsync(pending.PrimaryId, pending.SecondaryId!, token),
+            RelationshipMutationKind.SplitMember => _service.SplitCollectionMemberAsync(pending.PrimaryId, pending.SecondaryId!, token),
+            RelationshipMutationKind.ForgetCollection => _service.ForgetCollectionAsync(pending.PrimaryId, token),
+            RelationshipMutationKind.ForgetFile => _service.ForgetFileAsync(
+                pending.PrimaryId,
+                bool.TryParse(pending.SecondaryId, out var excludeFuture) && excludeFuture,
+                token),
+            RelationshipMutationKind.ForgetSource => _service.ForgetSourceAsync(pending.PrimaryId, true, token),
+            RelationshipMutationKind.UseAutomatic => _service.UseAutomaticAsync(pending.PrimaryId, pending.SecondaryId!, token),
+            RelationshipMutationKind.Repair => _service.RepairAsync(token),
+            _ => Task.FromResult(new RelationshipOperationResult(false, 0, 0, "The pending relationship operation is no longer valid.")),
+        });
     }
 
     private async Task RepairAsync()
     {
-        if (_service is not null)
+        if (_service is null)
         {
-            await RunOperationAsync(_service.RepairAsync);
+            return;
         }
+
+        RequestDestructiveConfirmation(new PendingRelationshipMutation(
+            RelationshipMutationKind.Repair,
+            "relationship-store",
+            null,
+            "Repair retained relationship data? Invalid relationship, evidence, collection, and membership records may be removed so consistent projections can be rebuilt. Valid user authority and original files are unchanged."));
+        await Task.CompletedTask;
     }
 
     private async Task RunOperationAsync(Func<CancellationToken, Task<RelationshipOperationResult>> operation)
@@ -813,6 +927,8 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         RequestForgetCollectionCommand.NotifyCanExecuteChanged();
         ConfirmForgetCollectionCommand.NotifyCanExecuteChanged();
         CancelForgetCollectionCommand.NotifyCanExecuteChanged();
+        ConfirmDestructiveActionCommand.NotifyCanExecuteChanged();
+        CancelDestructiveActionCommand.NotifyCanExecuteChanged();
         RefreshRelatedFilesCommand.NotifyCanExecuteChanged();
         ForgetFileRelationshipsCommand.NotifyCanExecuteChanged();
         ForgetSourceRelationshipsCommand.NotifyCanExecuteChanged();
@@ -832,6 +948,24 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             target.Add(value);
         }
     }
+
+    private enum RelationshipMutationKind
+    {
+        Unlink,
+        MergeCollection,
+        SplitMember,
+        ForgetCollection,
+        ForgetFile,
+        ForgetSource,
+        UseAutomatic,
+        Repair,
+    }
+
+    private sealed record PendingRelationshipMutation(
+        RelationshipMutationKind Kind,
+        string PrimaryId,
+        string? SecondaryId,
+        string Description);
 
     private static SmartCollection? PreserveSelection(IEnumerable<SmartCollection> values, string? id) =>
         id is null ? null : values.FirstOrDefault(item => string.Equals(item.Id, id, StringComparison.Ordinal));

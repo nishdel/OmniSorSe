@@ -1296,7 +1296,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                            SUM(CASE WHEN j.status = $skipped THEN 1 ELSE 0 END),
                            SUM(CASE WHEN j.status = $failed THEN 1 ELSE 0 END),
                            SUM(CASE WHEN j.status = $waiting THEN 1 ELSE 0 END),
-                           SUM(CASE WHEN j.status = $retry THEN 1 ELSE 0 END)
+                           SUM(CASE WHEN j.status = $retry THEN 1 ELSE 0 END),
+                           SUM(CASE WHEN j.status IN ($complete, $skipped, $failed, $cancelled)
+                                         AND j.completed_utc_ticks >= $speedWindowStart
+                                         AND j.completed_utc_ticks <= $now THEN 1 ELSE 0 END),
+                           MIN(CASE WHEN j.status IN ($complete, $skipped, $failed, $cancelled)
+                                         AND j.completed_utc_ticks >= $speedWindowStart
+                                         AND j.completed_utc_ticks <= $now THEN j.completed_utc_ticks END)
                     FROM index_runs r
                     LEFT JOIN index_jobs j ON j.run_id = r.id
                     GROUP BY r.id
@@ -1316,7 +1322,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     ("$runningRun", (int)IndexingRunStatus.Running),
                     ("$pausedRun", (int)IndexingRunStatus.Paused),
                     ("$waitingRun", (int)IndexingRunStatus.Waiting),
-                    ("$cancellingRun", (int)IndexingRunStatus.Cancelling));
+                    ("$cancellingRun", (int)IndexingRunStatus.Cancelling),
+                    ("$speedWindowStart", (nowUtc - TimeSpan.FromMinutes(1)).UtcTicks),
+                    ("$now", nowUtc.UtcTicks));
                 using var reader = command.ExecuteReader();
                 if (!reader.Read())
                 {
@@ -1329,12 +1337,17 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 }
 
                 var total = reader.GetInt64(4);
-                var started = new DateTimeOffset(reader.GetInt64(5), TimeSpan.Zero);
                 var processed = reader.IsDBNull(7) ? 0 : reader.GetInt64(7);
-                var elapsed = nowUtc - started;
-                var speed = elapsed.TotalSeconds >= 1 ? processed / elapsed.TotalSeconds : 0;
+                var sampleCount = reader.IsDBNull(13) ? 0 : reader.GetInt64(13);
+                var sampleStarted = reader.IsDBNull(14)
+                    ? nowUtc
+                    : new DateTimeOffset(reader.GetInt64(14), TimeSpan.Zero);
+                var sampleElapsed = nowUtc - sampleStarted;
+                var speed = sampleElapsed.TotalSeconds >= 1
+                    ? sampleCount / sampleElapsed.TotalSeconds
+                    : 0;
                 var remaining = Math.Max(0, total - processed);
-                TimeSpan? estimate = processed >= 5 && elapsed >= TimeSpan.FromSeconds(2) && speed > 0 && remaining > 0
+                TimeSpan? estimate = sampleCount >= 5 && sampleElapsed >= TimeSpan.FromSeconds(2) && speed > 0 && remaining > 0
                     ? TimeSpan.FromSeconds(remaining / speed)
                     : null;
                 return new IndexingProgressSnapshot

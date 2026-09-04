@@ -34,6 +34,29 @@ public sealed record StatusPresentation(StatusKind Kind, string Message, string?
     /// <summary>Gets a text-only accessible rendering that never relies on color.</summary>
     public string AccessibleText => $"{Label}: {Message}";
 
+    /// <summary>Gets a compact, non-color severity symbol.</summary>
+    public string Symbol => Kind switch
+    {
+        StatusKind.Information => "i",
+        StatusKind.Progress => "…",
+        StatusKind.Success => "✓",
+        StatusKind.Warning => "!",
+        StatusKind.Error => "×",
+        _ => "•",
+    };
+
+    /// <summary>Gets whether warning styling should be applied.</summary>
+    public bool IsWarning => Kind == StatusKind.Warning;
+
+    /// <summary>Gets whether error styling should be applied.</summary>
+    public bool IsError => Kind == StatusKind.Error;
+
+    /// <summary>Gets whether success styling should be applied.</summary>
+    public bool IsSuccess => Kind == StatusKind.Success;
+
+    /// <summary>Gets whether progress styling should be applied.</summary>
+    public bool IsProgress => Kind == StatusKind.Progress;
+
     /// <summary>Gets whether optional separately bounded technical details exist.</summary>
     public bool HasTechnicalDetails => !string.IsNullOrWhiteSpace(TechnicalDetails);
 

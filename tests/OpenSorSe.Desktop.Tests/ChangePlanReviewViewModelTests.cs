@@ -40,6 +40,29 @@ public sealed class ChangePlanReviewViewModelTests
     }
 
     [Fact]
+    public async Task DuplicatePlanExplainsOriginRecoveryAndWarningsBeforeApproval()
+    {
+        using var directory = new TemporaryDirectory();
+        var context = await CreateContextAsync(directory, "source.txt", "renamed.txt");
+        var plan = context.Plan with
+        {
+            Actions = Array.AsReadOnly(context.Plan.Actions
+                .Select(action => action with { SuggestionSource = ChangeSuggestionSource.DuplicateAnalysis })
+                .ToArray()),
+            Warnings = Array.AsReadOnly(["A keeper was selected from the completed scan."]),
+        };
+        using var viewModel = new ChangePlanReviewViewModel(context.Validator, context.Executor, context.PlanStore);
+
+        await viewModel.LoadAsync(plan);
+
+        Assert.Equal("Origin: duplicate review", viewModel.PlanOriginText);
+        Assert.Contains("recovery area", viewModel.PlanPurposeText, StringComparison.Ordinal);
+        Assert.Contains("nothing is permanently deleted", viewModel.PlanPurposeText, StringComparison.Ordinal);
+        Assert.True(viewModel.HasPlanWarnings);
+        Assert.Contains("keeper", viewModel.PlanWarningText, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task EditingDestinationInvalidatesPriorValidationAndUpdatesSummary()
     {
         using var directory = new TemporaryDirectory();
@@ -58,10 +81,33 @@ public sealed class ChangePlanReviewViewModelTests
 
         Assert.False(viewModel.CanApply);
         Assert.True(viewModel.SelectedAction.WasUserEdited);
-        Assert.Equal(ChangeSuggestionSource.ManualUserEdit, viewModel.SelectedAction.SuggestionSource);
+        Assert.Equal(ChangeSuggestionSource.DeterministicRule, viewModel.SelectedAction.SuggestionSource);
         Assert.Equal("edited name.txt", Path.GetFileName(viewModel.SelectedAction.ProposedPath));
         Assert.Contains("1 rename(s)", viewModel.ConfirmationSummary);
         Assert.Contains("Overwrite: no", viewModel.ConfirmationSummary);
+    }
+
+    [Fact]
+    public async Task EditingDuplicateDestination_PreservesRecoveryOriginForReconciliation()
+    {
+        using var directory = new TemporaryDirectory();
+        var context = await CreateContextAsync(directory, "source.txt", "renamed.txt");
+        var plan = context.Plan with
+        {
+            Actions = Array.AsReadOnly(context.Plan.Actions
+                .Select(action => action with { SuggestionSource = ChangeSuggestionSource.DuplicateAnalysis })
+                .ToArray()),
+        };
+        using var viewModel = new ChangePlanReviewViewModel(context.Validator, context.Executor, context.PlanStore);
+        await viewModel.LoadAsync(plan);
+
+        viewModel.SelectedAction!.EditedFileName = "reviewed duplicate.txt";
+        await viewModel.SaveEditCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.SelectedAction.WasUserEdited);
+        Assert.Equal(ChangeSuggestionSource.DuplicateAnalysis, viewModel.SelectedAction.SuggestionSource);
+        Assert.Equal("Origin: duplicate review (edited by user)", viewModel.PlanOriginText);
+        Assert.Contains("recovery area", viewModel.PlanPurposeText, StringComparison.Ordinal);
     }
 
     [Fact]

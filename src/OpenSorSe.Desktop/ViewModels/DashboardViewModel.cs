@@ -249,7 +249,13 @@ public sealed class DashboardViewModel : ViewModelBase
 public sealed record HomeSavedViewRow(string Id, string Name);
 
 /// <summary>Contains one accessible optional-capability row.</summary>
-public sealed record HomeCapabilityRow(string Id, string DisplayName, string State, string Explanation, string AccessibleName)
+public sealed record HomeCapabilityRow(
+    string Id,
+    string DisplayName,
+    string State,
+    string Symbol,
+    string Explanation,
+    string AccessibleName)
 {
     /// <summary>Maps one application readiness value into accessible presentation text.</summary>
     public static HomeCapabilityRow FromModel(OptionalCapabilityReadiness readiness)
@@ -260,10 +266,20 @@ public sealed record HomeCapabilityRow(string Id, string DisplayName, string Sta
             OptionalCapabilityState.NeedsAttention => "Needs attention",
             _ => readiness.State.ToString(),
         };
+        var symbol = readiness.State switch
+        {
+            OptionalCapabilityState.Ready => "✓",
+            OptionalCapabilityState.Disabled => "—",
+            OptionalCapabilityState.NotConfigured => "○",
+            OptionalCapabilityState.Unavailable => "×",
+            OptionalCapabilityState.NeedsAttention => "!",
+            _ => "•",
+        };
         return new(
             readiness.Id,
             readiness.DisplayName,
             state,
+            symbol,
             readiness.Explanation,
             $"{readiness.DisplayName}: {state}. {readiness.Explanation}");
     }

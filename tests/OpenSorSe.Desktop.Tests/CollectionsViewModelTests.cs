@@ -43,9 +43,35 @@ public sealed class CollectionsViewModelTests
 
         Assert.Equal(1, service.LinkCount);
         Assert.True(service.LastAlwaysRelate);
+        Assert.Equal(0, service.ForgetFileCount);
+        Assert.True(viewModel.IsDestructiveConfirmationPending);
+        Assert.Contains("exclude", viewModel.DestructiveConfirmationText, StringComparison.OrdinalIgnoreCase);
+
+        await viewModel.ConfirmDestructiveActionCommand.ExecuteAsync(null);
+
         Assert.Equal(1, service.ForgetFileCount);
         Assert.True(service.LastExcludeFuture);
         Assert.Contains("original", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Verifies a pending authority-removing operation can be cancelled without calling storage.</summary>
+    [Fact]
+    public async Task Unlink_CancelledAfterReview_DoesNotInvokeService()
+    {
+        var service = new RelationshipServiceStub();
+        using var viewModel = new CollectionsViewModel(service);
+        await viewModel.RefreshAsync();
+        viewModel.SelectedCollection = Assert.Single(viewModel.Collections);
+        viewModel.SelectedRelationship = Assert.Single(viewModel.Relationships);
+
+        await viewModel.UnlinkCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsDestructiveConfirmationPending);
+        Assert.Equal(0, service.UnlinkCount);
+
+        viewModel.CancelDestructiveActionCommand.Execute(null);
+
+        Assert.False(viewModel.IsDestructiveConfirmationPending);
+        Assert.Equal(0, service.UnlinkCount);
     }
 
     /// <summary>Verifies relationship operations surface safe failures without leaking an exception into the UI thread.</summary>
@@ -57,7 +83,13 @@ public sealed class CollectionsViewModelTests
 
         await viewModel.RepairCommand.ExecuteAsync(null);
 
+        Assert.True(viewModel.IsDestructiveConfirmationPending);
+        Assert.Equal(0, service.RepairCount);
+
+        await viewModel.ConfirmDestructiveActionCommand.ExecuteAsync(null);
+
         Assert.False(viewModel.IsBusy);
+        Assert.Equal(1, service.RepairCount);
         Assert.Contains("failed safely", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -85,6 +117,7 @@ public sealed class CollectionsViewModelTests
 
         await viewModel.RefreshAsync();
         await viewModel.SelectFileAsync("first");
+        Assert.Equal(1, viewModel.SelectedSectionIndex);
         viewModel.SelectedRelatedFile = Assert.Single(viewModel.RelatedFiles);
 
         await viewModel.MarkRelatedCommand.ExecuteAsync(null);
@@ -93,7 +126,16 @@ public sealed class CollectionsViewModelTests
         Assert.Equal(RelationshipDecision.NeverRelate, service.LastDecision);
         await viewModel.UseAutomaticCommand.ExecuteAsync(null);
 
+        Assert.Equal(0, service.AutomaticResetCount);
+        Assert.True(viewModel.IsDestructiveConfirmationPending);
+
+        viewModel.SelectedFile = viewModel.Files[1];
+
+        await viewModel.ConfirmDestructiveActionCommand.ExecuteAsync(null);
+
         Assert.Equal(1, service.AutomaticResetCount);
+        Assert.Equal("first", service.LastAutomaticFirstId);
+        Assert.Equal("second", service.LastAutomaticSecondId);
         Assert.Single(viewModel.Corrections);
     }
 
@@ -134,6 +176,10 @@ public sealed class CollectionsViewModelTests
         public bool LastExcludeFuture { get; private set; }
         public RelationshipDecision? LastDecision { get; private set; }
         public int AutomaticResetCount { get; private set; }
+        public string? LastAutomaticFirstId { get; private set; }
+        public string? LastAutomaticSecondId { get; private set; }
+        public int UnlinkCount { get; private set; }
+        public int RepairCount { get; private set; }
         public bool FailRepair { get; init; }
 
         public Task<RelationshipAnalysisResult> AnalyzeFileAsync(string fileId, CancellationToken cancellationToken = default) =>
@@ -205,7 +251,11 @@ public sealed class CollectionsViewModelTests
             return Success("The files were linked in the index. Original files were unchanged.");
         }
 
-        public Task<RelationshipOperationResult> UnlinkAsync(string relationshipId, bool neverRelate = false, CancellationToken cancellationToken = default) => Success("unlinked");
+        public Task<RelationshipOperationResult> UnlinkAsync(string relationshipId, bool neverRelate = false, CancellationToken cancellationToken = default)
+        {
+            UnlinkCount++;
+            return Success("unlinked");
+        }
         public Task<RelationshipOperationResult> SetDecisionAsync(string relationshipId, RelationshipDecision decision, CancellationToken cancellationToken = default)
         {
             LastDecision = decision;
@@ -217,6 +267,8 @@ public sealed class CollectionsViewModelTests
             CancellationToken cancellationToken = default)
         {
             AutomaticResetCount++;
+            LastAutomaticFirstId = firstFileId;
+            LastAutomaticSecondId = secondFileId;
             return Success("automatic");
         }
         public Task<RelationshipOperationResult> RenameCollectionAsync(string collectionId, string title, CancellationToken cancellationToken = default) => Success("renamed");
@@ -234,8 +286,11 @@ public sealed class CollectionsViewModelTests
 
         public Task<RelationshipOperationResult> ForgetSourceAsync(string sourceId, bool excludeFutureAnalysis, CancellationToken cancellationToken = default) => Success("source forgotten");
         public Task<RelationshipOperationResult> RebuildFileAsync(string fileId, CancellationToken cancellationToken = default) => Success("rebuilt");
-        public Task<RelationshipOperationResult> RepairAsync(CancellationToken cancellationToken = default) =>
-            FailRepair ? Task.FromException<RelationshipOperationResult>(new InvalidDataException("synthetic")) : Success("consistent");
+        public Task<RelationshipOperationResult> RepairAsync(CancellationToken cancellationToken = default)
+        {
+            RepairCount++;
+            return FailRepair ? Task.FromException<RelationshipOperationResult>(new InvalidDataException("synthetic")) : Success("consistent");
+        }
 
         public Task<IReadOnlyList<RelationshipSearchExpansion>> ExpandSearchAsync(IReadOnlyList<string> seedFileIds, int maximumCount, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<RelationshipSearchExpansion>>([]);

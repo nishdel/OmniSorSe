@@ -17,15 +17,21 @@
         </Grid>
 
         <Border Grid.Row="1" Padding="10" Classes="card">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="12">
-                <StackPanel>
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="7">
+                <StackPanel Spacing="2">
                     <TextBlock Text="{Binding PlanId}" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding RootPath}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding PlanOriginText}" Classes="page-subtitle" />
                 </StackPanel>
                 <TextBlock Grid.Column="1" Text="{Binding ApprovedCount, StringFormat='Approved: {0}'}" />
                 <TextBlock Grid.Column="2" Text="{Binding RejectedCount, StringFormat='Rejected: {0}'}" />
                 <TextBlock Grid.Column="3" Text="{Binding InvalidCount, StringFormat='Invalid/stale: {0}'}" />
                 <TextBlock Grid.Column="4" Text="{Binding ConflictCount, StringFormat='Conflicts: {0}'}" />
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Spacing="4">
+                    <TextBlock Text="{Binding PlanPurposeText}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding PlanWarningText}" TextWrapping="Wrap"
+                               IsVisible="{Binding HasPlanWarnings}" />
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -40,11 +46,15 @@
                       AutomationProperties.Name="Change action issue filter"
                       MinWidth="150" />
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-                <Button Classes="secondary" Content="Approve all safe" Command="{Binding ApproveAllSafeCommand}" />
-                <Button Classes="secondary" Content="Deselect all" Command="{Binding DeselectAllCommand}" />
+                <Button Classes="secondary"
+                        Content="{Binding EligibleActionCount, StringFormat='Approve all eligible ({0})'}"
+                        Command="{Binding ApproveAllSafeCommand}"
+                        ToolTip.Tip="Approve valid or warning actions that have no blocking conflict. This does not apply the plan." />
+                <Button Classes="secondary" Content="Exclude all" Command="{Binding DeselectAllCommand}"
+                        ToolTip.Tip="Exclude every action from this apply without deleting the plan." />
             </StackPanel>
             <Button Grid.Column="3" Classes="secondary" Content="Validate Plan" Command="{Binding ValidatePlanCommand}" />
-            <Button Grid.Column="4" Content="Apply Plan" Command="{Binding RequestApplyCommand}" />
+            <Button Grid.Column="4" Classes="primary" Content="Apply Plan" Command="{Binding RequestApplyCommand}" />
         </Grid>
 
         <Grid Grid.Row="3" ColumnDefinitions="1.2*,*" ColumnSpacing="12">

@@ -9,19 +9,19 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock x:Name="GraphPageHeading"
                                Classes="page-title"
-                               Text="Related Files"
+                               Text="Graph diagnostics"
                                Focusable="True"
-                               AutomationProperties.Name="Related Files page" />
+                               AutomationProperties.Name="Advanced graph diagnostics page" />
                     <Button Classes="secondary"
                             Content="?"
                             Focusable="True"
-                            AutomationProperties.Name="About Related Files"
-                            AutomationProperties.HelpText="Related Files discovers explainable connections between indexed documents, folders, topics, and metadata. It never changes original files."
-                            ToolTip.Tip="Discover why indexed files are connected without changing them."
+                            AutomationProperties.Name="About graph diagnostics"
+                            AutomationProperties.HelpText="This advanced view inspects the rebuildable graph projection derived from indexed documents, folders, topics, and metadata."
+                            ToolTip.Tip="Inspect the advanced derived graph projection without changing original files."
                             Command="{Binding HelpCommand}" />
                 </StackPanel>
                 <TextBlock Classes="page-subtitle"
-                           Text="Discover relationships between your files—related documents, shared topics, folders, and metadata—with evidence for every connection."
+                           Text="Advanced inspection of the rebuildable graph projection. Use Related Files for everyday relationship browsing and corrections."
                            TextWrapping="Wrap" />
             </StackPanel>
             <WrapPanel Grid.Column="1" VerticalAlignment="Center">
@@ -48,7 +48,7 @@
         <Border Grid.Row="1" Classes="card" MaxHeight="240">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto"
-                          AutomationProperties.Name="Scrollable Related Files status and controls">
+                          AutomationProperties.Name="Scrollable Graph diagnostics status and controls">
             <StackPanel Spacing="8">
                 <TextBlock Text="{Binding Status.AccessibleText}"
                            TextWrapping="Wrap"

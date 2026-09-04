@@ -426,7 +426,7 @@ public sealed class ResultsViewModelTests
         Assert.True(viewModel.IsDiscoveryContextActive);
         Assert.Equal("index:stable", Assert.Single(viewModel.PageRows).FileId);
         Assert.Equal("index:stable", viewModel.SelectedRow?.FileId);
-        Assert.Contains("Saved View", viewModel.DiscoveryContextText, StringComparison.Ordinal);
+        Assert.Contains("Saved search", viewModel.DiscoveryContextText, StringComparison.Ordinal);
 
         await viewModel.EndDiscoveryDocumentAsync();
 

@@ -1322,6 +1322,33 @@ public sealed class SqliteDeepIndexStoreTests
 
         Assert.Null(early.EstimatedRemaining);
         Assert.NotNull(sampled.EstimatedRemaining);
+        Assert.InRange(sampled.FilesPerSecond, 0.5, 0.6);
+    }
+
+    /// <summary>Verifies stale completions do not make an active run appear slower forever.</summary>
+    [Fact]
+    public async Task ThroughputUsesRecentTerminalOutcomesInsteadOfWholeRunAge()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var files = Enumerable.Range(0, 10).Select(index => fixture.Observation($"{index}.txt", $"id-{index}")).ToArray();
+        await QueueAsync(store, fixture.Source(), files);
+        for (var index = 0; index < 5; index++)
+        {
+            var claim = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddHours(2).AddSeconds(index)));
+            await store.SaveStageOutputAsync(
+                claim,
+                new IndexingStageOutput { Status = IndexingStageStatus.Skipped, StopsFile = true },
+                null,
+                Epoch.AddHours(2).AddSeconds(index),
+                TimeSpan.Zero,
+                null);
+        }
+
+        var progress = await store.GetProgressAsync(1024 * 1024, Epoch.AddHours(2).AddSeconds(10));
+
+        Assert.InRange(progress.FilesPerSecond, 0.49, 0.51);
+        Assert.NotNull(progress.EstimatedRemaining);
     }
 
     /// <summary>Verifies partial metadata remains searchable.</summary>

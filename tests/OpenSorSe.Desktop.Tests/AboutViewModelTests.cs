@@ -23,7 +23,7 @@ public sealed class AboutViewModelTests
 
         Assert.Equal("OmniSorSe", viewModel.ApplicationName);
         Assert.Equal(ApplicationVersionInfo.Display, viewModel.Version);
-        Assert.Equal(new Version(2, 12, 0, 0), assembly.GetName().Version);
+        Assert.Equal(new Version(2, 13, 0, 0), assembly.GetName().Version);
         Assert.NotNull(informationalVersion);
         Assert.StartsWith($"{viewModel.Version}+", informationalVersion, StringComparison.Ordinal);
         Assert.Contains(ApplicationVersionInfo.SourceRevision, viewModel.Provenance, StringComparison.Ordinal);

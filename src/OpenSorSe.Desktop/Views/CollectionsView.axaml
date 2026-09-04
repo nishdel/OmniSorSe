@@ -7,9 +7,9 @@
     <Grid RowDefinitions="Auto,Auto,*" RowSpacing="12">
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
             <StackPanel Spacing="3">
-                <TextBlock Classes="page-title" Text="Related Files &amp; Collections" />
+                <TextBlock Classes="page-title" Text="Relationships &amp; Collections" />
                 <TextBlock Classes="page-subtitle"
-                           Text="Virtual groups built from retained evidence. Collections never move or change original files."
+                           Text="Inspect direct Related Files first, or manage virtual Smart Collections built from retained evidence. Original files are never moved."
                            TextWrapping="Wrap" />
             </StackPanel>
             <Button Grid.Column="1"
@@ -33,10 +33,26 @@
                 <TextBlock Text="{Binding DiagnosticsText}"
                            Classes="page-subtitle"
                            TextWrapping="Wrap" />
+                <Border IsVisible="{Binding IsDestructiveConfirmationPending}" Classes="notice-card">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding DestructiveConfirmationText}"
+                                   TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Polite" />
+                        <WrapPanel>
+                            <Button Margin="0,0,8,0"
+                                    Classes="danger"
+                                    Content="Confirm relationship-data change"
+                                    Command="{Binding ConfirmDestructiveActionCommand}" />
+                            <Button Classes="secondary"
+                                    Content="Keep current data"
+                                    Command="{Binding CancelDestructiveActionCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
 
-        <TabControl Grid.Row="2">
+        <TabControl Grid.Row="2" SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
             <TabItem Header="Smart Collections">
                 <Grid Margin="0,10,0,0" ColumnDefinitions="300,*" ColumnSpacing="12">
                     <Border Classes="card">
@@ -104,15 +120,6 @@
                                                 Content="Forget collection"
                                                 Command="{Binding RequestForgetCollectionCommand}"
                                                 AutomationProperties.HelpText="Removes only virtual collection data. Original files are unchanged." />
-                                        <Button Margin="0,0,8,0"
-                                                Classes="danger"
-                                                Content="Confirm forget"
-                                                IsVisible="{Binding IsForgetCollectionPending}"
-                                                Command="{Binding ConfirmForgetCollectionCommand}" />
-                                        <Button Classes="secondary"
-                                                Content="Keep collection"
-                                                IsVisible="{Binding IsForgetCollectionPending}"
-                                                Command="{Binding CancelForgetCollectionCommand}" />
                                     </WrapPanel>
                                 </StackPanel>
                             </Border>

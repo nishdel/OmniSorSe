@@ -12,6 +12,15 @@ using OpenSorSe.Core.Diagnostics;
 
 namespace OpenSorSe.Desktop.ViewModels;
 
+/// <summary>Identifies an addressable Settings section requested by a contextual feature.</summary>
+public enum SettingsFocusTarget
+{
+    /// <summary>The page heading.</summary>
+    Page,
+    /// <summary>The optional AI assistance section.</summary>
+    AiAssistance,
+}
+
 /// <summary>
 /// Edits the supported application settings and persists only through the configuration service.
 /// </summary>
@@ -144,6 +153,19 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Occurs after validated settings have been persisted and made active.</summary>
     public event EventHandler<ApplicationSettings>? SettingsSaved;
+
+    /// <summary>Occurs when a contextual route requests one exact Settings section.</summary>
+    public event Action<SettingsFocusTarget>? FocusRequested;
+
+    /// <summary>Gets the latest focus route for deterministic presentation and tests.</summary>
+    public SettingsFocusTarget? LastFocusRequest { get; private set; }
+
+    /// <summary>Requests focus for an exact Settings section without changing any draft value.</summary>
+    public void RequestFocus(SettingsFocusTarget target)
+    {
+        LastFocusRequest = target;
+        FocusRequested?.Invoke(target);
+    }
 
     /// <summary>Gets local plugin discovery, review, lifecycle, and package-management state.</summary>
     public PluginsViewModel Plugins { get; }
@@ -517,7 +539,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         try
         {
             await _stateBackupService.ExportAsync(destinationPath).ConfigureAwait(true);
-            StateTransferStatusText = "State export completed. Treat the archive as sensitive because it contains settings, source definitions, Saved Views, recipes, User Tags, and decisions.";
+            StateTransferStatusText = "State export completed. Treat the archive as sensitive because it contains settings, source definitions, saved searches, recipes, User Tags, and decisions.";
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -547,7 +569,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             ConfirmStateRestoreCommand.NotifyCanExecuteChanged();
             CancelStateRestoreCommand.NotifyCanExecuteChanged();
             StateTransferStatusText =
-                $"Reviewed archive: {_pendingRestore.SourceCount} sources, {_pendingRestore.RecipeCount} recipes, {_pendingRestore.SavedViewCount} Saved Views, {_pendingRestore.SmartTagAuthorityCount} Smart Tag authority records, {_pendingRestore.RelationshipAuthorityCount} relationship authority records, and {_pendingRestore.SmartCollectionAuthorityCount} authored Smart Collection records. {_pendingRestore.Conflicts.Count} conflict summary item(s). Confirm Restore to replace reviewed libraries and merge source and exact file-authority records.";
+                $"Reviewed archive: {_pendingRestore.SourceCount} sources, {_pendingRestore.RecipeCount} recipes, {_pendingRestore.SavedViewCount} saved searches, {_pendingRestore.SmartTagAuthorityCount} Smart Tag authority records, {_pendingRestore.RelationshipAuthorityCount} relationship authority records, and {_pendingRestore.SmartCollectionAuthorityCount} authored Smart Collection records. {_pendingRestore.Conflicts.Count} conflict summary item(s). Confirm Restore to replace reviewed libraries and merge source and exact file-authority records.";
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or JsonException)
         {

@@ -6,8 +6,11 @@ public enum NavigationGroup
     /// <summary>Everyday application workflows.</summary>
     Primary,
 
-    /// <summary>Library and automation workflows shown below the primary tools.</summary>
+    /// <summary>Secondary discovery tools that supplement the Scan, Review, and Organize flow.</summary>
     Secondary,
+
+    /// <summary>Durable library and automation workflows.</summary>
+    Library,
 
     /// <summary>Specialist and maintenance workflows.</summary>
     Advanced,

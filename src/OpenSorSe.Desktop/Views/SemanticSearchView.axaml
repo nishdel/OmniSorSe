@@ -16,7 +16,7 @@
                            FontWeight="SemiBold"
                            AutomationProperties.Name="Current Search mode" />
                 <TextBlock Classes="page-subtitle"
-                           Text="Searches filenames, paths, and indexed contents locally. Media metadata, OCR, and transcripts are included when available. Optional AI can refine known results but does not perform the underlying file search."
+                           Text="Search is local and works without AI. Results improve as background indexing adds document and media evidence."
                            TextWrapping="Wrap" />
             </StackPanel>
             <Button Grid.Column="1"
@@ -44,6 +44,10 @@
                             Content="Clear"
                             Command="{Binding ClearQueryCommand}" />
                 </Grid>
+                <Expander Header="Refine this search"
+                          IsExpanded="False"
+                          AutomationProperties.Name="Search options and facets">
+                <StackPanel Spacing="8" Margin="0,8,0,0">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                     <Button Classes="secondary"
                             Content="Filter options"
@@ -142,6 +146,8 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+                </StackPanel>
+                </Expander>
                 <StackPanel IsVisible="{Binding HasActiveFilters}" Spacing="5">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="Active filters"
@@ -171,9 +177,13 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
+                <Expander Header="Saved searches and index maintenance"
+                          IsExpanded="False"
+                          AutomationProperties.Name="Saved searches and index maintenance">
+                <StackPanel Spacing="8" Margin="0,8,0,0">
                 <Border Classes="subtle-card" Padding="8">
                     <StackPanel Spacing="6">
-                        <TextBlock Text="Saved Views"
+                        <TextBlock Text="Saved searches"
                                    FontWeight="SemiBold" />
                         <TextBlock Text="Save the current query and typed filters as a live rule. Files are not copied; opening a view evaluates the current local index. Saved scans remain historical catalog snapshots."
                                    Classes="page-subtitle"
@@ -181,8 +191,8 @@
                         <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="7">
                             <ComboBox ItemsSource="{Binding SavedViews}"
                                       SelectedItem="{Binding SelectedSavedView, Mode=TwoWay}"
-                                      PlaceholderText="Choose a Saved View"
-                                      AutomationProperties.Name="Choose a Saved View">
+                                      PlaceholderText="Choose a saved search"
+                                      AutomationProperties.Name="Choose a saved search">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate x:DataType="vm:SavedDiscoveryViewRow">
                                         <StackPanel>
@@ -194,30 +204,30 @@
                             </ComboBox>
                             <TextBox Grid.Column="1"
                                      Text="{Binding SavedViewName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     PlaceholderText="View name"
+                                     PlaceholderText="Search name"
                                      MaxLength="128"
-                                     AutomationProperties.Name="Saved View name" />
+                                     AutomationProperties.Name="Saved search name" />
                             <Button Grid.Column="2"
                                     Classes="primary"
                                     Content="Save new"
                                     Command="{Binding SaveViewCommand}"
-                                    AutomationProperties.Name="Save current query and filters as a new Saved View" />
+                                    AutomationProperties.Name="Save current query and filters as a new saved search" />
                         </Grid>
                         <WrapPanel>
                             <Button Margin="0,0,8,0"
                                     Classes="secondary"
                                     Content="Open"
                                     Command="{Binding OpenSavedViewCommand}"
-                                    AutomationProperties.Name="Open selected Saved View" />
+                                    AutomationProperties.Name="Open selected saved search" />
                             <Button Margin="0,0,8,0"
                                     Classes="secondary"
                                     Content="Update selected"
                                     Command="{Binding UpdateSavedViewCommand}"
-                                    AutomationProperties.Name="Update selected Saved View from current query and filters" />
+                                    AutomationProperties.Name="Update selected saved search from current query and filters" />
                             <Button Classes="secondary"
                                     Content="Delete selected"
                                     Command="{Binding DeleteSavedViewCommand}"
-                                    AutomationProperties.Name="Delete selected Saved View" />
+                                    AutomationProperties.Name="Delete selected saved search" />
                         </WrapPanel>
                     </StackPanel>
                 </Border>
@@ -234,6 +244,8 @@
                         <Button Margin="0,0,8,8" IsVisible="{Binding IsClearPending}" Classes="danger" Content="Confirm clear" Command="{Binding ConfirmClearIndexCommand}" />
                         <Button Margin="0,0,8,8" IsVisible="{Binding IsClearPending}" Classes="secondary" Content="Keep index" Command="{Binding CancelClearIndexCommand}" />
                     </WrapPanel>
+                </Expander>
+                </StackPanel>
                 </Expander>
                 <ProgressBar Minimum="0"
                              Maximum="1"
@@ -589,7 +601,7 @@
                                                     Content="Open in Files"
                                                     Command="{Binding DataContext.OpenInFilesCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
-                                                    AutomationProperties.HelpText="Opens the same stable indexed file in Files and preserves the current Search, facets, and Saved View for return."
+                                                    AutomationProperties.HelpText="Opens the same stable indexed file in Files and preserves the current Search, facets, and saved search for return."
                                                     AutomationProperties.Name="{Binding FileName, StringFormat='Open {0} in Files with discovery context preserved'}"
                                                     x:CompileBindings="False" />
                                             <Button Margin="0,0,8,0"

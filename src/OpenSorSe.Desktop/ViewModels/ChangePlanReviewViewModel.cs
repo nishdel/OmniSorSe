@@ -171,6 +171,15 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
     public string PlanId => CurrentPlan?.PlanId ?? "No plan";
     public string RootPath => CurrentPlan?.RootPath ?? string.Empty;
     public string PlanStatus => CurrentPlan?.Status.ToString() ?? "Unavailable";
+    public string PlanOriginText => DescribePlanOrigin(CurrentPlan);
+    public string PlanPurposeText => DescribePlanPurpose(CurrentPlan);
+    public bool HasPlanWarnings => CurrentPlan?.Warnings.Count > 0;
+    public string PlanWarningText => CurrentPlan is null
+        ? string.Empty
+        : string.Join(Environment.NewLine, CurrentPlan.Warnings);
+    public int EligibleActionCount => CurrentPlan?.Actions.Count(action =>
+        (action.ValidationState is ChangeValidationState.Valid or ChangeValidationState.Warning) &&
+        action.Conflicts.All(conflict => !conflict.IsBlocking)) ?? 0;
     public int ApprovedCount => CurrentPlan?.ApprovedActionCount ?? 0;
     public int RejectedCount => CurrentPlan?.RejectedActionCount ?? 0;
     public int PendingCount => CurrentPlan?.Actions.Count(action => action.ApprovalState == ChangeApprovalState.Pending) ?? 0;
@@ -332,7 +341,7 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
             action.Conflicts.All(conflict => !conflict.IsBlocking)
                 ? action with { ApprovalState = ChangeApprovalState.Approved }
                 : action);
-        StatusText = "All currently safe actions were approved. Validate Plan before applying.";
+        StatusText = "All currently eligible actions were approved. Warnings remain visible; validate the plan before applying.";
     }
 
     private void DeselectAll()
@@ -391,7 +400,6 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
                 ProposedFileName = action.ActionType == ChangeActionType.RenameFile
                     ? Path.GetFileName(destination)
                     : action.ProposedFileName,
-                SuggestionSource = ChangeSuggestionSource.ManualUserEdit,
                 WasUserEdited = true,
                 ValidationState = ChangeValidationState.NotValidated,
                 Conflicts = [],
@@ -636,6 +644,11 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(PlanId));
         OnPropertyChanged(nameof(RootPath));
         OnPropertyChanged(nameof(PlanStatus));
+        OnPropertyChanged(nameof(PlanOriginText));
+        OnPropertyChanged(nameof(PlanPurposeText));
+        OnPropertyChanged(nameof(HasPlanWarnings));
+        OnPropertyChanged(nameof(PlanWarningText));
+        OnPropertyChanged(nameof(EligibleActionCount));
         OnPropertyChanged(nameof(ApprovedCount));
         OnPropertyChanged(nameof(RejectedCount));
         OnPropertyChanged(nameof(PendingCount));
@@ -650,6 +663,57 @@ public sealed class ChangePlanReviewViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ConfirmationSummary));
         OnPropertyChanged(nameof(CanApply));
         NotifyCommands();
+    }
+
+    private static string DescribePlanOrigin(ChangePlan? plan)
+    {
+        if (plan is null || plan.Actions.Count == 0)
+        {
+            return "Origin: unavailable";
+        }
+
+        var sources = plan.Actions
+            .Select(action => action.SuggestionSource)
+            .Distinct()
+            .Select(source => source switch
+            {
+                ChangeSuggestionSource.Ai => "optional AI",
+                ChangeSuggestionSource.DeterministicRule => "sorting rules",
+                ChangeSuggestionSource.Metadata => "file metadata",
+                ChangeSuggestionSource.Ocr => "text recognition",
+                ChangeSuggestionSource.DuplicateAnalysis => "duplicate review",
+                ChangeSuggestionSource.ManualUserEdit => "manual edits",
+                ChangeSuggestionSource.ExistingFolderStructureSuggestion => "existing folder structure",
+                _ => source.ToString(),
+            });
+        var editSuffix = plan.Actions.Any(action => action.WasUserEdited) ? " (edited by user)" : string.Empty;
+        return $"Origin: {string.Join(", ", sources)}{editSuffix}";
+    }
+
+    private static string DescribePlanPurpose(ChangePlan? plan)
+    {
+        if (plan is null)
+        {
+            return "Load a Change Plan to review its proposed file operations.";
+        }
+
+        var sources = plan.Actions.Select(action => action.SuggestionSource).ToHashSet();
+        if (sources.SetEquals([ChangeSuggestionSource.DuplicateAnalysis]))
+        {
+            return "Duplicate cleanup: approved copies move to OmniSorSe's recovery area. At least one known copy remains in every affected group; nothing is permanently deleted.";
+        }
+
+        if (sources.Contains(ChangeSuggestionSource.Ai))
+        {
+            return "AI-assisted organization: suggestions are proposals only. Review paths and evidence, approve explicitly, then validate before anything changes.";
+        }
+
+        if (sources.Contains(ChangeSuggestionSource.ExistingFolderStructureSuggestion))
+        {
+            return "Folder-structure organization: review how proposed moves reuse existing folders before approving them.";
+        }
+
+        return "File organization: inspect every proposed path, choose which actions to include, then validate before applying.";
     }
 
     private void NotifyCommands()
