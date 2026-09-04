@@ -7,7 +7,7 @@ remain authoritative for exact behavior; [Release Status](RELEASE_STATUS.md)
 owns detailed validation, integration, packaging, tagging, and publication
 evidence.
 
-**Scope:** The v2.12 Trusted Relationships & Context implementation candidate.
+**Scope:** The v2.13 Product Clarity & Workflow implementation candidate.
 Update this document when the source line, runtime, schema, protocol, active
 authority, or confidence boundary changes. Do not copy its volatile facts into
 historical release records.
@@ -18,8 +18,9 @@ historical release records.
 | --- | --- | --- |
 | Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` |
 | Latest stable release | **v2.4.0**. The later source line is a release candidate, not a stable/GA release. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
-| Current source line | **v2.12.0-rc**, Trusted Relationships & Context, built on the linear v2.5-v2.11 candidate stack. The validated source is integrated into and published from GitHub `main`; exact v2.5-v2.12 branch refs are also available remotely. | `Directory.Build.props`; `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`; `docs/RELEASE_STATUS.md` |
-| Current prerelease packages | The exact-source-bound **v2.12.0-rc** Windows and macOS package set has completed the automated release workflow and is validated and ready for GitHub prerelease publication. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized (toolchain-provided ad-hoc signatures do not identify or authenticate a publisher). The RC is for final real-world/manual validation before v2.12.0 GA. | `.github/workflows/release-packaging.yml`; `eng/release/`; `docs/RELEASE_NOTES_v2.12.0.md`; `docs/RELEASE_STATUS.md` |
+| Current source line | **v2.13.0-rc**, Product Clarity & Workflow, built on the published v2.12 relationship/context candidate without changing schema, protocol, or file-mutation authority. | `Directory.Build.props`; `docs/RELEASE_NOTES_v2.13.0.md`; `docs/RELEASE_STATUS.md` |
+| Published prerelease packages | The exact-source-bound **v2.12.0-rc** Windows and macOS package set was published as a GitHub prerelease from tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized (toolchain-provided ad-hoc signatures do not identify or authenticate a publisher). The packages remain for real-world/manual validation and do not represent v2.13 source. | [GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc); `docs/RELEASE_NOTES_v2.12.0.md`; `docs/RELEASE_STATUS.md` |
+| Next package decision | **v2.13.0-rc has not yet been tagged or published.** It may become a prerelease only after exact-commit automated, cross-platform, and native packaging gates pass. Interactive workflow, accessibility, resize/DPI, and real-library checks remain manual and must not be claimed by automation. | `.github/workflows/ci.yml`; `.github/workflows/release-packaging.yml`; `docs/MANUAL_TESTING_v2.13.md` |
 | Runtime | All solution projects target **.NET 10**. `global.json` selects SDK `10.0.400` with latest-feature roll-forward. | `Directory.Build.props`; `global.json`; project files |
 | Durable Search/index schema | `deep-index.db` is **schema 6**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | Explorer boundary | Explorer Protocol is **1.0**. It is local, authenticated, source-scoped, bounded, read-only, and dormant until explicitly requested. | `ExplorerProtocolVersion` in `src/OmniSorSe.ExplorerProtocol/ExplorerProtocolContracts.cs`; `src/OpenSorSe.Application/Explorer/` |
@@ -42,7 +43,7 @@ outside application-owned storage.
 | Indexed file state | `IDeepIndexStore` contracts with the `SqliteDeepIndexStore` provider | Background indexing, Search, Smart Tags, relationships, health, privacy/Forget, Explorer | Views/ViewModels and the protocol contract do not own SQL or migrations |
 | Smart Tags | Schema-6 taxonomy, assignment, decision, and status records; explicit User Tags and accept/reject decisions are durable authority | Deterministic classifier proposes from retained evidence; Search and facets present canonical values | Classifier and optional AI do not override user decisions or write source metadata |
 | Relationships | Schema-6 retained evidence, typed edges, explicit pair authority, Smart Collection authority, and privacy state | `RelationshipService`, Search, Related Files, Explorer, and the optional graph consume bounded projections | Knowledge Graph is not relationship or grouping authority |
-| Saved Views | `JsonSavedDiscoveryViewStore` owns bounded dynamic query rules | Search executes them against the current authorized index | A Saved View does not persist file membership |
+| Saved searches | `JsonSavedDiscoveryViewStore` owns bounded dynamic query rules; retained type/storage names preserve compatibility | Search executes them against the current authorized index | A saved search does not persist file membership |
 | Knowledge Graph | `knowledge-decisions.db` owns graph-native user decisions/privacy; `knowledge-graph.db` is rebuildable derived projection | Graph services and `KnowledgeGraphViewModel` expose bounded views and optional Search context | The graph does not own source files, schema-6 relationship authority, or Change Plans |
 | Change intent and execution facts | `JsonChangePlanStore` owns reviewed intent; `JsonOperationJournalStore` owns execution/recovery facts | Review UI, history, recovery, and Undo consume those facts; Review Changes, Operation History Undo, and startup recovery forward terminal facts to shared reconciliation | Suggestions, watchers, plugins, recipes, and AI cannot execute |
 | Explorer contract/session | `OmniSorSe.ExplorerProtocol` owns DTO/version compatibility; Application owns authorization, sessions, transport, and read projections | OmniBrille consumes only an explicitly granted bounded session | Protocol clients cannot access SQLite directly, request arbitrary paths, or mutate |
@@ -57,7 +58,7 @@ failure behavior, cancellation, performance bounds, and technical debt.
 The current source implements local scanning and extraction, exact duplicate
 review, Watched Folders, progressive durable Search, media/content
 intelligence, explainable Smart Tags, complete-index faceted discovery and
-dynamic Saved Views, evidence-backed relationships and Smart Collections,
+dynamic saved searches, evidence-backed relationships and Smart Collections,
 optional bounded Knowledge Graph projection, reviewed recipe-based
 organization, Change Plans with journal-aware recovery/Undo and Review Changes
 reconciliation, logical state backup/restore, optional Ollama-compatible
@@ -77,7 +78,7 @@ change a source file or override durable user-authored relationship/tag state.
 
 ### Verified in recorded automated evidence
 
-Release Status records forced no-cache restore, zero-warning Debug and Release
+For the published v2.12 lineage, Release Status records forced no-cache restore, zero-warning Debug and Release
 builds, and 1,870 passing tests in each configuration for implementation commit
 `1cf1910`. Focused Change Plan reconciliation, Desktop recovery/Undo,
 documentation/configuration, formatting, analyzers, dependency policy,
@@ -98,16 +99,26 @@ after different unchanged timing-sensitive tests failed; final attempts passed
 without code, threshold, or workflow changes. This remains validation-
 infrastructure uncertainty rather than first-attempt stability evidence.
 Treat those results as evidence for the recorded commits and environments, not
-as a guarantee for an unvalidated later working tree. Release Status separately
+as a guarantee for the current v2.13 candidate. On the v2.13 implementation
+worktree, SDK 10.0.400 produced zero-warning Debug and Release builds and
+1,877/1,877 passing tests in each configuration with no skips. The focused
+Search-relevance test, 16 performance-regression tests, 14 repository-policy
+tests, formatting/style/analyzers, AXAML parsing, 18-project vulnerability
+audit, and native `win-x64` self-contained package smoke also passed. Hosted
+four-platform, exact-main, complete native-package, and publication evidence
+remains to be completed and recorded.
+Release Status separately
 preserves the original publication and macOS-correction evidence.
 
 ### Not verified or still manual
 
-The v2.12 manual addendum remains unchecked. Interactive relationship quality,
+The v2.13 manual addendum and inherited v2.10-v2.12 checklists remain
+unchecked. Interactive Scan → Review → Organize, Search resize/scroll,
+Duplicates, optional AI, Smart Tags, relationship quality and confirmations,
 desktop accessibility, actual OmniBrille integration, removable-source
-identity, installer UI/SmartScreen/Restart Manager, real v2.4 profile upgrade,
+identity, installer UI/SmartScreen/Restart Manager, real profile upgrade,
 reinstall behavior, and broader native Linux/macOS behavior remain outside the
-recorded confidence boundary. The initial published-main run
+recorded confidence boundary. The initial v2.12 published-main run
 exposed three macOS test-portability/fixture failures; the correction retained
 the handoff's 128-bit random identity and did not enable production mutation on
 macOS. Follow-up pull-request and exact-main hosted runs passed all four hosts.
@@ -115,9 +126,11 @@ Automated host and package-smoke evidence is not interactive UX, accessibility,
 real-world upgrade, signing, notarization, or stable-release evidence.
 
 Read [Release Status](RELEASE_STATUS.md), the
-[v2.12 implementation record](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md), and the
-[v2.12 manual addendum](MANUAL_TESTING_v2.12.md) before making a readiness or
-release claim.
+[v2.13 release notes](RELEASE_NOTES_v2.13.0.md), and the
+[v2.13 manual addendum](MANUAL_TESTING_v2.13.md) before making a current
+readiness or release claim. The [v2.12 implementation
+record](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) remains authority for the
+inherited relationship/context design.
 
 ## Where current truth belongs
 
