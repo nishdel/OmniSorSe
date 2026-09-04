@@ -502,7 +502,7 @@ public sealed class PlatformCapabilityProvider : IPlatformCapabilityProvider
                     HostPlatformKind.Windows =>
                         $"v{ApplicationVersionInfo.Display} provides a self-contained Windows x64 portable package and per-user installer. They are unsigned and no automatic updater is provided.",
                     HostPlatformKind.MacOS =>
-                        $"v{ApplicationVersionInfo.Display} provides separate Intel and Apple Silicon disk images. They are unsigned and unnotarized, and no automatic updater is provided.",
+                        $"v{ApplicationVersionInfo.Display} provides separate Intel and Apple Silicon disk images. They are publisher-unsigned and unnotarized; any ad-hoc signature does not identify a publisher, and no automatic updater is provided.",
                     HostPlatformKind.Linux =>
                         $"v{ApplicationVersionInfo.Display} supports source builds on Linux but does not publish a Linux installer or automatic updater.",
                     _ =>

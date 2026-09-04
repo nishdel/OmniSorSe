@@ -66,14 +66,28 @@ if [[ "$version" != "$base_version" ]]; then
   grep -Fq "$source_revision" "$validation_notice"
   grep -Fq 'not a stable or GA release' "$validation_notice"
   grep -Fq 'final real-world and manual validation' "$validation_notice"
-  grep -Fq 'unsigned and unnotarized' "$validation_notice"
+  grep -Fq 'publisher-unsigned and unnotarized' "$validation_notice"
+  grep -Fq 'ad-hoc signature does not authenticate the publisher' "$validation_notice"
   grep -Fq 'disposable machine/profile' "$validation_notice"
   grep -Fq 'migrate the retained OpenSorSe profile and schema' "$validation_notice"
 fi
-if codesign -dv --verbose=4 "$app" >/dev/null 2>&1 || codesign -dv --verbose=4 "$dmg" >/dev/null 2>&1; then
-  echo 'The macOS prerelease package is unexpectedly code-signed.' >&2
-  exit 1
-fi
+assert_no_publisher_signature() {
+  local target="$1"
+  local signature_details
+  local team_identifier
+
+  if signature_details="$(codesign -dv --verbose=4 "$target" 2>&1)"; then
+    team_identifier="$(sed -n 's/^TeamIdentifier=//p' <<<"$signature_details" | head -n 1)"
+    if ! grep -Fqx 'Signature=adhoc' <<<"$signature_details" ||
+      grep -q '^Authority=' <<<"$signature_details" ||
+      { [[ -n "$team_identifier" ]] && [[ "$team_identifier" != 'not set' ]]; }; then
+      echo "The macOS prerelease package has an unexpected publisher signature: $target" >&2
+      exit 1
+    fi
+  fi
+}
+assert_no_publisher_signature "$app"
+assert_no_publisher_signature "$dmg"
 if xcrun stapler validate "$app" >/dev/null 2>&1 || xcrun stapler validate "$dmg" >/dev/null 2>&1; then
   echo 'The macOS prerelease package is unexpectedly notarized or stapled.' >&2
   exit 1
@@ -98,4 +112,4 @@ fi
 "$executable" --package-smoke-test "$smoke_root"
 test -d "$smoke_root"
 
-echo "Validated unsigned macOS $suffix package: $dmg"
+echo "Validated publisher-unsigned and unnotarized macOS $suffix package: $dmg"

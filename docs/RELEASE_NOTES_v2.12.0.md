@@ -2,7 +2,9 @@
 
 **Status:** GitHub prerelease candidate for final real-world/manual validation
 before v2.12.0 GA. This is not a stable release. Windows artifacts are unsigned;
-macOS artifacts are unsigned and unnotarized.
+macOS artifacts are not Apple Developer ID-signed and are unnotarized. A
+toolchain-provided ad-hoc signature does not identify or authenticate a
+publisher.
 
 ## Downloads
 
@@ -79,7 +81,8 @@ The release process requires the exact tagged `main` commit to pass:
   stop/uninstall, shortcut and uninstall-entry cleanup, and user-data
   preservation;
 - native macOS DMG mount, architecture/runtime inspection, composition smoke,
-  and explicit unsigned/unnotarized checks.
+  and explicit publisher-signature/notarization checks that permit only an
+  absent or ad-hoc signature and reject Developer ID signing.
 
 These are automated and controlled checks. They do not substitute for the manual
 validation below.
