@@ -25,8 +25,10 @@ signing, notarization, and v2.12.0 GA gates remain open.
 - **Latest stable release:** v2.4.0 (tagged and packaged).
 - **Current GitHub source:** 2.12.0-rc integrated on `main`.
 - **Current prerelease:** v2.12.0-rc exact-source packages are validated and
-  ready for publication as an unsigned GitHub prerelease for final manual
-  validation; macOS packages are also unnotarized.
+  ready for publication as a publisher-unsigned GitHub prerelease for final
+  manual validation; macOS packages are not Apple Developer ID-signed and are
+  unnotarized. Toolchain-provided ad-hoc signatures do not identify or
+  authenticate a publisher.
 - **Implemented behavior authority:** [Current State](CURRENT-STATE.md).
 - **Readiness evidence authority:** this document.
 
@@ -410,7 +412,8 @@ state are unchanged. See the
 - Intended annotated tag and GitHub prerelease: `v2.12.0-rc`
 - Package set: Windows x64 portable ZIP and per-user installer, macOS Intel and
   Apple Silicon DMGs, CycloneDX SBOM, and SHA-256 manifest
-- Trust state: Windows unsigned; macOS unsigned and unnotarized
+- Trust state: Windows unsigned; macOS publisher-unsigned and unnotarized
+  (toolchain-provided ad-hoc signatures do not authenticate a publisher)
 - Purpose: final real-world/manual validation before v2.12.0 GA
 - Publication source: the exact `main` commit recorded by the tag, release, build
   manifests, SBOM, and final packaging workflow

@@ -66,7 +66,7 @@ if [[ "$version" != "$base_version" ]]; then
   cat > "$resources_directory/VALIDATION_BUILD.md" <<NOTICE
 # OmniSorSe $version validation build
 
-This is an unsigned and unnotarized prerelease build from exact source \`$source_revision\`. It is not a stable or GA release; it is intended for final real-world and manual validation. Opening it can migrate the retained OpenSorSe profile and schema. Use a disposable machine/profile or make a reviewed backup before manual validation.
+This is a publisher-unsigned and unnotarized prerelease build from exact source \`$source_revision\`. A toolchain-provided ad-hoc signature does not authenticate the publisher. It is not a stable or GA release; it is intended for final real-world and manual validation. Opening it can migrate the retained OpenSorSe profile and schema. Use a disposable machine/profile or make a reviewed backup before manual validation.
 NOTICE
 fi
 runtime_version="$(python3 - "$macos_directory/OmniSorSe.runtimeconfig.json" <<'PY'

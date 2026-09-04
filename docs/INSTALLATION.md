@@ -63,8 +63,9 @@ runtime installation.
 1. Choose `OmniSorSe-v2.12.0-rc-macos-x64.dmg` for Intel or
    `OmniSorSe-v2.12.0-rc-macos-arm64.dmg` for Apple Silicon.
 2. Verify the checksum, open the DMG, and copy `OmniSorSe.app` to Applications.
-3. The RC app is unsigned and unnotarized. Gatekeeper may require an explicit
-   reviewed override.
+3. The RC app is not Apple Developer ID-signed and is unnotarized. A
+   toolchain-provided ad-hoc signature does not identify or authenticate a
+   publisher. Gatekeeper may require an explicit reviewed override.
 
 The app bundle and native dependencies are built and smoke-tested on matching
 native GitHub-hosted macOS runners. This is not a claim that broad interactive

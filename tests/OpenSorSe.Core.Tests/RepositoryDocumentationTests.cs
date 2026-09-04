@@ -369,6 +369,9 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("CFBundleGetInfoString", macValidation, StringComparison.Ordinal);
         Assert.Contains("not a stable or GA release", macValidation, StringComparison.Ordinal);
         Assert.Contains("codesign -dv", macValidation, StringComparison.Ordinal);
+        Assert.Contains("Signature=adhoc", macValidation, StringComparison.Ordinal);
+        Assert.Contains("TeamIdentifier=", macValidation, StringComparison.Ordinal);
+        Assert.Contains("^Authority=", macValidation, StringComparison.Ordinal);
         Assert.Contains("stapler validate", macValidation, StringComparison.Ordinal);
         Assert.Contains("omnisorse:sourceRevision", sbomGeneration, StringComparison.Ordinal);
         Assert.Contains("-ne $SourceRevision", sbomGeneration, StringComparison.Ordinal);

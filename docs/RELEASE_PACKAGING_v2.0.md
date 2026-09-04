@@ -27,8 +27,10 @@ separately recorded and validated. Release-note lookup also uses the numeric
 core so an RC embeds the reviewed notes for its intended release.
 
 Prerelease packages contain `VALIDATION_BUILD.md`, which identifies the exact
-source commit and states that the unsigned/unnotarized build is not a stable or
-GA release and is intended for final real-world/manual validation. The retained
+source commit and states that the publisher-unsigned/unnotarized build is not a
+stable or GA release and is intended for final real-world/manual validation. A
+toolchain-provided macOS ad-hoc signature is permitted because it neither
+identifies nor authenticates a publisher. The retained
 AppId, install directory, and profile are required for genuine upgrade testing,
 so prerelease installers show that notice before installation and warn that
 opening the build can migrate retained state. Use a disposable machine/profile
@@ -115,7 +117,10 @@ tokens, or machine-specific paths.
 
 No established Windows code-signing or Apple Developer signing/notarization
 credentials exist in the repository infrastructure reviewed for v2.11.
-Artifacts are therefore produced unsigned and macOS packages are unnotarized.
+Artifacts are therefore produced publisher-unsigned and macOS packages are
+unnotarized. A toolchain-provided ad-hoc macOS signature can be present; the
+validator permits only an absent or ad-hoc signature and rejects Developer ID
+or other publisher identity.
 Do not add secrets to source, print secret values, create an improvised trust
 scheme, or describe checksum verification as publisher authentication.
 
