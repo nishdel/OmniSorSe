@@ -2,7 +2,7 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** OmniSorSe 2.13.0-rc candidate on the published v2.12 RC
+**Current source and prerelease:** OmniSorSe 2.13.0-rc on the published v2.12
 lineage; v2.4.0 remains the latest stable release
 
 **Last reviewed:** 2026-09-04
@@ -28,7 +28,7 @@ file mutation are separate claims.
 
 ## Published RC evidence ledger
 
-The published 2.12.0-rc source targets .NET 10. Evidence must be read by column;
+The current 2.13.0-rc source targets .NET 10. Evidence must be read by column;
 a build does not imply a native launch, and a package smoke does not imply broad
 desktop or filesystem validation. The 2.13.0-rc source candidate inherits these
 platform boundaries but requires fresh exact-source evidence before any package
@@ -104,7 +104,7 @@ reviewed and linked. Native/manual observations belong in the
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
 | Explorer Protocol v1 | Native Windows named-pipe round trip validated | Cross-target compilation only | Cross-target compilation only | On-demand current-user local transport with no TCP listener. Native Linux/macOS protocol execution is not claimed. |
-| Installer/current package | Supported, unsigned RC | Unavailable | Preview, unsigned/unnotarized RC | OmniSorSe v2.12.0-rc provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs while retaining installer/bundle/profile compatibility. v2.4.0 remains latest stable; Linux remains source build only. |
+| Installer/current package | Supported, unsigned RC | Unavailable | Preview, unsigned/unnotarized RC | OmniSorSe v2.13.0-rc provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs while retaining installer/bundle/profile compatibility. v2.4.0 remains latest stable; Linux remains source build only. |
 
 ## Filesystem limitations
 

@@ -19,8 +19,9 @@ historical release records.
 | Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` |
 | Latest stable release | **v2.4.0**. The later source line is a release candidate, not a stable/GA release. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
 | Current source line | **v2.13.0-rc**, Product Clarity & Workflow, built on the published v2.12 relationship/context candidate without changing schema, protocol, or file-mutation authority. | `Directory.Build.props`; `docs/RELEASE_NOTES_v2.13.0.md`; `docs/RELEASE_STATUS.md` |
-| Published prerelease packages | The exact-source-bound **v2.12.0-rc** Windows and macOS package set was published as a GitHub prerelease from tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized (toolchain-provided ad-hoc signatures do not identify or authenticate a publisher). The packages remain for real-world/manual validation and do not represent v2.13 source. | [GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc); `docs/RELEASE_NOTES_v2.12.0.md`; `docs/RELEASE_STATUS.md` |
-| Next package decision | **v2.13.0-rc has not yet been tagged or published.** It may become a prerelease only after exact-commit automated, cross-platform, and native packaging gates pass. Interactive workflow, accessibility, resize/DPI, and real-library checks remain manual and must not be claimed by automation. | `.github/workflows/ci.yml`; `.github/workflows/release-packaging.yml`; `docs/MANUAL_TESTING_v2.13.md` |
+| Current prerelease packages | The current exact-source-bound **v2.13.0-rc** Windows and macOS package set is published as a GitHub prerelease for real-world/manual validation before GA. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized (toolchain-provided ad-hoc signatures do not identify or authenticate a publisher). The release page, tag, embedded build manifest, checksum file, and SBOM own the immutable source/asset identity. | [GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc); `docs/RELEASE_NOTES_v2.13.0.md`; `docs/RELEASE_STATUS.md` |
+| Previous prerelease baseline | The prior exact-source **v2.12.0-rc** package set remains available as historical prerelease evidence from tagged commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; it is not the current source/package line and is not stable/GA. | [v2.12 GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc); `docs/RELEASE_NOTES_v2.12.0.md` |
+| Remaining release boundary | Interactive workflow, accessibility, resize/DPI, real-library, normal-user installer, signing, notarization, and GA checks remain manual and must not be inferred from automated host/package smoke. | `.github/workflows/ci.yml`; `.github/workflows/release-packaging.yml`; `docs/MANUAL_TESTING_v2.13.md` |
 | Runtime | All solution projects target **.NET 10**. `global.json` selects SDK `10.0.400` with latest-feature roll-forward. | `Directory.Build.props`; `global.json`; project files |
 | Durable Search/index schema | `deep-index.db` is **schema 6**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | Explorer boundary | Explorer Protocol is **1.0**. It is local, authenticated, source-scoped, bounded, read-only, and dormant until explicitly requested. | `ExplorerProtocolVersion` in `src/OmniSorSe.ExplorerProtocol/ExplorerProtocolContracts.cs`; `src/OpenSorSe.Application/Explorer/` |
@@ -104,9 +105,18 @@ worktree, SDK 10.0.400 produced zero-warning Debug and Release builds and
 1,877/1,877 passing tests in each configuration with no skips. The focused
 Search-relevance test, 16 performance-regression tests, 14 repository-policy
 tests, formatting/style/analyzers, AXAML parsing, 18-project vulnerability
-audit, and native `win-x64` self-contained package smoke also passed. Hosted
-four-platform, exact-main, complete native-package, and publication evidence
-remains to be completed and recorded.
+audit, and native `win-x64` self-contained package smoke also passed. Pull
+request #47 passed the four-host matrix in
+[run 33890703737](https://github.com/nishdel/OmniSorSe/actions/runs/33890703737),
+and its first exact-main merge commit passed the same complete matrix in
+[run 33893063679](https://github.com/nishdel/OmniSorSe/actions/runs/33893063679).
+A first exact-source package run
+[33895004016](https://github.com/nishdel/OmniSorSe/actions/runs/33895004016)
+passed all automated artifact/lifecycle gates but was deliberately not
+published after independent inspection found that its embedded installation
+guide still named v2.12 downloads. Final v2.13 public assets are rebuilt only
+from the post-correction exact `main` commit; the GitHub prerelease owns that
+final immutable run, tag, and checksum evidence.
 Release Status separately
 preserves the original publication and macOS-correction evidence.
 

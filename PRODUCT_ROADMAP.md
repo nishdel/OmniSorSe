@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-08-20
+**Last repository review:** 2026-09-04
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -628,15 +628,16 @@ the Change Plan mutation boundary remain unchanged.
 See [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md)
 and the [v2.12 manual addendum](docs/MANUAL_TESTING_v2.12.md).
 
-## In progress
+## Prerelease candidate
 
 ### v2.13 — Product Clarity & Workflow
 
 **Branch:** `codex/product-clarity-issue-pass`, created directly from the
 published v2.12.0-rc tagged `main` commit.
 
-**Status:** Source candidate under validation. It is not tagged, packaged,
-published, stable, or GA.
+**Status:** Integrated through a normal pull request and distributed as an
+exact-source GitHub prerelease for final manual validation. It is not stable or
+GA.
 
 v2.13 restores Scan → Review → Organize as the primary path, simplifies Search
 and graph surfaces through progressive disclosure, keeps optional AI and Smart

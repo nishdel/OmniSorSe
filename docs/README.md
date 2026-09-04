@@ -32,11 +32,11 @@ route links to deeper versioned or historical evidence only when it is useful.
 | Intent | Read first | Continue with | Boundary |
 | --- | --- | --- | --- |
 | Current project state | [Repository README](../README.md), then [Current State](CURRENT-STATE.md) | [Product Vision](../PRODUCT_VISION.md) | Current source truth; not a release claim |
-| Test the published prerelease | [Installation](INSTALLATION.md) | [v2.12.0-rc Release Notes](RELEASE_NOTES_v2.12.0.md) | Exact-source v2.12.0-rc packages are published for manual validation, not GA |
+| Test the published prerelease | [Installation](INSTALLATION.md) | [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | Exact-source v2.13.0-rc packages are published for manual validation, not GA |
 | Use the latest stable release | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | [Installation](INSTALLATION.md) | v2.4.0 remains the latest stable release |
 | Develop or contribute | [Developer Guide](DEVELOPER_GUIDE.md) and [Contributing](../CONTRIBUTING.md) | [Repository Structure](REPOSITORY_STRUCTURE.md), [Architecture Library](Architecture/README.md), and [Engineering workflow](engineering/README.md) | Current `main` and scoped engineering policy |
 | Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
-| Understand the current source candidate | [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | [v2.13 Manual Testing](MANUAL_TESTING_v2.13.md) and [Current prerelease lineage](#current-prerelease-lineage) | 2.13.0-rc is source-only until its exact release gates pass |
+| Understand the current source candidate | [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | [v2.13 Manual Testing](MANUAL_TESTING_v2.13.md) and [Current prerelease lineage](#current-prerelease-lineage) | 2.13.0-rc is the current prerelease; manual/GA gates remain open |
 | Validate or assess readiness | [Release Status](RELEASE_STATUS.md) | [Platform Compatibility](PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates | Observed evidence remains separate from unchecked gates |
 | Research releases or history | [Release History](../RELEASE_HISTORY.md) | [Changelog](CHANGELOG.md), [release records](#release-and-implementation-records), and specifications | Historical evidence; not current authority |
 
@@ -77,7 +77,7 @@ describe every capability currently present on GitHub `main`.
 ## Current source and prerelease lineage
 
 The following records explain the integrated v2.5-v2.12 lineage distributed as
-the v2.12.0-rc prerelease and the next v2.13 source candidate. The v2.5-v2.11
+the v2.12.0-rc prerelease and inherited by the current v2.13 prerelease. The v2.5-v2.11
 records are not standalone releases; automated RC packaging is not manual/GA
 validation.
 

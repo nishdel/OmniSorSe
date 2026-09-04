@@ -20,7 +20,7 @@ require a reviewed Change Plan and separate Apply confirmation. Third-party
 plugins are trusted in-process extensions, not a security sandbox.
 
 <p align="center">
-  <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc"><strong>Download v2.12.0-rc prerelease</strong></a>
+  <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc"><strong>Download v2.13.0-rc prerelease</strong></a>
   · <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0">Latest stable: v2.4.0</a>
   · <a href="docs/INSTALLATION.md">Installation</a>
   · <a href="docs/CURRENT-STATE.md">Current source</a>
@@ -57,8 +57,8 @@ plugins are trusted in-process extensions, not a security sandbox.
 
 | Track | What it is | Start here |
 | --- | --- | --- |
-| **Current source: 2.13.0-rc** | The next source candidate restores a clear Scan → Review → Organize workflow and simplifies discovery, relationship, AI, and diagnostic surfaces on top of v2.12. | [Current State](docs/CURRENT-STATE.md) · [v2.13 Release Notes](docs/RELEASE_NOTES_v2.13.0.md) · [Release Status](docs/RELEASE_STATUS.md) |
-| **Published prerelease: v2.12.0-rc** | The exact-source Windows and macOS packages were published from tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac` after automated release validation. They are unsigned; macOS packages are also unnotarized. Manual and real-world validation remains before any GA claim. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.12.0.md) |
+| **Current source: 2.13.0-rc** | The current source restores a clear Scan → Review → Organize workflow and simplifies discovery, relationship, AI, and diagnostic surfaces on top of v2.12. | [Current State](docs/CURRENT-STATE.md) · [v2.13 Release Notes](docs/RELEASE_NOTES_v2.13.0.md) · [Release Status](docs/RELEASE_STATUS.md) |
+| **Current prerelease: v2.13.0-rc** | Exact-source Windows and macOS packages are published for final real-world/manual validation before GA. They are unsigned; macOS packages are also unnotarized. The release page owns the immutable tag, source commit, assets, and checksums. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.13.0.md) |
 | **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
 
 The v2.4.0 package keeps established OpenSorSe application-data, schema,
@@ -75,9 +75,9 @@ upgrade from creating an empty profile or unnecessary reindex.
 | macOS Apple Silicon | Self-contained DMG | Same support and safety boundary as the Intel package. |
 | Linux x64 | No package; current source build only | Conservative source-build preview; no Linux installer is published. |
 
-The platform table describes the current v2.12.0-rc package line. Download RC
+The platform table describes the current v2.13.0-rc package line. Download RC
 packages only from the
-[official v2.12.0-rc prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc)
+[official v2.13.0-rc prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc)
 and verify the accompanying SHA-256 file and SBOM. Checksums detect changed bytes
 but do not authenticate an unsigned publisher. Users who want the latest stable
 build should use [v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0).
@@ -86,7 +86,7 @@ upgrade cautions, application-data locations, and Linux guidance.
 
 ## Current source highlights
 
-The v2.13 source candidate keeps the v2.12 architecture and safety boundary
+The v2.13 prerelease keeps the v2.12 architecture and safety boundary
 while making the product easier to understand and operate:
 
 - Home and navigation lead with Scan, Review, and Organize; Search, Duplicates,
@@ -103,8 +103,9 @@ while making the product easier to understand and operate:
 - recent indexing throughput and ETA use recent completed work rather than the
   age of a long-running indexing run.
 
-The published v2.12 prerelease builds on the v2.5–v2.11 candidate lineage.
-Compared with the latest stable release, that lineage adds or strengthens:
+The v2.13 prerelease incorporates the published v2.12 relationship/context
+work and the v2.5–v2.11 candidate lineage. Compared with the latest stable
+release, that lineage adds or strengthens:
 
 - explainable Smart Tags, complete-index facets, and dynamic saved searches;
 - guided Search-to-Files workflows and reviewed organization previews;
@@ -162,7 +163,7 @@ intent-based map. The shortest routes are:
 | I want to… | Read first | Then continue with… |
 | --- | --- | --- |
 | Understand the project and current state | [Current State](docs/CURRENT-STATE.md) | [Product Vision](PRODUCT_VISION.md) |
-| Install or test the current prerelease | [Installation](docs/INSTALLATION.md) | [v2.12.0-rc Release Notes](docs/RELEASE_NOTES_v2.12.0.md) |
+| Install or test the current prerelease | [Installation](docs/INSTALLATION.md) | [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) |
 | Use the latest stable release | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
 | Build or contribute | [Developer Guide](docs/DEVELOPER_GUIDE.md) | [Contributing](CONTRIBUTING.md) and [Engineering Principles](ENGINEERING_PRINCIPLES.md) |
 | Understand the architecture | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | [System Map](docs/Architecture/OpenSorSe_System_Map.md) and [Architecture Library](docs/Architecture/README.md) |

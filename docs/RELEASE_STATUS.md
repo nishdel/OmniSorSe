@@ -12,27 +12,26 @@ complete. It is not the product roadmap or the concise version history.
   planned, research, and backlog work.
 - Use [Changelog](CHANGELOG.md) for detailed user-visible changes.
 
-Repository history places the released lineage through v2.4.0 in `main`.
-GitHub `main` now also contains the linear v2.5-v2.12 candidate history and the
-validated engineering system through an explicit history-preserving source
-integration. v2.4.0 remains the latest stable release. The exact-source
-v2.12.0-rc Windows and macOS packages were published as a GitHub prerelease
-from tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`.
-The current source candidate is 2.13.0-rc; it has not yet been tagged or
-published. Manual/real-world, signing, notarization, and GA gates remain open.
+Repository history places the stable released lineage through v2.4.0 in
+`main`. GitHub `main` also contains the linear v2.5-v2.12 candidate history and
+the v2.13 Product Clarity & Workflow integration. v2.4.0 remains the latest
+stable release. v2.13.0-rc is the current exact-source GitHub prerelease;
+v2.12.0-rc remains the previous prerelease baseline. Manual/real-world,
+signing, notarization, and GA gates remain open.
 
 ## Current release and source
 
 - **Latest stable release:** v2.4.0 (tagged and packaged).
-- **Published GitHub source:** v2.12.0-rc is tagged at exact `main` commit
-  `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`.
-- **Current source candidate:** 2.13.0-rc Product Clarity & Workflow; not yet
-  tagged, packaged, or published.
-- **Current published prerelease:** v2.12.0-rc exact-source packages are
+- **Current source/prerelease:** 2.13.0-rc Product Clarity & Workflow is tagged
+  and packaged from exact `main`; the release page owns the immutable commit
+  and final asset evidence.
+- **Current published prerelease:** v2.13.0-rc exact-source packages are
   available as a publisher-unsigned GitHub prerelease for final manual
   validation; macOS packages are not Apple Developer ID-signed and are
   unnotarized. Toolchain-provided ad-hoc signatures do not identify or
   authenticate a publisher.
+- **Previous prerelease:** v2.12.0-rc remains available from exact commit
+  `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac` as historical RC evidence.
 - **Implemented behavior authority:** [Current State](CURRENT-STATE.md).
 - **Readiness evidence authority:** this document.
 
@@ -152,7 +151,7 @@ real-filesystem validation remain manual.
 | v2.4 OmniSorSe Transition & Explorer Foundation | Released as v2.4.0 from `v2.4-omnisorse-transition` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,671 tests passed in each configuration with zero failures/skips. Genuine Windows published-v2.3 profile reuse and installer transition, external two-process protocol lifecycle/security, four-runtime compile, exact-main, and native packaging gates passed. Broad interactive accessibility and native Linux/macOS protocol execution are not claimed. | Active OmniSorSe branding with compatibility-in-place legacy profiles/schema 5 and a dormant authenticated/source-scoped/bounded/read-only Explorer Protocol v1 for the future optional OmniExplorer. |
 | v2.11 Supported Runtime & Platform Readiness | Published from GitHub `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
 | v2.12 Trusted Relationships & Context | Published as the `v2.12.0-rc` GitHub prerelease from exact tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; not stable/GA | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests at the original publication commit. After the first published-main run exposed three macOS portability/fixture failures, correction commit `d81f154` and exact-main merge `542e14a` passed the full four-host matrix. Later reconciliation/navigation commit `1cf1910` passed 1,870 Debug and Release tests locally; exact-main merge `3bb3919`, report-only commit `ffc29ed`, and exact-main baseline `d682997` each passed the complete hosted matrix. The exact-source `4dd27d6` package workflow validated the published six-file bundle, Windows scripted installer lifecycle/data preservation, and native macOS package smoke. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or broader native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
-| v2.13 Product Clarity & Workflow | Current 2.13.0-rc source candidate; not tagged, packaged, published, or stable/GA | SDK 10.0.400 local qualification on the implementation worktree passed zero-warning Debug/Release builds and 1,877/1,877 tests in each configuration with no skips; focused Search relevance (1), performance regression (16), and repository policy (14); formatting/style/analyzers; AXAML parsing; 18-project vulnerability audit; diff checks; and native `win-x64` self-contained publish/smoke. Hosted four-platform, exact-main, complete native-package, public-asset, and interactive evidence remain release gates and must be recorded before publication. See the [v2.13 manual checklist](MANUAL_TESTING_v2.13.md). | Restores Scan → Review → Organize hierarchy, progressively discloses Search/technical controls, keeps optional AI visible without enabling it, clarifies Change Plans/duplicates/Smart Tags/relationships, adds consistent accessible status presentation and relationship-authority confirmations, and corrects recent indexing throughput/ETA calculation. |
+| v2.13 Product Clarity & Workflow | Current `v2.13.0-rc` GitHub prerelease; not stable/GA | SDK 10.0.400 local qualification passed zero-warning Debug/Release builds and 1,877/1,877 tests in each configuration with no skips; focused Search relevance (1), performance regression (16), and repository policy (14); formatting/style/analyzers; AXAML parsing; 18-project vulnerability audit; diff checks; and native `win-x64` self-contained publish/smoke. PR #47 and its first exact-main merge passed the complete four-host matrix. The first otherwise-valid package bundle was withheld because independent review found a stale embedded v2.12 installation guide; current public assets are rebuilt from the corrected exact-main commit and the GitHub prerelease owns their final package/tag/checksum evidence. The [v2.13 manual checklist](MANUAL_TESTING_v2.13.md) remains unchecked. | Restores Scan → Review → Organize hierarchy, progressively discloses Search/technical controls, keeps optional AI visible without enabling it, clarifies Change Plans/duplicates/Smart Tags/relationships, adds consistent accessible status presentation and relationship-authority confirmations, and corrects recent indexing throughput/ETA calculation. |
 
 ## Release/readiness boundary for current source
 
@@ -419,35 +418,30 @@ state are unchanged. See the
 
 ## Current prerelease identity
 
-- Published product version: `2.12.0-rc`
-- Annotated tag and GitHub prerelease: [`v2.12.0-rc`](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc)
-- Exact packaged source commit: `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`
+- Published product version: `2.13.0-rc`
+- Annotated tag and GitHub prerelease: [`v2.13.0-rc`](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc)
+- Exact packaged source commit: owned consistently by the annotated tag,
+  release target, embedded build manifest, SBOM, and package validation record
 - Package set: Windows x64 portable ZIP and per-user installer, macOS Intel and
   Apple Silicon DMGs, CycloneDX SBOM, and SHA-256 manifest
 - Trust state: Windows unsigned; macOS publisher-unsigned and unnotarized
   (toolchain-provided ad-hoc signatures do not authenticate a publisher)
-- Purpose: final real-world/manual validation before v2.12.0 GA
+- Purpose: final real-world/manual validation before v2.13.0 GA
 - Publication source: the exact `main` commit recorded by the tag, release,
   build manifests, SBOM, and final packaging workflow
 
-## Next source candidate identity
+## Previous prerelease identity
 
-- Product/source version: `2.13.0-rc`
-- Intended release class if all candidate gates pass: GitHub prerelease, not
+- Product/source version: `2.12.0-rc`
+- Annotated tag and GitHub prerelease: [`v2.12.0-rc`](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc)
+- Exact packaged source commit: `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`
+- Status: retained as historical prerelease evidence; not current and not
   stable/GA
-- Current state: implementation and local validation in progress; no tag or
-  release exists
-- Required before publication: exact-main hosted matrix, exact-source native
-  packaging, provenance/checksum/SBOM/installer validation, and an explicit
-  evidence review
-- Manual boundary: interactive Scan → Review → Organize, optional AI, Search
-  resizing/scrolling, Duplicates, Smart Tags, Related Files, graph diagnostics,
-  Settings routing, keyboard/screen-reader, and DPI checks remain unclaimed
 
 ## Default source identity
 
 - Local and remote default branch: `main`
-- Current source candidate: `v2.13.0-rc`
+- Current source/prerelease: `v2.13.0-rc`
 - Remote branch refs: `main` and v2.5-v2.12 exactly match their local tips
 - Original publication fresh-clone evidence at `cc6c331`: clean default-branch
   checkout, no-cache restore, zero-warning Release build, and 1,861/1,861
@@ -459,9 +453,16 @@ state are unchanged. See the
   [run 32490622011](https://github.com/nishdel/OmniSorSe/actions/runs/32490622011)
   and exact-source native
   [run 32492043785](https://github.com/nishdel/OmniSorSe/actions/runs/32492043785)
-- Release boundary: v2.4.0 remains the latest stable release; v2.12.0-rc is the
-  current published prerelease; v2.13.0-rc is source-only until its exact
-  candidate gates pass
+- v2.13 implementation PR: complete four-host
+  [run 33890703737](https://github.com/nishdel/OmniSorSe/actions/runs/33890703737)
+  and first exact-main
+  [run 33893063679](https://github.com/nishdel/OmniSorSe/actions/runs/33893063679)
+- Withheld pre-publication package evidence:
+  [run 33895004016](https://github.com/nishdel/OmniSorSe/actions/runs/33895004016)
+  passed automation but its assets were discarded after the embedded
+  installation-version mismatch was found; no tag/release used those files
+- Release boundary: v2.4.0 remains the latest stable release; v2.13.0-rc is the
+  current published prerelease; v2.12.0-rc is the previous prerelease
 
 Release branches normally use `v<version>-<primary-feature>`, as demonstrated
 by v1.2-v2.0. Historical branch names are retained as created: v1.1 used
