@@ -28,9 +28,9 @@ public sealed class AboutViewModelTests
         Assert.StartsWith($"{viewModel.Version}+", informationalVersion, StringComparison.Ordinal);
         Assert.Contains(ApplicationVersionInfo.SourceRevision, viewModel.Provenance, StringComparison.Ordinal);
         Assert.Equal("MIT License", viewModel.License);
-        Assert.Equal("https://github.com/nishdel/OpenSorSe", viewModel.RepositoryAddress);
+        Assert.Equal("https://github.com/nishdel/OmniSorSe", viewModel.RepositoryAddress);
         Assert.Equal(
-            "https://github.com/nishdel/OpenSorSe/tree/main/docs",
+            "https://github.com/nishdel/OmniSorSe/tree/main/docs",
             viewModel.DocumentationAddress);
         Assert.NotEmpty(viewModel.Acknowledgements);
     }

@@ -27,13 +27,14 @@ separately recorded and validated. Release-note lookup also uses the numeric
 core so an RC embeds the reviewed notes for its intended release.
 
 Prerelease packages contain `VALIDATION_BUILD.md`, which identifies the exact
-source commit and states that the unsigned/unnotarized build is for validation,
-not a published release. The retained AppId, install directory, and profile are
-required for genuine upgrade testing, so prerelease installers show that notice
-before installation and warn that opening the build can migrate retained state.
-Use a disposable machine/profile or make a reviewed backup. Producing or
-downloading this temporary bundle does not change Current State, create a tag,
-publish packages, or create a GitHub Release.
+source commit and states that the unsigned/unnotarized build is not a stable or
+GA release and is intended for final real-world/manual validation. The retained
+AppId, install directory, and profile are required for genuine upgrade testing,
+so prerelease installers show that notice before installation and warn that
+opening the build can migrate retained state. Use a disposable machine/profile
+or make a reviewed backup. Producing or downloading the Actions bundle alone
+does not create a tag, publish packages, or create a GitHub Release; those remain
+explicit reviewed publication steps.
 
 ## Reproducible entry points
 

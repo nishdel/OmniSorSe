@@ -33,7 +33,7 @@ collections, and the Knowledge Graph do not authorize file changes.
 ## Install
 
 Download artifacts only from the official
-[v2.0.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.0.0).
+[v2.0.0 GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.0.0).
 
 ### Windows x64
 
@@ -149,7 +149,7 @@ releases.
 
 ## Report a problem
 
-Use the [GitHub issue tracker](https://github.com/nishdel/OpenSorSe/issues).
+Use the [GitHub issue tracker](https://github.com/nishdel/OmniSorSe/issues).
 Include the exact version, operating system, operation, expected and observed
 result, and reviewed redacted diagnostics where useful. Never attach private
 documents, full index databases, raw OCR/document text, secrets, tokens, or an

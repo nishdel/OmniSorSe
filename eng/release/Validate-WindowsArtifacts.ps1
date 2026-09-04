@@ -50,6 +50,9 @@ if (-not $PortableOnly) {
         $installerVersionInfo.ProductPrivatePart -ne 0) {
         throw "Installer version metadata is inconsistent: file '$installerFileVersion', product '$installerProductVersion'."
     }
+    if ((Get-AuthenticodeSignature -LiteralPath $installer).Status.ToString() -ne 'NotSigned') {
+        throw 'The Windows installer is unexpectedly Authenticode-signed.'
+    }
 }
 
 $existingInstallation = Get-ChildItem -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue |
@@ -77,6 +80,9 @@ Expand-Archive -LiteralPath $portableArchive -DestinationPath $portableRoot
 $portableExecutable = Join-Path $portableRoot 'OmniSorSe.exe'
 if (-not (Test-Path -LiteralPath $portableExecutable -PathType Leaf)) {
     throw 'The Windows portable archive does not contain OmniSorSe.exe at its root.'
+}
+if ((Get-AuthenticodeSignature -LiteralPath $portableExecutable).Status.ToString() -ne 'NotSigned') {
+    throw 'The Windows portable executable is unexpectedly Authenticode-signed.'
 }
 $versionInfo = (Get-Item -LiteralPath $portableExecutable).VersionInfo
 if ($versionInfo.FileVersion -ne $fileVersion -or $versionInfo.ProductVersion -notlike "$Version*") {
@@ -106,7 +112,8 @@ if ($Version -ne $baseVersion) {
     $validationNotice = Get-Content -Raw -LiteralPath $validationNoticePath
     if ($validationNotice -notlike "*OmniSorSe $Version validation build*" -or
         $validationNotice -notlike "*$SourceRevision*" -or
-        $validationNotice -notlike '*not a published release*' -or
+        $validationNotice -notlike '*not a stable or GA release*' -or
+        $validationNotice -notlike '*final real-world and manual validation*' -or
         $validationNotice -notlike '*unsigned*' -or
         $validationNotice -notlike '*disposable machine/profile*' -or
         $validationNotice -notlike '*can replace an existing OmniSorSe installation*' -or

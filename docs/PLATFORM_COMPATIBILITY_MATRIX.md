@@ -2,10 +2,10 @@
 
 **Document type:** Living platform support and evidence matrix
 
-**Current source:** unreleased OmniSorSe v2.12 candidate on the v2.5-v2.11 RC stack;
-v2.4.0 remains the latest published release
+**Current source:** OmniSorSe 2.12.0-rc on the v2.5-v2.11 RC stack;
+v2.4.0 remains the latest stable release
 
-**Last reviewed:** 2026-08-17
+**Last reviewed:** 2026-09-04
 
 OmniSorSe is a Windows-first desktop application with a conservative Linux x64
 source-build preview. v2.0.0 added native Intel/Apple Silicon macOS packages and
@@ -26,18 +26,18 @@ filesystem validation.
 Framework portability, target compilation, native CI, desktop startup, and safe
 file mutation are separate claims.
 
-## v2.11 evidence ledger
+## Current RC evidence ledger
 
-The v2.11 source targets .NET 10 LTS. Evidence must be read by column; a build
+The 2.12.0-rc source targets .NET 10. Evidence must be read by column; a build
 does not imply a native launch, and a package smoke does not imply broad desktop
 or filesystem validation.
 
 | Platform | Compiles/publishes | Full automated suite | Native bounded smoke | Package | Installer lifecycle | Mutation | Signing trust |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Windows x64 | Locally and in CI | Locally; CI configured | Locally/package workflow | Self-contained ZIP | Per-user Inno validation path; manual running-app/upgrade gate remains | Existing supported Change Plan boundary | Unsigned unless exact candidate signatures are recorded |
-| macOS x64 | Cross-target locally; native CI configured | Native CI configured | Native package workflow configured; no local-Windows execution claim | `.app`/DMG workflow | Copy-to-Applications/manual replacement | Disabled/conservative | Unsigned/unnotarized unless exact candidate evidence is recorded |
-| macOS arm64 | Cross-target locally; native CI configured | Native CI configured | Native package workflow configured; no local-Windows execution claim | `.app`/DMG workflow | Copy-to-Applications/manual replacement | Disabled/conservative | Unsigned/unnotarized unless exact candidate evidence is recorded |
-| Linux x64 | Cross-target locally; native CI configured | Native CI configured | Source-build smoke configured; no local-Windows execution claim | Publish output only | None | Existing preview boundary; no expansion in v2.11 | Not applicable—no released Linux package |
+| Windows x64 | Locally and in CI | Exact-main hosted pass | Native exact-source package pass | Self-contained RC ZIP | Scripted per-user install/start/stop/uninstall and data preservation passed; manual wizard/SmartScreen/running-app/upgrade gates remain | Existing supported Change Plan boundary | Verified unsigned |
+| macOS x64 | Cross-target locally; native CI | Exact-main hosted pass | Native DMG mount/composition smoke passed | RC `.app`/DMG | Copy-to-Applications/manual replacement | Disabled/conservative | Verified unsigned/unnotarized |
+| macOS arm64 | Cross-target locally; native CI | Exact-main hosted pass | Native DMG mount/composition smoke passed | RC `.app`/DMG | Copy-to-Applications/manual replacement | Disabled/conservative | Verified unsigned/unnotarized |
+| Linux x64 | Cross-target locally; native CI | Exact-main hosted pass | Source-build smoke passed; no Windows-host native claim | Publish output only | None | Existing preview boundary; no expansion in v2.11 | Not applicable—no released Linux package |
 
 Hosted workflow configuration becomes evidence only after an exact run result is
 reviewed and linked. Native/manual observations belong in the
@@ -67,6 +67,13 @@ reviewed and linked. Native/manual observations belong in the
   builds/inspects Windows and both native macOS packages. Exact evidence belongs
   in the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md); no stronger
   interactive claim follows from automation alone.
+- Exact-main baseline `d682997` passed the complete Windows, Ubuntu, macOS Intel,
+  and macOS Apple Silicon matrix in
+  [run 32490622011](https://github.com/nishdel/OmniSorSe/actions/runs/32490622011).
+  Its exact-source native package set passed Windows installer lifecycle and
+  native macOS DMG smoke in
+  [run 32492043785](https://github.com/nishdel/OmniSorSe/actions/runs/32492043785).
+  Release-preparation changes require fresh exact-main runs before publication.
 
 ## Current support matrix
 
@@ -95,7 +102,7 @@ reviewed and linked. Native/manual observations belong in the
 | Open/reveal with file manager | Supported | Preview / manual verification pending | Unavailable | Exact paths use the platform desktop association API; no constructed shell command is used. |
 | Application data locations | Supported | Preview | Preview | Windows preserves LocalAppData; Linux uses XDG; macOS uses Application Support/Caches/Logs. Exact current paths are exposed in Platform Diagnostics. |
 | Explorer Protocol v1 | Native Windows named-pipe round trip validated | Cross-target compilation only | Cross-target compilation only | On-demand current-user local transport with no TCP listener. Native Linux/macOS protocol execution is not claimed. |
-| Installer/current package | Supported, unsigned | Unavailable | Preview, unsigned/unnotarized | OmniSorSe v2.4.0 provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs while retaining installer/bundle/profile compatibility. Linux remains source build only. |
+| Installer/current package | Supported, unsigned RC | Unavailable | Preview, unsigned/unnotarized RC | OmniSorSe v2.12.0-rc provides Windows x64 installer/portable ZIP and native Intel/Apple Silicon DMGs while retaining installer/bundle/profile compatibility. v2.4.0 remains latest stable; Linux remains source build only. |
 
 ## Filesystem limitations
 

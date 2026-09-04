@@ -64,10 +64,19 @@ if [[ "$version" != "$base_version" ]]; then
   test -f "$validation_notice"
   grep -Fq "OmniSorSe $version validation build" "$validation_notice"
   grep -Fq "$source_revision" "$validation_notice"
-  grep -Fq 'not a published release' "$validation_notice"
+  grep -Fq 'not a stable or GA release' "$validation_notice"
+  grep -Fq 'final real-world and manual validation' "$validation_notice"
   grep -Fq 'unsigned and unnotarized' "$validation_notice"
   grep -Fq 'disposable machine/profile' "$validation_notice"
   grep -Fq 'migrate the retained OpenSorSe profile and schema' "$validation_notice"
+fi
+if codesign -dv --verbose=4 "$app" >/dev/null 2>&1 || codesign -dv --verbose=4 "$dmg" >/dev/null 2>&1; then
+  echo 'The macOS prerelease package is unexpectedly code-signed.' >&2
+  exit 1
+fi
+if xcrun stapler validate "$app" >/dev/null 2>&1 || xcrun stapler validate "$dmg" >/dev/null 2>&1; then
+  echo 'The macOS prerelease package is unexpectedly notarized or stapled.' >&2
+  exit 1
 fi
 file "$executable" | grep -q "$architecture"
 find "$app/Contents/MacOS" -type f -name 'libe_sqlite3.dylib' | grep -q .

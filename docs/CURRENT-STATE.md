@@ -17,8 +17,9 @@ historical release records.
 | Fact | Current truth | Evidence in the repository |
 | --- | --- | --- |
 | Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` |
-| Latest published release | **v2.4.0**. Later version lines in this repository are implementation candidates, not published releases. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
-| Current source line | **v2.12.0-rc**, Trusted Relationships & Context, built on the linear v2.5-v2.11 candidate stack. The validated source is integrated into and published from GitHub `main`; exact v2.5-v2.12 branch refs are also available remotely. No v2.5-v2.12 release tag, package, or GitHub Release exists. | `Directory.Build.props`; `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`; `docs/RELEASE_STATUS.md` |
+| Latest stable release | **v2.4.0**. The later source line is a release candidate, not a stable/GA release. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
+| Current source line | **v2.12.0-rc**, Trusted Relationships & Context, built on the linear v2.5-v2.11 candidate stack. The validated source is integrated into and published from GitHub `main`; exact v2.5-v2.12 branch refs are also available remotely. | `Directory.Build.props`; `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`; `docs/RELEASE_STATUS.md` |
+| Current prerelease packages | The exact-source-bound **v2.12.0-rc** Windows and macOS package set has completed the automated release workflow and is validated and ready for GitHub prerelease publication. Windows artifacts are unsigned; macOS artifacts are unsigned and unnotarized. The RC is for final real-world/manual validation before v2.12.0 GA. | `.github/workflows/release-packaging.yml`; `eng/release/`; `docs/RELEASE_NOTES_v2.12.0.md`; `docs/RELEASE_STATUS.md` |
 | Runtime | All solution projects target **.NET 10**. `global.json` selects SDK `10.0.400` with latest-feature roll-forward. | `Directory.Build.props`; `global.json`; project files |
 | Durable Search/index schema | `deep-index.db` is **schema 6**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | Explorer boundary | Explorer Protocol is **1.0**. It is local, authenticated, source-scoped, bounded, read-only, and dormant until explicitly requested. | `ExplorerProtocolVersion` in `src/OmniSorSe.ExplorerProtocol/ExplorerProtocolContracts.cs`; `src/OpenSorSe.Application/Explorer/` |
@@ -85,6 +86,13 @@ gates also passed. Pull request #36 and exact-main merge commit `3bb3919` then
 passed the complete Windows, Ubuntu, macOS ARM, and macOS Intel hosted matrix.
 The recorded report-only baseline `ffc29ed` passed that same matrix in
 [run 32410287837](https://github.com/nishdel/OmniSorSe/actions/runs/32410287837).
+Later exact-main baseline `d682997` passed the four-host matrix in
+[run 32490622011](https://github.com/nishdel/OmniSorSe/actions/runs/32490622011),
+and its exact-source native package set passed
+[run 32492043785](https://github.com/nishdel/OmniSorSe/actions/runs/32492043785).
+That package workflow verified Windows install/start/stop/uninstall and data
+preservation, native macOS mount/composition smoke, provenance, runtime and
+version metadata, contents, checksums, and SBOM generation.
 The PR needed two controlled Windows reruns and the report-only baseline needed one
 after different unchanged timing-sensitive tests failed; final attempts passed
 without code, threshold, or workflow changes. This remains validation-
@@ -97,13 +105,14 @@ preserves the original publication and macOS-correction evidence.
 
 The v2.12 manual addendum remains unchecked. Interactive relationship quality,
 desktop accessibility, actual OmniBrille integration, removable-source
-identity, installer lifecycle, and broader native Linux/macOS behavior remain
-outside the recorded confidence boundary. The initial published-main run
+identity, installer UI/SmartScreen/Restart Manager, real v2.4 profile upgrade,
+reinstall behavior, and broader native Linux/macOS behavior remain outside the
+recorded confidence boundary. The initial published-main run
 exposed three macOS test-portability/fixture failures; the correction retained
 the handoff's 128-bit random identity and did not enable production mutation on
 macOS. Follow-up pull-request and exact-main hosted runs passed all four hosts.
 Automated host and package-smoke evidence is not interactive UX, accessibility,
-installer-lifecycle, signing, notarization, or release evidence.
+real-world upgrade, signing, notarization, or stable-release evidence.
 
 Read [Release Status](RELEASE_STATUS.md), the
 [v2.12 implementation record](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md), and the

@@ -8,7 +8,7 @@ unchanged unless a user separately approves a supported Change Plan.
 ## Downloads
 
 Use the assets attached to the official
-[v2.2.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.2.0):
+[v2.2.0 GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.2.0):
 
 - `OpenSorSe-v2.2.0-win-x64-setup.exe` — per-user Windows installer;
 - `OpenSorSe-v2.2.0-win-x64.zip` — self-contained Windows portable package;

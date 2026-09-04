@@ -214,9 +214,10 @@ public sealed partial class RepositoryDocumentationTests
         foreach (var route in new[]
                  {
                      "Current project state",
-                     "Use the latest published release",
+                     "Test the current prerelease",
+                     "Use the latest stable release",
                      "Develop or contribute",
-                     "Understand the current candidate",
+                     "Understand the current prerelease",
                      "Validate or assess readiness",
                      "Research releases or history",
                  })
@@ -225,8 +226,8 @@ public sealed partial class RepositoryDocumentationTests
         }
 
         Assert.Contains("## Current project authorities", index, StringComparison.Ordinal);
-        Assert.Contains("## Latest published release", index, StringComparison.Ordinal);
-        Assert.Contains("## Current unreleased candidate lineage", index, StringComparison.Ordinal);
+        Assert.Contains("## Latest stable release", index, StringComparison.Ordinal);
+        Assert.Contains("## Current prerelease lineage", index, StringComparison.Ordinal);
         Assert.Contains("## Release and implementation records", index, StringComparison.Ordinal);
     }
 
@@ -352,6 +353,8 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("AppId={{3F3BCA7E-38A1-45D3-B068-B22D25BCECF4}", installer, StringComparison.Ordinal);
         Assert.Contains("DefaultDirName={localappdata}\\Programs\\OpenSorSe", installer, StringComparison.Ordinal);
         Assert.Contains("AppName=OmniSorSe", installer, StringComparison.Ordinal);
+        Assert.Contains("AppPublisherURL=https://github.com/nishdel/OmniSorSe", installer, StringComparison.Ordinal);
+        Assert.DoesNotContain("github.com/nishdel/OpenSorSe", installer, StringComparison.Ordinal);
         Assert.Contains("DefaultGroupName=OmniSorSe", installer, StringComparison.Ordinal);
         Assert.Contains("UsePreviousGroup=no", installer, StringComparison.Ordinal);
         Assert.Contains("AppFileVersion", installer, StringComparison.Ordinal);
@@ -361,9 +364,12 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("Installer version metadata is inconsistent", windowsValidation, StringComparison.Ordinal);
         Assert.Contains("$installerVersionInfo.FileVersion.TrimEnd()", windowsValidation, StringComparison.Ordinal);
         Assert.Contains("$installerVersionInfo.ProductVersion.TrimEnd()", windowsValidation, StringComparison.Ordinal);
-        Assert.Contains("not a published release", windowsValidation, StringComparison.Ordinal);
+        Assert.Contains("not a stable or GA release", windowsValidation, StringComparison.Ordinal);
+        Assert.Contains("Get-AuthenticodeSignature", windowsValidation, StringComparison.Ordinal);
         Assert.Contains("CFBundleGetInfoString", macValidation, StringComparison.Ordinal);
-        Assert.Contains("not a published release", macValidation, StringComparison.Ordinal);
+        Assert.Contains("not a stable or GA release", macValidation, StringComparison.Ordinal);
+        Assert.Contains("codesign -dv", macValidation, StringComparison.Ordinal);
+        Assert.Contains("stapler validate", macValidation, StringComparison.Ordinal);
         Assert.Contains("omnisorse:sourceRevision", sbomGeneration, StringComparison.Ordinal);
         Assert.Contains("-ne $SourceRevision", sbomGeneration, StringComparison.Ordinal);
         Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", macPackaging, StringComparison.Ordinal);

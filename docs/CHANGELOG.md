@@ -7,10 +7,11 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
-## Unreleased — OmniSorSe v2.12 Trusted Relationships & Context
+## v2.12.0-rc prerelease — OmniSorSe Trusted Relationships & Context
 
-Implementation branch: `v2.12-trusted-relationships-context`. This work is not
-a published release and builds directly on the committed v2.11 candidate.
+Release source: GitHub `main`, including the history from
+`v2.12-trusted-relationships-context`. This is an unsigned prerelease candidate
+for final real-world/manual validation, not the v2.12.0 stable/GA release.
 
 ### Added and changed
 
