@@ -36,6 +36,6 @@ unchecked until a maintainer performs it on the claimed host.
 
 ## Release evidence
 
-- [ ] About, diagnostics, `.oms-state` manifest, binaries, and local packages agree on 2.12.0 and the reviewed commit.
+- [ ] About, diagnostics, `.oms-state` manifest, binaries, and published packages agree on semantic version 2.12.0-rc, Windows file version 2.12.0.0, and the exact reviewed commit.
 - [ ] Confirm schema remains 6 and Explorer Protocol reports 1.0.
 - [ ] Confirm no automatic rename, move, delete, or Change Plan creation follows from relationship confidence.

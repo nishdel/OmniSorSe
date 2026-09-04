@@ -7,7 +7,7 @@ explainable evidence attached to files that actually exist.
 
 ## Downloads
 
-The official [v2.3.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.3.0)
+The official [v2.3.0 GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.3.0)
 contains:
 
 - `OpenSorSe-v2.3.0-win-x64-setup.exe` — per-user Windows installer;

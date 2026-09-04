@@ -9,7 +9,7 @@ runtime/platform/package work introduced by v2.11.
 ## Windows x64
 
 - [ ] Confirm About, diagnostics, package manifest, file/product version, and
-  installer all show the same v2.11 version and exact commit.
+  installer all show the same candidate version under test and exact commit.
 - [ ] Launch the self-contained portable ZIP on a clean machine without a
   separately installed .NET runtime.
 - [ ] Install per-user, first-launch, close, upgrade from the published v2.4

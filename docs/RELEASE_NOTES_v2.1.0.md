@@ -8,7 +8,7 @@ introduced.
 ## Downloads
 
 Use the assets on the official
-[v2.1.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.1.0):
+[v2.1.0 GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.1.0):
 
 - `OpenSorSe-v2.1.0-win-x64-setup.exe` — per-user Windows installer;
 - `OpenSorSe-v2.1.0-win-x64.zip` — self-contained Windows portable package;

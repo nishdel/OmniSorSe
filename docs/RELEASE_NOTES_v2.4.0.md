@@ -7,7 +7,7 @@ future separately distributed OmniExplorer companion.
 
 ## Downloads
 
-The official [v2.4.0 GitHub Release](https://github.com/nishdel/OpenSorSe/releases/tag/v2.4.0)
+The official [v2.4.0 GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0)
 contains:
 
 - `OmniSorSe-v2.4.0-win-x64-setup.exe` — per-user Windows installer;

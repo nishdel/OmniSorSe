@@ -20,7 +20,8 @@ require a reviewed Change Plan and separate Apply confirmation. Third-party
 plugins are trusted in-process extensions, not a security sandbox.
 
 <p align="center">
-  <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0"><strong>Download v2.4.0</strong></a>
+  <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc"><strong>Download v2.12.0-rc prerelease</strong></a>
+  · <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0">Latest stable: v2.4.0</a>
   · <a href="docs/INSTALLATION.md">Installation</a>
   · <a href="docs/CURRENT-STATE.md">Current source</a>
   · <a href="docs/README.md">Documentation</a>
@@ -52,12 +53,13 @@ plugins are trusted in-process extensions, not a security sandbox.
    have a separate preview and confirmation, recorded history, verification,
    recovery, and Undo.
 
-## Current source and latest release
+## Current source, prerelease, and stable release
 
 | Track | What it is | Start here |
 | --- | --- | --- |
-| **Current source: v2.12 candidate** | GitHub `main` contains the integrated v2.12 Trusted Relationships & Context candidate on .NET 10. It is source-only: not tagged, packaged, or published as a GitHub Release. | [Current State](docs/CURRENT-STATE.md) · [v2.12 record](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) · [Release Status](docs/RELEASE_STATUS.md) |
-| **Latest downloadable release: v2.4.0** | The latest tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
+| **Current source: 2.12.0-rc** | GitHub `main` contains the integrated v2.12 Trusted Relationships & Context release candidate on .NET 10. | [Current State](docs/CURRENT-STATE.md) · [v2.12 record](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) · [Release Status](docs/RELEASE_STATUS.md) |
+| **Current prerelease: v2.12.0-rc** | Exact-source Windows and macOS packages have passed the automated release workflow and are validated and ready for GitHub prerelease publication. They are unsigned; macOS packages are also unnotarized. Manual and real-world validation remains before v2.12.0 GA. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.12.0.md) |
+| **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
 
 The v2.4.0 package keeps established OpenSorSe application-data, schema,
 installer, and bundle identifiers where compatibility requires them. The
@@ -73,17 +75,19 @@ upgrade from creating an empty profile or unnecessary reindex.
 | macOS Apple Silicon | Self-contained DMG | Same support and safety boundary as the Intel package. |
 | Linux x64 | No package; current source build only | Conservative source-build preview; no Linux installer is published. |
 
-Download packages only from the
-[official v2.4.0 release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0)
-and verify the accompanying SHA-256 file. Checksums detect changed bytes but do
-not authenticate an unsigned publisher. See [Installation](docs/INSTALLATION.md)
-for exact filenames, checksum commands, updates, application-data locations,
-and Linux guidance.
+The platform table describes the current v2.12.0-rc package line. Download RC
+packages only from the
+[official v2.12.0-rc prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc)
+and verify the accompanying SHA-256 file and SBOM. Checksums detect changed bytes
+but do not authenticate an unsigned publisher. Users who want the latest stable
+build should use [v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0).
+See [Installation](docs/INSTALLATION.md) for exact filenames, checksum commands,
+upgrade cautions, application-data locations, and Linux guidance.
 
-## Current candidate highlights
+## Current prerelease highlights
 
 The v2.12 source builds on the v2.5–v2.11 candidate lineage. Compared with the
-latest packaged release, current `main` adds or strengthens:
+latest stable release, current `main` adds or strengthens:
 
 - explainable Smart Tags, complete-index facets, and dynamic Saved Views;
 - guided Search-to-Files workflows and reviewed organization previews;
@@ -94,7 +98,7 @@ latest packaged release, current `main` adds or strengthens:
   reconciliation;
 - .NET 10 runtime and package provenance validation.
 
-These are implemented candidate capabilities, not a v2.12 release claim. Read
+These are implemented release-candidate capabilities, not a v2.12.0 GA claim. Read
 [Current State](docs/CURRENT-STATE.md) for the concise implemented boundary and
 [Release Status](docs/RELEASE_STATUS.md) for verified versus still-manual
 evidence.
@@ -141,10 +145,11 @@ intent-based map. The shortest routes are:
 | I want to… | Read first | Then continue with… |
 | --- | --- | --- |
 | Understand the project and current state | [Current State](docs/CURRENT-STATE.md) | [Product Vision](PRODUCT_VISION.md) |
-| Install or use the latest release | [Installation](docs/INSTALLATION.md) | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
+| Install or test the current prerelease | [Installation](docs/INSTALLATION.md) | [v2.12.0-rc Release Notes](docs/RELEASE_NOTES_v2.12.0.md) |
+| Use the latest stable release | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
 | Build or contribute | [Developer Guide](docs/DEVELOPER_GUIDE.md) | [Contributing](CONTRIBUTING.md) and [Engineering Principles](ENGINEERING_PRINCIPLES.md) |
 | Understand the architecture | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | [System Map](docs/Architecture/OpenSorSe_System_Map.md) and [Architecture Library](docs/Architecture/README.md) |
-| Review the current candidate | [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Candidate lineage](docs/README.md#current-unreleased-candidate-lineage) |
+| Review the current prerelease | [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Prerelease lineage](docs/README.md#current-prerelease-lineage) |
 | Check validation or readiness | [Release Status](docs/RELEASE_STATUS.md) | [Platform Compatibility](docs/PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates |
 | Research released or historical work | [Release History](RELEASE_HISTORY.md) | [Changelog](docs/CHANGELOG.md) and [historical records](docs/README.md#release-and-implementation-records) |
 

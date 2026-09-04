@@ -4,42 +4,53 @@
 
 ## Availability
 
-The latest published package is OmniSorSe v2.4.0 from the official
-[GitHub Release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) as:
+The current package line is the OmniSorSe v2.12.0-rc
+[GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc).
+It is intended for final real-world/manual validation before v2.12.0 GA and
+contains:
 
-- a self-contained Windows x64 portable ZIP;
-- a per-user Windows x64 installer;
-- an Intel macOS DMG;
-- an Apple Silicon macOS DMG;
-- one SHA-256 checksum file covering all four packages.
+- `OmniSorSe-v2.12.0-rc-win-x64.zip` — self-contained Windows x64 portable;
+- `OmniSorSe-v2.12.0-rc-win-x64-setup.exe` — per-user Windows x64 installer;
+- `OmniSorSe-v2.12.0-rc-macos-x64.dmg` — Intel macOS;
+- `OmniSorSe-v2.12.0-rc-macos-arm64.dmg` — Apple Silicon macOS;
+- `OmniSorSe-v2.12.0-rc-sbom.cdx.json` — CycloneDX dependency SBOM;
+- `OmniSorSe-v2.12.0-rc-SHA256SUMS.txt` — hashes for the other five files.
 
-No Linux installer is published. Linux x64 remains a source-build preview.
-Do not download packages from unrelated sites. Check [Release Status](RELEASE_STATUS.md)
-and [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) before relying on a package.
+OmniSorSe v2.4.0 remains the
+[latest stable release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0).
+No Linux installer is published; Linux x64 remains a source-build preview. Do
+not download packages from unrelated sites. Read [Release Status](RELEASE_STATUS.md)
+and the [v2.12.0-rc Release Notes](RELEASE_NOTES_v2.12.0.md) before relying on
+the prerelease.
 
-The visible rename deliberately
-continues using the established OpenSorSe application-data directories, schema-5
-database, Windows installer AppId/default install directory, and macOS bundle
-identifier so existing profiles are not orphaned. See the
+The visible rename deliberately continues using established OpenSorSe
+application-data directories, the Windows installer AppId/default install
+directory, and the macOS bundle identifier so existing profiles are not
+orphaned. Current stores migrate through their owned schema paths. See the
 [v2.4 transition design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md).
 
 ## Windows x64 installer
 
-1. Download `OmniSorSe-v2.4.0-win-x64-setup.exe` and the checksum file from the
-   same official release.
-2. Verify the checksum as described below.
-3. Run the installer. The default is a per-user installation below Local
+1. Close any installed OmniSorSe/OpenSorSe process. Back up important retained
+   application state, or use a disposable Windows account/machine.
+2. Download `OmniSorSe-v2.12.0-rc-win-x64-setup.exe` and
+   `OmniSorSe-v2.12.0-rc-SHA256SUMS.txt` from the same official prerelease.
+3. Verify the checksum as described below.
+4. Run the installer. The default is a per-user installation below Local
    AppData, with a Start Menu shortcut and uninstall entry.
-4. Start OmniSorSe and select only folders you intend to analyse.
+5. Review the prerelease notice, start OmniSorSe, and select only folders you
+   intend to analyse.
 
-The installer and executable are unsigned for v2.4.0 unless the release page
-explicitly records otherwise. Windows SmartScreen may warn that the publisher
-is unrecognized. Review the source location and checksum before continuing.
+The retained installer identity means this RC can replace an existing v2.4
+installation, and first launch can migrate the retained OpenSorSe profile and
+schema. The installer and executable are unsigned. Windows SmartScreen may warn
+that the publisher is unrecognized. Review the GitHub source, checksum, and
+embedded `VALIDATION_BUILD.md` notice before continuing.
 
 ## Windows x64 portable
 
-1. Download `OmniSorSe-v2.4.0-win-x64.zip` and the checksum file from the same
-   official release.
+1. Download `OmniSorSe-v2.12.0-rc-win-x64.zip` and the checksum file from the
+   same official prerelease.
 2. Verify the checksum.
 3. Extract the entire ZIP into a writable directory.
 4. Keep all extracted files together and start `OmniSorSe.exe`.
@@ -49,11 +60,11 @@ runtime installation.
 
 ## macOS Intel and Apple Silicon
 
-1. Choose `OmniSorSe-v2.4.0-macos-x64.dmg` for Intel or
-   `OmniSorSe-v2.4.0-macos-arm64.dmg` for Apple Silicon.
+1. Choose `OmniSorSe-v2.12.0-rc-macos-x64.dmg` for Intel or
+   `OmniSorSe-v2.12.0-rc-macos-arm64.dmg` for Apple Silicon.
 2. Verify the checksum, open the DMG, and copy `OmniSorSe.app` to Applications.
-3. The v2.4.0 app is unsigned and unnotarized unless the release page explicitly
-   records otherwise. Gatekeeper may require an explicit reviewed override.
+3. The RC app is unsigned and unnotarized. Gatekeeper may require an explicit
+   reviewed override.
 
 The app bundle and native dependencies are built and smoke-tested on matching
 native GitHub-hosted macOS runners. This is not a claim that broad interactive
@@ -63,14 +74,14 @@ guarantees.
 
 ## Verify SHA-256 checksums
 
-Download `OmniSorSe-v2.4.0-SHA256SUMS.txt` from the same release.
+Download `OmniSorSe-v2.12.0-rc-SHA256SUMS.txt` from the same prerelease.
 
 ```powershell
-(Get-FileHash .\OmniSorSe-v2.4.0-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+(Get-FileHash .\OmniSorSe-v2.12.0-rc-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 
 ```bash
-shasum -a 256 OmniSorSe-v2.4.0-macos-arm64.dmg
+shasum -a 256 OmniSorSe-v2.12.0-rc-macos-arm64.dmg
 ```
 
 Compare the complete value with the named line. A checksum detects changed
@@ -242,17 +253,16 @@ do not copy it into the repository.
 Do not overwrite a running installation. Each store/provider owns its schema,
 migration, newer-version rejection, corruption, and recovery behavior.
 
-Published v2.4.0 Windows/macOS packages are self-contained; users do not install
-a separate runtime. Current v2.12 source builds require the repository-selected
-.NET 10 SDK. Any v2.12 package builds are validation artifacts unless a future
-release page explicitly publishes them. OmniSorSe has no in-app updater. Obtain
-a trusted published package, verify its checksum/signature status and embedded
-source identity, close the app, replace/install it, then review startup health.
+The v2.12.0-rc Windows/macOS packages are self-contained; users do not install a
+separate runtime. Current source builds require the repository-selected .NET 10
+SDK. OmniSorSe has no in-app updater. Obtain the package from the official
+prerelease, verify its checksum/unsigned status and embedded source identity,
+close the app, replace/install it, then review startup health.
 
 ## Uninstall
 
 1. Close OmniSorSe.
-2. For the v2.4 Windows installer, use the OmniSorSe uninstall entry. The
+2. For the current Windows installer, use the OmniSorSe uninstall entry. The
    retained AppId upgrades the previous OpenSorSe entry rather than creating a
    second product. For a portable
    or source build, delete only its extracted/build program directory.
@@ -281,8 +291,8 @@ data is a separate explicit user decision.
 - **Transcription is unavailable:** verify both the user-managed whisper.cpp
   executable and local model paths plus `ffmpeg` for video/container
   preparation. Ordinary Search remains available.
-- **Visual descriptions are unavailable:** no concrete provider ships in
-  v2.4.0; metadata/OCR/Search remain available.
+- **Visual descriptions are unavailable:** no concrete provider ships in the
+  current RC; metadata/OCR/Search remain available.
 - **Search is incomplete:** review Background indexing coverage, exclusions,
   dependencies, failures, quota, pause state, and index availability.
 - **Settings do not persist:** verify the current platform’s application-data

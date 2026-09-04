@@ -74,8 +74,8 @@ public static class BuiltInPluginCatalog
                 [new PluginManifestContribution(contributionId, extensionPoint, contributionName)],
                 capabilities,
                 [],
-                "https://github.com/nishdel/OpenSorSe",
-                "https://github.com/nishdel/OpenSorSe",
+                "https://github.com/nishdel/OmniSorSe",
+                "https://github.com/nishdel/OmniSorSe",
                 true,
                 null),
             factory);

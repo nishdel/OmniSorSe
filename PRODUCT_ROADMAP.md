@@ -22,6 +22,7 @@ For concise dates, test totals, and links to historical evidence, see
 | --- | --- |
 | Completed | The implementation lineage is integrated into `main`. Manual or package caveats remain recorded in the release evidence. |
 | Integrated candidate | Source implementation is in published `main`, but it is not tagged, packaged, or published as a release and applicable gates remain open. |
+| Prerelease candidate | Source is integrated into `main`; exact-source packages passed automated validation and are distributed for final manual validation before GA. |
 | In progress | Source implementation exists outside `main`, or integration work is still open. |
 | Design in progress | An isolated design branch and review package exist, but no runtime implementation is claimed. |
 | Planned concept | A named direction with no implementation branch or commitment. Scope and order may change. |
@@ -30,11 +31,11 @@ For concise dates, test totals, and links to historical evidence, see
 
 ## Completed
 
-`main` contains the released implementation lineage through v2.4.0. GitHub
-`main` also contains the unreleased v2.5-v2.12 candidate lineage after
-the 2026-08-20 source integration and publication. Those milestones are
-integrated candidates because applicable manual/package/release gates remain
-open.
+`main` contains the stable released implementation lineage through v2.4.0.
+GitHub `main` also contains the v2.5-v2.12 candidate lineage after the
+2026-08-20 source integration. That lineage is now the 2.12.0-rc prerelease
+candidate: automated package gates have passed while manual, trust, and GA gates
+remain open.
 
 | Version | Branch | Release title | Merged status |
 | --- | --- | --- | --- |
@@ -424,7 +425,7 @@ primary Search navigation, and clearer privacy wording.
 See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
 [v2.2.0 release notes](docs/RELEASE_NOTES_v2.2.0.md).
 
-## Integrated unreleased candidate lineage
+## Integrated v2.12 prerelease lineage
 
 ### v2.5 — Workflow Completion & Indexing Quality
 
@@ -605,10 +606,11 @@ committed v2.11 release candidate.
 
 **Merged status:** Source integrated into and published from GitHub `main` on
 2026-08-20 after the recorded automated gates. The initial hosted macOS test-
-portability failures were corrected, and the correction-tip and exact-main
-Windows, Ubuntu, macOS ARM, and macOS Intel matrices passed. It remains an
-unreleased candidate with manual, native-interactive, installer, signing,
-package-publication, and release gates still open.
+portability failures were corrected, and later exact-main Windows, Ubuntu,
+macOS ARM, and macOS Intel matrices passed. The 2.12.0-rc exact-source package
+set and scripted installer lifecycle are validated for prerelease publication;
+manual, native-interactive, signing/notarization, and v2.12.0 GA gates remain
+open.
 
 v2.12 extends the existing schema-6 relationship authority rather than adding
 a second graph or clustering system. Independent capped evidence families,

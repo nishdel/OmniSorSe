@@ -83,7 +83,7 @@ Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $applicationDirecto
 if ($Version -ne $baseVersion) {
     [IO.File]::WriteAllText(
         (Join-Path $applicationDirectory 'VALIDATION_BUILD.md'),
-        "# OmniSorSe $Version validation build`n`nThis is an unsigned release-candidate test build from exact source ``$SourceRevision``. It is not a published release. Installing it can replace an existing OmniSorSe installation, and opening it can migrate the retained OpenSorSe profile and schema. Use a disposable machine/profile or make a reviewed backup before manual validation.`n",
+        "# OmniSorSe $Version validation build`n`nThis is an unsigned prerelease build from exact source ``$SourceRevision``. It is not a stable or GA release; it is intended for final real-world and manual validation. Installing it can replace an existing OmniSorSe installation, and opening it can migrate the retained OpenSorSe profile and schema. Use a disposable machine/profile or make a reviewed backup before manual validation.`n",
         [Text.UTF8Encoding]::new($false))
 }
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\OpenSorSe.Desktop\Assets\opensorse-app-icon.ico') -Destination (Join-Path $applicationDirectory 'OmniSorSe.ico')

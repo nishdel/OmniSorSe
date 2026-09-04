@@ -32,10 +32,11 @@ route links to deeper versioned or historical evidence only when it is useful.
 | Intent | Read first | Continue with | Boundary |
 | --- | --- | --- | --- |
 | Current project state | [Repository README](../README.md), then [Current State](CURRENT-STATE.md) | [Product Vision](../PRODUCT_VISION.md) | Current source truth; not a release claim |
-| Use the latest published release | [Installation](INSTALLATION.md) | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | v2.4.0 is the latest tag/package/GitHub Release |
+| Test the current prerelease | [Installation](INSTALLATION.md) | [v2.12.0-rc Release Notes](RELEASE_NOTES_v2.12.0.md) | 2.12.0-rc is current source; exact-source packages are validated for prerelease, not GA |
+| Use the latest stable release | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | [Installation](INSTALLATION.md) | v2.4.0 remains the latest stable release |
 | Develop or contribute | [Developer Guide](DEVELOPER_GUIDE.md) and [Contributing](../CONTRIBUTING.md) | [Repository Structure](REPOSITORY_STRUCTURE.md), [Architecture Library](Architecture/README.md), and [Engineering workflow](engineering/README.md) | Current `main` and scoped engineering policy |
 | Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
-| Understand the current candidate | [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Current unreleased candidate lineage](#current-unreleased-candidate-lineage) | Integrated source; not tagged or packaged |
+| Understand the current prerelease | [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | [Current prerelease lineage](#current-prerelease-lineage) | Integrated 2.12.0-rc source; automated package evidence is separate from manual validation |
 | Validate or assess readiness | [Release Status](RELEASE_STATUS.md) | [Platform Compatibility](PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates | Observed evidence remains separate from unchecked gates |
 | Research releases or history | [Release History](../RELEASE_HISTORY.md) | [Changelog](CHANGELOG.md), [release records](#release-and-implementation-records), and specifications | Historical evidence; not current authority |
 
@@ -62,9 +63,9 @@ needed for the task.
 | [Release History](../RELEASE_HISTORY.md) | Concise branch/date/test/merge history with links to detailed records. | When tracing how the product evolved. | Living historical index |
 | [Release Status](RELEASE_STATUS.md) | Exact current branch, integration, automated/manual validation, package, tag, and publication facts. | Before making a readiness or release claim. | Living and authoritative for current readiness |
 
-## Latest published release
+## Latest stable release
 
-These records describe v2.4.0, the latest downloadable release. They do not
+These records describe v2.4.0, the latest stable release. They do not
 describe every capability currently present on GitHub `main`.
 
 | Document | What it contains | When to read it | Status |
@@ -73,10 +74,11 @@ describe every capability currently present on GitHub `main`.
 | [v2.4 Manual Testing](MANUAL_TESTING_v2.4.md) | Separates genuine Windows profile/installer and external two-process protocol evidence from unchecked accessibility and native-platform scenarios. | During v2.4 review and maintenance. | Current release evidence tracker |
 | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | Downloads, transition/protocol changes, compatibility, trust status, limitations, and validation boundary. | Before installing or publishing v2.4.0. | Current release snapshot |
 
-## Current unreleased candidate lineage
+## Current prerelease lineage
 
-The following records explain the integrated v2.5-v2.12 source lineage. They
-are candidate implementation and validation records, not GitHub Releases.
+The following records explain the integrated v2.5-v2.12 source lineage now
+distributed as the v2.12.0-rc prerelease candidate. The v2.5-v2.11 records are
+not standalone releases; automated RC packaging is not manual/GA validation.
 
 | Document | What it contains | When to read it | Status |
 | --- | --- | --- | --- |
@@ -98,9 +100,9 @@ are candidate implementation and validation records, not GitHub Releases.
 | [v2.11 Supported Runtime & Platform Readiness](SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md) | .NET 10 authority, compatibility findings, package/runtime provenance, support evidence levels, and preserved architecture. | During v2.11 review and release engineering. | Unreleased implementation record |
 | [v2.11 Manual Testing](MANUAL_TESTING_v2.11.md) | Concise runtime/package/platform addendum to the v2.10 master matrix. | During native maintainer sign-off. | Unreleased evidence tracker |
 | [v2.11.0 Release Notes](RELEASE_NOTES_v2.11.0.md) | Runtime migration, provenance changes, support boundaries, and non-goals without claiming publication. | Before reviewing or publishing v2.11.0. | Unreleased candidate snapshot |
-| [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | Evidence families, pair authority, bounded candidates/reanalysis, direct UX, format-2 backup, privacy, and Protocol 1.0 integration. | During v2.12 implementation and review. | Unreleased implementation record |
-| [v2.12 Manual Testing](MANUAL_TESTING_v2.12.md) | Relationship-specific quality, lifecycle, accessibility, scale, and companion gates. | During maintainer sign-off. | Unreleased evidence tracker |
-| [v2.12.0 Release Notes](RELEASE_NOTES_v2.12.0.md) | User-visible relationship changes, preserved architecture, and validation boundary. | Before reviewing or publishing v2.12.0. | Unreleased candidate snapshot |
+| [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | Evidence families, pair authority, bounded candidates/reanalysis, direct UX, format-2 backup, privacy, and Protocol 1.0 integration. | During v2.12 implementation and review. | Current prerelease implementation record |
+| [v2.12 Manual Testing](MANUAL_TESTING_v2.12.md) | Relationship-specific quality, lifecycle, accessibility, scale, and companion gates. | During maintainer sign-off. | Current unchecked prerelease evidence tracker |
+| [v2.12.0-rc Release Notes](RELEASE_NOTES_v2.12.0.md) | Downloads, user-visible relationship changes, trust status, automated evidence, and remaining manual validation. | Before installing or testing v2.12.0-rc. | Current prerelease snapshot |
 
 ## Released, inherited, and supporting documentation
 

@@ -1,6 +1,8 @@
 # OmniSorSe v2.12 Trusted Relationships & Context
 
-**Status:** Unreleased implementation candidate on `v2.12-trusted-relationships-context`.
+**Status:** Current 2.12.0-rc implementation on GitHub `main`, with preserved
+lineage from `v2.12-trusted-relationships-context`. Automated package validation
+is complete; final real-world/manual validation remains before v2.12.0 GA.
 
 v2.12 extends the existing schema-6 relationship authority. It does not add a
 graph database, clustering subsystem, embedding store, AI relationship provider,
