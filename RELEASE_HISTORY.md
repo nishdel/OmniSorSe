@@ -16,6 +16,10 @@ tag for v1.0), not necessarily a public release date. “Tests” records the fi
 automated total stated in repository evidence where available; it is historical
 evidence, not a current-suite comparison.
 
+For verified publication classification and package-bound manual-test drafts, see
+the [release-testing index](docs/release-testing/README.md). Its dated GitHub inventory
+distinguishes public releases from the implementation milestones below.
+
 ## Version overview
 
 | Version | Branch | Date | Summary | Major additions | Tests | Merged status |

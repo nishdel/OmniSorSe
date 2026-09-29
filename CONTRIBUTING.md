@@ -179,9 +179,10 @@ or subjective Search quality. Use the smallest relevant current manual
 checklist with disposable synthetic data.
 
 Record the operating system, architecture, commit, dependencies, locale,
-filesystem/data shape, and observed result. Leave an item unchecked when it was
-not actually performed. A target build is not native execution, and a CI
-workflow definition is not a passing hosted run.
+filesystem/data shape, and observed result in the release issue's single status
+table. Unperformed rows stay No / Not tested; historical checklist files are
+procedure references, not a second results ledger. A target build is not native
+execution, and a CI workflow definition is not a passing hosted run.
 
 ## Documentation
 
@@ -248,3 +249,35 @@ or unchecked release checklist.
 
 See the [Developer Guide](docs/DEVELOPER_GUIDE.md) for a guided first change and
 the [Maintainer Guide](docs/MAINTAINER_GUIDE.md) for release responsibilities.
+
+## Optional local development assistance
+
+OmniLAB / LocalAgentBridge is the preferred worker for suitable substantive
+development tasks when available: bounded repository discovery, analysis,
+test-case drafting, documentation and first-pass review. It remains optional
+and does not become an application dependency or a contributor prerequisite.
+Follow the [agent integration guidance](AGENTS.md#optional-omnilab-development-aid)
+and the selected runtime's documented commands, profiles and direct/workflow
+policy. Keep coordinating runtime and development checkout distinct, preserve
+selected models/configuration, and use existing budgets, evidence handoffs and
+review checkpoints where appropriate. Small tasks can stay direct. Codex defines
+scope and retains supervision, independent verification and final decisions;
+local proposals are review inputs, not correctness guarantees. A task with no
+local contribution still retains this optional development path.
+
+## Manual release-testing issue
+
+During release preparation, prepare or update one release-testing issue from
+[`.github/ISSUE_TEMPLATE/release-manual-testing.md`](.github/ISSUE_TEMPLATE/release-manual-testing.md)
+and the [manual test definitions](docs/MANUAL_RELEASE_TESTING.md). Review affected definitions whenever
+user-visible behavior changes; do not create a new issue for every development
+task. Keep exact candidate/package/source/hash and environment above one status
+table. The issue owns execution results; repository documents own procedures.
+Preserve prior-candidate evidence, identify affected retests, and keep automated
+evidence and owner approvals separate from human acceptance. Unresolved inherited
+requirements need explicit scope decisions, not silent removal. Templates and
+unpublished drafts are preparation only; publishing an issue requires authorization.
+
+
+[Release-testing index and prepared issue bodies](docs/release-testing/README.md)
+separate published stable releases, prereleases and unassigned future candidates.
