@@ -8,12 +8,27 @@ behind these operational requirements and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for version/integration status.
 
 For current failure response use the
-[v2.10 operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md). For release sign-off
-use the deduplicated, entirely unchecked
-[v2.10 master manual matrix](MANUAL_TESTING_v2.10.md) with the
-[v2.11](MANUAL_TESTING_v2.11.md) and [v2.12](MANUAL_TESTING_v2.12.md)
-addenda; historical version checklists remain evidence records rather than the
-current working checklist.
+[v2.10 operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md). Prepare one release
+manual-testing issue before execution using the [short guide](MANUAL_RELEASE_TESTING.md),
+[template](../.github/ISSUE_TEMPLATE/release-manual-testing.md) and
+[verified release index/drafts](release-testing/README.md). The issue owns live
+results; repository documents own test definitions. The
+[coverage map](release-testing/coverage-map.md) preserves the v2.10 master matrix,
+v2.11–v2.13 addenda and earlier requirements without creating another status ledger.
+Update tests when behavior/platform risks change, identify the exact package/hash,
+and retain older candidate/failed evidence before resetting rows for retest.
+Unselected inherited requirements remain unresolved, not implicitly accepted.
+
+Use OmniLAB / LocalAgentBridge by default for suitable substantive development
+work when available. Installation remains optional; the routing policy applies
+whenever it is available and the work is suitable. Follow the
+[OmniLAB / LocalAgentBridge policy](../AGENTS.md#optional-omnilab-development-aid).
+Use the existing installed runtime, routing/profiles, budgets, evidence handoffs
+and review checkpoints when helpful; keep its coordinating environment fixed and
+separate from development edits. Small work need not become a multi-agent run.
+Codex defines scope and owns supervision, independent verification and final
+decisions. Record actual local contributions and limitations; neither local
+output nor runtime availability is a manual-test result or release approval.
 
 ## Release checklist
 

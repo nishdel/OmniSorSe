@@ -74,6 +74,82 @@ Implementation follows resolved product/architecture decisions; contradictory
 source evidence returns to the orchestrator. Independent review must not rely
 only on the implementation agent's summary.
 
+## Optional OmniLAB development aid
+
+Delegate suitable substantive development work to OmniLAB / LocalAgentBridge
+by default when available, including repository discovery,
+bounded analysis, test-case drafting, documentation and first-pass review. It is
+separately installed; optionality applies to installation, not the default routing
+policy. It is not an OmniSorSe runtime dependency or mandatory contributor
+installation. Codex defines scope, supervises, independently verifies source
+evidence and results, and owns final decisions. Local output is contribution and
+evidence for review, never proof of correctness or a human test observation.
+
+Read the selected installation's `README.md`, `CODEX_POLICY.md` and integration
+docs. The [upstream project](https://github.com/nishdel/LocalAgentBridge) documents
+the stdio MCP bridge; newer companion development also documents durable jobs
+in `docs/QUICKSTART.md`, `docs/CONFIGURATION.md` and
+`docs/COMPANION-WORKFLOWS.md`. Development features are not proof of the installed
+version's capabilities. Verify the interpreter, imported module location/version,
+configuration and available CLI/tools. An installed runtime is not necessarily
+an active controller or a bridge connected to this Codex session.
+
+Keep the coordinating runtime/environment fixed while it owns jobs. Use a
+non-editable installation or explicitly hashed source snapshot; edit a separate
+worktree and do not upgrade an active worker/controller. Invoke from outside the
+development checkout so Python cannot accidentally import that checkout.
+For the owner's **existing** installation/configuration (configurable examples):
+
+```powershell
+$labPython = 'C:\Tools\LocalAgentBridge\.venv\Scripts\python.exe'
+$labConfig = 'C:\Tools\LocalAgentBridge\config.toml'
+& $labPython -m localagentbridge --help
+& $labPython -m localagentbridge --config $labConfig codex-config
+codex mcp list
+```
+
+`codex-config` prints registration without editing settings. The documented
+MCP invocation is `python -m localagentbridge --config PATH server`, using that
+verified interpreter; do not invent an `omnilab` executable or assume a checkout
+is the active runtime. For file-path access, use an already authorized `source_root`
+containing this repository. If it is outside `source_root`, supply bounded inline
+excerpts to tools that support them; this grants no repository filesystem access
+and needs no configuration change. Do not silently change personal configuration,
+download models or substitute for existing selected models. Report a concrete limitation and
+continue with Codex when integration, scope, models or usable output is missing.
+Availability as an optional aid does not depend on participation in every task.
+
+The baseline tools are `find_relevant_context`, `summarize_context`, `analyze_code`,
+`analyze_test_output`, `review_diff`, `triage_task` and `second_opinion`. Use only
+what the installed runtime exposes; lexical `use_model=false` may suffice.
+When enabled, use existing skills/advisory roles, model-routing profiles, project
+profiles and workflow policy from `docs/WORKFLOWS.md`, `docs/PROFILES.md` and
+`docs/ADAPTIVE-DELEGATION.md`. Honor shared attempt/time/token budgets, bounded
+source/diff/test evidence handoffs, source freshness and explicit Codex checkpoints.
+Preserve handoff packets and spent budgets across resumes. Workflow checkpoints
+record actual accept/reject/revise/abort decisions, not automatic approval.
+
+Adaptive direct/auto/workflow selection should keep small, scoped work direct
+unless specialization or project-required review justifies a workflow. Do not
+force multiple agents for every small task. The legacy seven tools do not enforce
+project workflow policy; use the workflow task interface when that policy applies.
+Supported workflow CLI actions are `catalog`, `plan`, `start`, `step`, `checkpoint`
+and `status`, with request shapes from the matching installed guide.
+
+Where the installed companion supports it, `companion workflow-submit`,
+`workflow-next`, `workflow-checkpoint` and `workflow-status` reuse that same engine,
+profiles, budgets and evidence. Companion review events and workflow checkpoints
+remain separate; local supervising review uses documented `companion decide --local`
+without an authenticated callback. A single exact-model job does not imply workflow
+policy was enforced. Use existing selected models and documented request schemas.
+Record actual request/model/routing outcomes and what Codex accepted/corrected;
+a gate-only handoff is not a local-model contribution.
+
+For release preparation use the [manual-testing guide](docs/MANUAL_RELEASE_TESTING.md)
+and [release index](docs/release-testing/README.md). Prepare the release issue
+before human execution, update affected definitions when behavior changes,
+and preserve prior package identities/evidence before selecting retests.
+
 ## Completion
 
 Use the conditional Definition of Done in the risk matrix. Substantial runs
