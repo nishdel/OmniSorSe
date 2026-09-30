@@ -252,10 +252,11 @@ the [Maintainer Guide](docs/MAINTAINER_GUIDE.md) for release responsibilities.
 
 ## Optional local development assistance
 
-OmniLAB / LocalAgentBridge is the preferred worker for suitable substantive
+OmniLAB / LocalAgentBridge is the default worker for suitable substantive
 development tasks when available: bounded repository discovery, analysis,
-test-case drafting, documentation and first-pass review. It remains optional
-and does not become an application dependency or a contributor prerequisite.
+test-case drafting, documentation and first-pass review. Installation remains
+optional; this does not make the default routing policy discretionary. OmniLAB
+does not become an application dependency or a contributor prerequisite.
 Follow the [agent integration guidance](AGENTS.md#optional-omnilab-development-aid)
 and the selected runtime's documented commands, profiles and direct/workflow
 policy. Keep coordinating runtime and development checkout distinct, preserve

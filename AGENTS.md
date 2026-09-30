@@ -76,10 +76,11 @@ only on the implementation agent's summary.
 
 ## Optional OmniLAB development aid
 
-OmniLAB / LocalAgentBridge is optional and is the preferred worker for suitable
-substantive development tasks when available, including repository discovery,
+Delegate suitable substantive development work to OmniLAB / LocalAgentBridge
+by default when available, including repository discovery,
 bounded analysis, test-case drafting, documentation and first-pass review. It is
-separately installed, not an OmniSorSe runtime dependency or mandatory contributor
+separately installed; optionality applies to installation, not the default routing
+policy. It is not an OmniSorSe runtime dependency or mandatory contributor
 installation. Codex defines scope, supervises, independently verifies source
 evidence and results, and owns final decisions. Local output is contribution and
 evidence for review, never proof of correctness or a human test observation.

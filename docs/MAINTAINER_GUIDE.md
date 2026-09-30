@@ -19,8 +19,9 @@ Update tests when behavior/platform risks change, identify the exact package/has
 and retain older candidate/failed evidence before resetting rows for retest.
 Unselected inherited requirements remain unresolved, not implicitly accepted.
 
-OmniLAB / LocalAgentBridge remains optional; prefer it for suitable substantive
-development work when available. Follow the
+Use OmniLAB / LocalAgentBridge by default for suitable substantive development
+work when available. Installation remains optional; the routing policy applies
+whenever it is available and the work is suitable. Follow the
 [OmniLAB / LocalAgentBridge policy](../AGENTS.md#optional-omnilab-development-aid).
 Use the existing installed runtime, routing/profiles, budgets, evidence handoffs
 and review checkpoints when helpful; keep its coordinating environment fixed and
