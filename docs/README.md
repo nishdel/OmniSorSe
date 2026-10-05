@@ -4,6 +4,10 @@ This is the authoritative navigation page for repository documentation. It
 explains what each important document contains, when to read it, and whether it
 is living guidance or a historical/version snapshot.
 
+The v3 milestone has an [acceptance map](V3_ACCEPTANCE.md),
+[validation evidence](VALIDATION_v3.0.0.md), [owner report](OWNER_REPORT_v3.0.0.md)
+and [engineering retrospective](engineering/RETROSPECTIVE_v3.0.0.md).
+
 ## Authority rules
 
 When documents overlap, use this order:
@@ -25,6 +29,14 @@ When documents overlap, use this order:
 [Product Roadmap](../PRODUCT_ROADMAP.md) is authoritative for future planning.
 
 ## Start here
+
+For a beginner-friendly tour, read [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md).
+The v3 candidate's [acceptance map](V3_ACCEPTANCE.md),
+[release notes](RELEASE_NOTES_v3.0.0.md), [Organize guide](ORGANIZE.md), and
+[manual checklist](MANUAL_TESTING_v3.0.md) describe the current implementation
+work. Publication status is tracked separately; a candidate branch is not a release.
+Storage location, cache bounds and recovery are explained in
+[Storage management](STORAGE_MANAGEMENT_v3.md).
 
 Choose one route; do not read the repository as a flat document catalog. Each
 route links to deeper versioned or historical evidence only when it is useful.

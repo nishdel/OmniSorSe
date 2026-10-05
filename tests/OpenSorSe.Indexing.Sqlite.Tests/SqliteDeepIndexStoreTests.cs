@@ -15,6 +15,91 @@ public sealed class SqliteDeepIndexStoreTests
 {
     private static readonly DateTimeOffset Epoch = new(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
+    /// <summary>Enabling AI reuses retained extraction, preserves user authority and leaves source bytes and timestamps unchanged.</summary>
+    [Fact]
+    public async Task RetainedEnrichmentPublishesInferenceWithoutRescanOrUserDecisionLoss()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var observation = fixture.Observation("statement.txt");
+        await File.WriteAllTextAsync(observation.FullPath, "Original immutable electricity statement.");
+        var bytes = await File.ReadAllBytesAsync(observation.FullPath);
+        var modified = File.GetLastWriteTimeUtc(observation.FullPath);
+        await QueueAsync(store, fixture.Source(IndexingLevel.Deep), [observation]);
+        await CompleteStandardRunAsync(store, "statement-hash", Classification("theme.finance", "document-type.invoice"));
+        var before = Assert.Single(await store.GetSearchDocumentsAsync(10));
+        await store.AddUserTagAsync(before.FileId, "Keep my choice", Epoch.AddDays(11));
+        await store.SetTagDecisionAsync(before.FileId, "theme.finance", SmartTagDecision.Rejected, Epoch.AddDays(11));
+        await store.SetTagDecisionAsync(before.FileId, "document-type.invoice", SmartTagDecision.Accepted, Epoch.AddDays(11));
+        var decisions = await store.ExportUserAuthorityAsync(100);
+        await store.UpsertSourceAsync(fixture.Source(IndexingLevel.Deep) with { AiEnrichmentEnabled = true });
+
+        Assert.Equal(1, await store.QueueRetainedEnrichmentAsync("source", Epoch.AddDays(12), 3));
+        var work = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(12)));
+        Assert.Equal(IndexingStage.SummaryKeywordsGenerated, work.Stage);
+        Assert.True(work.AiEnrichmentEnabled);
+        Assert.Equal(before.ExtractedText, work.ExtractedText);
+        var inference = IndexingEnrichmentValidator.Parse("""
+            {"summary":"An electricity bill from EnBW.","documentType":"bill","category":"finance",
+             "tags":["electricity","utility"],"topics":["household energy"],"entities":[{"kind":"Organization","name":"EnBW"}]}
+            """, "test-model-v1");
+        await store.SaveStageOutputAsync(work, new IndexingStageOutput
+        {
+            Status = IndexingStageStatus.Complete,
+            ContentIntelligence = inference,
+            Summary = inference.Summary!.Text,
+            Keywords = inference.Keywords,
+        }, IndexingStage.SemanticRepresentationGenerated, Epoch.AddDays(12), TimeSpan.Zero, null);
+
+        var enriched = Assert.Single(await store.GetSearchDocumentsByIdsAsync([before.FileId]));
+        Assert.Equal("bill", enriched.ContentIntelligence?.DocumentType);
+        Assert.Equal(ContentIntelligenceOrigin.AiDerived, enriched.ContentIntelligence?.Origin);
+        Assert.Contains("electricity", enriched.Keywords);
+        var matches = await store.SelectSearchCandidateIdsAsync(new DiscoverySearchRequest("electricity", [], 10));
+        Assert.Contains(before.FileId, matches.FileIds);
+        Assert.Equal(decisions, await store.ExportUserAuthorityAsync(100));
+        Assert.Equal(bytes, await File.ReadAllBytesAsync(observation.FullPath));
+        Assert.Equal(modified, File.GetLastWriteTimeUtc(observation.FullPath));
+    }
+
+    /// <summary>Existing schema-6 libraries retain data and receive a conservative opt-in source policy.</summary>
+    [Fact]
+    public async Task SchemaSixUpgradePreservesRetainedContentAndDefaultsAiOff()
+    {
+        using var fixture = new IndexFixture();
+        await using (var store = await fixture.CreateInitializedStoreAsync())
+        {
+            await QueueAsync(store, fixture.Source(IndexingLevel.Deep), [fixture.Observation("upgrade.txt")]);
+            await CompleteDeepRunAsync(store, "upgrade-hash");
+        }
+
+        CreateDatabase(fixture.DatabasePath, "ALTER TABLE index_sources DROP COLUMN ai_enrichment_enabled; PRAGMA user_version = 6;");
+        await using var migrated = fixture.CreateStore();
+        await migrated.InitializeAsync();
+
+        Assert.Equal(7, ReadUserVersion(fixture.DatabasePath));
+        Assert.False(Assert.Single(await migrated.GetSourcesAsync()).AiEnrichmentEnabled);
+        Assert.Equal("bounded document text", Assert.Single(await migrated.GetSearchDocumentsAsync(10)).ExtractedText);
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));
+    }
+
+    /// <summary>New discoveries inherit their durable source policy and unfinished discovery cannot be replaced by retained work.</summary>
+    [Fact]
+    public async Task NewDiscoveriesRetainSourceAiPolicyAndIncompleteDiscoveryIsProtected()
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        await store.UpsertSourceAsync(fixture.Source(IndexingLevel.Deep) with { AiEnrichmentEnabled = true });
+        var run = await store.BeginRunAsync("source", Epoch);
+        await store.EnqueueDiscoveredFilesAsync(run, [fixture.Observation("new.txt")], "processor", 3);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.QueueRetainedEnrichmentAsync("source", Epoch.AddDays(1), 3));
+        var work = Assert.IsType<IndexingWorkItem>(await store.ClaimNextAsync(Epoch.AddDays(1)));
+        Assert.Equal(IndexingStage.FileDiscovered, work.Stage);
+        Assert.True(work.AiEnrichmentEnabled);
+        Assert.Equal(run, work.RunId);
+    }
+
     /// <summary>Verifies fresh schema initialization and integrity.</summary>
     [Fact]
     public async Task InitializeCreatesVersionedIntegrityCheckedDatabase()
@@ -1028,6 +1113,81 @@ public sealed class SqliteDeepIndexStoreTests
             IndexingStage.SearchIndexUpdated,
             Epoch.AddHours(2));
         Assert.Equal(2, (await store.GetSearchDocumentsAsync(10)).Count);
+    }
+
+    /// <summary>Retention preserves every kind of authored authority while expired derived-only identities are removed.</summary>
+    [Theory]
+    [InlineData("user-assignment")]
+    [InlineData("accepted-assignment")]
+    [InlineData("accepted-decision")]
+    [InlineData("rejected-decision")]
+    [InlineData("pair-decision")]
+    [InlineData("manual-edge")]
+    [InlineData("collection-exclusion")]
+    [InlineData("manual-member")]
+    [InlineData("pinned-collection")]
+    [InlineData("renamed-collection")]
+    public async Task RetentionPreservesAuthoredStateForMissingFiles(string authority)
+    {
+        using var fixture = new IndexFixture();
+        await using var store = await fixture.CreateInitializedStoreAsync();
+        var source = fixture.Source();
+        await QueueAsync(store, source, [fixture.Observation("first.txt", "one"), fixture.Observation("second.txt", "two"), fixture.Observation("derived.txt", "three")]);
+        await CompleteBasicRunAsync(store, "shared");
+        var documents = (await store.GetSearchDocumentsAsync(10)).OrderBy(document => document.FileId, StringComparer.Ordinal).ToArray();
+        var first = documents[0].FileId;
+        var second = documents[1].FileId;
+
+        using (var connection = new SqliteConnection($"Data Source={fixture.DatabasePath};Foreign Keys=True"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.Parameters.AddWithValue("$first", first);
+            command.Parameters.AddWithValue("$second", second);
+            command.CommandText = authority switch
+            {
+                "pair-decision" => "INSERT INTO relationship_pair_overrides(first_file_id,second_file_id,decision,changed_utc_ticks) VALUES($first,$second,2,1);",
+                "manual-edge" => "INSERT INTO index_relationships(id,first_file_id,second_file_id,relationship_type,confidence,algorithm,algorithm_version,created_utc_ticks,validated_utc_ticks,is_manual) VALUES('edge',$first,$second,0,1,'manual','1',1,1,1);",
+                "collection-exclusion" => "INSERT INTO smart_collection_member_overrides(collection_id,file_id,excluded,changed_utc_ticks) VALUES('collection',$first,1,1);",
+                "manual-member" or "pinned-collection" or "renamed-collection" => """
+                    INSERT INTO smart_collections(id,title,description,relationship_summary,context_type,confidence,creation_source,is_pinned,is_user_renamed,created_utc_ticks,updated_utc_ticks)
+                    VALUES('collection','Keep','Authored','',0,1,0,$pinned,$renamed,1,1);
+                    INSERT INTO smart_collection_members(collection_id,file_id,membership_source,added_utc_ticks) VALUES('collection',$first,$manual,1);
+                    """,
+                _ => """
+                    INSERT INTO smart_tag_definitions(tag_id,tag_type,canonical_key,display_name,taxonomy_version,origin,created_utc_ticks,updated_utc_ticks)
+                    VALUES('test-tag',2,'keep','Keep','1',3,1,1);
+                    """ + (authority.EndsWith("decision", StringComparison.Ordinal)
+                        ? "INSERT INTO file_smart_tag_decisions(file_id,tag_id,decision,changed_utc_ticks) VALUES($first,'test-tag',$decision,1);"
+                        : """
+                          INSERT INTO file_smart_tag_assignments(file_id,tag_id,confidence,origin,classifier,classifier_version,taxonomy_version,input_fingerprint,evidence_json,assignment_state,created_utc_ticks,updated_utc_ticks)
+                          VALUES($first,'test-tag',1,$origin,'test','1','1','input','[]',$state,1,1);
+                          """),
+            };
+            command.Parameters.AddWithValue("$pinned", authority == "pinned-collection" ? 1 : 0);
+            command.Parameters.AddWithValue("$renamed", authority == "renamed-collection" ? 1 : 0);
+            command.Parameters.AddWithValue("$manual", authority == "manual-member" ? 1 : 0);
+            command.Parameters.AddWithValue("$decision", authority == "accepted-decision" ? 1 : 2);
+            command.Parameters.AddWithValue("$origin", authority == "user-assignment" ? 3 : 1);
+            command.Parameters.AddWithValue("$state", authority == "user-assignment" ? 0 : 2);
+            command.ExecuteNonQuery();
+        }
+
+        await QueueAsync(store, source, [], Epoch.AddDays(11));
+        await store.MaintainAsync(new DeepIndexingSettings { DeletedFileRetentionDays = 0 }, Epoch.AddDays(12));
+
+        Assert.Equal("1", ReadScalar(fixture.DatabasePath, $"SELECT count(*) FROM index_files WHERE id = '{first}';"));
+        Assert.Equal("0", ReadScalar(fixture.DatabasePath, $"SELECT count(*) FROM index_files WHERE id = '{documents[2].FileId}';"));
+        var authorityTable = authority switch
+        {
+            "pair-decision" => "relationship_pair_overrides",
+            "manual-edge" => "index_relationships",
+            "collection-exclusion" => "smart_collection_member_overrides",
+            "manual-member" or "pinned-collection" or "renamed-collection" => "smart_collection_members",
+            "accepted-decision" or "rejected-decision" => "file_smart_tag_decisions",
+            _ => "file_smart_tag_assignments",
+        };
+        Assert.Equal("1", ReadScalar(fixture.DatabasePath, $"SELECT count(*) FROM {authorityTable};"));
     }
 
     /// <summary>Verifies deleted-record retention and explicit cleanup.</summary>

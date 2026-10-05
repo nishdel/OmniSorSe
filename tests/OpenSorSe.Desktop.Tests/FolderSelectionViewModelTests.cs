@@ -9,6 +9,22 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class FolderSelectionViewModelTests : IDisposable
 {
+    /// <summary>The visible indexing choice enables Search and captures independent folder AI consent.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RequestScan_CapturesExplicitIndexingChoice(bool useAi)
+    {
+        var viewModel = new FolderSelectionViewModel { AiEnrichmentEnabled = useAi };
+        Assert.True(viewModel.AddFolder(_temporaryDirectory));
+        ScanRequest? request = null;
+        viewModel.ScanRequested += (_, value) => request = value;
+        viewModel.RequestScan();
+        Assert.NotNull(request);
+        Assert.True(request.EnableSearchIndex);
+        Assert.Equal(useAi, request.AiEnrichmentEnabled);
+    }
+
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), "OpenSorSe.Tests", Guid.NewGuid().ToString("N"));
 
     /// <summary>

@@ -280,6 +280,8 @@ public sealed record SearchSnippet(
 /// <summary>Contains provider-neutral indexed fields consumed by the ranker.</summary>
 public sealed record SearchCandidateDocument
 {
+    /// <summary>Gets whether this candidate's source requests background AI enrichment.</summary>
+    public bool AiEnrichmentEnabled { get; init; }
     /// <summary>Gets the durable file identifier when supplied by progressive indexing.</summary>
     public string? FileId { get; init; }
 

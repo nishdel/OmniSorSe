@@ -185,12 +185,25 @@ public sealed partial class BackgroundIndexingService :
     }
 
     /// <inheritdoc />
-    public async Task<string> QueueFolderAsync(
+    public Task<string> QueueFolderAsync(
         string rootPath,
         IndexingLevel? level = null,
         bool includeSubfolders = true,
         IReadOnlyList<string>? exclusions = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        QueueFolderCoreAsync(rootPath, null, level, includeSubfolders, exclusions, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<string> QueueFolderWithEnrichmentAsync(
+        string rootPath, bool aiEnrichmentEnabled, IndexingLevel? level = null,
+        bool includeSubfolders = true, IReadOnlyList<string>? exclusions = null,
+        CancellationToken cancellationToken = default) =>
+        QueueFolderCoreAsync(rootPath, aiEnrichmentEnabled, level, includeSubfolders, exclusions, cancellationToken);
+
+    private async Task<string> QueueFolderCoreAsync(
+        string rootPath, bool? aiEnrichmentEnabled, IndexingLevel? level,
+        bool includeSubfolders, IReadOnlyList<string>? exclusions,
+        CancellationToken cancellationToken)
     {
         EnsureInitialized();
         ThrowIfStorageUnavailable();
@@ -207,17 +220,60 @@ public sealed partial class BackgroundIndexingService :
             throw new InvalidOperationException("Background indexing is disabled in Settings.");
         }
 
+        var sources = await _deepIndexStore.GetSourcesAsync(cancellationToken).ConfigureAwait(false);
+        var prior = sources.FirstOrDefault(item => item.Id == CreateSourceId(normalizedRoot));
+        var effectiveAiPolicy = aiEnrichmentEnabled ?? prior?.AiEnrichmentEnabled ?? settings.AiProcessingEnabled;
+        var requestedLevel = level ?? settings.DefaultLevel;
+        if (effectiveAiPolicy)
+        {
+            requestedLevel = IndexingLevel.Deep;
+        }
+        else if (aiEnrichmentEnabled.HasValue && requestedLevel == IndexingLevel.Basic)
+        {
+            requestedLevel = IndexingLevel.Standard;
+        }
         var source = new IndexingSource(
             CreateSourceId(normalizedRoot),
             normalizedRoot,
             Path.GetFileName(normalizedRoot) is { Length: > 0 } name ? name : normalizedRoot,
-            level ?? settings.DefaultLevel,
+            requestedLevel,
             includeSubfolders,
             Enabled: true,
             Priority: 0,
-            (exclusions ?? []).Take(128).ToArray());
+            (exclusions ?? []).Take(128).ToArray())
+        {
+            AiEnrichmentEnabled = effectiveAiPolicy,
+        };
         await _deepIndexStore.UpsertSourceAsync(source, cancellationToken).ConfigureAwait(false);
         return await QueueSourceAsync(source, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> SetSourceAiEnrichmentAsync(string sourceId, bool enabled,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureInitialized();
+        ThrowIfStorageUnavailable();
+        var source = (await _deepIndexStore.GetSourcesAsync(cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault(item => item.Id == sourceId)
+            ?? throw new ArgumentException("The indexing source no longer exists.", nameof(sourceId));
+        if ((await _deepIndexStore.GetResumableRunsAsync(cancellationToken).ConfigureAwait(false))
+            .Any(run => run.Source.Id == sourceId && !run.DiscoveryComplete))
+        {
+            throw new InvalidOperationException("Wait for folder discovery to finish before changing AI enrichment.");
+        }
+        await StopSourceInProcessWorkAsync(sourceId, cancellationToken).ConfigureAwait(false);
+        await _deepIndexStore.UpsertSourceAsync(source with
+        {
+            AiEnrichmentEnabled = enabled,
+            Level = enabled ? IndexingLevel.Deep : source.Level,
+        }, cancellationToken).ConfigureAwait(false);
+        var queued = await _deepIndexStore.QueueRetainedEnrichmentAsync(
+            sourceId, _timeProvider.GetUtcNow(), _configurationService.Current.DeepIndexing.MaximumRetryCount,
+            cancellationToken).ConfigureAwait(false);
+        Signal(Math.Max(1, queued));
+        await PublishProgressAsync(cancellationToken).ConfigureAwait(false);
+        return queued;
     }
 
     /// <inheritdoc />
@@ -865,6 +921,8 @@ public sealed partial class BackgroundIndexingService :
 
         foreach (var (sourceId, watched) in desired)
         {
+            var aiEnabled = existing.FirstOrDefault(item => item.Id == sourceId)?.AiEnrichmentEnabled
+                ?? settings.AiProcessingEnabled;
             var root = _pathSemantics.NormalizeAbsolutePath(watched.FolderPath);
             var exclusions = watched.IgnorePatterns
                 .Concat(watched.IgnoredPaths.Select(path =>
@@ -879,12 +937,15 @@ public sealed partial class BackgroundIndexingService :
                     sourceId,
                     root,
                     watched.DisplayName,
-                    settings.DefaultLevel,
+                    aiEnabled ? IndexingLevel.Deep : settings.DefaultLevel,
                     watched.IncludeSubfolders,
                     Enabled: true,
                     Priority: 100,
                     exclusions,
-                    ManagedByWatchedFolders: true),
+                    ManagedByWatchedFolders: true)
+                {
+                    AiEnrichmentEnabled = aiEnabled,
+                },
                 cancellationToken).ConfigureAwait(false);
         }
     }
@@ -1125,7 +1186,8 @@ public sealed partial class BackgroundIndexingService :
                 !work.SuppressOcr &&
                 !work.SuppressSummary &&
                 !work.SuppressSemantic &&
-                !work.ForceReprocess)
+                !work.ForceReprocess &&
+                !(work.AiEnrichmentEnabled ?? settings.AiProcessingEnabled))
             {
                 var reusable = await _deepIndexStore
                     .GetReusableContentThroughStageAsync(

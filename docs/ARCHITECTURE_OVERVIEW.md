@@ -3,7 +3,19 @@
 This is the authoritative top-level architecture for the OmniSorSe v2.12
 implementation candidate. It extends the released v2.4.0 baseline through the
 linear v2.5-v2.12 candidates while retaining established profile locations.
-The durable Search index is schema 6 and Explorer Protocol remains v1.
+The durable Search index is schema 7 and Explorer Protocol remains v1.
+
+The v3 enrichment path is source file → deterministic extraction/OCR → optional
+local AI → validated provenance-bearing application data → incremental Search and
+relationships. `IndexingSource.AiEnrichmentEnabled` is durable source policy;
+`SetSourceAiEnrichmentAsync` queues retained content without source rediscovery.
+Structural validation never makes inferred content a confirmed fact.
+`ReviewedOrganizationService` owns editable strategy proposals and learned
+preferences; the executor still owns every source-file mutation.
+`ApplicationStorageLocation` selects verified generations under the original
+profile lease, while `ApplicationStorageService` delegates pruning to existing
+stores. The primary database and compatibility records carrying user decisions
+are not disposable caches. See [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md).
 The
 [system map](Architecture/OpenSorSe_System_Map.md) provides the visual
 companion, and the [repository structure guide](REPOSITORY_STRUCTURE.md)
@@ -254,11 +266,11 @@ records this additive input. Unresolved Moderate, Limited, and rejected
 classifications are excluded, and the existing suggestion-to-Change-Plan
 boundary is unchanged. See [Guided Workflows v2.8](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
 
-## Inherited v1.9 relationships and current schema-6 authority
+## Inherited v1.9 relationships and current schema-7 authority
 
 `IRelationshipEngine` compares only bounded retained index projections and
 publishes automatic edges only with actual evidence. `IRelationshipStore`
-isolates provider persistence; the current SQLite implementation is schema 6,
+isolates provider persistence; the current SQLite implementation is schema 7,
 while `IRelationshipService` coordinates durable
 analysis, manual decisions, virtual collection control, privacy, Search
 expansion, diagnostics, and repair. Views and ViewModels do not use SQL or

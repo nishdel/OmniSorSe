@@ -95,6 +95,58 @@ public sealed class SettingsViewModelTests
         Assert.True(viewModel.RestartRequired);
     }
 
+    /// <summary>Pending runtime changes survive editing and reloads until saved values match this session's startup configuration.</summary>
+    [Theory]
+    [InlineData("storage")]
+    [InlineData("logging")]
+    [InlineData("workers")]
+    public async Task RestartRequired_PersistsUntilSavedSettingsMatchStartup(string changedGroup)
+    {
+        var startup = new ApplicationSettings
+        {
+            Storage = new StorageSettings { DirectoryPath = Path.Combine(Path.GetTempPath(), "startup-storage") },
+            Logging = new LoggingSettings { MinimumLevel = LogLevel.Warning },
+            DeepIndexing = new DeepIndexingSettings { MaximumConcurrency = 2 },
+        };
+        var configuration = new TestConfigurationService(settings: startup);
+        using var viewModel = new SettingsViewModel(configuration);
+        switch (changedGroup)
+        {
+            case "storage":
+                viewModel.Draft.StorageDirectoryPath = Path.Combine(Path.GetTempPath(), "next-storage");
+                break;
+            case "logging":
+                viewModel.Draft.MinimumLogLevel = LogLevel.Error;
+                break;
+            case "workers":
+                viewModel.Draft.MaximumIndexingConcurrency = 3;
+                break;
+        }
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.True(viewModel.RestartRequired);
+
+        viewModel.Draft.ShowAdvancedFeatures = true;
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.True(viewModel.RestartRequired);
+        viewModel.Load();
+        Assert.True(viewModel.RestartRequired);
+        viewModel.RestoreDefaultsCommand.Execute(null);
+        Assert.True(viewModel.RestartRequired);
+        viewModel.CancelCommand.Execute(null);
+        Assert.True(viewModel.RestartRequired);
+
+        viewModel.Draft.StorageDirectoryPath = startup.Storage.DirectoryPath;
+        viewModel.Draft.MinimumLogLevel = startup.Logging.MinimumLevel;
+        viewModel.Draft.MaximumIndexingConcurrency = startup.DeepIndexing.MaximumConcurrency;
+        Assert.True(viewModel.RestartRequired);
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.RestartRequired);
+        viewModel.Load();
+        Assert.False(viewModel.RestartRequired);
+    }
+
     /// <summary>Verifies every bounded media setting survives the editable draft round trip.</summary>
     [Fact]
     public void MediaSettings_RoundTripWithoutResettingHiddenResourceLimits()

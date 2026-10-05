@@ -97,6 +97,10 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         {
             return Failure(IndexingFailureCategory.NotFound, "folder-not-found", isRetryable: false);
         }
+        catch (InvalidDataException)
+        {
+            return Permanent("invalid-enrichment-data");
+        }
         catch (IOException)
         {
             return Failure(IndexingFailureCategory.TransientIo, "file-io-failure", isRetryable: true);
@@ -397,10 +401,10 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             string.Join(' ', new[]
             {
                 workItem.ExtractedText,
-                workItem.OcrText,
+                workItem.SuppressOcr ? null : workItem.OcrText,
                 workItem.MediaEvidence?.Transcript,
-                workItem.MediaEvidence?.OcrText,
-                workItem.MediaEvidence?.VisualDescription,
+                workItem.SuppressOcr ? null : workItem.MediaEvidence?.OcrText,
+                workItem.SuppressSummary ? null : workItem.MediaEvidence?.VisualDescription,
                 MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence),
             }.Where(value => !string.IsNullOrWhiteSpace(value))),
             settings.MaximumExtractedTextCharacters + settings.MaximumOcrTextCharacters) ?? string.Empty;
@@ -421,7 +425,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             ? CreateKeywords(Path.GetFileName(workItem.FullPath), text)
             : [];
         string? summary = null;
-        if (settings.AiProcessingEnabled && summaryEnabled)
+        if ((workItem.AiEnrichmentEnabled ?? settings.AiProcessingEnabled) && summaryEnabled && !string.IsNullOrWhiteSpace(text))
         {
             if (_enrichmentProvider is null ||
                 !await _enrichmentProvider.IsAvailableAsync(cancellationToken).ConfigureAwait(false))
@@ -439,6 +443,7 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             var enrichment = await _enrichmentProvider
                 .EnrichAsync(Path.GetFileName(workItem.FullPath), Bound(text, 16_384) ?? string.Empty, cancellationToken)
                 .ConfigureAwait(false);
+            contentIntelligence = enrichment.Intelligence;
             summary = Bound(enrichment.Summary, 2048);
             keywords = enrichment.Keywords
                 .Concat(keywords)
@@ -451,6 +456,15 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
         else if (workItem.Level == IndexingLevel.Deep && summaryEnabled)
         {
             summary = contentIntelligence?.Summary?.Text ?? CreateExtractiveSummary(text);
+        }
+
+        if (!(workItem.AiEnrichmentEnabled ?? settings.AiProcessingEnabled) && summaryEnabled &&
+            workItem.ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived)
+        {
+            // Identical content may already have inference from an opted-in source. Disabling future
+            // computation must not erase catalog knowledge shared with another source or user decisions.
+            contentIntelligence = workItem.ContentIntelligence;
+            summary = contentIntelligence.Summary?.Text;
         }
 
         if (contentIntelligence is not null)
@@ -491,14 +505,17 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
             Path.GetFileName(workItem.FullPath),
             Path.GetFileName(Path.GetDirectoryName(workItem.FullPath)),
             workItem.ExtractedText,
-            workItem.OcrText,
+            workItem.SuppressOcr ? null : workItem.OcrText,
             workItem.MediaEvidence?.Transcript,
-            workItem.MediaEvidence?.OcrText,
-            workItem.MediaEvidence?.VisualDescription,
+            workItem.SuppressOcr ? null : workItem.MediaEvidence?.OcrText,
+            workItem.SuppressSummary ? null : workItem.MediaEvidence?.VisualDescription,
             MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence),
-            workItem.ContentIntelligence?.Summary?.Text,
-            string.Join(' ', workItem.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? []),
-            string.Join(' ', workItem.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? []));
+            workItem.SuppressSummary ? null : workItem.ContentIntelligence?.Summary?.Text,
+            workItem.SuppressSummary ? null : workItem.ContentIntelligence?.DocumentType,
+            workItem.SuppressSummary ? null : workItem.ContentIntelligence?.Category,
+            workItem.SuppressSummary ? null : string.Join(' ', workItem.ContentIntelligence?.Keywords ?? []),
+            workItem.SuppressSummary ? null : string.Join(' ', workItem.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? []),
+            workItem.SuppressSummary ? null : string.Join(' ', workItem.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? []));
         return new IndexingStageOutput
         {
             Status = IndexingStageStatus.Complete,
@@ -540,11 +557,13 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
                 FileName = Path.GetFileName(workItem.FullPath),
                 RelativePath = workItem.RelativePath,
                 ExtractedText = workItem.ExtractedText,
-                OcrText = workItem.OcrText,
+                OcrText = workItem.SuppressOcr ? null : workItem.OcrText,
                 Transcript = workItem.MediaEvidence?.Transcript,
-                MediaOcrText = workItem.MediaEvidence?.OcrText,
+                MediaOcrText = workItem.SuppressOcr ? null : workItem.MediaEvidence?.OcrText,
                 MetadataText = metadataText,
-                ContentIntelligence = workItem.ContentIntelligence,
+                // A deterministic classifier must not relabel model inferences as deterministic evidence.
+                ContentIntelligence = workItem.SuppressSummary || workItem.ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived
+                    ? null : workItem.ContentIntelligence,
                 InputFingerprint = fingerprint,
             },
             cancellationToken).ConfigureAwait(false);
@@ -566,10 +585,10 @@ public sealed class DefaultIndexingStageProcessor : IIndexingStageProcessor, IIn
     {
         var sources = new List<ContentIntelligenceSourceText>(6);
         Add(ContentEvidenceSourceKind.ExtractedText, workItem.ExtractedText);
-        Add(ContentEvidenceSourceKind.OcrText, workItem.OcrText);
+        Add(ContentEvidenceSourceKind.OcrText, workItem.SuppressOcr ? null : workItem.OcrText);
         Add(ContentEvidenceSourceKind.MediaTranscript, workItem.MediaEvidence?.Transcript);
-        Add(ContentEvidenceSourceKind.MediaOcr, workItem.MediaEvidence?.OcrText);
-        Add(ContentEvidenceSourceKind.VisualDescription, workItem.MediaEvidence?.VisualDescription);
+        Add(ContentEvidenceSourceKind.MediaOcr, workItem.SuppressOcr ? null : workItem.MediaEvidence?.OcrText);
+        Add(ContentEvidenceSourceKind.VisualDescription, workItem.SuppressSummary ? null : workItem.MediaEvidence?.VisualDescription);
         Add(ContentEvidenceSourceKind.Metadata, MediaEvidenceText.CreateMetadataText(workItem.MediaEvidence));
         return sources;
 

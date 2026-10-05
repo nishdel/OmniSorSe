@@ -418,9 +418,17 @@ public sealed record OrganizationProposalRow(
     long? SourceLength,
     DateTimeOffset? SourceModifiedAtUtc)
 {
+    public bool IsRejected { get; init; }
+    public bool IsUnchanged { get; init; }
+    public bool UsesAiEvidence { get; init; }
+    public string? RecommendedRelativeDestination { get; init; }
+    public IReadOnlyList<string> Reasons { get; init; } = [];
+    public long? ObservedSourceLength { get; init; }
+    public DateTimeOffset? ObservedSourceModifiedAtUtc { get; init; }
+
     /// <summary>Gets whether this row can become an existing Change Plan action.</summary>
     public bool IsEligible =>
-        Readiness != OrganizationProposalReadiness.CannotPropose &&
+        !IsRejected && !IsUnchanged && Readiness != OrganizationProposalReadiness.CannotPropose &&
         !string.IsNullOrWhiteSpace(TargetPath) &&
         !string.Equals(CurrentPath, TargetPath, ChangePlanFactory.PathComparison);
 }
@@ -449,6 +457,10 @@ public sealed record OrganizationProposalSet(
     bool HasSensitivePathEvidence,
     string Fingerprint)
 {
+    public OrganizationStrategy? Strategy { get; init; }
+    public IReadOnlyList<OrganizationProposalEdit> Edits { get; init; } = [];
+    public bool UseLearnedPreferences { get; init; } = true;
+
     /// <summary>Gets the total existing Change Plan actions represented by the preview.</summary>
     public int ProjectedActionCount => checked(ProjectedFileActionCount + ProjectedDirectoryActionCount);
 
@@ -456,14 +468,31 @@ public sealed record OrganizationProposalSet(
     public bool CanCreateChangePlan =>
         Rows.Count == SelectedFileIds.Count &&
         Rows.Count > 0 &&
-        Rows.All(row => row.IsEligible) &&
+        Rows.Any(row => row.IsEligible) &&
+        Rows.All(row => row.IsEligible || row.IsRejected || row.IsUnchanged) &&
         ProjectedActionCount <= ChangePlanSchema.MaximumActions;
 }
 
 /// <summary>Requests a deterministic preview over one explicit stable-ID snapshot.</summary>
 public sealed record OrganizationPreviewRequest(
     SortingRecipe Recipe,
-    IReadOnlyList<string> SelectedFileIds);
+    IReadOnlyList<string> SelectedFileIds)
+{
+    public OrganizationStrategy? Strategy { get; init; }
+    public IReadOnlyList<OrganizationProposalEdit> Edits { get; init; } = [];
+    public bool UseLearnedPreferences { get; init; } = true;
+}
+
+/// <summary>Chooses how much of the existing hierarchy recommendations retain.</summary>
+public enum OrganizationStrategy
+{
+    Preserve,
+    Improve,
+    Fresh,
+}
+
+/// <summary>Contains user-authored proposal intent only; it never changes the source filesystem.</summary>
+public sealed record OrganizationProposalEdit(string FileId, string? RelativeTargetPath, bool IsRejected = false);
 
 /// <summary>Describes one closed, non-executable product-facing organization token.</summary>
 public sealed record OrganizationRecipeToken(
@@ -610,6 +639,10 @@ public interface IReviewedOrganizationService
         OrganizationProposalSet proposal,
         string sourceContextId,
         CancellationToken cancellationToken);
+
+    /// <summary>Records explicitly reviewed folder edits in the existing bounded local decision history.</summary>
+    Task RememberPreferencesAsync(OrganizationProposalSet proposal, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }
 
 /// <summary>Provides only the bounded durable evidence needed by reviewed organization.</summary>

@@ -9,6 +9,31 @@ namespace OpenSorSe.Desktop.ViewModels;
 /// </summary>
 public sealed class SettingsDraft : ViewModelBase
 {
+    private string? _storageDirectoryPath;
+    private int _maximumCacheSizeMiB = 512;
+    private int _temporaryRetentionDays = 7;
+
+    /// <summary>Gets or sets the next-start storage root; blank uses the default application-data location.</summary>
+    public string? StorageDirectoryPath
+    {
+        get => _storageDirectoryPath;
+        set => SetProperty(ref _storageDirectoryPath, value);
+    }
+
+    /// <summary>Gets or sets the regenerable-cache budget.</summary>
+    public int MaximumCacheSizeMiB
+    {
+        get => _maximumCacheSizeMiB;
+        set => SetProperty(ref _maximumCacheSizeMiB, value);
+    }
+
+    /// <summary>Gets or sets abandoned temporary-file retention.</summary>
+    public int TemporaryRetentionDays
+    {
+        get => _temporaryRetentionDays;
+        set => SetProperty(ref _temporaryRetentionDays, value);
+    }
+
     private bool _fileLoggingEnabled;
     private string? _logDirectoryPath;
     private LogLevel _minimumLogLevel;
@@ -771,6 +796,9 @@ public sealed class SettingsDraft : ViewModelBase
         ArgumentNullException.ThrowIfNull(settings);
         return new SettingsDraft
         {
+            StorageDirectoryPath = settings.Storage.DirectoryPath,
+            MaximumCacheSizeMiB = settings.Storage.MaximumCacheSizeMiB,
+            TemporaryRetentionDays = settings.Storage.TemporaryRetentionDays,
             FileLoggingEnabled = settings.Logging.FileLoggingEnabled,
             LogDirectoryPath = settings.Logging.LogDirectoryPath,
             MinimumLogLevel = settings.Logging.MinimumLevel,
@@ -898,6 +926,12 @@ public sealed class SettingsDraft : ViewModelBase
 
         return new ApplicationSettings
         {
+            Storage = new StorageSettings
+            {
+                DirectoryPath = string.IsNullOrWhiteSpace(StorageDirectoryPath) ? null : StorageDirectoryPath.Trim(),
+                MaximumCacheSizeMiB = MaximumCacheSizeMiB,
+                TemporaryRetentionDays = TemporaryRetentionDays,
+            },
             Features = new FeatureSettings
             {
                 ShowAdvancedFeatures = ShowAdvancedFeatures,

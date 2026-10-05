@@ -1,5 +1,12 @@
 # Release-testing index
 
+**v3 preparation, 2026-10-05:** the next major candidate is `v3.0.0-rc.1`.
+[Live testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) owns its
+human results, all currently Not run. The [v3 checklist](../MANUAL_TESTING_v3.0.md)
+and [frozen preparation draft](3.0.0-rc.1-issue-draft.md) cover the new workflows.
+The exact installer/source/hash will be assigned after release gates. The
+September inventory and historical package observations below remain dated evidence.
+
 Verified **2026-09-29** against the paginated [GitHub Releases API](https://api.github.com/repos/nishdel/OmniSorSe/releases?per_page=100), [tag API](https://api.github.com/repos/nishdel/OmniSorSe/tags?per_page=100), local tags, [Release History](../../RELEASE_HISTORY.md), [Changelog](../CHANGELOG.md) and retained versioned manual/validation reports. Eight non-draft releases were returned: **six stable, two prereleases**. Latest stable is **v2.4.0**; latest published prerelease is **v2.13.0-rc**. Recheck at the next preparation; this is a dated inventory, not a timeless latest-version constant.
 
 | Release | Classification | Source/package identity | Test-record link |
@@ -12,7 +19,7 @@ Verified **2026-09-29** against the paginated [GitHub Releases API](https://api.
 | [v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) | Published stable | `40552b9b2b18`; `OmniSorSe-v2.4.0-win-x64.zip` (+ platforms in draft) | [Planned retrospective](2.4.0-issue-draft.md) |
 | [v2.12.0-rc](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc) | Published prerelease | `4dd27d62fc4e`; `OmniSorSe-v2.12.0-rc-win-x64.zip` (+ platforms in draft) | [Draft](2.12.0-rc-issue-draft.md) |
 | [v2.13.0-rc](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) | Published prerelease | `05f2972f3def`; `OmniSorSe-v2.13.0-rc-win-x64.zip` (+ platforms in draft) | [Live testing issue](https://github.com/nishdel/OmniSorSe/issues/51) · [Frozen draft](2.13.0-rc-issue-draft.md) |
-| Next candidate (version unassigned) | Unpublished preparation; no distinct application build verified | Source/package/hash unavailable; local product tree equals published RC | [Next-candidate draft](next-candidate-issue-draft.md) |
+| v3.0.0-rc.1 | Implementation under final validation; unpublished | Exact release package/hash pending | [Live testing issue](https://github.com/nishdel/OmniSorSe/issues/53) · [Checklist](../MANUAL_TESTING_v3.0.md) |
 
 The worktree HEAD differs from the published tag commit, but both pre-edit trees are `91c2fff21735f52a9288f8a3e809161c2991db91`. A merge commit or a documentation change does not invent an unpublished product version. GitHub `main` resolved to the published RC commit at verification. v0.x, v1.1–v1.9 and v2.5–v2.11 documentation describe implementation milestones; no separate GitHub Releases or tags for them were returned. v1.6's retained maintainer smoke evidence stays attached to that milestone, not a fabricated public release or a later binary.
 

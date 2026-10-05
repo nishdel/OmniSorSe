@@ -300,7 +300,11 @@ public sealed record AiSuggestionDecision(
     string? FinalValue,
     string Provider,
     string Model,
-    DateTimeOffset RecordedAtUtc);
+    DateTimeOffset RecordedAtUtc)
+{
+    /// <summary>Gets an optional opaque indexed-source scope for explicit organization preferences.</summary>
+    public string? OrganizationScope { get; init; }
+}
 
 /// <summary>Provides compact, deterministic preference signals derived from local decision history.</summary>
 public sealed record AiPreferenceSummary(

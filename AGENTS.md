@@ -37,8 +37,10 @@ are historical evidence. Planned work is not implementation.
   relationship, and Smart Collection authority. Preserve user-authored state.
 - `knowledge-graph.db` is rebuildable projection state;
   `knowledge-decisions.db` is non-rebuildable graph-native authority.
-- AI and derived evidence are optional proposals. They do not override user
-  authority or bypass Change Plan review.
+- Optional AI enrichment is automatically incorporated into application-owned
+  Search/relationship data after structural validation, with inference provenance.
+  It never changes source content/embedded metadata or overrides user decisions.
+  AI filesystem proposals still require Change Plan review and explicit approval.
 - Explorer Protocol and OmniBrille access is local, scoped, bounded, on-demand,
   and read-only. Plugins are capability-filtered, not OS-sandboxed.
 - Treat legacy JSON Search/content indexes as compatibility state, not a reason

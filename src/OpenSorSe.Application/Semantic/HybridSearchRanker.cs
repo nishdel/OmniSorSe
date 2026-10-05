@@ -295,7 +295,8 @@ public sealed class HybridSearchRanker : ISearchRanker
                     components,
                     SearchRankingSignalKind.ContentEntity,
                     "content entities",
-                    "textual entity",
+                    candidate.ContentIntelligence?.Entities.Any(item => item.Origin == ContentIntelligenceOrigin.AiDerived) == true
+                        ? "AI-derived entity" : "textual entity",
                     140,
                     ref rankClass);
                 literalScore += AddFieldMatch(
@@ -304,7 +305,8 @@ public sealed class HybridSearchRanker : ISearchRanker
                     components,
                     SearchRankingSignalKind.ContentIntelligenceSummary,
                     "content summary",
-                    "source-grounded summary",
+                    candidate.ContentIntelligence?.Summary?.Origin == ContentIntelligenceOrigin.AiDerived
+                        ? "AI-derived summary" : "Source-grounded summary",
                     85,
                     ref rankClass);
                 literalScore += AddFieldMatch(
@@ -663,7 +665,7 @@ public sealed class HybridSearchRanker : ISearchRanker
 
         if (fields.ContentEntities.Contains(phrase, StringComparison.Ordinal))
         {
-            return ("content entities", "a textual entity");
+            return ("content entities", "a derived entity");
         }
 
         if (fields.ContentTopics.Contains(phrase, StringComparison.Ordinal))
@@ -673,7 +675,7 @@ public sealed class HybridSearchRanker : ISearchRanker
 
         if (fields.ContentIntelligenceSummary.Contains(phrase, StringComparison.Ordinal))
         {
-            return ("content summary", "the source-grounded summary");
+            return ("content summary", "the derived summary");
         }
 
         if (fields.OcrText.Contains(phrase, StringComparison.Ordinal))
@@ -742,8 +744,8 @@ public sealed class HybridSearchRanker : ISearchRanker
             SearchRankingSignalKind.Tag => $"Matched tags: {matched}",
             SearchRankingSignalKind.ExtractedText => "Native text / document text matched",
             SearchRankingSignalKind.ContentTopic => $"Topic match: {matched}",
-            SearchRankingSignalKind.ContentEntity => $"Entity match: {matched}",
-            SearchRankingSignalKind.ContentIntelligenceSummary => "Source-grounded summary matched",
+            SearchRankingSignalKind.ContentEntity => $"{label} matched",
+            SearchRankingSignalKind.ContentIntelligenceSummary => $"{label} matched",
             _ => $"{label} matched",
         };
         return Add(
@@ -1085,9 +1087,14 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
             SearchRankingSignalKind.ContentTopic =>
                 (SearchSnippetSource.ContentTopic, "Derived topic", string.Join(", ", candidate.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? [])),
             SearchRankingSignalKind.ContentEntity =>
-                (SearchSnippetSource.ContentEntity, "Textual entity", string.Join(", ", candidate.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? [])),
+                (SearchSnippetSource.ContentEntity,
+                    candidate.ContentIntelligence?.Entities.Any(item => item.Origin == ContentIntelligenceOrigin.AiDerived) == true
+                        ? "AI-derived entity" : "Textual entity",
+                    string.Join(", ", candidate.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? [])),
             SearchRankingSignalKind.ContentIntelligenceSummary =>
-                (SearchSnippetSource.ContentIntelligenceSummary, "Source-grounded summary", candidate.ContentIntelligence?.Summary?.Text),
+                (SearchSnippetSource.ContentIntelligenceSummary,
+                    candidate.ContentIntelligence?.Summary?.Origin == ContentIntelligenceOrigin.AiDerived
+                        ? "AI-derived summary" : "Source-grounded summary", candidate.ContentIntelligence?.Summary?.Text),
             SearchRankingSignalKind.Summary =>
                 (SearchSnippetSource.Summary, "Summary", candidate.Summary),
             SearchRankingSignalKind.Chunk =>

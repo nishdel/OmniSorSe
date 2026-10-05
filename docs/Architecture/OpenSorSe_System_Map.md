@@ -1,7 +1,7 @@
 # OmniSorSe system map
 
-These five Mermaid diagrams model the current OmniSorSe v2.12 implementation
-candidate. They emphasize authority, persistence, communication, bounded work,
+These Mermaid diagrams model the current OmniSorSe implementation candidate,
+including v3 automatic enrichment and storage relocation. They emphasize authority, persistence, communication, bounded work,
 and the only supported source-file mutation route. Minor helpers and individual
 Views are intentionally omitted.
 
@@ -37,6 +37,8 @@ flowchart TB
     PackageBoundary --> MacPackage["Intel and Apple Silicon disk images"]
     PackageBoundary --> LinuxPublish["Documented framework-dependent Linux publish"]
     Paths --> Profile["ProfileOwnershipLease and run marker"]
+    Profile --> Relocate["Verified copy and atomic storage-location receipt"]
+    Relocate --> ActiveData["Active data/cache generation; original recovery copy retained"]
     Profile --> OneWriter["One current-user writer per profile"]
     Gating --> Approval["Review and explicit approval boundary"]
     Approval ==>|validated and journalled only| Mutation["Rename, same-filesystem move, create directory"]
@@ -208,7 +210,9 @@ flowchart TB
     Extensions -.-> Duplicates
     Extensions -.-> Recipes
     AI -.->|optional request| Ollama
-    AI -->|validated suggestions| PlanAdapters
+    AI -->|filesystem proposals only| PlanAdapters
+    AI -->|validated inference and provenance| EnrichedIndex["Owned durable index; no source writeback"]
+    EnrichedIndex --> EnrichedSearch["Incremental Search and Related Files"]
     Rules -->|proposals| PlanAdapters
     Recipes -->|proposals and provenance| PlanAdapters
     PlanAdapters --> Plan

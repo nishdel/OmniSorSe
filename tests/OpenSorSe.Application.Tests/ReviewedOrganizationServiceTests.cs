@@ -1,6 +1,8 @@
 #pragma warning disable CA2007, CS1591
 
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.AI;
+using OpenSorSe.AI;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Application.Workflows;
@@ -31,6 +33,167 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
         {
             Directory.Delete(_root, recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task Preview_EditsAndRejectionsChangeOnlyProposalAndRetainReasons()
+    {
+        var first = await AddDocumentAsync("file:edit", "edit.pdf");
+        var rejected = await AddDocumentAsync("file:reject", "reject.pdf");
+        var proposal = await Service().PreviewAsync(
+            new OrganizationPreviewRequest(Recipe("{originalName}", "Documents/Bills"), [first.FileId, rejected.FileId])
+            {
+                Strategy = OrganizationStrategy.Fresh,
+                Edits = [new(first.FileId, "Finance/Invoices/renamed.pdf"), new(rejected.FileId, null, true)],
+            }, CancellationToken.None);
+
+        Assert.True(proposal.CanCreateChangePlan);
+        Assert.Equal(1, proposal.ProjectedFileActionCount);
+        Assert.EndsWith(Path.Combine("Finance", "Invoices", "renamed.pdf"), proposal.Rows[0].TargetPath);
+        Assert.Contains(proposal.Rows[0].Reasons, reason => reason.Contains("edited", StringComparison.OrdinalIgnoreCase));
+        Assert.True(proposal.Rows[1].IsRejected);
+        Assert.False(proposal.Rows[1].IsEligible);
+        Assert.Equal("file:edit", await File.ReadAllTextAsync(first.FullPath));
+        Assert.True(File.Exists(rejected.FullPath));
+        Assert.False(Directory.Exists(Path.Combine(_root, "Finance")));
+    }
+
+    [Theory]
+    [InlineData("../escape.pdf")]
+    [InlineData("C:/elsewhere/escape.pdf")]
+    [InlineData("\\\\server\\share\\escape.pdf")]
+    [InlineData("Finance/CON.pdf")]
+    [InlineData("Finance/changed.exe")]
+    public async Task Preview_UnsafeEditedTargetBlocksReview(string target)
+    {
+        var document = await AddDocumentAsync("file:unsafe", "unsafe.pdf");
+        var proposal = await Service().PreviewAsync(
+            new OrganizationPreviewRequest(Recipe("{originalName}", "Documents"), [document.FileId])
+            {
+                Edits = [new(document.FileId, target)],
+            }, CancellationToken.None);
+
+        Assert.False(proposal.CanCreateChangePlan);
+        Assert.Equal(OrganizationProposalReadiness.CannotPropose, Assert.Single(proposal.Rows).Readiness);
+        Assert.True(File.Exists(document.FullPath));
+    }
+
+    [Theory]
+    [InlineData(OrganizationStrategy.Preserve, "Existing")]
+    [InlineData(OrganizationStrategy.Improve, "Existing/Organized")]
+    [InlineData(OrganizationStrategy.Fresh, "Organized")]
+    public async Task Preview_StrategiesKeepOrReplaceExistingHierarchy(OrganizationStrategy strategy, string expected)
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "Existing"));
+        var document = await AddDocumentAsync("file:strategy", Path.Combine("Existing", "file.pdf"));
+        var proposal = await Service().PreviewAsync(
+            new OrganizationPreviewRequest(Recipe("{originalName}_new", "Organized"), [document.FileId])
+            {
+                Strategy = strategy,
+            }, CancellationToken.None);
+
+        var row = Assert.Single(proposal.Rows);
+        Assert.Equal(expected.Replace('/', Path.DirectorySeparatorChar), row.ProposedRelativeDestination);
+        Assert.True(row.IsEligible);
+        Assert.NotEmpty(row.Reasons);
+    }
+
+    [Fact]
+    public async Task CreateChangePlan_LiveSourceChangeInvalidatesEditedPreviewWithoutIndexUpdate()
+    {
+        var document = await AddDocumentAsync("file:live", "live.pdf");
+        var service = Service();
+        var proposal = await service.PreviewAsync(
+            new OrganizationPreviewRequest(Recipe("{originalName}", "Documents"), [document.FileId])
+            {
+                Edits = [new(document.FileId, "Finance/live.pdf")],
+            }, CancellationToken.None);
+        await File.AppendAllTextAsync(document.FullPath, "changed after preview");
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.CreateChangePlanAsync(proposal, "test:edited", CancellationToken.None));
+
+        Assert.Contains("stale", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RememberedEdits_PersistAndGuideOnlyTheirSourceWithoutChangingSourceFiles()
+    {
+        var document = await AddDocumentAsync("file:preference", "bill.pdf");
+        var historyPath = Path.Combine(_root, "decisions.json");
+        var service = Service(new JsonDecisionHistoryStore(historyPath, new LoggingService()));
+        var recipe = Recipe("{originalName}", "Documents/Bills");
+        var proposal = await service.PreviewAsync(new OrganizationPreviewRequest(recipe, [document.FileId])
+        {
+            Strategy = OrganizationStrategy.Fresh,
+            Edits = [new(document.FileId, "Finance/Invoices/bill.pdf")],
+        }, CancellationToken.None);
+        Assert.False(File.Exists(historyPath));
+        await service.RememberPreferencesAsync(proposal, CancellationToken.None);
+
+        var reopened = Service(new JsonDecisionHistoryStore(historyPath, new LoggingService()));
+        var learned = await reopened.PreviewAsync(new OrganizationPreviewRequest(recipe, [document.FileId])
+        {
+            Strategy = OrganizationStrategy.Fresh,
+        }, CancellationToken.None);
+        Assert.EndsWith(Path.Combine("Finance", "Invoices", "bill.pdf"), Assert.Single(learned.Rows).TargetPath);
+        Assert.Contains(learned.Rows[0].Reasons, reason => reason.Contains("preference", StringComparison.OrdinalIgnoreCase));
+
+        _evidence.Sources = [Source("source:different", _root)];
+        _evidence.Documents[0] = document with { SourceId = "source:different" };
+        var unrelated = await reopened.PreviewAsync(new OrganizationPreviewRequest(recipe, [document.FileId]), CancellationToken.None);
+        Assert.EndsWith(Path.Combine("Documents", "Bills", "bill.pdf"), Assert.Single(unrelated.Rows).TargetPath);
+        Assert.Equal("file:preference", await File.ReadAllTextAsync(document.FullPath));
+    }
+
+    [Fact]
+    public async Task ValidatedAiClassification_IsProposalEvidenceWithPendingChangePlanApproval()
+    {
+        var document = await AddDocumentAsync("file:ai", "scan.pdf");
+        _evidence.Documents[0] = document with
+        {
+            ContentIntelligence = new IndexedContentIntelligence
+            {
+                Provider = "ollama-indexing",
+                ProviderVersion = "test:model",
+                ProcessingFingerprint = "test:fingerprint",
+                DocumentType = "Invoice",
+                Category = "Finance",
+            },
+        };
+        var service = Service();
+        var preview = await service.PreviewAsync(new OrganizationPreviewRequest(
+            Recipe("{originalName}", "{theme}/{documentType}", ["theme", "documentType"]), [document.FileId]), CancellationToken.None);
+        var row = Assert.Single(preview.Rows);
+        Assert.True(row.UsesAiEvidence);
+        Assert.Contains(row.Evidence, mapping => mapping.EvidenceSource.Contains("not user-confirmed", StringComparison.Ordinal));
+        var plan = await service.CreateChangePlanAsync(preview, "test:ai-organization", CancellationToken.None);
+        var move = Assert.Single(plan.Actions, action => action.ActionType == ChangeActionType.MoveFile);
+        Assert.Equal(ChangeSuggestionSource.Ai, move.SuggestionSource);
+        Assert.Equal(ChangeApprovalState.Pending, move.ApprovalState);
+        Assert.True(File.Exists(document.FullPath));
+    }
+
+    [Fact]
+    public async Task EditedTargets_CollisionsBlockUntilOneMoveIsRejected()
+    {
+        var first = await AddDocumentAsync("file:first", "first.pdf");
+        var second = await AddDocumentAsync("file:second", "second.pdf");
+        var request = new OrganizationPreviewRequest(Recipe("{originalName}", "Documents"), [first.FileId, second.FileId])
+        {
+            Edits = [new(first.FileId, "Finance/same.pdf"), new(second.FileId, "Finance/same.pdf")],
+        };
+        var service = Service();
+        var collision = await service.PreviewAsync(request, CancellationToken.None);
+        Assert.False(collision.CanCreateChangePlan);
+        Assert.All(collision.Rows, row => Assert.Contains(row.Conflicts, conflict => conflict.Contains("same normalized target", StringComparison.Ordinal)));
+
+        var resolved = await service.PreviewAsync(request with
+        {
+            Edits = [new(first.FileId, "Finance/same.pdf"), new(second.FileId, null, true)],
+        }, CancellationToken.None);
+        Assert.True(resolved.CanCreateChangePlan);
+        Assert.Equal(1, resolved.ProjectedFileActionCount);
     }
 
     [Fact]
@@ -332,7 +495,7 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RecipePlan_ExecutesThroughExistingJournalAndUndoRestoresSource()
+    public async Task EditedRecipePlan_ExecutesThroughExistingJournalAndUndoRestoresSource()
     {
         var document = await AddDocumentAsync("file:undo", "undo.txt");
         var pathSemantics = OperatingSystem.IsWindows()
@@ -351,7 +514,10 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
             new WorkflowTemplateEngine(),
             new ChangePlanFactory(gateway, validator, planStore));
         var preview = await service.PreviewAsync(
-            new OrganizationPreviewRequest(Recipe("{originalName}_reviewed", "Organized"), [document.FileId]),
+            new OrganizationPreviewRequest(Recipe("{originalName}_reviewed", "Organized"), [document.FileId])
+            {
+                Edits = [new(document.FileId, "Custom/undo_edited.txt")],
+            },
             CancellationToken.None);
         var plan = await service.CreateChangePlanAsync(preview, "discovery:undo", CancellationToken.None);
         plan = plan with
@@ -365,15 +531,15 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
         var executed = await executor.ExecuteAsync(plan, "Reviewed organization", null, CancellationToken.None);
         Assert.True(executed.Succeeded, executed.Summary);
         Assert.False(File.Exists(document.FullPath));
-        Assert.True(File.Exists(Path.Combine(_root, "Organized", "undo_reviewed.txt")));
+        Assert.True(File.Exists(Path.Combine(_root, "Custom", "undo_edited.txt")));
 
         var undone = await executor.UndoAsync(executed.Operation.OperationId, null, null, CancellationToken.None);
         Assert.Equal(OperationStatus.Undone, undone.Operation.Status);
         Assert.True(File.Exists(document.FullPath));
-        Assert.False(Directory.Exists(Path.Combine(_root, "Organized")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "Custom")));
     }
 
-    private ReviewedOrganizationService Service()
+    private ReviewedOrganizationService Service(IDecisionHistoryStore? decisions = null)
     {
         var fileSystem = new PhysicalFileSystemGateway();
         return new ReviewedOrganizationService(
@@ -382,7 +548,8 @@ public sealed class ReviewedOrganizationServiceTests : IDisposable
             new ChangePlanFactory(
                 fileSystem,
                 new ChangePlanValidator(fileSystem),
-                new JsonChangePlanStore(Path.Combine(_root, "plans.json"), new LoggingService())));
+                new JsonChangePlanStore(Path.Combine(_root, "plans.json"), new LoggingService())),
+            decisions: decisions);
     }
 
     private async Task<ProgressiveSearchDocument> AddDocumentAsync(

@@ -397,15 +397,15 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("\"version\": \"10.0.400\"", globalJson, StringComparison.Ordinal);
         var buildProperties = XDocument.Load(Path.Combine(RepositoryRoot, "Directory.Build.props"));
         Assert.Equal("net10.0", buildProperties.Descendants("TargetFramework").Single().Value);
-        Assert.Equal("2.13.0-rc", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
-        Assert.Equal("2.13.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
+        Assert.Equal("3.0.0-rc.1", buildProperties.Descendants("OmniSorSeVersion").Single().Value);
+        Assert.Equal("3.0.0.0", buildProperties.Descendants("OmniSorSeFileVersion").Single().Value);
 
         var releaseWorkflow = File.ReadAllText(Path.Combine(
             RepositoryRoot,
             ".github",
             "workflows",
             "release-packaging.yml"));
-        Assert.Contains("default: 2.13.0-rc", releaseWorkflow, StringComparison.Ordinal);
+        Assert.Contains("default: 3.0.0-rc.1", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("global-json-file: global.json", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-WindowsArtifacts.ps1", releaseWorkflow, StringComparison.Ordinal);
         Assert.Contains("Build-MacArtifacts.sh", releaseWorkflow, StringComparison.Ordinal);
@@ -502,7 +502,7 @@ public sealed partial class RepositoryDocumentationTests
             "OpenSorSe.Application",
             "Indexing",
             "DeepIndexingModels.cs"));
-        Assert.Contains("public const int SchemaVersion = 6;", indexModels, StringComparison.Ordinal);
+        Assert.Contains("public const int SchemaVersion = 7;", indexModels, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies every public Extension SDK type remains discoverable through XML documentation.</summary>

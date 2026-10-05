@@ -115,7 +115,7 @@ public static class BuiltInWorkflowLibrary
         Recipe(
             BuiltInWorkflowIds.TrustedClassificationRecipe,
             "Theme and document type",
-            "Uses only accepted or uniquely usable Strong deterministic Theme and Document Type evidence during reviewed organization.",
+            "Uses accepted classifications, Strong deterministic evidence, or validated AI enrichment for reviewed organization.",
             ["originalName", "theme", "documentType"],
             "{originalName}",
             "{theme}/{documentType}",

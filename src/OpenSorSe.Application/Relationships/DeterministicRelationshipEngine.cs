@@ -295,13 +295,15 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
         if (sharedKeywords.Length > 0)
         {
             var display = string.Join(", ", sharedKeywords.Take(3));
+            var aiKeywords = target.ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived ||
+                candidate.ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived;
             scoring.Add(
                 RelationshipEvidenceFamily.FilenameLexical,
                 RelationshipEvidenceKind.Keyword,
                 HashKey(display),
                 $"Shared keyword: {display}",
                 sharedKeywords.Length >= 2 ? 3 : 2,
-                RelationshipEvidenceOrigin.Derived);
+                aiKeywords ? RelationshipEvidenceOrigin.AiDerived : RelationshipEvidenceOrigin.Derived);
             strongContext ??= $"keyword:{HashKey(sharedKeywords[0])}";
         }
 
@@ -353,7 +355,9 @@ public sealed partial class DeterministicRelationshipEngine : IRelationshipEngin
                 HashKey($"{target.FileId}|{candidate.FileId}"),
                 "Related indexed concepts corroborate non-semantic evidence",
                 similarity >= 0.94 ? 3 : 2,
-                RelationshipEvidenceOrigin.Derived);
+                target.ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived ||
+                    candidate.ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived
+                    ? RelationshipEvidenceOrigin.AiDerived : RelationshipEvidenceOrigin.Derived);
         }
 
         if (scoring.Score > 0 && TryGetTimeEvidence(target, candidate, TimeSpan.FromHours(2), out var timeExplanation))

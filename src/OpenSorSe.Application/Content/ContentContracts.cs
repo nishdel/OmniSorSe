@@ -412,6 +412,9 @@ public interface IContentStore
 
     /// <summary>Clears the application-owned cache without changing source files.</summary>
     Task ClearAsync(CancellationToken cancellationToken);
+
+    /// <summary>Prunes regenerable records while preserving legacy accepted/rejected tag authority.</summary>
+    Task PruneRebuildableAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>Integrates metadata and OCR with the read-only scan pipeline.</summary>

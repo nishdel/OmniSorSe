@@ -89,10 +89,10 @@ public sealed record ContentConcept
     public IReadOnlyList<ContentEvidenceReference> Evidence { get; init; } = [];
 }
 
-/// <summary>Contains one short source-grounded summary with provider provenance.</summary>
+/// <summary>Contains one short derived summary with explicit deterministic or AI provenance.</summary>
 public sealed record ContentSummaryEvidence
 {
-    /// <summary>Gets the bounded source-grounded summary.</summary>
+    /// <summary>Gets the bounded summary; AI provenance denotes inference rather than verified facts.</summary>
     public required string Text { get; init; }
     /// <summary>Gets the provider identity.</summary>
     public required string Provider { get; init; }
@@ -107,13 +107,19 @@ public sealed record ContentSummaryEvidence
 /// <summary>Contains durable bounded content intelligence for one content fingerprint.</summary>
 public sealed record IndexedContentIntelligence
 {
+    /// <summary>Gets the provenance of the category, document type and keyword set.</summary>
+    public ContentIntelligenceOrigin Origin { get; init; }
+    /// <summary>Gets the optional AI-derived document type, structurally validated but not user-confirmed.</summary>
+    public string? DocumentType { get; init; }
+    /// <summary>Gets the optional AI-derived category, structurally validated but not user-confirmed.</summary>
+    public string? Category { get; init; }
     /// <summary>Gets bounded normalized subjects.</summary>
     public IReadOnlyList<ContentConcept> Topics { get; init; } = [];
     /// <summary>Gets bounded textual named entities.</summary>
     public IReadOnlyList<ContentConcept> Entities { get; init; } = [];
     /// <summary>Gets bounded normalized Search keywords.</summary>
     public IReadOnlyList<string> Keywords { get; init; } = [];
-    /// <summary>Gets an optional source-grounded summary.</summary>
+    /// <summary>Gets an optional summary with explicit origin.</summary>
     public ContentSummaryEvidence? Summary { get; init; }
     /// <summary>Gets the provider identity.</summary>
     public required string Provider { get; init; }

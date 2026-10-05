@@ -2,6 +2,7 @@ using OpenSorSe.Application.Relationships;
 using OpenSorSe.Application.Semantic;
 using OpenSorSe.Application.Media;
 using System.Text.Json;
+using OpenSorSe.Application.Indexing;
 
 namespace OpenSorSe.Application.Tests;
 
@@ -9,6 +10,26 @@ namespace OpenSorSe.Application.Tests;
 public sealed class RelationshipEngineTests
 {
     private static readonly DateTimeOffset Now = new(2026, 8, 3, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Validated AI entities and semantic labels enrich relationships without being relabeled as extracted facts.</summary>
+    [Fact]
+    public void Discover_AiConceptsProduceProvenanceBearingRelationship()
+    {
+        var inference = IndexingEnrichmentValidator.Parse("""
+            {"summary":"Electricity account correspondence.","documentType":"bill","category":"finance",
+             "tags":["electricity","utility"],"topics":["household energy","monthly consumption"],
+             "entities":[{"kind":"Organization","name":"EnBW"}]}
+            """, "test-model");
+        var first = Document("a", "alpha.txt", keywords: inference.Keywords) with { ContentIntelligence = inference };
+        var second = Document("b", "beta.txt", keywords: inference.Keywords) with { ContentIntelligence = inference };
+
+        var relationship = Assert.Single(CreateEngine().Discover(first, [second], 10)).Relationship;
+
+        Assert.Contains(relationship.Evidence, item => item.Kind == RelationshipEvidenceKind.ContentEntity &&
+            item.Origin == RelationshipEvidenceOrigin.AiDerived);
+        Assert.Contains(relationship.Evidence, item => item.Kind == RelationshipEvidenceKind.Keyword &&
+            item.Origin == RelationshipEvidenceOrigin.AiDerived);
+    }
 
     /// <summary>Verifies an identical content fingerprint produces a document-set relationship with retained evidence.</summary>
     [Fact]

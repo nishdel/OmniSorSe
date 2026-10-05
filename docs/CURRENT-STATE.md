@@ -7,7 +7,7 @@ remain authoritative for exact behavior; [Release Status](RELEASE_STATUS.md)
 owns detailed validation, integration, packaging, tagging, and publication
 evidence.
 
-**Scope:** The v2.13 Product Clarity & Workflow implementation candidate.
+**Scope:** The v3.0.0-rc.1 progressive enrichment and reviewed organization candidate.
 Update this document when the source line, runtime, schema, protocol, active
 authority, or confidence boundary changes. Do not copy its volatile facts into
 historical release records.
@@ -18,12 +18,12 @@ historical release records.
 | --- | --- | --- |
 | Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` |
 | Latest stable release | **v2.4.0**. The later source line is a release candidate, not a stable/GA release. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
-| Current source line | **v2.13.0-rc**, Product Clarity & Workflow, built on the published v2.12 relationship/context candidate without changing schema, protocol, or file-mutation authority. | `Directory.Build.props`; `docs/RELEASE_NOTES_v2.13.0.md`; `docs/RELEASE_STATUS.md` |
-| Current prerelease packages | The current exact-source-bound **v2.13.0-rc** Windows and macOS package set is published as a GitHub prerelease for real-world/manual validation before GA. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized (toolchain-provided ad-hoc signatures do not identify or authenticate a publisher). The release page, tag, embedded build manifest, checksum file, and SBOM own the immutable source/asset identity. | [GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc); `docs/RELEASE_NOTES_v2.13.0.md`; `docs/RELEASE_STATUS.md` |
+| Current source line | **v3.0.0-rc.1** implementation candidate, based on remote main 727ce2d. Automatic validated local AI enrichment, editable reviewed Organize, configurable bounded storage. Not yet published. | `Directory.Build.props`; `docs/RELEASE_NOTES_v3.0.0.md`; `docs/V3_ACCEPTANCE.md` |
+| Most recent published prerelease | The exact-source-bound **v2.13.0-rc** Windows and macOS package set is published as a GitHub prerelease for real-world/manual validation before GA. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized (toolchain-provided ad-hoc signatures do not identify or authenticate a publisher). The release page, tag, embedded build manifest, checksum file, and SBOM own the immutable source/asset identity. | [GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc); `docs/RELEASE_NOTES_v2.13.0.md`; `docs/RELEASE_STATUS.md` |
 | Previous prerelease baseline | The prior exact-source **v2.12.0-rc** package set remains available as historical prerelease evidence from tagged commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; it is not the current source/package line and is not stable/GA. | [v2.12 GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc); `docs/RELEASE_NOTES_v2.12.0.md` |
 | Remaining release boundary | Interactive workflow, accessibility, resize/DPI, real-library, normal-user installer, signing, notarization, and GA checks remain manual and must not be inferred from automated host/package smoke. | `.github/workflows/ci.yml`; `.github/workflows/release-packaging.yml`; `docs/MANUAL_TESTING_v2.13.md` |
 | Runtime | All solution projects target **.NET 10**. `global.json` selects SDK `10.0.400` with latest-feature roll-forward. | `Directory.Build.props`; `global.json`; project files |
-| Durable Search/index schema | `deep-index.db` is **schema 6**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
+| Durable Search/index schema | `deep-index.db` is **schema 7**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
 | Explorer boundary | Explorer Protocol is **1.0**. It is local, authenticated, source-scoped, bounded, read-only, and dormant until explicitly requested. | `ExplorerProtocolVersion` in `src/OmniSorSe.ExplorerProtocol/ExplorerProtocolContracts.cs`; `src/OpenSorSe.Application/Explorer/` |
 | OmniBrille boundary | OmniBrille is a separately installed, separately owned optional companion. OmniSorSe can explicitly discover and launch it, pass one scoped session through a current-user handoff, and then serve Protocol 1.0. OmniBrille is not implemented in this repository. | `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`; `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md` |
 | Logical state backup | The current `.oms-state` writer uses **format 2** and accepts exact format-1 archives. Restore uses stable identities and a pre-restore recovery point; it does not guess by path or filename. Rebuildable index/graph state, the separate Knowledge Graph decision sidecar, and active mutation history are not included. | `src/OpenSorSe.Application/Resilience/StateBackupService.cs`; `tests/OpenSorSe.Indexing.Sqlite.Tests/StateBackupServiceTests.cs` |
@@ -38,14 +38,20 @@ outside application-owned storage.
 
 ## Current authority map
 
+The v3 path automatically stores structurally validated AI inference in
+application-owned records, distinct from extracted facts and explicit decisions.
+The [beginner guide](HOW_OMNISORSE_WORKS.md), [Organize guide](ORGANIZE.md) and
+[storage guide](STORAGE_MANAGEMENT_v3.md) describe current controls. Migration,
+limits and downgrade boundaries are in [candidate notes](RELEASE_NOTES_v3.0.0.md).
+
 | Concept | Owns or mutates | Reads, derives, or presents | Does not own |
 | --- | --- | --- | --- |
 | Source filesystem state | The filesystem and user; supported mutation only through `ChangePlanExecutionService` and `IFileSystemGateway` | Scanner, indexing, watchers, Search, relationships, and reconciliation | AI, plugins, rules, recipes, Search, Knowledge Graph, and OmniBrille do not gain mutation authority |
 | Indexed file state | `IDeepIndexStore` contracts with the `SqliteDeepIndexStore` provider | Background indexing, Search, Smart Tags, relationships, health, privacy/Forget, Explorer | Views/ViewModels and the protocol contract do not own SQL or migrations |
-| Smart Tags | Schema-6 taxonomy, assignment, decision, and status records; explicit User Tags and accept/reject decisions are durable authority | Deterministic classifier proposes from retained evidence; Search and facets present canonical values | Classifier and optional AI do not override user decisions or write source metadata |
-| Relationships | Schema-6 retained evidence, typed edges, explicit pair authority, Smart Collection authority, and privacy state | `RelationshipService`, Search, Related Files, Explorer, and the optional graph consume bounded projections | Knowledge Graph is not relationship or grouping authority |
+| Smart Tags | Schema-7 taxonomy, assignment, decision, and status records; explicit User Tags and accept/reject decisions are durable authority | Deterministic classifier proposes from retained evidence; Search and facets present canonical values | Classifier and optional AI do not override user decisions or write source metadata |
+| Relationships | Schema-7 retained evidence, typed edges, explicit pair authority, Smart Collection authority, and privacy state | `RelationshipService`, Search, Related Files, Explorer, and the optional graph consume bounded projections | Knowledge Graph is not relationship or grouping authority |
 | Saved searches | `JsonSavedDiscoveryViewStore` owns bounded dynamic query rules; retained type/storage names preserve compatibility | Search executes them against the current authorized index | A saved search does not persist file membership |
-| Knowledge Graph | `knowledge-decisions.db` owns graph-native user decisions/privacy; `knowledge-graph.db` is rebuildable derived projection | Graph services and `KnowledgeGraphViewModel` expose bounded views and optional Search context | The graph does not own source files, schema-6 relationship authority, or Change Plans |
+| Knowledge Graph | `knowledge-decisions.db` owns graph-native user decisions/privacy; `knowledge-graph.db` is rebuildable derived projection | Graph services and `KnowledgeGraphViewModel` expose bounded views and optional Search context | The graph does not own source files, schema-7 relationship authority, or Change Plans |
 | Change intent and execution facts | `JsonChangePlanStore` owns reviewed intent; `JsonOperationJournalStore` owns execution/recovery facts | Review UI, history, recovery, and Undo consume those facts; Review Changes, Operation History Undo, and startup recovery forward terminal facts to shared reconciliation | Suggestions, watchers, plugins, recipes, and AI cannot execute |
 | Explorer contract/session | `OmniSorSe.ExplorerProtocol` owns DTO/version compatibility; Application owns authorization, sessions, transport, and read projections | OmniBrille consumes only an explicitly granted bounded session | Protocol clients cannot access SQLite directly, request arbitrary paths, or mutate |
 
@@ -71,7 +77,7 @@ Server, a conversational assistant, autonomous organization, permanent
 deletion, a plugin security sandbox, unrestricted media/AI processing, or an
 OmniBrille renderer/client in this repository.
 
-Deterministic operation remains useful without AI. AI output is optional,
+Deterministic operation remains useful without AI. AI enrichment is optional and automatically incorporated into application-owned records after structural validation. It retains inference provenance and never writes source content or embedded metadata. Filesystem proposals still require explicit review and approval. AI output is
 bounded, validated as untrusted, provenance-bearing, and cannot directly
 change a source file or override durable user-authored relationship/tag state.
 

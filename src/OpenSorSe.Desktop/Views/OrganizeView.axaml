@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:OpenSorSe.Desktop.ViewModels"
+             x:Class="OpenSorSe.Desktop.Views.OrganizeView"
+             x:DataType="vm:ReviewedOrganizationViewModel">
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="14">
+            <TextBlock Text="Organize" Classes="page-title" />
+            <TextBlock Text="Compare your folders, shape the recommendation, then review and approve any file changes. Trees show only the files you explicitly selected." Classes="page-subtitle" />
+            <WrapPanel>
+                <Button Content="Choose files" Command="{Binding BrowseFilesCommand}" Classes="secondary" Margin="0,0,8,0" />
+                <Button Content="Find files in Search" Command="{Binding BrowseSearchCommand}" Classes="secondary" />
+            </WrapPanel>
+            <TextBlock Text="{Binding SelectedCountText}" />
+            <Border Classes="card">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="How much should change?" FontWeight="SemiBold" />
+                    <ComboBox ItemsSource="{Binding Strategies}" SelectedItem="{Binding SelectedStrategy, Mode=TwoWay}"
+                              AutomationProperties.Name="Organization strategy" />
+                    <TextBlock Text="{Binding StrategyDescription}" Classes="page-subtitle" />
+                    <CheckBox Content="Use my remembered folder preferences" IsChecked="{Binding UseLearnedPreferences, Mode=TwoWay}" />
+                    <Expander Header="Recommendation recipe" IsExpanded="True">
+                        <StackPanel Spacing="6">
+                            <ComboBox ItemsSource="{Binding AvailableRecipes}" SelectedItem="{Binding SelectedRecipe, Mode=TwoWay}"
+                                      AutomationProperties.Name="Organization recipe" />
+                            <TextBlock Text="Filename pattern (the file extension is preserved)" />
+                            <TextBox Text="{Binding NamingPattern, Mode=TwoWay}" AutomationProperties.Name="Filename pattern" />
+                            <TextBlock Text="Folder pattern inside the selected library" />
+                            <TextBox Text="{Binding DestinationPattern, Mode=TwoWay}" AutomationProperties.Name="Folder pattern" />
+                            <TextBlock Text="Use {originalName}, {theme}, {documentType}, {category}, or {filesystemModifiedDate:yyyy}. The strategy controls how the folder pattern fits your existing hierarchy." Classes="page-subtitle" />
+                            <Button Content="Manage recipes" Command="{Binding ManageRecipesCommand}" Classes="secondary" />
+                        </StackPanel>
+                    </Expander>
+                    <WrapPanel>
+                        <Button Content="Recommend structure" Command="{Binding PreviewCommand}" Classes="primary" Margin="0,0,8,0" />
+                        <Button Content="Cancel" Command="{Binding CancelPreviewCommand}" IsVisible="{Binding IsBusy}" Classes="secondary" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Current folder structure" FontWeight="SemiBold" />
+                        <TreeView ItemsSource="{Binding CurrentTree}" MinHeight="200" MaxHeight="340"
+                                  AutomationProperties.Name="Current structure for selected files">
+                            <TreeView.ItemTemplate>
+                                <TreeDataTemplate x:DataType="vm:OrganizationTreeNode" ItemsSource="{Binding Children}">
+                                    <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding RelativePath}" />
+                                </TreeDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Recommended folder structure" FontWeight="SemiBold" />
+                        <TextBlock Text="Select a file or folder to edit it below." Classes="page-subtitle" />
+                        <TreeView ItemsSource="{Binding RecommendedTree}" SelectedItem="{Binding SelectedTreeNode, Mode=TwoWay}"
+                                  MinHeight="180" MaxHeight="320" AutomationProperties.Name="Editable recommended structure">
+                            <TreeView.ItemTemplate>
+                                <TreeDataTemplate x:DataType="vm:OrganizationTreeNode" ItemsSource="{Binding Children}">
+                                    <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding RelativePath}" />
+                                </TreeDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </StackPanel>
+                </Border>
+            </Grid>
+            <Border Classes="card" IsVisible="{Binding HasProposal}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Shape the proposal" FontWeight="SemiBold" />
+                    <TextBlock Text="Edit a selected file's path, or select a folder and enter its new path to move or rename all selected files beneath it. Paths are relative to the library. Your actual files remain unchanged." Classes="page-subtitle" />
+                    <TextBox Text="{Binding EditedRelativePath, Mode=TwoWay}" PlaceholderText="Proposed path inside the library"
+                             AutomationProperties.Name="Proposed file or folder path" />
+                    <WrapPanel>
+                        <Button Content="Update proposal" Command="{Binding ApplyEditCommand}" Classes="secondary" Margin="0,0,8,6" />
+                        <Button Content="Reject selected move" Command="{Binding RejectMoveCommand}" Classes="secondary" Margin="0,0,8,6" />
+                        <Button Content="Restore recommendation" Command="{Binding RestoreMoveCommand}" Classes="secondary" Margin="0,0,8,6" />
+                    </WrapPanel>
+                    <ListBox ItemsSource="{Binding AllRows}" SelectedItem="{Binding SelectedProposalRow, Mode=TwoWay}"
+                             MaxHeight="300" AutomationProperties.Name="Proposed moves and reasons">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:OrganizationProposalRowViewModel">
+                                <StackPanel Margin="0,5" Spacing="3">
+                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding TargetPath}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding ReasonText}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding Readiness}" />
+                                    <TextBlock Text="{Binding DetailText}" Classes="page-subtitle" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="{Binding CoverageText}" Classes="page-subtitle" />
+                    <TextBlock Text="{Binding ActionCountText}" />
+                    <TextBlock Text="{Binding PrivacyWarningText}" IsVisible="{Binding HasSensitivePathWarning}" TextWrapping="Wrap" />
+                    <WrapPanel>
+                        <Button Content="Remember folder edits" Command="{Binding RememberPreferencesCommand}" Classes="secondary" Margin="0,0,8,6" />
+                        <Button Content="Review Changes" Command="{Binding ReviewChangesCommand}" Classes="primary" Margin="0,0,8,6"
+                                AutomationProperties.HelpText="Rechecks source files and proposed destinations, then opens the existing review and approval workflow. No file changes occur here." />
+                    </WrapPanel>
+                    <TextBlock Text="Remembered edits guide future recommendations in this library. Review Changes checks safety again; Apply, History and Undo use the existing file-operation workflow." Classes="page-subtitle" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

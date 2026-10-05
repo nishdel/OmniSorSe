@@ -60,6 +60,7 @@ public static class AiPreferenceAggregator
     }
 
     private static bool IsValid(AiSuggestionDecision decision) =>
+        decision.OrganizationScope is null &&
         !string.IsNullOrWhiteSpace(decision.SuggestedValue) &&
         !string.IsNullOrWhiteSpace(decision.Provider) &&
         !string.IsNullOrWhiteSpace(decision.Model);

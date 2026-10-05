@@ -7,6 +7,16 @@ Entries below preserve release-specific terminology and claims. Use
 index, [Release Status](RELEASE_STATUS.md) for current readiness, and
 [Product Roadmap](../PRODUCT_ROADMAP.md) for future planning.
 
+## v3.0.0-rc.1 candidate — Progressive understanding and reviewed organization
+
+Implementation candidate; not yet published. Adds optional per-folder automatic
+local AI enrichment with inference provenance, retained-content requeue and
+incremental Search/relationship updates; an editable Organize page with strategies,
+explained moves and remembered preferences; and verified-copy application storage
+relocation with usage, limits and safe pruning. Preserves reviewed executor/Undo
+authority and protects user-authored state during maintenance. See the
+[candidate release notes](RELEASE_NOTES_v3.0.0.md) for compatibility and limitations.
+
 ## v2.13.0-rc prerelease — OmniSorSe Product Clarity & Workflow
 
 Release source: GitHub `main` after the Product Clarity & Workflow pull request.

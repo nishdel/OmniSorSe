@@ -44,6 +44,12 @@ plugins are trusted in-process extensions, not a security sandbox.
 
 ## How it works
 
+Read [How OmniSorSe Works](docs/HOW_OMNISORSE_WORKS.md) for the complete beginner
+guide. The next major [v3 candidate](docs/RELEASE_NOTES_v3.0.0.md) is currently
+under verification; its [38-item scope](docs/V3_ACCEPTANCE.md) and
+[manual checklist](docs/MANUAL_TESTING_v3.0.md) are tracked separately from the
+currently published downloads.
+
 1. **Choose folders.** OmniSorSe works only with roots you explicitly select.
 2. **Scan and index locally.** It builds a local catalogue of metadata,
    searchable content, relationships, and duplicate evidence.

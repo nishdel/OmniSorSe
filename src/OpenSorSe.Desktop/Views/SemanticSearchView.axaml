@@ -356,6 +356,15 @@
                 <WrapPanel>
                     <Button Margin="0,0,8,8"
                             Classes="secondary"
+                            Content="Enrich existing files with local AI"
+                            Command="{Binding EnableSourceEnrichmentCommand}"
+                            AutomationProperties.HelpText="Queues already-extracted content without rescanning every source file. Uses the configured local model." />
+                    <Button Margin="0,0,8,8" Classes="secondary"
+                            Content="Turn off AI for this folder"
+                            Command="{Binding DisableSourceEnrichmentCommand}" />
+                    <TextBlock Margin="0,0,8,8" Text="{Binding SourceEnrichmentText}"
+                               TextWrapping="Wrap" MaxWidth="600" AutomationProperties.LiveSetting="Polite" />
+                    <Button Margin="0,0,8,8" Classes="secondary"
                             Content="Rebuild selected source"
                             Command="{Binding RebuildSelectedSourceCommand}"
                             AutomationProperties.HelpText="Replaces generated indexed information for the selected source. Original files remain untouched." />
@@ -564,6 +573,8 @@
                                                    Classes="page-subtitle"
                                                    TextWrapping="Wrap"
                                                    AutomationProperties.Name="{Binding MediaSummary, StringFormat='Media details: {0}'}" />
+                                        <TextBlock Text="{Binding AiEnrichmentIndicator}" TextWrapping="Wrap"
+                                                   AutomationProperties.Name="{Binding AiEnrichmentIndicator}" />
                                         <TextBlock Text="{Binding ContentIntelligenceSummary}"
                                                    IsVisible="{Binding ContentIntelligenceSummary}"
                                                    Classes="page-subtitle"

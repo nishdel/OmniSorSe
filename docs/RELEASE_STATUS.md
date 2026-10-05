@@ -21,6 +21,16 @@ signing, notarization, and GA gates remain open.
 
 ## Current release and source
 
+### v3.0.0-rc.1 candidate preparation (2026-10-05)
+
+The next major candidate is being implemented on `codex/v3-progressive-enrichment`
+from main `727ce2d`. [Milestone 1](https://github.com/nishdel/OmniSorSe/milestone/1)
+tracks the complete [38-item acceptance baseline](V3_ACCEPTANCE.md).
+Automated, real-provider, native package and hosted checks are in progress;
+integration, tagging and publication are not complete. Human acceptance remains
+[Not run](MANUAL_TESTING_v3.0.md) and begins after candidate publication.
+The previously published v2.13 package is not the v3 installer.
+
 - **Latest stable release:** v2.4.0 (tagged and packaged).
 - **Current source/prerelease:** 2.13.0-rc Product Clarity & Workflow is tagged
   and packaged from exact `main`; the release page owns the immutable commit

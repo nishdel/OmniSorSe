@@ -246,6 +246,9 @@
                 <Grid IsVisible="{Binding IsStructureHistorySelected}">
                     <views:StructureHistoryView DataContext="{Binding StructureHistory}" />
                 </Grid>
+                <Grid IsVisible="{Binding IsOrganizeSelected}">
+                    <views:OrganizeView DataContext="{Binding Results.Organization}" />
+                </Grid>
                 <Grid IsVisible="{Binding IsRulesSelected}">
                     <views:RuleEditorView DataContext="{Binding RuleEditor}" />
                 </Grid>

@@ -40,6 +40,12 @@ public static class InitialScanDepthOptions
 /// <param name="FolderPaths">The validated folder roots in user selection order.</param>
 public sealed record ScanRequest(IReadOnlyList<string> FolderPaths)
 {
+    /// <summary>Gets whether validated local AI should enrich this folder after basic indexing.</summary>
+    public bool AiEnrichmentEnabled { get; init; }
+
+    /// <summary>Gets whether the explicit folder-indexing choice enables local Search coverage.</summary>
+    public bool EnableSearchIndex { get; init; }
+
     /// <summary>Gets the persistent workflow profile selected for this scan.</summary>
     public string ProfileId { get; init; } = BuiltInWorkflowIds.GeneralDocuments;
 

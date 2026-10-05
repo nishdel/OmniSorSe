@@ -5,7 +5,7 @@
 **Authority:** Release sequence, implementation/integration status, planned
 concepts, research, and unassigned ideas
 
-**Last repository review:** 2026-09-04
+**Last repository review:** 2026-10-05
 
 This roadmap records what the repository proves and separates it from future
 intent. A planned version number is a planning label, not a delivery promise.
@@ -28,6 +28,15 @@ For concise dates, test totals, and links to historical evidence, see
 | Planned concept | A named direction with no implementation branch or commitment. Scope and order may change. |
 | Research | A question that needs evidence before it can become versioned work. |
 | Ideas backlog | A promising unassigned concept with no version or schedule. |
+
+## Next major candidate
+
+**v3.0.0-rc.1** is implemented on `codex/v3-progressive-enrichment` and undergoing
+final release integration. It adds background local-AI indexing, editable Organize
+previews and owned-storage management. See the [38-item map](docs/V3_ACCEPTANCE.md)
+and [release gates](docs/RELEASE_STATUS.md). Richer image/audio/video understanding
+and additional OCR providers remain future extensions; no other agreed current
+requirement is silently deferred. This is preparation, not publication evidence.
 
 ## Completed
 

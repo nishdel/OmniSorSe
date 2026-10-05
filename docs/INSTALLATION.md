@@ -4,23 +4,23 @@
 
 ## Availability
 
-The current package line is the OmniSorSe v2.13.0-rc
-[GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc).
-It is intended for final real-world/manual validation before v2.13.0 GA and
+The candidate package line is OmniSorSe v3.0.0-rc.1. Use only the verified assets on the
+[GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1).
+It is intended for final real-world/manual validation before v3.0.0 GA and
 contains:
 
-- `OmniSorSe-v2.13.0-rc-win-x64.zip` — self-contained Windows x64 portable;
-- `OmniSorSe-v2.13.0-rc-win-x64-setup.exe` — per-user Windows x64 installer;
-- `OmniSorSe-v2.13.0-rc-macos-x64.dmg` — Intel macOS;
-- `OmniSorSe-v2.13.0-rc-macos-arm64.dmg` — Apple Silicon macOS;
-- `OmniSorSe-v2.13.0-rc-sbom.cdx.json` — CycloneDX dependency SBOM;
-- `OmniSorSe-v2.13.0-rc-SHA256SUMS.txt` — hashes for the other five files.
+- `OmniSorSe-v3.0.0-rc.1-win-x64.zip` — self-contained Windows x64 portable;
+- `OmniSorSe-v3.0.0-rc.1-win-x64-setup.exe` — per-user Windows x64 installer;
+- `OmniSorSe-v3.0.0-rc.1-macos-x64.dmg` — Intel macOS;
+- `OmniSorSe-v3.0.0-rc.1-macos-arm64.dmg` — Apple Silicon macOS;
+- `OmniSorSe-v3.0.0-rc.1-sbom.cdx.json` — CycloneDX dependency SBOM;
+- `OmniSorSe-v3.0.0-rc.1-SHA256SUMS.txt` — hashes for the other five files.
 
 OmniSorSe v2.4.0 remains the
 [latest stable release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0).
 No Linux installer is published; Linux x64 remains a source-build preview. Do
 not download packages from unrelated sites. Read [Release Status](RELEASE_STATUS.md)
-and the [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) before relying on
+and the [v3.0.0-rc.1 Release Notes](RELEASE_NOTES_v3.0.0.md) before relying on
 the prerelease.
 
 The visible rename deliberately continues using established OpenSorSe
@@ -33,8 +33,8 @@ orphaned. Current stores migrate through their owned schema paths. See the
 
 1. Close any installed OmniSorSe/OpenSorSe process. Back up important retained
    application state, or use a disposable Windows account/machine.
-2. Download `OmniSorSe-v2.13.0-rc-win-x64-setup.exe` and
-   `OmniSorSe-v2.13.0-rc-SHA256SUMS.txt` from the same official prerelease.
+2. Download `OmniSorSe-v3.0.0-rc.1-win-x64-setup.exe` and
+   `OmniSorSe-v3.0.0-rc.1-SHA256SUMS.txt` from the same official prerelease.
 3. Verify the checksum as described below.
 4. Run the installer. The default is a per-user installation below Local
    AppData, with a Start Menu shortcut and uninstall entry.
@@ -49,7 +49,7 @@ and embedded `VALIDATION_BUILD.md` notice before continuing.
 
 ## Windows x64 portable
 
-1. Download `OmniSorSe-v2.13.0-rc-win-x64.zip` and the checksum file from the
+1. Download `OmniSorSe-v3.0.0-rc.1-win-x64.zip` and the checksum file from the
    same official prerelease.
 2. Verify the checksum.
 3. Extract the entire ZIP into a writable directory.
@@ -60,8 +60,8 @@ runtime installation.
 
 ## macOS Intel and Apple Silicon
 
-1. Choose `OmniSorSe-v2.13.0-rc-macos-x64.dmg` for Intel or
-   `OmniSorSe-v2.13.0-rc-macos-arm64.dmg` for Apple Silicon.
+1. Choose `OmniSorSe-v3.0.0-rc.1-macos-x64.dmg` for Intel or
+   `OmniSorSe-v3.0.0-rc.1-macos-arm64.dmg` for Apple Silicon.
 2. Verify the checksum, open the DMG, and copy `OmniSorSe.app` to Applications.
 3. The RC app is not Apple Developer ID-signed and is unnotarized. A
    toolchain-provided ad-hoc signature does not identify or authenticate a
@@ -75,14 +75,14 @@ guarantees.
 
 ## Verify SHA-256 checksums
 
-Download `OmniSorSe-v2.13.0-rc-SHA256SUMS.txt` from the same prerelease.
+Download `OmniSorSe-v3.0.0-rc.1-SHA256SUMS.txt` from the same prerelease.
 
 ```powershell
-(Get-FileHash .\OmniSorSe-v2.13.0-rc-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+(Get-FileHash .\OmniSorSe-v3.0.0-rc.1-win-x64-setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
 ```
 
 ```bash
-shasum -a 256 OmniSorSe-v2.13.0-rc-macos-arm64.dmg
+shasum -a 256 OmniSorSe-v3.0.0-rc.1-macos-arm64.dmg
 ```
 
 Compare the complete value with the named line. A checksum detects changed
@@ -254,7 +254,7 @@ do not copy it into the repository.
 Do not overwrite a running installation. Each store/provider owns its schema,
 migration, newer-version rejection, corruption, and recovery behavior.
 
-The v2.13.0-rc Windows/macOS packages are self-contained; users do not install a
+The v3.0.0-rc.1 Windows/macOS packages are self-contained; users do not install a
 separate runtime. Current source builds require the repository-selected .NET 10
 SDK. OmniSorSe has no in-app updater. Obtain the package from the official
 prerelease, verify its checksum/unsigned status and embedded source identity,

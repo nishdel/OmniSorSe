@@ -14,6 +14,17 @@
             <TextBlock Text="Add accessible local folders, then start a read-only analysis. OmniSorSe does not modify selected files."
                        TextWrapping="Wrap" />
             <TextBlock Text="Selected folders" FontWeight="SemiBold" />
+            <Border Classes="card" Padding="12">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="How should OmniSorSe understand these files?" FontWeight="SemiBold" />
+                    <TextBlock Text="Standard indexing: fast local extraction, with no AI interpretation." TextWrapping="Wrap" />
+                    <CheckBox Content="AI-enriched indexing"
+                              IsChecked="{Binding AiEnrichmentEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable background AI enrichment for these folders" />
+                    <TextBlock Text="Start with fast indexing, then use your configured local AI to add tags, categories, summaries and connections in the background. Search stays usable. Enable local AI and document interpretation in Settings first. Your original files stay untouched."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
             <ListBox ItemsSource="{Binding SelectedFolders}"
                      SelectedItem="{Binding SelectedFolder, Mode=TwoWay}"
                      MinHeight="120" />

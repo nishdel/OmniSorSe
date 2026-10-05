@@ -234,7 +234,8 @@ or unchecked release checklist.
 
 - [ ] The change has one clear purpose and respects project dependencies.
 - [ ] User-file mutation still uses the Change Plan/executor boundary.
-- [ ] AI, watcher, recipe, workflow, and plugin paths remain proposal-only.
+- [ ] AI enrichment writes only provenance-bearing application data; AI, watcher,
+  recipe, workflow and plugin filesystem actions remain reviewed proposals.
 - [ ] New input and persistence have explicit bounds and corruption behavior.
 - [ ] Cancellation, concurrency, and failure semantics are tested.
 - [ ] Debug and Release builds pass with zero warnings.

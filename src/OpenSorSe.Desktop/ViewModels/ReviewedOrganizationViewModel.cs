@@ -68,12 +68,15 @@ public sealed record OrganizationProposalRowViewModel(OrganizationProposalRow Mo
     public string FileName => Path.GetFileName(Model.CurrentPath);
     public string CurrentPath => Model.CurrentPath;
     public string TargetPath => Model.TargetPath ?? "No safe target available";
-    public string Readiness => Model.Readiness switch
+    public string Readiness => Model.IsRejected ? "Rejected" : Model.IsUnchanged ? "Unchanged" : Model.Readiness switch
     {
         OrganizationProposalReadiness.Reliable => "Reliable",
         OrganizationProposalReadiness.NeedsReview => "Needs review",
         _ => "Cannot propose",
     };
+    public string ReasonText => Model.IsRejected ? "Move rejected; this file stays in its current folder."
+        : Model.IsUnchanged ? "Already matches this strategy; no file operation is proposed."
+        : string.Join(" ", Model.Reasons);
     public string EvidenceText => Model.Evidence.Count == 0
         ? "No trusted recipe evidence was used."
         : string.Join("; ", Model.Evidence.Take(3).Select(item =>
@@ -91,7 +94,7 @@ public sealed record OrganizationProposalRowViewModel(OrganizationProposalRow Mo
 /// <summary>
 /// Connects explicit stable-ID selections to existing recipes, ephemeral preview, and the existing Change Plan.
 /// </summary>
-public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
+public sealed partial class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
 {
     private readonly IReviewedOrganizationService? _organization;
     private readonly IWorkflowLibraryService? _recipes;
@@ -134,10 +137,12 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
             () => ManageRecipesRequested?.Invoke(this, EventArgs.Empty),
             () => !IsBusy);
         CloseCommand = new RelayCommand(Close, () => !IsBusy);
+        InitializeOrganizationEditing();
     }
 
     public event EventHandler<ChangePlan>? ChangePlanCreated;
     public event EventHandler? ManageRecipesRequested;
+    public event EventHandler? Opened;
 
     public ReadOnlyObservableCollection<OrganizationRecipeRow> AvailableRecipes { get; }
     public ReadOnlyObservableCollection<OrganizationProposalRowViewModel> VisibleRows { get; }
@@ -274,12 +279,14 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
 
         CancelPreview();
         _selection = selection with { FileIds = Array.AsReadOnly(ids) };
+        ResetEdits();
         _proposal = null;
         _visibleRows.Clear();
         IsVisible = true;
         OnProposalChanged();
         await LoadRecipesAsync();
         StatusText = $"Ready to preview {SelectedCount} explicit {selection.DisplayName} selection item{(SelectedCount == 1 ? string.Empty : "s")}. No files have changed.";
+        Opened?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task LoadRecipesAsync()
@@ -326,6 +333,7 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         _previewCancellation = new CancellationTokenSource();
         var token = _previewCancellation.Token;
         IsBusy = true;
+        _proposalDirty = true;
         StatusText = "Resolving trusted indexed evidence and checking deterministic targets...";
         try
         {
@@ -335,7 +343,12 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
                 DestinationTemplate = DestinationPattern,
             };
             var proposal = await _organization.PreviewAsync(
-                new OrganizationPreviewRequest(recipe, _selection.FileIds),
+                new OrganizationPreviewRequest(recipe, _selection.FileIds)
+                {
+                    Strategy = SelectedStrategy.Strategy,
+                    Edits = _edits.Values.ToArray(),
+                    UseLearnedPreferences = UseLearnedPreferences,
+                },
                 token);
             if (version != Volatile.Read(ref _previewVersion) || token.IsCancellationRequested)
             {
@@ -343,9 +356,12 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
             }
 
             _proposal = proposal;
+            _proposalDirty = false;
             RefreshVisibleRows();
             StatusText = proposal.CanCreateChangePlan
                 ? "Preview is ready. Review provenance and projected actions before continuing."
+                : proposal.Rows.All(row => row.IsUnchanged || row.IsRejected)
+                    ? "No file changes are needed for this proposal. Every selected file is unchanged or its move was rejected."
                 : proposal.Warnings.FirstOrDefault() ?? "Preview contains files that cannot be proposed safely. Edit the recipe or reduce the selection.";
             OnProposalChanged();
         }
@@ -361,6 +377,14 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         {
             StatusText = exception.Message;
         }
+        catch (IOException)
+        {
+            StatusText = "Organization data or a selected file could not be read. Check availability and preview again.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            StatusText = "A selected source or local preference record is inaccessible. Check permissions and preview again.";
+        }
         finally
         {
             if (version == Volatile.Read(ref _previewVersion))
@@ -370,7 +394,7 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private bool CanReviewChanges() => _organization is not null && _proposal?.CanCreateChangePlan == true && !IsBusy;
+    private bool CanReviewChanges() => _organization is not null && _proposal?.CanCreateChangePlan == true && !_proposalDirty && !_editorDirty && !IsBusy;
 
     private async Task CreateChangePlanAsync()
     {
@@ -411,6 +435,14 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         catch (InvalidOperationException exception)
         {
             InvalidateProposal(exception.Message);
+        }
+        catch (IOException)
+        {
+            InvalidateProposal("The preview or Change Plan could not be read or saved. Check source and application storage, then preview again.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            InvalidateProposal("Organization review could not access a required source or application record. Check permissions and preview again.");
         }
         finally
         {
@@ -465,6 +497,7 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
     private void RefreshVisibleRows()
     {
         _visibleRows.Clear();
+        RefreshTrees();
         if (_proposal is null)
         {
             return;
@@ -495,7 +528,10 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         _previewCancellation?.Cancel();
         _proposal = null;
         _visibleRows.Clear();
+        ResetEdits();
+        RefreshTrees();
         StatusText = status;
+        IsBusy = false;
         OnProposalChanged();
     }
 
@@ -513,6 +549,8 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         _selection = null;
         _proposal = null;
         _visibleRows.Clear();
+        ResetEdits();
+        RefreshTrees();
         IsVisible = false;
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(SelectedCountText));
@@ -542,6 +580,7 @@ public sealed class ReviewedOrganizationViewModel : ViewModelBase, IDisposable
         InsertTokenCommand.NotifyCanExecuteChanged();
         ManageRecipesCommand.NotifyCanExecuteChanged();
         CloseCommand.NotifyCanExecuteChanged();
+        NotifyEditingCommands();
     }
 
     /// <inheritdoc />

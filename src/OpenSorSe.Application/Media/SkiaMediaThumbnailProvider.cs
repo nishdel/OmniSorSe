@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using OpenSorSe.Core.Configuration;
+using OpenSorSe.Core.Platform;
 using SkiaSharp;
 
 namespace OpenSorSe.Application.Media;
@@ -10,6 +11,7 @@ public sealed class SkiaMediaThumbnailProvider : IMediaThumbnailProvider
 {
     private readonly IConfigurationService _configurationService;
     private readonly string _cacheRoot;
+    private readonly SemaphoreSlim _cacheGate = new(1, 1);
 
     /// <summary>Initializes the application-owned preview cache.</summary>
     public SkiaMediaThumbnailProvider(IConfigurationService configurationService, string cacheRoot)
@@ -63,6 +65,7 @@ public sealed class SkiaMediaThumbnailProvider : IMediaThumbnailProvider
             return null;
         }
 
+        ApplicationStorageFiles.RequireUnlinkedPath(_cacheRoot);
         Directory.CreateDirectory(_cacheRoot);
         var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join(
             '|',
@@ -72,15 +75,23 @@ public sealed class SkiaMediaThumbnailProvider : IMediaThumbnailProvider
             settings.MaximumThumbnailDimension,
             evidence.Metadata.Orientation)))).ToLowerInvariant();
         var outputPath = Path.Combine(_cacheRoot, $"{key}.png");
-        if (File.Exists(outputPath))
+        await _cacheGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            return outputPath;
-        }
+            if (File.Exists(outputPath))
+            {
+                return EnsureCacheCapacity(0, outputPath, cancellationToken) ? outputPath : null;
+            }
 
-        return await Task.Run(
-                () => CreateThumbnail(source, outputPath, settings, evidence.Metadata.Orientation, cancellationToken),
-                cancellationToken)
-            .ConfigureAwait(false);
+            return await Task.Run(
+                    () => CreateThumbnail(source, outputPath, settings, evidence.Metadata.Orientation, cancellationToken),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            _cacheGate.Release();
+        }
     }
 
     /// <inheritdoc />
@@ -101,7 +112,7 @@ public sealed class SkiaMediaThumbnailProvider : IMediaThumbnailProvider
         return Task.CompletedTask;
     }
 
-    private static string? CreateThumbnail(
+    private string? CreateThumbnail(
         FileInfo source,
         string outputPath,
         MediaIntelligenceSettings settings,
@@ -154,6 +165,11 @@ public sealed class SkiaMediaThumbnailProvider : IMediaThumbnailProvider
                 return null;
             }
 
+            if (!EnsureCacheCapacity(encoded.Size, null, cancellationToken))
+            {
+                return null;
+            }
+
             var temporary = $"{outputPath}.{Guid.NewGuid():N}.tmp";
             try
             {
@@ -183,6 +199,35 @@ public sealed class SkiaMediaThumbnailProvider : IMediaThumbnailProvider
         {
             return null;
         }
+    }
+
+    private bool EnsureCacheCapacity(long incomingBytes, string? retainedPath, CancellationToken cancellationToken)
+    {
+        var maximumBytes = _configurationService.Current.Storage.MaximumCacheSizeMiB * 1024L * 1024L / 3;
+        var files = ApplicationStorageFiles.Enumerate(_cacheRoot, cancellationToken)
+            .Where(file => file.Extension == ".png" && Path.GetFileNameWithoutExtension(file.Name).Length == 64 &&
+                           Path.GetFileNameWithoutExtension(file.Name).All(char.IsAsciiHexDigit))
+            .OrderBy(file => file.LastWriteTimeUtc).ToArray();
+        var bytes = files.Sum(file => file.Length);
+        foreach (var file in files)
+        {
+            if (bytes + incomingBytes <= maximumBytes)
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (PlatformServices.CurrentPathSemantics.Comparer.Equals(file.FullName, retainedPath))
+            {
+                continue;
+            }
+
+            ApplicationStorageFiles.RequireUnlinkedPath(file.FullName);
+            File.Delete(file.FullName);
+            bytes -= file.Length;
+        }
+
+        return bytes + incomingBytes <= maximumBytes;
     }
 
     private static SKBitmap? ApplyOrientation(
