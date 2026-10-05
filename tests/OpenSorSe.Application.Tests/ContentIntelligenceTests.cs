@@ -199,7 +199,8 @@ public sealed class ContentIntelligenceTests
         Assert.Contains(derivedResult.Components, item => item.Kind == SearchRankingSignalKind.ContentEntity);
         Assert.True(derivedResult.Snippet is { Source: SearchSnippetSource.ContentTopic or SearchSnippetSource.ContentEntity });
         Assert.Contains(derivedResult.Components, item => item.Explanation.Contains("Topic match", StringComparison.Ordinal));
-        Assert.Contains(derivedResult.Components, item => item.Explanation.Contains("Entity match", StringComparison.Ordinal));
+        Assert.Contains(derivedResult.Components, item => item.Kind == SearchRankingSignalKind.ContentEntity &&
+            item.Explanation == "textual entity matched");
     }
 
     /// <summary>Shared specific concepts connect different media types while one generic topic remains insufficient.</summary>

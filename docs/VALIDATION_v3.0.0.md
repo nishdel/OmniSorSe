@@ -18,6 +18,9 @@ restart notices for storage/logging/workers. The complete Settings test class
 gates (14) passed. These additions bring the source suite to 1,952 tests; complete
 hosted suites remain the final source-bound gate. The online direct/transitive
 NuGet vulnerability audit returned no vulnerable packages.
+Whitespace, code-style and analyzer verification passed. A self-contained native
+Windows publish of implementation commit `6463344` passed the isolated production
+`--package-smoke-test` entry point. This was not an installer or interactive test.
 Final hosted source-bound evidence supersedes these pre-commit local counts.
 
 Coverage includes existing extraction/OCR contracts, stage ordering and queue
