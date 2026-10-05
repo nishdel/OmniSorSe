@@ -1,6 +1,6 @@
 # Repository structure
 
-This guide maps the current v2.12 solution as its projects exist in source. It describes
+This guide maps the current v3 solution as its projects exist in source. It describes
 ownership and dependency rules; it is not a proposal for a different layering
 model.
 
@@ -210,11 +210,13 @@ reference cycles.
 ### `OpenSorSe.AI`
 
 - **Purpose:** Optional concrete AI-provider integration.
-- **Owns:** Ollama-compatible HTTP transport and its provider-specific wire
-  models. It also contains the local bounded decision-history store.
-- **Must not own:** feature gating, prompts, application validation, navigation,
-  or file operations.
-- **Principal entry point:** `OllamaSuggestionProvider`.
+- **Owns:** Ollama-compatible HTTP transport and provider-specific wire models,
+  including the indexing provider's fixed structured-output request envelope and
+  defensive configuration checks. It also contains the bounded decision-history store.
+- **Must not own:** application eligibility policy, suggestion prompt semantics,
+  enrichment schema validation, navigation, index persistence, or file operations.
+- **Principal entry points:** `OllamaSuggestionProvider` and
+  `OllamaIndexingEnrichmentProvider`; application contracts own validation and staging.
 - **Dependencies:** Application and Core.
 - **Reference rule:** Desktop composes this transport behind
   `IAiSuggestionProvider`; lower projects do not reference it.

@@ -1,8 +1,8 @@
 # OmniSorSe architecture overview
 
-This is the authoritative top-level architecture for the OmniSorSe v2.12
-implementation candidate. It extends the released v2.4.0 baseline through the
-linear v2.5-v2.12 candidates while retaining established profile locations.
+This is the authoritative top-level architecture for the OmniSorSe v3.0.0-rc.1
+candidate. It extends the v2.13 source while retaining established profile identity
+and the existing application/executor ownership boundaries.
 The durable Search index is schema 7 and Explorer Protocol remains v1.
 
 The v3 enrichment path is source file → deterministic extraction/OCR → optional
@@ -459,12 +459,12 @@ Source files remain where the user selected them.
 | Saved scans/catalogues | `JsonResultsCatalogStore` | `catalog.json` | Schema v2, reads supported older schema, bounded atomic replacement. |
 | Saved searches | `JsonSavedCatalogSearchStore` | `saved-catalog-searches.json` | Schema v1; invalid input fails closed; hits are not persisted. |
 | Saved Views | `JsonSavedDiscoveryViewStore` | data/`saved-discovery-views.json` | Schema v1 bounded dynamic query rules; membership is evaluated against the current index and is not persisted. |
-| Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded/rebuildable; contains potentially sensitive local text. |
-| Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded/rebuildable deterministic vectors and terms. |
-| Durable Search index | `SqliteDeepIndexStore` | data/`index/deep-index.db` | Current schema v6 owns durable stages, bounded media/content evidence, Smart Tag taxonomy/assignment/decision state, canonical facet joins, relationships, pair/Smart Collection authority, privacy, repair, integrity, recovery, retention, quotas, and migrations from supported older schemas. Generated index evidence remains rebuildable; user-authored authority does not. |
+| Extracted content | `JsonContentStore` | `content-index.json` | Schema v1; bounded sensitive text and compatibility state. Rebuildable portions can be pruned; retained user authority must survive. |
+| Semantic index | `JsonSemanticIndexStore` | `semantic-index.json` | Schema v1; bounded deterministic vectors/terms and compatibility tags. Pruning preserves user-authored decisions. |
+| Durable Search index | `SqliteDeepIndexStore` | data/`index/deep-index.db` | Current schema v7 adds per-source AI policy and owns durable stages, bounded media/content evidence, Smart Tag taxonomy/assignment/decision state, canonical facet joins, relationships, pair/Smart Collection authority, privacy, repair, integrity, recovery, retention, quotas, and migrations from supported older schemas. Generated index evidence remains rebuildable; user-authored authority does not. |
 | Knowledge Graph projection | `SqliteGraphStore` | `index/knowledge-graph.db` | Schema v1; rebuildable completed-manifest projection, jobs, generations, nodes/edges/evidence, applied/ingested watermarks, repair, and bounded diagnostics. |
 | Knowledge Graph decisions | `SqliteGraphDecisionStore` | `index/knowledge-decisions.db` | Schema v1; append-only graph-native decisions, checkpoints, exclusions, privacy floor, and verified recovery points; never silently reset. |
-| AI decisions | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded metadata-only review history. |
+| AI and Organize preferences | `JsonDecisionHistoryStore` | `decision-history.json` | Bounded review history and explicit source-scoped folder mappings. Routine pruning preserves learned mappings. |
 | Structure history | `JsonStructureHistoryStore` | `structure-history.json` | Schema v1; bounded snapshots and relative paths. |
 | Workflow Profiles and Sorting Recipes | `JsonWorkflowLibraryStore` | `workflow-library.json` | Library schema v2; migration occurs on load/save; a corrupt source is preserved where possible before built-in recovery. |
 | Watched Folder configuration | `JsonWatchedFolderConfigurationStore` | `watched-folders.json` | Schema v3 with bounded migration/validation. |

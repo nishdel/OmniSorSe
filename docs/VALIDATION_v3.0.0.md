@@ -21,7 +21,13 @@ NuGet vulnerability audit returned no vulnerable packages.
 Whitespace, code-style and analyzer verification passed. A self-contained native
 Windows publish of implementation commit `6463344` passed the isolated production
 `--package-smoke-test` entry point. This was not an installer or interactive test.
-Final hosted source-bound evidence supersedes these pre-commit local counts.
+The subsequent complete Debug rerun passed 1,952/1,952. Release passed all product
+tests but caught a missing required ADR section while documentation was being
+edited; corrected documentation gates passed. The first macOS Intel hosted run
+at `6224649` then caught rejection of its standard `/var` alias. The narrow guard
+fix and five new cases passed 17 focused Core storage tests on Windows; native
+alias assertions still require macOS CI. The source suite now has 1,957 tests.
+Final hosted source-bound evidence supersedes these intermediate local counts.
 
 Coverage includes existing extraction/OCR contracts, stage ordering and queue
 lifecycle, schema migration, retained-library requeue, inherited source policy,

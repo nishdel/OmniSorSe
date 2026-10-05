@@ -2,7 +2,7 @@
 
 Start with the current [Architecture Overview](../ARCHITECTURE_OVERVIEW.md) and
 [OmniSorSe System Map](OpenSorSe_System_Map.md). They describe the current
-OmniSorSe v2.12 implementation candidate over the published v2.4 baseline and
+OmniSorSe v3.0.0-rc.1 implementation candidate over the v2.13 source and
 take precedence when an older document uses future-oriented or now-stale
 language. [Current State](../CURRENT-STATE.md) owns volatile runtime, schema,
 protocol, source-line, and confidence facts.

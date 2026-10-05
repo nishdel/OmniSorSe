@@ -2,7 +2,7 @@
 
 **Document type:** Living technology inventory
 
-**Scope:** Current v2.12 candidate source; a technology in a roadmap or historical
+**Scope:** Current v3 candidate source; a technology in a roadmap or historical
 architecture document is not a current dependency
 
 ## Current stack
@@ -18,16 +18,16 @@ architecture document is not a current dependency
 | Composition | Microsoft.Extensions.DependencyInjection 8.x | Desktop composition root and service registration. |
 | Logging | Microsoft.Extensions.Logging 8.x plus OpenSorSe-owned bounded logging | Structured application logging without source content. |
 | JSON persistence | `System.Text.Json` plus shared bounded atomic replacement | Settings, catalogs, workflows, watched state, plans, journals, compatible content/Search stores, and other application-owned data. |
-| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Schema-6 deep index with shared media/content/Smart Tag evidence; isolated schema-1 graph/decision sidecars remain. |
+| Durable Search/graph persistence | Microsoft.Data.Sqlite 8.0.28 and SQLitePCLRaw bundle 2.1.12 | Schema-7 deep index with per-source AI policy and retained media/content/Smart Tag evidence; isolated schema-1 graph/decision sidecars remain. |
 | Media image parsing/thumbnails | Bounded managed parsers plus existing SkiaSharp 3.119.2 reference | Deterministic JPEG/PNG/WebP/BMP/TIFF headers/EXIF and lazy capped still-image PNG thumbnails; no network or source mutation. |
 | Optional media metadata/frames | User-managed `ffprobe` and `ffmpeg` | Capability-detected argument-list processes with output/time/duration/frame bounds; not downloaded or bundled. |
 | Media transcription | Provider-neutral Application contract plus optional user-managed whisper.cpp CLI adapter in v2.3.0 | No runtime/model is bundled or downloaded; missing configuration degrades to an unavailable capability. |
 | Visual descriptions | Provider-neutral Application contract | No concrete provider, runtime, model, or dependency is selected or bundled. |
-| Topics/entities/summaries | Managed deterministic Application provider | No external dependency or network; bounded extraction from already indexed evidence. |
+| Topics/entities/summaries | Managed deterministic Application provider plus optional local Ollama enrichment | Bounded retained evidence; deterministic extraction needs no network/model. Optional enrichment calls the selected local model and retains AI provenance. |
 | Native PDF text | PdfPig 0.1.15 | Bounded read-only PDF page text and metadata. |
 | PDF page rendering | PDFtoImage 5.2.1 with PDFium native packages | Bounded rendering of PDF pages that need enabled OCR. |
 | OCR | External Tesseract 5 CLI | Optional local image/scanned-page recognition; executable and language data are not bundled. |
-| Optional AI transport | Ollama-compatible HTTP API | Explicitly configured, capability-gated, bounded review-only suggestions; the endpoint can be local or remote. |
+| Optional AI transport | Ollama-compatible HTTP API | Explicitly configured and capability-gated. Indexed enrichment requires a loopback endpoint and automatically incorporates validated inference. The separate reviewed-suggestion provider retains its existing configured local/remote endpoint policy. |
 | Compatible local similarity | Deterministic feature hashing | Rebuildable related-concept representation without a model download. |
 | Durable indexing and Knowledge Graph | Provider-neutral Application contracts plus `OpenSorSe.Indexing.Sqlite` | Sources, jobs, stages, recovery, Search projections, relationship evidence/collections/corrections, optional stable graph projection/decisions, privacy rules, quotas, and repair. |
 | Plugin model | `OpenSorSe.Extensions.Abstractions` plus in-process collectible load contexts | Eight bounded extension points, local packages, explicit grants, validation, and lifecycle containment. Load contexts are not sandboxing. |

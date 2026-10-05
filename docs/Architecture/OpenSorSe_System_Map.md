@@ -152,7 +152,7 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Schema 6 Search, Smart Tag, relationship, media, and content authority"]
+        DeepIndex["Schema 7 Search, Smart Tag, relationship, media, and content authority"]
         SavedViews["Dynamic Saved View rules"]
         GraphIndex["Schema 1 rebuildable Knowledge Graph projection"]
         GraphDecisions["Schema 1 graph-native decision and privacy authority"]
@@ -295,7 +295,7 @@ do not imply authorization. The executor cannot be reached merely because a
 watcher, AI provider, rule, recipe, or plugin produced a proposal.
 
 The central authorities are intentionally asymmetric: source files remain
-user/filesystem-owned; `deep-index.db` owns schema-6 indexed, Smart Tag,
+user/filesystem-owned; `deep-index.db` owns schema-7 indexed, Smart Tag,
 relationship, Smart Collection, and privacy state; Saved Views own query rules,
 not membership; graph projection is derived; graph-native decisions stay in a
 separate non-rebuildable sidecar; Change Plans own intent and the Operation
@@ -348,7 +348,7 @@ flowchart LR
         Retained["Bounded text, OCR, media, content evidence"]
         Tags["Deterministic Smart Tag classification"]
         Relations["Bounded relationship feature/enrichment work"]
-        Sqlite["deep-index.db schema 6"]
+        Sqlite["deep-index.db schema 7"]
     end
 
     subgraph Discovery["Current-index discovery"]
@@ -486,7 +486,7 @@ and focused `MainViewModelTests`.
 
 ```mermaid
 flowchart TB
-    Retained["Retained schema-6 file features"] --> Buckets["Indexed bounded candidate buckets"]
+    Retained["Retained schema-7 file features"] --> Buckets["Indexed bounded candidate buckets"]
     Buckets --> Engine["DeterministicRelationshipEngine v3"]
     Engine --> Evidence["Capped independent evidence families"]
     Evidence --> Edges["Typed automatic edges and evidence"]

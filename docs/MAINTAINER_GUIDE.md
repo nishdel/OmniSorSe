@@ -223,7 +223,8 @@ Review these on every release:
 - `PhysicalFileSystemGateway` forbids overwrite.
 - Rollback/Undo verify current identity and never replace occupied data.
 - Watchers call proposal/review services, not execution.
-- AI remains optional, bounded, validated, and suggestion-only.
+- AI remains optional, bounded and structurally validated. Indexed inferences
+  are automatic with provenance; filesystem proposals require review and approval.
 - Workflow policy can narrow application safety gates but cannot broaden them.
 - Plugins have no supported direct mutation/approval path; capabilities are
   checked at registration and invocation.

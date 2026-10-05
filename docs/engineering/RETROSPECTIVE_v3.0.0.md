@@ -41,6 +41,13 @@ after restart. Initial stale version/navigation assertions were updated for the
 intentional v3 UI. One overlapping restore caused transient dependency/build
 contention; central validation then owned the toolchain exclusively.
 
+Native macOS CI subsequently caught rejection of the operating system's standard
+`/var` alias by the storage guard. The fix admits only two exact macOS system
+aliases, verifies their immediate targets/ancestry, and tests arbitrary/dangling
+link refusal. Local Windows success could not establish that platform behavior.
+The final living-document sweep also found stale schema and review-only AI wording;
+authority/glossary/technology guides and ADR-007 now state the implemented boundary.
+
 OmniLAB's bounded implementation requests mostly returned unavailable or unusable
 results. Helpful safety/recovery diagnoses were verified, and direct fallback was
 recorded rather than presenting local output as completed implementation.
@@ -55,6 +62,7 @@ These observations are candidates, not newly promoted project rules.
 | C2 | Legacy cache and decision history contain durable authority | Classification by filename/store age | Reclamation and history-capacity regression tests | Pending independent generalization review |
 | C3 | OCR suppression must apply to every derived consumer | Privacy gate only at extraction boundary | Suppressed-retained-text consumer regressions | Pending independent generalization review |
 | C4 | Enrichment features alone did not prove Related Files/graph behavior | Test stopped before durable integration consumer | Incremental relationship/reopen/graph test | Pending independent generalization review |
+| C5 | macOS native tests rejected trusted system temporary paths | All ancestor links treated alike | Exact native alias and untrusted-link regressions | Pending independent generalization review |
 
 ## Confidence and handoff
 

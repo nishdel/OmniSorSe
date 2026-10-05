@@ -27,7 +27,7 @@ The implemented Desktop application hosts these user-facing areas:
 | Operation History | Presents durable journal summaries/details, report copy, interruption state, and conflict-aware whole/selected-action Undo. |
 | Notifications | Shows non-blocking user-safe status messages. |
 
-The current GUI exposes capped known-file/folder opening, local metadata/OCR controls, Search, persistent watched folders, reviewable Change Plans, journalled safe execution, and conflict-aware Undo. Search has accessible concise help and durable indexing progress/coverage/control/storage presentation. It does not expose duplicate deletion, direct generic rule execution, autonomous AI mutation, permanent deletion, or background-service monitoring while OpenSorSe is closed. AI remains review-only, and catalog/index/history maintenance changes only OpenSorSe application data.
+The current GUI exposes capped known-file/folder opening, local metadata/OCR controls, Search, persistent watched folders, reviewable Change Plans, journalled safe execution, and conflict-aware Undo. Search has accessible concise help and durable indexing progress/coverage/control/storage presentation. It does not expose duplicate deletion, direct generic rule execution, autonomous AI mutation, permanent deletion, or background-service monitoring while OpenSorSe is closed. AI indexed enrichment is automatic after validation with inference provenance; AI filesystem proposals remain review-gated. Catalog/index/history maintenance changes only application data and preserves durable user authority.
 
 ## Presentation boundary
 

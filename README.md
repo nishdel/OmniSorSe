@@ -63,7 +63,7 @@ currently published downloads.
 
 | Track | What it is | Start here |
 | --- | --- | --- |
-| **Current source: 2.13.0-rc** | The current source restores a clear Scan → Review → Organize workflow and simplifies discovery, relationship, AI, and diagnostic surfaces on top of v2.12. | [Current State](docs/CURRENT-STATE.md) · [v2.13 Release Notes](docs/RELEASE_NOTES_v2.13.0.md) · [Release Status](docs/RELEASE_STATUS.md) |
+| **Current source: 3.0.0-rc.1** | Progressive local-AI enrichment, editable Organize previews and configurable safe storage are implemented; release integration is underway. | [Current State](docs/CURRENT-STATE.md) · [v3 Release Notes](docs/RELEASE_NOTES_v3.0.0.md) · [Release Status](docs/RELEASE_STATUS.md) |
 | **Current prerelease: v2.13.0-rc** | Exact-source Windows and macOS packages are published for final real-world/manual validation before GA. They are unsigned; macOS packages are also unnotarized. The release page owns the immutable tag, source commit, assets, and checksums. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.13.0.md) |
 | **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
 
@@ -92,8 +92,9 @@ upgrade cautions, application-data locations, and Linux guidance.
 
 ## Current source highlights
 
-The v2.13 prerelease keeps the v2.12 architecture and safety boundary
-while making the product easier to understand and operate:
+The v3 source adds progressive local-AI indexing, editable Organize trees with
+remembered folder choices, and configurable storage with protected cleanup. It
+retains the clearer workflow introduced in v2.13:
 
 - Home and navigation lead with Scan, Review, and Organize; Search, Duplicates,
   Related Files, library automation, and graph diagnostics have clearer roles;
@@ -173,7 +174,7 @@ intent-based map. The shortest routes are:
 | Use the latest stable release | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
 | Build or contribute | [Developer Guide](docs/DEVELOPER_GUIDE.md) | [Contributing](CONTRIBUTING.md) and [Engineering Principles](ENGINEERING_PRINCIPLES.md) |
 | Understand the architecture | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | [System Map](docs/Architecture/OpenSorSe_System_Map.md) and [Architecture Library](docs/Architecture/README.md) |
-| Review the current source candidate | [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) | [v2.13 manual checklist](docs/MANUAL_TESTING_v2.13.md) |
+| Review the current source candidate | [v3.0.0-rc.1 Release Notes](docs/RELEASE_NOTES_v3.0.0.md) | [v3 manual checklist](docs/MANUAL_TESTING_v3.0.md) |
 | Check validation or readiness | [Release Status](docs/RELEASE_STATUS.md) | [Platform Compatibility](docs/PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates |
 | Research released or historical work | [Release History](RELEASE_HISTORY.md) | [Changelog](docs/CHANGELOG.md) and [historical records](docs/README.md#release-and-implementation-records) |
 

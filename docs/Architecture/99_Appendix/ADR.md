@@ -25,6 +25,7 @@ ADRs record decisions, not implementation details.
 | [ADR-004](ADR-004_Change_Plan_Mutation_Authority.md) | Accepted; reconstructed | Route production file mutation, rollback, Undo, and reconciliation through the shared Change Plan and Operation Journal boundary. |
 | [ADR-005](ADR-005_Indexed_and_Graph_Authority_Separation.md) | Accepted; reconstructed | Separate filesystem, indexed, user-authored, compatibility-cache, derived-graph, and graph-native decision authority. |
 | [ADR-006](ADR-006_Explorer_Protocol_Read_Only_Boundary.md) | Accepted; reconstructed | Keep OmniBrille integration local, explicitly scoped, bounded, optional, and read-only. |
+| [ADR-007](ADR-007_Automatic_Indexed_Inference.md) | Accepted for v3 | Automatically incorporate validated indexed inference with provenance; retain separate explicit mutation approval. Extends ADR-001's review-only scope. |
 
 ---
 

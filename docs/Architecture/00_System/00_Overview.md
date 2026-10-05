@@ -4,7 +4,13 @@ OmniSorSe (formerly OpenSorSe) is a local-first Avalonia desktop application for
 
 ## Product boundary
 
-Scanning, exact-duplicate review, metadata extraction, OCR Beta, tag generation, Search/background indexing, relationship analysis, virtual Smart Collections, catalog/history comparison, diagrams, and optional AI suggestions are non-mutating. AI is disabled by default, capability-specific, untrusted, and suggestion-only. Rename/folder requests are metadata-only; bounded extracted text requires a separate opt-in and explicit one-document action.
+Scanning, exact-duplicate review, extraction/OCR, Search/background indexing,
+relationships, catalog/history comparison and AI enrichment leave source files
+unchanged. AI is disabled by default, capability-specific and untrusted. In v3,
+source opt-in allows validated background inference over bounded retained text to
+update application-owned indexed information automatically. Rename/folder proposals
+still require separate Change Plan review and explicit execution approval. See
+[ADR-007](../99_Appendix/ADR-007_Automatic_Indexed_Inference.md).
 
 OpenSorSe 1.2 added watched roots, v1.3 typed workflows/recipes, v1.4 the
 local plugin host/SDK, and v1.5 explicit platform services. v1.6 hardens atomic

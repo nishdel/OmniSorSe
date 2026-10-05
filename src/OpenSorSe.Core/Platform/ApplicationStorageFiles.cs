@@ -17,19 +17,70 @@ public static class ApplicationStorageFiles
         "content-index.json", "semantic-index.json", "media-thumbnails", "media-temporary",
     });
 
-    /// <summary>Rejects links at the path and every existing ancestor, including linked storage roots.</summary>
+    /// <summary>Rejects links at the path and its ancestors except verified macOS system temporary-directory aliases.</summary>
     public static void RequireUnlinkedPath(string path)
     {
-        var current = Path.GetFullPath(path);
+        var current = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
         while (!string.IsNullOrEmpty(current))
         {
-            if (Path.Exists(current) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+            FileAttributes attributes;
+            try
             {
-                throw new IOException("Application storage cannot traverse a symbolic link or reparse point.");
+                attributes = File.GetAttributes(current);
+            }
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // Existence probes can hide dangling links; absence is safe only when no link remains.
+                if (new FileInfo(current).LinkTarget is not null)
+                {
+                    throw new IOException("Application storage cannot traverse a symbolic link or reparse point.");
+                }
+
+                current = Path.GetDirectoryName(current);
+                continue;
+            }
+
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                var systemTarget = GetMacOsSystemAliasTarget(current);
+                if (systemTarget is null)
+                {
+                    throw new IOException("Application storage cannot traverse a symbolic link or reparse point.");
+                }
+
+                // macOS owns these exact root aliases. Check their targets and ancestors as well;
+                // resolving every link would also admit application-controlled redirects.
+                current = systemTarget;
+                continue;
             }
 
             current = Path.GetDirectoryName(current);
         }
+    }
+
+    private static string? GetMacOsSystemAliasTarget(string path)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return null;
+        }
+
+        var expectedTarget = path switch
+        {
+            "/var" => "/private/var",
+            "/tmp" => "/private/tmp",
+            _ => null,
+        };
+        if (expectedTarget is null)
+        {
+            return null;
+        }
+
+        var immediateTarget = new DirectoryInfo(path).ResolveLinkTarget(returnFinalTarget: false);
+        return string.Equals(immediateTarget?.FullName, expectedTarget, StringComparison.Ordinal) &&
+            Directory.Exists(expectedTarget)
+            ? expectedTarget
+            : null;
     }
 
     /// <summary>Returns bounded regular files under an exact owned entry, rejecting linked descendants.</summary>

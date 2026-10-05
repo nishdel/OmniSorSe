@@ -18,7 +18,7 @@ while the application uses it.
 `IApplicationPathProvider` remains the path authority. After acquiring the
 existing default-profile writer lease and before opening any database, the
 desktop calls `ApplicationStorageLocation.ResolveAsync`. The migrator inventories
-the exact entries registered in `ApplicationStorageFiles`, rejects linked paths
+the exact entries registered in `ApplicationStorageFiles`, rejects user-controlled linked paths
 and nested managed destinations, copies closed stores and SQLite sidecars,
 flushes and compares SHA-256 hashes, then publishes `storage-location.json`
 atomically in the original configuration folder. A matching generation marker
@@ -28,6 +28,12 @@ stale original profile. Partial copies without a completed generation marker
 are ignored on retry. Startup fails if the selected generation is unavailable,
 its receipt is missing/corrupt, or publication was interrupted after a verified
 generation was marked complete, instead of opening stale or empty data.
+
+The native macOS `/var` and `/tmp` aliases are accepted only when their immediate
+targets are exactly `/private/var` and `/private/tmp`; those target ancestors are
+checked too. Arbitrary redirects, linked descendants and dangling links still
+fail closed. This allows standard macOS temporary storage without treating
+user-created links as trusted storage.
 
 The durable `deep-index.db`, graph-native `knowledge-decisions.db`, all graph
 recovery state under `index`, saved libraries, workflow recipes and learned

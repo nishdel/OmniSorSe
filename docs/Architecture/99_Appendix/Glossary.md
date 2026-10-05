@@ -157,14 +157,15 @@ It can continue supplying results independently of the durable provider.
 ### Durable Search index
 
 The provider-neutral v1.7+ background-indexing system. The current embedded
-provider stores schema-6 data in SQLite, including sources, runs, jobs, stages,
+provider stores schema-7 data in SQLite, including per-source AI policy, sources, runs, jobs, stages,
 bounded derived content, Smart Tag authority, relationships, Smart Collections,
 coverage, failures, maintenance, and privacy rules.
 
 ### Index
 
-Rebuildable OmniSorSe-owned data that improves retrieval. An index is not the
-source file and is not authoritative proof of current filesystem state.
+OmniSorSe-owned data that improves retrieval. Generated retrieval evidence is
+rebuildable; durable user decisions co-located in an index are not disposable.
+An index is not the source file or authoritative proof of current filesystem state.
 
 ### Progressive coverage
 
@@ -306,8 +307,9 @@ not define the product-facing contract.
 ### AI
 
 Optional provider-assisted inference used only by explicitly enabled bounded
-flows. AI output is untrusted, validated, provenance-bearing, and
-suggestion-only. The term does not include deterministic Search filters,
+flows. AI output is untrusted, structurally validated and provenance-bearing.
+Indexed enrichment is automatically incorporated into application-owned records;
+filesystem proposals require review and explicit approval. The term does not include deterministic Search filters,
 ranking, OCR, hashing, or rules.
 
 ### Explorer Protocol
