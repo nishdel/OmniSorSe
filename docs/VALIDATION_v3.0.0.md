@@ -29,6 +29,18 @@ fix and five new cases passed 17 focused Core storage tests on Windows; native
 alias assertions still require macOS CI. The source suite now has 1,957 tests.
 Final hosted source-bound evidence supersedes these intermediate local counts.
 
+Hosted run [37366894165](https://github.com/nishdel/OmniSorSe/actions/runs/37366894165)
+at `c6999de5cd87833cf33eec39b1a0c8d26b981094` passed all 1,957 tests in both
+configurations on Windows, with zero skips and all formatting, policy, audit and
+native package-smoke gates green. The first Ubuntu/macOS ARM jobs could not acquire
+hosted runners during the GitHub Actions incident. Intel stopped reporting progress
+and had no retrievable log after cancellation; its cause was not established.
+The retry's macOS ARM Debug suite passed 1,956 tests and exposed one test-fixture
+cleanup error: `Directory.Delete` could not remove the deliberately dangling Unix
+symlink. The production refusal assertions and native system-alias cases passed.
+Cleanup now uses `File.Delete` to unlink that Unix entry and retains directory-link
+deletion on Windows. Final four-platform validation is still required.
+
 Coverage includes existing extraction/OCR contracts, stage ordering and queue
 lifecycle, schema migration, retained-library requeue, inherited source policy,
 hostile model output, privacy suppression, per-file FTS updates, user decision

@@ -80,7 +80,15 @@ public sealed class ApplicationStorageFilesTests
         {
             if (linkCreated)
             {
-                Directory.Delete(link);
+                if (OperatingSystem.IsWindows())
+                {
+                    Directory.Delete(link);
+                }
+                else
+                {
+                    // Unix directory deletion cannot remove a dangling symlink; unlink the entry itself.
+                    File.Delete(link);
+                }
             }
 
             if (!dangling)

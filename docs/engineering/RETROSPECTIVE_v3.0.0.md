@@ -47,6 +47,10 @@ aliases, verifies their immediate targets/ancestry, and tests arbitrary/dangling
 link refusal. Local Windows success could not establish that platform behavior.
 The final living-document sweep also found stale schema and review-only AI wording;
 authority/glossary/technology guides and ADR-007 now state the implemented boundary.
+A subsequent native ARM run passed the production alias checks but exposed Unix
+dangling-link cleanup in the new regression fixture; it now unlinks the entry
+without resolving its absent target. GitHub runner acquisition failures were
+recorded separately from this actionable test failure.
 
 OmniLAB's bounded implementation requests mostly returned unavailable or unusable
 results. Helpful safety/recovery diagnoses were verified, and direct fallback was

@@ -23,13 +23,22 @@ map, contributor/agent boundaries, compatibility, release notes and acceptance m
 were updated. The [release status](RELEASE_STATUS.md) owns current integration,
 package and publication evidence rather than this pre-release implementation note.
 
-Repository state at this report's preparation: branch
-`codex/v3-progressive-enrichment`, baseline HEAD
-`727ce2d09ce9870f6e6ce9e4c3baa467c7e4d5de`, implementation changes awaiting the
-authorized normal commit/PR/release process. The original dirty worktree was
+Repository state at this report's update: implementation is committed and pushed
+on `codex/v3-progressive-enrichment` in
+[PR #54](https://github.com/nishdel/OmniSorSe/pull/54); remote main remains
+`727ce2d09ce9870f6e6ce9e4c3baa467c7e4d5de`. The original dirty worktree was
 preserved. Public Explorer Protocol stays 1.0; assembly/profile identities stay
 compatible. In-place downgrade is unsupported after schema/storage migration.
 
-Status: implementation ready for final automated/release gates, not yet a published
-milestone. The next action is exact-source integration and packaging; afterward
+Verified: Windows hosted validation at `c6999de` passed all 1,957 tests in both
+configurations and every gate; actual local-AI and native Windows smoke also
+passed. Remaining uncertainty: final macOS/Linux validation, installer lifecycle,
+and human acceptance. Native macOS failures and the concurrent GitHub Actions
+runner incident are recorded in the validation report. OmniLAB provided useful
+safety/recovery advice but mostly unusable implementation output; direct Codex
+fallback produced the majority of finished code.
+
+Status: partial, awaiting final automated/release gates; no v3 tag, installer or
+published milestone exists yet. The next action is four-platform validation,
+exact-source integration and packaging; afterward
 users should test the exact v3 installer using the version-specific live issue.

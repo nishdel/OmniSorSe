@@ -26,8 +26,14 @@ signing, notarization, and GA gates remain open.
 The next major candidate is being implemented on `codex/v3-progressive-enrichment`
 from main `727ce2d`. [Milestone 1](https://github.com/nishdel/OmniSorSe/milestone/1)
 tracks the complete [38-item acceptance baseline](V3_ACCEPTANCE.md).
-Automated, real-provider, native package and hosted checks are in progress;
-integration, tagging and publication are not complete. Human acceptance remains
+Implementation is in [PR #54](https://github.com/nishdel/OmniSorSe/pull/54).
+Hosted Windows validation at `c6999de` passed 1,957 tests in each configuration
+and every gate. Native macOS verification corrected the system temporary-path
+guard and then a dangling-link test cleanup error. The active GitHub Actions
+incident also caused jobs to end without acquiring runners. Exact-source
+four-platform validation, integration, packaging, tagging and publication are
+not complete; [Validation](VALIDATION_v3.0.0.md) records the evidence boundaries.
+Human acceptance remains
 [Not run](MANUAL_TESTING_v3.0.md) and begins after candidate publication.
 The previously published v2.13 package is not the v3 installer.
 
