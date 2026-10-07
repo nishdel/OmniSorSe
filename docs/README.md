@@ -37,6 +37,10 @@ The v3 candidate's [acceptance map](V3_ACCEPTANCE.md),
 work. Publication status is tracked separately; a candidate branch is not a release.
 Storage location, cache bounds and recovery are explained in
 [Storage management](STORAGE_MANAGEMENT_v3.md).
+Dedicated local embeddings, vector lifecycle, similarity and reciprocal rank
+fusion are described in [Hybrid Search](HYBRID_SEARCH_v3.md).
+The opt-in [learned-vector benchmark](../eng/benchmarks/VectorSearch/README.md)
+defines synthetic real-model relevance, latency, restart and integrity checks.
 
 Choose one route; do not read the repository as a flat document catalog. Each
 route links to deeper versioned or historical evidence only when it is useful.
@@ -44,7 +48,7 @@ route links to deeper versioned or historical evidence only when it is useful.
 | Intent | Read first | Continue with | Boundary |
 | --- | --- | --- | --- |
 | Current project state | [Repository README](../README.md), then [Current State](CURRENT-STATE.md) | [Product Vision](../PRODUCT_VISION.md) | Current source truth; not a release claim |
-| Test the published prerelease | [Installation](INSTALLATION.md) | [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | Exact-source v2.13.0-rc packages are published for manual validation, not GA |
+| Test the published prerelease | [Installation](INSTALLATION.md) | [v3.0.0-rc.1 Release Notes](RELEASE_NOTES_v3.0.0.md) and [issue #53](https://github.com/nishdel/OmniSorSe/issues/53) | Begin when the official v3 release supplies the matching merged-source installer; v2.13 is historical prerelease evidence |
 | Use the latest stable release | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | [Installation](INSTALLATION.md) | v2.4.0 remains the latest stable release |
 | Develop or contribute | [Developer Guide](DEVELOPER_GUIDE.md) and [Contributing](../CONTRIBUTING.md) | [Repository Structure](REPOSITORY_STRUCTURE.md), [Architecture Library](Architecture/README.md), and [Engineering workflow](engineering/README.md) | Current `main` and scoped engineering policy |
 | Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
@@ -90,7 +94,7 @@ describe every capability currently present on GitHub `main`.
 ## Current source and prerelease lineage
 
 The following records explain the integrated v2.5-v2.12 lineage distributed as
-the v2.12.0-rc prerelease and inherited by the current v2.13 prerelease. The v2.5-v2.11
+the historical v2.12.0-rc prerelease and inherited by the historical v2.13 prerelease. The v2.5-v2.11
 records are not standalone releases; automated RC packaging is not manual/GA
 validation.
 

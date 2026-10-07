@@ -9,6 +9,31 @@ namespace OpenSorSe.Desktop.ViewModels;
 /// </summary>
 public sealed class SettingsDraft : ViewModelBase
 {
+    private bool _embeddingsEnabled;
+    private string _embeddingModel = "qwen3-embedding:4b";
+    private int _maximumVectorStorageMiB = 256;
+
+    /// <summary>Gets or sets explicit permission for local learned semantic indexing.</summary>
+    public bool EmbeddingsEnabled
+    {
+        get => _embeddingsEnabled;
+        set => SetProperty(ref _embeddingsEnabled, value);
+    }
+
+    /// <summary>Gets or sets the dedicated installed embedding model.</summary>
+    public string EmbeddingModel
+    {
+        get => _embeddingModel;
+        set => SetProperty(ref _embeddingModel, value);
+    }
+
+    /// <summary>Gets or sets the disposable vector budget in mebibytes.</summary>
+    public int MaximumVectorStorageMiB
+    {
+        get => _maximumVectorStorageMiB;
+        set => SetProperty(ref _maximumVectorStorageMiB, value);
+    }
+
     private string? _storageDirectoryPath;
     private int _maximumCacheSizeMiB = 512;
     private int _temporaryRetentionDays = 7;
@@ -842,6 +867,9 @@ public sealed class SettingsDraft : ViewModelBase
             TesseractExecutablePath = settings.Content.TesseractExecutablePath,
             BackgroundContentProcessingEnabled = settings.Content.BackgroundProcessingEnabled,
             SemanticSearchEnabled = settings.SemanticSearch.Enabled,
+            EmbeddingsEnabled = settings.SemanticSearch.EmbeddingsEnabled,
+            EmbeddingModel = settings.SemanticSearch.EmbeddingModel,
+            MaximumVectorStorageMiB = settings.SemanticSearch.MaximumVectorStorageMiB,
             MaximumSemanticDocuments = settings.SemanticSearch.MaximumDocumentCount,
             MaximumSemanticResults = settings.SemanticSearch.MaximumResultCount,
             DeepIndexingEnabled = settings.DeepIndexing.Enabled,
@@ -1035,6 +1063,9 @@ public sealed class SettingsDraft : ViewModelBase
             },
             SemanticSearch = new SemanticSearchSettings
             {
+                EmbeddingsEnabled = EmbeddingsEnabled,
+                EmbeddingModel = EmbeddingModel.Trim(),
+                MaximumVectorStorageMiB = MaximumVectorStorageMiB,
                 Enabled = SemanticSearchEnabled,
                 MaximumDocumentCount = MaximumSemanticDocuments,
                 MaximumResultCount = MaximumSemanticResults,

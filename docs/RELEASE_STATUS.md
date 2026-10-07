@@ -15,38 +15,72 @@ complete. It is not the product roadmap or the concise version history.
 Repository history places the stable released lineage through v2.4.0 in
 `main`. GitHub `main` also contains the linear v2.5-v2.12 candidate history and
 the v2.13 Product Clarity & Workflow integration. v2.4.0 remains the latest
-stable release. v2.13.0-rc is the current exact-source GitHub prerelease;
-v2.12.0-rc remains the previous prerelease baseline. Manual/real-world,
+stable release. v2.13.0-rc and v2.12.0-rc are historical prerelease baselines;
+v3.0.0-rc.1 is the testing candidate covered by this source checkpoint. Manual/real-world,
 signing, notarization, and GA gates remain open.
 
 ## Current release and source
 
-### v3.0.0-rc.1 candidate preparation (2026-10-05)
+### v3.0.0-rc.1 source checkpoint — prerelease integration pending (2026-10-07)
 
-The next major candidate is being implemented on `codex/v3-progressive-enrichment`
+The major testing candidate is being implemented on `codex/v3-progressive-enrichment`
 from main `727ce2d`. [Milestone 1](https://github.com/nishdel/OmniSorSe/milestone/1)
 tracks the complete [38-item acceptance baseline](V3_ACCEPTANCE.md).
 Implementation is in [PR #54](https://github.com/nishdel/OmniSorSe/pull/54).
 Hosted Windows validation at `c6999de` passed 1,957 tests in each configuration
 and every gate. Native macOS verification corrected the system temporary-path
-guard and then a dangling-link test cleanup error. The active GitHub Actions
-incident also caused jobs to end without acquiring runners. Exact-source
+guard and then a dangling-link test cleanup error. The historical October 5 GitHub
+Actions incident also caused jobs to end without acquiring runners. Exact-source
 four-platform validation, integration, packaging, tagging and publication are
 not complete; [Validation](VALIDATION_v3.0.0.md) records the evidence boundaries.
 Human acceptance remains
 [Not run](MANUAL_TESTING_v3.0.md) and begins after candidate publication.
 The previously published v2.13 package is not the v3 installer.
 
+The first candidate now also requires the implemented dedicated-model hybrid
+Search, schema-8 disposable vectors, explicit semantic Related Files suggestions
+and model/indexing/storage controls in the [acceptance map](V3_ACCEPTANCE.md).
+The learned-vector continuation remains under final validation with uncommitted
+changes. After the earlier 215-test focused pass, the central Windows runner
+passed 2,069 tests in each configuration with zero failures/skips, three formatting
+checks and the vulnerability audit. After three later lexical-ranking regressions,
+the complete rerun passed **2,072 tests in each of Debug and Release**, zero
+failures/skips, with zero-warning/error builds and all whitespace/style/analyzer
+checks passing. The earlier online audit found zero vulnerabilities and dependencies
+were unchanged. The 2,072-test result supersedes the earlier local checkpoint.
+The real-model benchmark initially failed and then passed unchanged criteria
+after the lexical function-word correction: Recall@5 1.0, MRR 0.928571 and one
+paraphrase gain across seven judged queries on 12 synthetic files. Independent
+review also corrected shell wiring, rapid-selection state, vector freshness,
+timeout fallback and lexical-only RRF input. Native Windows self-contained
+production startup/shutdown passed. These are working-tree observations based on
+`da5b313`, not final commit, installer or interactive evidence.
+
+Required real v3 screenshots remain an explicit incomplete deliverable/blocker.
+Two further capture retries with the visible rebuilt window timed out after the
+earlier failures. A final self-contained launch through the computer-use launcher
+triggered a new app-access approval that timed out; no screenshot is available.
+Human acceptance remains Not run.
+OmniLAB supplied limited accepted review advice, while failed implementation
+requests and one automatically rejected schema-review escalation required direct
+Codex fallback. [Validation](VALIDATION_v3.0.0.md) records exact outcomes.
+
+No final remote-main SHA, release-tag target, installer checksum or publication
+is assigned by this source checkpoint. The official
+[v3 release page](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1)
+and [issue #53](https://github.com/nishdel/OmniSorSe/issues/53) own final exact
+source/tag/asset/checksum identity and availability when published. Begin testing
+only when that release supplies the matching installer for merged v3 source.
+All 24 human acceptance rows remain **Not run** at this checkpoint.
+
 - **Latest stable release:** v2.4.0 (tagged and packaged).
-- **Current source/prerelease:** 2.13.0-rc Product Clarity & Workflow is tagged
-  and packaged from exact `main`; the release page owns the immutable commit
-  and final asset evidence.
-- **Current published prerelease:** v2.13.0-rc exact-source packages are
-  available as a publisher-unsigned GitHub prerelease for final manual
-  validation; macOS packages are not Apple Developer ID-signed and are
+- **Current source candidate:** v3.0.0-rc.1; final integration and publication
+  remain pending. Historical v2.13 package evidence does not validate this candidate.
+- **Historical v2.13 prerelease:** v2.13.0-rc exact-source packages were
+  published as a publisher-unsigned GitHub prerelease; macOS packages are not Apple Developer ID-signed and are
   unnotarized. Toolchain-provided ad-hoc signatures do not identify or
   authenticate a publisher.
-- **Previous prerelease:** v2.12.0-rc remains available from exact commit
+- **Historical v2.12 prerelease:** v2.12.0-rc packages came from exact commit
   `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac` as historical RC evidence.
 - **Implemented behavior authority:** [Current State](CURRENT-STATE.md).
 - **Readiness evidence authority:** this document.

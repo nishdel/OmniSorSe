@@ -6,6 +6,14 @@ already included in the physical total. Operation history, configuration,
 plugins and logs retain their existing platform locations. Source files are
 never included in storage cleanup.
 
+The schema-8 learned-vector tables are disposable data inside `deep-index.db`.
+The usage breakdown reports their logical bytes without double-counting the
+physical library. They relocate with the database. Cleanup pauses and drains
+embedding work before clearing its vectors; Resume under Search rebuilds them.
+Catalog enrichment, user decisions and operation history remain authoritative
+and survive cleanup. The dedicated vector budget also respects catalog headroom.
+See [Hybrid Search](HYBRID_SEARCH_v3.md).
+
 To choose another drive, enter an absolute folder in the storage location
 setting, save Settings, then restart. Leave the field blank to use the default
 application-data drive. The chosen folder contains an application-owned,

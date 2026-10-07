@@ -1,5 +1,8 @@
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.KnowledgeGraph;
+using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Desktop;
 using OpenSorSe.Desktop.ViewModels;
@@ -10,6 +13,54 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies the production dependency graph can be constructed without launching Avalonia.</summary>
 public sealed class CompositionRootTests
 {
+    /// <summary>Exercises the actual shell constructor so registered semantic services reach its manually constructed pages.</summary>
+    [Fact]
+    public async Task CreateServiceProvider_ShellWiresVectorControlsAndSemanticRelatedFiles()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OmniSorSe.SemanticComposition.Tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = new ApplicationPathProvider(PlatformServices.CurrentPlatform, _ => null, root, root);
+            await using var provider = App.CreateServiceProviderForPaths(paths);
+            await provider.GetRequiredService<IDeepIndexStore>().InitializeAsync();
+            var main = provider.GetRequiredService<MainViewModel>();
+
+            Assert.Same(provider.GetRequiredService<VectorIndexViewModel>(), main.SemanticSearch.VectorIndex);
+            Assert.NotNull(main.SemanticSearch.VectorIndex!.RefreshCommand);
+
+            var initialStatus = main.Collections.SemanticStatusText;
+            var refreshed = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            main.Collections.PropertyChanged += (_, _) =>
+            {
+                if (!main.Collections.IsBusy && main.Collections.SemanticStatusText != initialStatus)
+                {
+                    refreshed.TrySetResult(main.Collections.SemanticStatusText);
+                }
+            };
+            main.Collections.SelectedFile = new RelationshipFileDocument
+            {
+                FileId = "composition-file",
+                SourceId = "composition-source",
+                SourceName = "Composition sample",
+                FullPath = Path.Combine(root, "sample.txt"),
+                RelativePath = "sample.txt",
+                FileName = "sample.txt",
+                FolderName = string.Empty,
+            };
+
+            var status = await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+            // The registered semantic service reports its disabled setting. A missing constructor
+            // dependency instead reports unavailable, hiding wiring mistakes behind graceful fallback.
+            Assert.Equal("Semantic similarity is disabled. Evidence-backed relationships remain available.", status);
+            Assert.Empty(main.Collections.SemanticSuggestions);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     /// <summary>Resolves the production shell while the service provider validates every registration.</summary>
     [Fact]
     public async Task CreateServiceProvider_ResolvesMainViewModelAndDisposesAsync()

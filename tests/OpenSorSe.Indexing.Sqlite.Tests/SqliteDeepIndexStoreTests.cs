@@ -77,7 +77,7 @@ public sealed class SqliteDeepIndexStoreTests
         await using var migrated = fixture.CreateStore();
         await migrated.InitializeAsync();
 
-        Assert.Equal(7, ReadUserVersion(fixture.DatabasePath));
+        Assert.Equal(8, ReadUserVersion(fixture.DatabasePath));
         Assert.False(Assert.Single(await migrated.GetSourcesAsync()).AiEnrichmentEnabled);
         Assert.Equal("bounded document text", Assert.Single(await migrated.GetSearchDocumentsAsync(10)).ExtractedText);
         Assert.Single(Directory.EnumerateFiles(Path.Combine(fixture.Root, "backups"), "deep-index-*.db"));

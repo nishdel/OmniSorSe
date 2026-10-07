@@ -194,6 +194,8 @@ public enum SearchRankingSignalKind
     SmartTagDocumentType,
     /// <summary>An explicit User Tag matched.</summary>
     SmartTagUser,
+    /// <summary>Independent keyword and learned-vector ranks were combined with reciprocal rank fusion.</summary>
+    HybridFusion,
 }
 
 /// <summary>Describes one actual, explainable component used by ranking.</summary>
@@ -507,6 +509,13 @@ public interface ISearchRanker
 {
     /// <summary>Applies visible filters and returns stable ranked candidates.</summary>
     IReadOnlyList<RankedSearchCandidate> Rank(
+        SearchInterpretation interpretation,
+        IReadOnlyList<SearchCandidateDocument> candidates,
+        int maximumResults,
+        CancellationToken cancellationToken);
+
+    /// <summary>Ranks literal and retained context evidence without feature-hash similarity for independent learned-vector fusion.</summary>
+    IReadOnlyList<RankedSearchCandidate> RankKeywords(
         SearchInterpretation interpretation,
         IReadOnlyList<SearchCandidateDocument> candidates,
         int maximumResults,

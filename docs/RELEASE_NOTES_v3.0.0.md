@@ -1,6 +1,6 @@
 # OmniSorSe v3.0.0-rc.1 — Progressive understanding and reviewed organization
 
-**Release candidate for user testing, not a stable release.** The matching
+**Release-candidate source; publication is tracked in [Release Status](RELEASE_STATUS.md).** Begin user testing only after the merged v3 code and matching non-draft installer exist. The matching
 [GitHub release](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1)
 owns exact package, source commit and checksum evidence.
 
@@ -10,6 +10,15 @@ document information with provenance, editable Organize previews with three
 strategies and remembered preferences, and application storage location/usage
 management. Original document contents and embedded metadata remain untouched.
 
+This candidate also adds [vector-powered hybrid Search](HYBRID_SEARCH_v3.md),
+using a separate local Ollama embedding model, traceable chunks, incremental
+background processing, model-digest invalidation and reciprocal rank fusion.
+Keyword Search remains available without vectors. Related Files labels semantic
+similarity separately from factual relationships. Search exposes model/progress,
+pause/resume and rebuild; storage accounts for and reclaims disposable vectors.
+The opt-in [benchmark](../eng/benchmarks/VectorSearch/README.md) supplies repeatable
+synthetic relevance and source-integrity checks with an installed real model.
+
 See [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md), the complete
 [38-item acceptance map](V3_ACCEPTANCE.md), and the
 [manual acceptance checklist](MANUAL_TESTING_v3.0.md).
@@ -18,7 +27,8 @@ See [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md), the complete
 
 - Stable OpenSorSe assembly/profile/package identifiers are retained. The
   Explorer read-only protocol remains 1.0.
-- Durable index schema 7 adds per-source AI policy. Existing source libraries
+- Durable index schema 8 retains per-source AI policy and adds disposable vector
+  tables with transactional catalog/privacy invalidation. Existing source libraries
   default to standard indexing until explicitly enabled. Migration uses the
   existing provider's backup and transaction path; user authority stays in the
   same durable store.
@@ -34,7 +44,7 @@ See [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md), the complete
   complete substitute for a closed-profile filesystem backup. In particular,
   scoped Organize preferences in `decision-history.json` are not included in
   the logical archive; preserve the complete profile and active data location.
-- Older applications do not understand schema 7 or the new active-location
+- Older applications do not understand schema 8 or the new active-location
   receipt. Downgrade in place is unsupported. To recover an old version, close
   all instances and restore an independently preserved, complete pre-upgrade
   profile/location; do not merge old/new SQLite files or journals.
@@ -46,6 +56,16 @@ selected. Enrichment validates structure, not factual correctness. A metadata-on
 record needs deterministic extraction before useful AI enrichment. OCR depends on
 its configured local engine and applicable PDF renderer. Alternative OCR engines
 and richer media understanding remain extension/future work.
+
+Embeddings are a separate opt-in from chat/enrichment and require an installed
+dedicated model. Sixteen chunks of up to 1,600 characters per file bound semantic
+coverage; very long documents may have relevant text outside that coverage.
+Cosine retrieval is an exact scan under the vector storage budget, with no
+unbounded-library performance promise. Literal facet counts and the older
+deterministic “semantic available” filter retain their existing meanings. Weak
+similarity suggestions can appear even for an out-of-corpus query; they do not
+establish factual relationships. Larger representative libraries and subjective
+relevance remain human validation work.
 
 Human acceptance, keyboard/accessibility, real-world profile upgrade and
 subjective relevance checks remain Not run until a tester records observations.

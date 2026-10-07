@@ -89,6 +89,14 @@ public static class SearchFileTypeClassifier
 public sealed class HybridSearchRanker : ISearchRanker
 {
     private const double MinimumSemanticSimilarity = 0.20;
+    private static readonly HashSet<string> NaturalLanguageFunctionWords = new(
+        ["a", "an", "the", "and", "or", "but", "if", "as", "at", "by", "for", "from",
+         "in", "into", "of", "on", "onto", "to", "with", "without", "i", "me", "my",
+         "we", "us", "our", "you", "your", "he", "him", "his", "she", "her", "it",
+         "its", "they", "them", "their", "this", "that", "these", "those", "is", "are",
+         "was", "were", "be", "been", "being", "do", "does", "did", "have", "has", "had",
+         "what", "which", "who", "whom", "whose", "how", "why", "when", "where"],
+        StringComparer.Ordinal);
     private readonly IEmbeddingProvider _embeddingProvider;
     private readonly ISearchSnippetFactory _snippetFactory;
 
@@ -106,7 +114,23 @@ public sealed class HybridSearchRanker : ISearchRanker
         SearchInterpretation interpretation,
         IReadOnlyList<SearchCandidateDocument> candidates,
         int maximumResults,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) =>
+        RankCore(interpretation, candidates, maximumResults, cancellationToken, includeHashedSimilarity: true);
+
+    /// <inheritdoc />
+    public IReadOnlyList<RankedSearchCandidate> RankKeywords(
+        SearchInterpretation interpretation,
+        IReadOnlyList<SearchCandidateDocument> candidates,
+        int maximumResults,
+        CancellationToken cancellationToken) =>
+        RankCore(interpretation, candidates, maximumResults, cancellationToken, includeHashedSimilarity: false);
+
+    private IReadOnlyList<RankedSearchCandidate> RankCore(
+        SearchInterpretation interpretation,
+        IReadOnlyList<SearchCandidateDocument> candidates,
+        int maximumResults,
+        CancellationToken cancellationToken,
+        bool includeHashedSimilarity)
     {
         ArgumentNullException.ThrowIfNull(interpretation);
         ArgumentNullException.ThrowIfNull(candidates);
@@ -122,7 +146,15 @@ public sealed class HybridSearchRanker : ISearchRanker
             .Distinct(StringComparer.Ordinal)
             .Take(SearchLimits.MaximumQueryTokens)
             .ToArray();
-        var queryVector = normalizedTopic.Length == 0
+        if (!includeHashedSimilarity)
+        {
+            // A common function word must not give an unrelated document a second RRF
+            // vote. Keep the original phrase/filename checks, all-function-word queries,
+            // and the established deterministic fallback unchanged.
+            var topicTokens = tokens.Where(token => !NaturalLanguageFunctionWords.Contains(token)).ToArray();
+            if (topicTokens.Length > 0) tokens = topicTokens;
+        }
+        var queryVector = !includeHashedSimilarity || normalizedTopic.Length == 0
             ? []
             : _embeddingProvider.Embed(normalizedTopic);
         var ranked = new List<RankedValue>(Math.Min(candidates.Count, maximumResults * 4));
@@ -471,7 +503,7 @@ public sealed class HybridSearchRanker : ISearchRanker
                 .ToArray());
     }
 
-    private static bool MatchesFilters(
+    internal static bool MatchesFilters(
         SearchCandidateDocument candidate,
         IReadOnlyList<SearchFilter> filters,
         ICollection<SearchRankingComponent> components)

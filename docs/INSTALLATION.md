@@ -4,10 +4,14 @@
 
 ## Availability
 
-The candidate package line is OmniSorSe v3.0.0-rc.1. Use only the verified assets on the
-[GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1).
-It is intended for final real-world/manual validation before v3.0.0 GA and
-contains:
+The testing candidate is **OmniSorSe v3.0.0-rc.1**. Begin installation testing
+only when its non-draft
+[official prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1)
+provides the matching installer built from merged `main`.
+[Testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) and that release
+own availability, exact tag/source commit and installer checksums. This guide
+defines the intended package names; it does not assert that publication has
+completed. The required release assets are:
 
 - `OmniSorSe-v3.0.0-rc.1-win-x64.zip` — self-contained Windows x64 portable;
 - `OmniSorSe-v3.0.0-rc.1-win-x64-setup.exe` — per-user Windows x64 installer;
@@ -22,6 +26,11 @@ No Linux installer is published; Linux x64 remains a source-build preview. Do
 not download packages from unrelated sites. Read [Release Status](RELEASE_STATUS.md)
 and the [v3.0.0-rc.1 Release Notes](RELEASE_NOTES_v3.0.0.md) before relying on
 the prerelease.
+
+The earlier [v2.13 prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc)
+is retained for historical comparison and upgrade fixtures. It is not a
+substitute for the v3 candidate installer. Follow the steps below only after
+the required v3 assets and their source/checksum evidence are available.
 
 The visible rename deliberately continues using established OpenSorSe
 application-data directories, the Windows installer AppId/default install
@@ -67,8 +76,9 @@ runtime installation.
    toolchain-provided ad-hoc signature does not identify or authenticate a
    publisher. Gatekeeper may require an explicit reviewed override.
 
-The app bundle and native dependencies are built and smoke-tested on matching
-native GitHub-hosted macOS runners. This is not a claim that broad interactive
+The release process requires the app bundle and native dependencies to be built
+and smoke-tested on matching native GitHub-hosted macOS runners before publication.
+The official release evidence records those runs. This is not a claim that broad interactive
 macOS testing is complete. Source-file mutation remains disabled when the
 platform capability service cannot prove the required identity/link/filesystem
 guarantees.
@@ -87,6 +97,9 @@ shasum -a 256 OmniSorSe-v3.0.0-rc.1-macos-arm64.dmg
 
 Compare the complete value with the named line. A checksum detects changed
 bytes; it does not authenticate an unsigned publisher.
+Also compare the package's embedded build manifest with the tag/source identity
+recorded on the official v3 release and in issue #53. A matching version string
+alone is insufficient to identify the candidate.
 
 ## Build and run current source
 
@@ -145,6 +158,12 @@ OmniSorSe does not bundle, install, or start Ollama.
 2. Install a model supported by that provider.
 3. In Settings, enable AI, verify the exact endpoint/model, and enable only the
    capability required.
+
+Learned semantic Search has its own **local semantic embeddings** switch and
+dedicated embedding-model setting; it does not require the chat/enrichment
+switch. Select an already installed embedding model and a loopback Ollama
+endpoint. The Search model/indexing panel shows progress and fallback state for
+existing and newly indexed files. See [Hybrid Search](HYBRID_SEARCH_v3.md).
 
 AI and individual capabilities are disabled by default. Ordinary scanning,
 OCR, Search interpretation/ranking, snippets, explanations, Change Plan
@@ -283,8 +302,9 @@ data is a separate explicit user decision.
   then build from a clean generated-output state.
 - **The portable app does not start:** extract the complete archive
   and keep every runtime file beside the executable.
-- **Ollama is unavailable:** verify endpoint, service, exact model, global AI,
-  and the individual capability.
+- **Ollama is unavailable:** verify endpoint, service and exact installed model.
+  Check the AI/capability switches for chat or enrichment; check the separate
+  local embeddings switch and dedicated model for semantic Search.
 - **OCR is unavailable:** verify the Tesseract executable and every configured
   language data file.
 - **Audio/video metadata is unavailable:** verify the configured `ffprobe`

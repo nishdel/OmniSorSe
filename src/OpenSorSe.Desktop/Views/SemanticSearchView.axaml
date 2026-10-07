@@ -31,6 +31,21 @@
 
         <Border Grid.Row="1" Classes="card">
             <StackPanel Spacing="9">
+                <Expander Header="Semantic model and indexing" IsExpanded="False">
+                    <StackPanel DataContext="{Binding VectorIndex}" x:DataType="vm:VectorIndexViewModel" Spacing="7" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                                   AutomationProperties.Name="Semantic indexing status"
+                                   AutomationProperties.LiveSetting="Polite" />
+                        <TextBlock Text="Enable learned semantic search and select an installed model in Settings. Semantic similarity suggests related meaning; it does not verify facts. Rebuilding preserves your catalog and source files."
+                                   Classes="page-subtitle" TextWrapping="Wrap" />
+                        <WrapPanel Orientation="Horizontal">
+                            <Button Content="Check and refresh" Command="{Binding RefreshCommand}" Margin="0,0,8,4" />
+                            <Button Content="Pause semantic indexing" Command="{Binding PauseCommand}" Margin="0,0,8,4" />
+                            <Button Content="Resume semantic indexing" Command="{Binding ResumeCommand}" Margin="0,0,8,4" />
+                            <Button Content="Rebuild semantic index" Command="{Binding RebuildCommand}" Margin="0,0,8,4" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Expander>
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <TextBox Text="{Binding QueryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                              PlaceholderText="Search filenames, contents, images, audio and video…"

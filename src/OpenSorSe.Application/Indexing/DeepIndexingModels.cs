@@ -9,7 +9,7 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 7;
+    public const int SchemaVersion = 8;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
     public const string ProcessorVersion = "2.6.0";
@@ -411,6 +411,9 @@ public sealed record IndexStorageBreakdown(
 
     /// <summary>Gets logical bytes retained for Smart Tag definitions, assignments, decisions, and bounded evidence.</summary>
     public long SmartTagBytes { get; init; }
+
+    /// <summary>Gets logical bytes for disposable learned vectors and their traceable chunks.</summary>
+    public long VectorDataBytes { get; init; }
 }
 
 /// <summary>Describes current persistent progress suitable for UI binding.</summary>

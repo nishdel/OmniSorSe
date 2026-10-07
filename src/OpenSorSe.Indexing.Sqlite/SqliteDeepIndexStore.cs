@@ -15,7 +15,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHealthProbe, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IDisposable
+public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHealthProbe, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IVectorSearchStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -50,9 +50,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     WHERE name IN (
                         'index_meta', 'index_sources', 'index_files', 'index_stage_states',
                         'smart_tag_definitions', 'file_smart_tag_assignments', 'file_smart_tag_decisions',
-                        'ix_index_files_deleted', 'ix_file_smart_tags_tag');
+                        'ix_index_files_deleted', 'ix_file_smart_tags_tag',
+                        'index_vector_documents', 'index_vector_chunks', 'ix_vector_chunks_file', 'index_vector_failures',
+                        'vector_file_updated', 'vector_content_updated', 'vector_content_deleted',
+                        'vector_media_updated', 'vector_media_deleted', 'vector_privacy_inserted',
+                        'vector_privacy_updated', 'vector_source_updated');
                     """), CultureInfo.InvariantCulture);
-                var requiredObjectsPresent = requiredCount == 9;
+                var requiredObjectsPresent = requiredCount == 21;
                 var healthy = schemaVersion == DeepIndexingVersion.SchemaVersion && requiredObjectsPresent;
                 return new DeepIndexHealthSnapshot(
                     healthy,
@@ -126,6 +130,11 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                         if (version < 7)
                         {
                             EnsureColumn(connection, transaction, "index_sources", "ai_enrichment_enabled", "INTEGER NOT NULL DEFAULT 0");
+                        }
+
+                        if (version < 8)
+                        {
+                            ExecuteNonQuery(connection, transaction, VectorSchema);
                         }
 
                         ExecuteNonQuery(
@@ -2849,6 +2858,17 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 ExecuteNonQuery(connection, null, "PRAGMA wal_checkpoint(TRUNCATE);");
                 if (GetPhysicalSize() > maximumBytes)
                 {
+                    var vectors = ExecuteNonQuery(connection, null, "DELETE FROM index_vector_documents;");
+                    if (vectors > 0)
+                    {
+                        actions.Add(new IndexMaintenanceAction("quota-pruned-learned-vectors", 0, nowUtc));
+                        ExecuteNonQuery(connection, null, "VACUUM;");
+                        ExecuteNonQuery(connection, null, "PRAGMA wal_checkpoint(TRUNCATE);");
+                    }
+                }
+
+                if (GetPhysicalSize() > maximumBytes)
+                {
                     var chunkCount = ExecuteNonQuery(connection, null, "DELETE FROM index_chunks;");
                     if (chunkCount > 0)
                     {
@@ -2951,6 +2971,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
                 EnsureColumn(connection, transaction, "index_sources", "ai_enrichment_enabled", "INTEGER NOT NULL DEFAULT 0");
+                ExecuteNonQuery(connection, transaction, VectorSchema);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -3738,6 +3759,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
             MediaDerivedDataBytes = media,
             ContentIntelligenceBytes = contentIntelligence,
             SmartTagBytes = smartTags,
+            VectorDataBytes = ScalarInt64(connection, "SELECT COALESCE(SUM(byte_count),0) FROM index_vector_documents;"),
         };
     }
 

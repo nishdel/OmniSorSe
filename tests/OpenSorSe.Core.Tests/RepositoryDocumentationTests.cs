@@ -502,7 +502,7 @@ public sealed partial class RepositoryDocumentationTests
             "OpenSorSe.Application",
             "Indexing",
             "DeepIndexingModels.cs"));
-        Assert.Contains("public const int SchemaVersion = 7;", indexModels, StringComparison.Ordinal);
+        Assert.Contains("public const int SchemaVersion = 8;", indexModels, StringComparison.Ordinal);
     }
 
     /// <summary>Verifies every public Extension SDK type remains discoverable through XML documentation.</summary>

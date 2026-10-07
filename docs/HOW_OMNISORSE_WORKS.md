@@ -15,10 +15,15 @@ flowchart TD
     A[Add folder and choose indexing] --> B[Scan files]
     B --> C[Extract metadata and native text]
     C --> D[OCR when needed and enabled]
-    C --> E[Usable local Search]
-    D --> E
+    C --> DB[(SQLite authoritative catalog)]
+    D --> DB
+    DB --> E[Usable keyword Search]
     E --> F[Optional background local AI]
     F --> G[Validate and store inferred information with provenance]
+    G --> DB
+    DB --> V[Optional dedicated-model chunk embeddings]
+    V --> VI[(Disposable vector index in SQLite)]
+    VI --> H
     G --> H[Update this file in Search and Related Files]
     E --> I[Organize proposal]
     H --> I
@@ -31,6 +36,11 @@ flowchart TD
 
 ## From a folder to useful results
 
+Learned embeddings are a separate optional background step. The catalog owns
+retained facts, inferences and decisions; vectors can be cleared and regenerated.
+See [how hybrid Search works](HYBRID_SEARCH_v3.md) for the query diagram, model
+controls, ranking, partial coverage and keyword fallback.
+
 | Stage | What does it do? | What code/tool implements it? | Why this approach? |
 | --- | --- | --- | --- |
 | Add Folder | Records the roots you choose and whether to use background AI. Standard indexing uses local extraction. AI-enriched indexing adds interpretation after useful basic coverage exists. | `FolderSelectionViewModel`, `ScanRequest`, `BackgroundIndexingService` | You choose the scope and processing cost. Search need not wait for an AI model. |
@@ -40,7 +50,8 @@ flowchart TD
 | Basic index | Saves bounded extracted evidence and makes progressively completed files searchable. Work survives pause or restart. | `BackgroundIndexingService`, `SqliteDeepIndexStore`, `deep-index.db` | A large library becomes useful progressively, with durable work tracking. |
 | AI enrichment | Sends bounded retained text to your selected local Ollama model for a document type, category, tags, topics, entities and a short summary. | `OllamaIndexingEnrichmentProvider`, `IndexingEnrichmentValidator`, `DefaultIndexingStageProcessor` | AI can supply concepts that are useful even when those words do not occur literally in the file. |
 | Validate and update | Rejects malformed/oversized fields, unsafe path-like values and duplicate entries; stores valid output as AI-derived data and updates the affected file. | `IndexingEnrichmentValidator`, existing SQLite stage completion and Search projection | Automatic enrichment should not require approving every tag, and one finished file should not rebuild the whole library. |
-| Search | Combines names, paths, retained native/OCR text, metadata, explicit tags and inferred concepts into bounded, explainable results. | `SemanticSearchService`, `HybridSearchRanker`, SQLite FTS and existing local representation | Deterministic matches remain useful without AI, while inferred concepts improve discovery. |
+| Search | Combines keyword results with independent optional learned similarity, retaining exact filename priority and model/chunk explanations. | `SemanticSearchService`, `HybridSearchRanker`, `ReciprocalRankFusion`, SQLite FTS and derived vector tables | Literal matches remain useful without a model; semantic paraphrases can find files without the query's exact words. |
+| Embeddings | Progressively chunks retained catalog fields with offsets and embeds them through a dedicated local model. | `VectorIndexCoordinator`, `IModelEmbeddingProvider`, `IVectorSearchStore` | Vectors are disposable application data; model changes, privacy and catalog freshness govern reuse. |
 | Related Files | Uses retained evidence to show useful connections and collections; user confirmations/rejections remain authoritative. | `RelationshipService`, SQLite relationship authority, optional Knowledge Graph projection | Most people need connected documents rather than a raw graph. Graph diagnostics remains advanced. |
 | Organize | Uses selected indexed files, recipes, evidence, strategies and remembered edits to propose destinations and explain why. | `ReviewedOrganizationService`, `ReviewedOrganizationViewModel`, `OrganizeView` | There is no universally correct folder tree. Compare, edit or reject the proposal first. |
 | Review and Apply | Persists a Change Plan, checks current sources/destinations and conflicts, and waits for explicit approval. | `IChangePlanFactory`, `ChangePlanValidator`, `ChangePlanExecutionService`, `IFileSystemGateway` | Neither document text nor model output receives filesystem authority. |

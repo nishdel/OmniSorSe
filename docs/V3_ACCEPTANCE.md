@@ -50,7 +50,22 @@ The validation report will record executed checks separately from human acceptan
 Alternative OCR providers are extension examples, not implemented provider claims.
 All other unfinished current-milestone items remain required release work.
 
-## Development assistance
+## Required vector-search addition for the first candidate
+
+The original 38-item baseline remains required. The continuation additionally
+requires learned-vector hybrid Search before v3.0.0-rc.1 publication.
+
+| Requirement | Implementation / verification owner | State |
+| --- | --- | --- |
+| Separate local embedding model and provider boundary | `IModelEmbeddingProvider`, `OllamaEmbeddingProvider`; bounded transport/model tests | In verification |
+| Derived stable-ID vectors with chunk provenance | `IVectorSearchStore`, schema-8 SQLite tables, `VectorTextChunker` | In verification |
+| Existing-library, incremental and recoverable work | `VectorIndexCoordinator`; completion, restart, cancellation and mutation-fence tests | In verification |
+| Model digest, deletion, moves, privacy and enrichment invalidation | SQLite triggers, query/commit freshness and digest isolation tests | In verification |
+| Actual hybrid Search and vector-assisted Related Files | `SemanticSearchService`, `ReciprocalRankFusion`, `SemanticRelatedFilesService`; [real-model benchmark](../eng/benchmarks/VectorSearch/README.md), independent-vector and provider-bound hydration regressions | In verification |
+| Status, controls, storage, relocation and cleanup | Search/Settings views, coordinator, `ApplicationStorageService` | In verification |
+| Real v3 screenshots and diagrams | User guide, Hybrid Search guide and screenshot gallery | In verification |
+
+## Development assistance continuation
 
 The local development checkout was not treated as an installed active controller.
 The existing Python environment imports an editable LocalAgentBridge checkout, so

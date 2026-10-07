@@ -4,6 +4,7 @@ using OpenSorSe.Application.KnowledgeGraph;
 using OpenSorSe.Application.Plugins;
 using OpenSorSe.Application.Watching;
 using OpenSorSe.Application.Workflows;
+using OpenSorSe.Application.Semantic;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Diagnostics;
 using OpenSorSe.Core.Lifecycle;
@@ -69,6 +70,9 @@ internal static class PackageSmokeTest
                 .InitializeAsync(CancellationToken.None)
                 .ConfigureAwait(false);
             await serviceProvider.GetRequiredService<IBackgroundIndexingService>()
+                .InitializeAsync(CancellationToken.None)
+                .ConfigureAwait(false);
+            await serviceProvider.GetRequiredService<VectorIndexCoordinator>()
                 .InitializeAsync(CancellationToken.None)
                 .ConfigureAwait(false);
             var mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();

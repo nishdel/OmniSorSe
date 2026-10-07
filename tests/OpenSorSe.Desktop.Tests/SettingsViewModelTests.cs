@@ -13,6 +13,33 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class SettingsViewModelTests
 {
+    /// <summary>Embeddings remain an independent opt-in and survive unrelated Settings edits.</summary>
+    [Fact]
+    public void EmbeddingSettings_RoundTripWithoutChangingChatModel()
+    {
+        var settings = new ApplicationSettings
+        {
+            SemanticSearch = new SemanticSearchSettings
+            {
+                Enabled = true,
+                EmbeddingsEnabled = true,
+                EmbeddingModel = "test-embedding:latest",
+                MaximumVectorStorageMiB = 128,
+            },
+            Ai = new AiSettings { SelectedModel = "chat:latest" },
+        };
+        var draft = SettingsDraft.FromSettings(settings);
+        draft.MinimumLogLevel = LogLevel.Warning;
+        var saved = draft.ToSettings();
+        saved.Validate();
+        Assert.True(saved.SemanticSearch.EmbeddingsEnabled);
+        Assert.Equal("test-embedding:latest", saved.SemanticSearch.EmbeddingModel);
+        Assert.Equal(128, saved.SemanticSearch.MaximumVectorStorageMiB);
+        Assert.Equal("chat:latest", saved.Ai.SelectedModel);
+        Assert.False(saved.Ai.Enabled);
+        Assert.False(new SemanticSearchSettings().EmbeddingsEnabled);
+    }
+
     /// <summary>The optional companion path round-trips without making OmniBrille a startup dependency.</summary>
     [Fact]
     public void OmniBrillePath_RoundTripsAsOptionalAbsolutePath()

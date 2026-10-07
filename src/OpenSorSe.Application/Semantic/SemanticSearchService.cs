@@ -33,6 +33,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
     private readonly SemaphoreSlim _queryGate = new(MaximumConcurrentQueries, MaximumConcurrentQueries);
     private readonly ISearchQueryInterpreter _queryInterpreter;
     private readonly ISearchRanker _ranker;
+    private readonly IModelEmbeddingProvider? _modelEmbeddingProvider;
+    private readonly IVectorSearchStore? _vectorSearchStore;
 
     /// <summary>Initializes the bounded local hybrid Search service.</summary>
     public SemanticSearchService(
@@ -47,7 +49,9 @@ public sealed class SemanticSearchService : ISemanticSearchService
         IRelationshipSearchSource? relationshipSearchSource = null,
         IGraphSearchSource? graphSearchSource = null,
         IProgressiveSearchDocumentLookup? searchDocumentLookup = null,
-        IAiSearchAssistant? aiSearchAssistant = null)
+        IAiSearchAssistant? aiSearchAssistant = null,
+        IModelEmbeddingProvider? modelEmbeddingProvider = null,
+        IVectorSearchStore? vectorSearchStore = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         ArgumentNullException.ThrowIfNull(embeddingProvider);
@@ -64,6 +68,8 @@ public sealed class SemanticSearchService : ISemanticSearchService
         _discoverySearchSource = progressiveSearchSource as IProgressiveDiscoverySearchSource;
         _facetedDiscoverySource = progressiveSearchSource as IFacetedDiscoverySource;
         _aiSearchAssistant = aiSearchAssistant;
+        _modelEmbeddingProvider = modelEmbeddingProvider;
+        _vectorSearchStore = vectorSearchStore;
     }
 
     /// <inheritdoc />
@@ -181,8 +187,10 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     settings.MaximumDocumentCount,
                     interpretation,
                     cancellationToken);
-                await Task.WhenAll(legacyTask, progressiveTask).ConfigureAwait(false);
+                var vectorTask = LoadVectorsSafelyAsync(interpretation, cancellationToken);
+                await Task.WhenAll(legacyTask, progressiveTask, vectorTask).ConfigureAwait(false);
                 var progressive = await progressiveTask.ConfigureAwait(false);
+                var vectors = await vectorTask.ConfigureAwait(false);
                 var coverage = progressive.Coverage;
                 var candidates = MergeCandidates(
                     await legacyTask.ConfigureAwait(false),
@@ -190,12 +198,13 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     progressive.ExcludedPaths,
                     settings.MaximumDocumentCount,
                     progressive.CandidateCoverage.UsedCompleteLibrarySelection);
-                if (candidates.Count == 0)
+                candidates = RemoveInvalidatedCandidates(candidates, vectors.InvalidatedFileIds, vectors.InvalidatedPaths);
+                if (candidates.Count == 0 && vectors.Documents.Count == 0)
                 {
                     var emptyGraph = request.IncludeGraphContext && _graphSearchSource is not null
                         ? await LoadGraphExpansionsSafelyAsync([], cancellationToken).ConfigureAwait(false)
                         : null;
-                    var emptyMessage = CoverageMessage(coverage, hasResults: false);
+                    var emptyMessage = CoverageMessage(coverage, hasResults: false) + vectors.Message;
                     CompleteDiagnostics(
                         session,
                         DiagnosticStatus.Succeeded,
@@ -215,10 +224,10 @@ public sealed class SemanticSearchService : ISemanticSearchService
                         candidateCoverage: progressive.CandidateCoverage);
                 }
 
-                var ranked = _ranker.Rank(
+                var ranked = RankCandidates(
                     interpretation,
                     candidates,
-                    settings.MaximumResultCount,
+                    vectors.Matches.Count > 0,
                     cancellationToken);
                 GraphProjectionCoverage? graphCoverage = null;
                 if ((request.IncludeRelationshipContext && _relationshipSearchSource is not null) ||
@@ -299,7 +308,7 @@ public sealed class SemanticSearchService : ISemanticSearchService
                                 relationshipContexts.Keys.Concat(graphContexts.Keys),
                                 cancellationToken)
                             .ConfigureAwait(false);
-                        var contextualCandidates = candidates
+                        candidates = RemoveInvalidatedCandidates(candidates
                             .Select(candidate => candidate.FileId is not null &&
                                 relationshipContexts.TryGetValue(candidate.FileId, out var relationshipContext)
                                     ? candidate with { RelationshipContext = relationshipContext, GraphContext = null }
@@ -307,13 +316,23 @@ public sealed class SemanticSearchService : ISemanticSearchService
                                       graphContexts.TryGetValue(candidate.FileId, out var graphContext)
                                         ? candidate with { GraphContext = graphContext }
                                         : candidate)
-                            .ToArray();
-                        ranked = _ranker.Rank(
+                            .ToArray(), vectors.InvalidatedFileIds, vectors.InvalidatedPaths);
+                        ranked = RankCandidates(
                             interpretation,
-                            contextualCandidates,
-                            settings.MaximumResultCount,
+                            candidates,
+                            vectors.Matches.Count > 0,
                             cancellationToken);
                     }
+                }
+                var keywordRanked = ranked;
+                if (vectors.Model is not null && vectors.Matches.Count > 0)
+                {
+                    ranked = ReciprocalRankFusion.Fuse(
+                        ranked, vectors.Documents, vectors.Matches, vectors.Model, settings.MaximumResultCount);
+                }
+                else
+                {
+                    ranked = ranked.Take(settings.MaximumResultCount).ToArray();
                 }
                 var aiAssistance = AiSearchAssistanceResult.NotRequested;
                 if (request.UseAiAssistance)
@@ -340,8 +359,30 @@ public sealed class SemanticSearchService : ISemanticSearchService
                     }
                 }
 
+                if (vectors.Model is not null && vectors.Matches.Count > 0)
+                {
+                    var publication = await RevalidateBeforePublicationAsync(vectors, candidates, interpretation, cancellationToken).ConfigureAwait(false);
+                    var currentVectors = publication.Vectors;
+                    if (currentVectors.Matches.Count != vectors.Matches.Count)
+                    {
+                        // A late privacy/content change removes learned evidence, while retaining
+                        // the independently ranked keyword candidates and their original snippets.
+                        keywordRanked = RankCandidates(interpretation, publication.Candidates ?? candidates,
+                            currentVectors.Matches.Count > 0, cancellationToken);
+                        ranked = currentVectors.Matches.Count > 0
+                            ? ReciprocalRankFusion.Fuse(keywordRanked, currentVectors.Documents, currentVectors.Matches,
+                                vectors.Model, settings.MaximumResultCount)
+                            : keywordRanked.Take(settings.MaximumResultCount).ToArray();
+                        if (aiAssistance.WasApplied)
+                        {
+                            aiAssistance = new(AiSearchAssistanceState.NoChange,
+                                "Indexed evidence changed during AI review; refreshed local ranking was retained.", 0, false);
+                        }
+                    }
+                    vectors = currentVectors;
+                }
                 var hits = ranked.Select(ToHit).ToArray();
-                var message = CoverageMessage(coverage, hits.Length > 0);
+                var message = CoverageMessage(coverage, hits.Length > 0) + vectors.Message;
                 CompleteDiagnostics(
                     session,
                     DiagnosticStatus.Succeeded,
@@ -404,6 +445,210 @@ public sealed class SemanticSearchService : ISemanticSearchService
                 interpretation,
                 EmptyCoverage);
         }
+    }
+
+    private IReadOnlyList<RankedSearchCandidate> RankCandidates(SearchInterpretation interpretation,
+        IReadOnlyList<SearchCandidateDocument> candidates, bool useLearnedVectors, CancellationToken cancellationToken) =>
+        useLearnedVectors
+            ? _ranker.RankKeywords(interpretation, candidates, SearchLimits.MaximumRankedResults, cancellationToken)
+            : _ranker.Rank(interpretation, candidates, _configurationService.Current.SemanticSearch.MaximumResultCount, cancellationToken);
+
+    private static IReadOnlyList<SearchCandidateDocument> RemoveInvalidatedCandidates(
+        IReadOnlyList<SearchCandidateDocument> candidates, IEnumerable<string>? invalidatedIds,
+        IEnumerable<string>? invalidatedPaths)
+    {
+        var ids = (invalidatedIds ?? []).ToHashSet(StringComparer.Ordinal);
+        var paths = (invalidatedPaths ?? []).ToHashSet(PathComparer);
+        paths.UnionWith(candidates.Where(candidate => candidate.FileId is { } id && ids.Contains(id))
+            .Select(candidate => candidate.FullPath));
+        return ids.Count == 0 && paths.Count == 0 ? candidates : candidates
+            .Where(candidate => (candidate.FileId is null || !ids.Contains(candidate.FileId)) && !paths.Contains(candidate.FullPath)).ToArray();
+    }
+
+    private async Task<VectorLoad> LoadVectorsSafelyAsync(
+        SearchInterpretation interpretation,
+        CancellationToken cancellationToken)
+    {
+        var selectedSettings = _configurationService.Current.SemanticSearch;
+        if (!selectedSettings.EmbeddingsEnabled)
+        {
+            return new VectorLoad(null, [], [], " Semantic embeddings are disabled; keyword Search is active.");
+        }
+
+        if (string.IsNullOrWhiteSpace(interpretation.TopicText))
+        {
+            return new VectorLoad(null, [], [], string.Empty);
+        }
+
+        if (_modelEmbeddingProvider is null || _vectorSearchStore is null || _searchDocumentLookup is null)
+        {
+            return new VectorLoad(null, [], [], " Semantic embeddings are unavailable; keyword Search continued.");
+        }
+
+        using var queryCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        queryCancellation.CancelAfter(TimeSpan.FromSeconds(SemanticQueryLimits.MaximumDurationSeconds));
+        var queryToken = queryCancellation.Token;
+        var queryStarted = Stopwatch.GetTimestamp();
+        IReadOnlyList<string> invalidatedIds = [];
+        var documents = new List<ProgressiveSearchDocument>();
+        VectorLoad Fallback(string message) => new(null, [], [], message,
+            InvalidatedFileIds: invalidatedIds,
+            InvalidatedPaths: documents.Where(document => invalidatedIds.Contains(document.FileId, StringComparer.Ordinal))
+                .Select(document => document.FullPath).Distinct(PathComparer).ToArray());
+        try
+        {
+            var model = await _modelEmbeddingProvider.GetModelAsync(queryToken).WaitAsync(queryToken).ConfigureAwait(false);
+            if (model is null)
+            {
+                return new VectorLoad(null, [], [], " The embedding model is unavailable; keyword Search continued.");
+            }
+
+            var embedded = await _modelEmbeddingProvider.EmbedAsync(
+                [interpretation.TopicText], model, queryToken).WaitAsync(queryToken).ConfigureAwait(false);
+            if (!embedded.IsAvailable || embedded.Model?.Key != model.Key || embedded.Vectors.Count != 1)
+            {
+                return new VectorLoad(null, [], [], " The embedding model could not process this query; keyword Search continued.");
+            }
+
+            // The provider selects across the full eligible catalog, independently of keyword hydration.
+            var vectorRequest = new DiscoverySearchRequest(interpretation.TopicText, interpretation.Filters, SearchLimits.MaximumRankedResults);
+            var result = await _vectorSearchStore.SearchVectorsAsync(model, embedded.Vectors[0], vectorRequest,
+                queryToken).WaitAsync(queryToken).ConfigureAwait(false);
+            var ids = result.Matches.Select(match => match.FileId).Distinct(StringComparer.Ordinal)
+                .Take(SearchLimits.MaximumRankedResults).ToArray();
+            var requested = ids.ToHashSet(StringComparer.Ordinal);
+            foreach (var batch in ids.Chunk(RelationshipLimits.MaximumSearchExpansions))
+            {
+                var batchDocuments = await _searchDocumentLookup.GetDocumentsByIdsAsync(batch, queryToken)
+                    .WaitAsync(queryToken).ConfigureAwait(false);
+                documents.AddRange(batchDocuments);
+                var currentIds = batchDocuments.Where(document => !document.IsExcluded)
+                    .Select(FromProgressive)
+                    .Where(document => HybridSearchRanker.MatchesFilters(document, interpretation.Filters, []))
+                    .Select(document => document.FileId!).ToHashSet(StringComparer.Ordinal);
+                // Only a completed lookup can confirm that a prior keyword snapshot is
+                // missing or ineligible. Optional failures alone do not revoke lexical hits.
+                invalidatedIds = invalidatedIds.Concat(batch.Where(id => !currentIds.Contains(id))).ToArray();
+            }
+            var eligible = documents.Where(document => !document.IsExcluded && requested.Contains(document.FileId))
+                .Select(FromProgressive)
+                .Where(document => HybridSearchRanker.MatchesFilters(document, interpretation.Filters, []))
+                .ToArray();
+            var hydrated = eligible.Select(document => document.FileId!).ToHashSet(StringComparer.Ordinal);
+            var selectedMatches = result.Matches.Where(match => hydrated.Contains(match.FileId)).ToArray();
+            var matches = await _vectorSearchStore.ValidateVectorMatchesAsync(model,
+                result with { Matches = selectedMatches }, vectorRequest, cancellationToken: queryToken)
+                .WaitAsync(queryToken).ConfigureAwait(false);
+            var retainedIds = matches.Select(match => match.FileId).ToHashSet(StringComparer.Ordinal);
+            invalidatedIds = ids.Where(id => !retainedIds.Contains(id)).ToArray();
+            var currentSettings = _configurationService.Current.SemanticSearch;
+            if (!currentSettings.Enabled || !currentSettings.EmbeddingsEnabled ||
+                !string.Equals(currentSettings.EmbeddingModel, selectedSettings.EmbeddingModel, StringComparison.Ordinal))
+            {
+                return Fallback(" Semantic settings changed; keyword Search continued.");
+            }
+            var message = result.IndexedFileCount == 0
+                ? " No compatible embeddings are ready for these filters; keyword Search continued."
+                : $" Semantic model {model.Model}: {result.IndexedFileCount:N0} of {result.EligibleFileCount:N0} eligible files have compatible vectors; hybrid ranking uses reciprocal rank fusion (k=60).";
+            return new VectorLoad(model, eligible, matches, message,
+                Math.Max(0, SemanticQueryLimits.MaximumDurationSeconds * 1000 - Stopwatch.GetElapsedTime(queryStarted).TotalMilliseconds),
+                selectedSettings.EmbeddingModel, invalidatedIds,
+                documents.Where(document => invalidatedIds.Contains(document.FileId, StringComparer.Ordinal))
+                    .Select(document => document.FullPath).Distinct(PathComparer).ToArray());
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (queryCancellation.IsCancellationRequested)
+        {
+            return Fallback(" Semantic retrieval exceeded its 5-second query budget; keyword Search continued.");
+        }
+        catch (Exception exception)
+        {
+            _diagnostics?.Publish(null, "Vector Search fallback", DiagnosticStatus.PartiallySucceeded,
+                DiagnosticSeverity.Warning, DiagnosticSection.Performance,
+                "Optional semantic retrieval was unavailable; keyword Search continued.",
+                [new DiagnosticField("Failure category", exception.GetType().Name)]);
+            return Fallback(" Semantic retrieval is temporarily unavailable; keyword Search continued.");
+        }
+    }
+
+    private async Task<(VectorLoad Vectors, IReadOnlyList<SearchCandidateDocument>? Candidates)> RevalidateBeforePublicationAsync(
+        VectorLoad vectors, IReadOnlyList<SearchCandidateDocument> candidates,
+        SearchInterpretation interpretation, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<SearchCandidateDocument>? currentCandidates = null;
+        (VectorLoad, IReadOnlyList<SearchCandidateDocument>?) Fallback(string message) =>
+            (vectors with { Matches = [], Message = message }, currentCandidates);
+        var settings = _configurationService.Current.SemanticSearch;
+        if (!settings.Enabled || !settings.EmbeddingsEnabled ||
+            !string.Equals(settings.EmbeddingModel, vectors.SelectedModel, StringComparison.Ordinal))
+            return Fallback(" Semantic settings changed; keyword Search continued.");
+        if (vectors.RemainingBudgetMilliseconds <= 0)
+            return Fallback(" Semantic retrieval exceeded its 5-second query budget; keyword Search continued.");
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(TimeSpan.FromMilliseconds(vectors.RemainingBudgetMilliseconds));
+        try
+        {
+            var request = new DiscoverySearchRequest(interpretation.TopicText, interpretation.Filters, SearchLimits.MaximumRankedResults);
+            var matches = await _vectorSearchStore!.ValidateVectorMatchesAsync(vectors.Model!,
+                new VectorSearchResult(vectors.Matches, 0, 0, false), request,
+                cancellationToken: budget.Token).WaitAsync(budget.Token).ConfigureAwait(false);
+            if (matches.Count != vectors.Matches.Count)
+            {
+                var retainedIds = matches.Select(match => match.FileId).ToHashSet(StringComparer.Ordinal);
+                var invalidIds = vectors.Matches.Select(match => match.FileId).Where(id => !retainedIds.Contains(id)).ToHashSet(StringComparer.Ordinal);
+                var invalidByPath = vectors.Documents.Where(document => document.FileId is { } id && invalidIds.Contains(id))
+                    .GroupBy(document => document.FullPath, PathComparer).ToDictionary(group => group.Key, group => group.First().FileId!, PathComparer);
+                string? InvalidIdentity(SearchCandidateDocument candidate) => candidate.FileId is { } id
+                    ? invalidIds.Contains(id) ? id : null
+                    : invalidByPath.GetValueOrDefault(candidate.FullPath);
+                var ids = candidates.Select(InvalidIdentity).OfType<string>().Distinct(StringComparer.Ordinal).ToArray();
+                currentCandidates = RemoveInvalidatedCandidates(candidates, invalidIds, invalidByPath.Keys);
+                if (ids.Length > 0)
+                {
+                    var currentDocuments = new List<ProgressiveSearchDocument>();
+                    foreach (var batch in ids.Chunk(RelationshipLimits.MaximumSearchExpansions))
+                        currentDocuments.AddRange(await _searchDocumentLookup!.GetDocumentsByIdsAsync(batch, budget.Token)
+                            .WaitAsync(budget.Token).ConfigureAwait(false));
+                    var requestedIds = ids.ToHashSet(StringComparer.Ordinal);
+                    var safeDocuments = currentDocuments.Where(document => !document.IsExcluded && requestedIds.Contains(document.FileId))
+                        .Select(FromProgressive);
+                    currentCandidates = currentCandidates.Concat(safeDocuments).ToArray();
+                    // The one bounded hydration above may overlap another catalog mutation.
+                    // Fence surviving learned generations once more; do not retry in a loop.
+                    var beforeFinalIds = matches.Select(match => match.FileId).ToHashSet(StringComparer.Ordinal);
+                    matches = await _vectorSearchStore.ValidateVectorMatchesAsync(vectors.Model!,
+                        new VectorSearchResult(matches, 0, 0, false), request, cancellationToken: budget.Token)
+                        .WaitAsync(budget.Token).ConfigureAwait(false);
+                    beforeFinalIds.ExceptWith(matches.Select(match => match.FileId));
+                    if (beforeFinalIds.Count > 0)
+                    {
+                        // A second mutation can invalidate another already-loaded keyword row.
+                        // Drop these now-known stale rows; another hydration would create a loop.
+                        var newlyInvalidPaths = vectors.Documents.Where(document => document.FileId is { } id && beforeFinalIds.Contains(id))
+                            .Select(document => document.FullPath).ToHashSet(PathComparer);
+                        currentCandidates = RemoveInvalidatedCandidates(currentCandidates, beforeFinalIds, newlyInvalidPaths);
+                    }
+                }
+            }
+            settings = _configurationService.Current.SemanticSearch;
+            if (!settings.Enabled || !settings.EmbeddingsEnabled ||
+                !string.Equals(settings.EmbeddingModel, vectors.SelectedModel, StringComparison.Ordinal))
+                return Fallback(" Semantic settings changed; keyword Search continued.");
+            return (vectors with
+            {
+                Matches = matches,
+                Message = matches.Count == vectors.Matches.Count ? vectors.Message :
+                    " Indexed evidence changed while Search was running; stale semantic matches were removed and keyword results retained.",
+            }, currentCandidates);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) when (budget.IsCancellationRequested)
+        { return Fallback(" Semantic retrieval exceeded its 5-second query budget; keyword Search continued."); }
+        catch (Exception)
+        { return Fallback(" Semantic freshness could not be verified; keyword Search continued."); }
     }
 
     private async Task<IReadOnlyList<SemanticIndexEntry>> LoadLegacySafelyAsync(
@@ -1003,4 +1248,9 @@ public sealed class SemanticSearchService : ISemanticSearchService
         SearchCoverage Coverage,
         IReadOnlyList<string> ExcludedPaths,
         SearchCandidateCoverage CandidateCoverage);
+
+    private sealed record VectorLoad(SemanticModelIdentity? Model,
+        IReadOnlyList<SearchCandidateDocument> Documents, IReadOnlyList<VectorSearchMatch> Matches, string Message,
+        double RemainingBudgetMilliseconds = 0, string? SelectedModel = null,
+        IReadOnlyList<string>? InvalidatedFileIds = null, IReadOnlyList<string>? InvalidatedPaths = null);
 }

@@ -1,7 +1,7 @@
 # OmniSorSe system map
 
 These Mermaid diagrams model the current OmniSorSe implementation candidate,
-including v3 automatic enrichment and storage relocation. They emphasize authority, persistence, communication, bounded work,
+including v3 automatic enrichment, learned hybrid Search and storage relocation. They emphasize authority, persistence, communication, bounded work,
 and the only supported source-file mutation route. Minor helpers and individual
 Views are intentionally omitted.
 
@@ -152,7 +152,8 @@ flowchart TB
         Plans["Change Plans"]
         Journals["Operation Journal and History"]
         LocalIndexes["Content and semantic indexes"]
-        DeepIndex["Schema 7 Search, Smart Tag, relationship, media, and content authority"]
+        DeepIndex["Schema 8 Search, Smart Tag, relationship, media, and content authority"]
+        Vectors["Disposable learned vectors inside SQLite"]
         SavedViews["Dynamic Saved View rules"]
         GraphIndex["Schema 1 rebuildable Knowledge Graph projection"]
         GraphDecisions["Schema 1 graph-native decision and privacy authority"]
@@ -204,6 +205,12 @@ flowchart TB
     Classify --> Rules
     Classify --> Duplicates
     Text --> Semantic
+    DeepIndex -->|retained evidence only| EmbeddingWorker["Optional dedicated-model background embeddings"]
+    EmbeddingWorker --> Vectors
+    Vectors -->|eligible catalog IDs and cosine| Fusion["Independent keyword/vector RRF; exact filename priority"]
+    DeepIndex -->|keyword ranking| Fusion
+    Fusion --> SearchUI
+    Vectors -->|similarity only; privacy and pair corrections first| CollectionsUI
     Rules --> Recipes
     Extensions -.-> Metadata
     Extensions -.-> Classify
@@ -295,7 +302,7 @@ do not imply authorization. The executor cannot be reached merely because a
 watcher, AI provider, rule, recipe, or plugin produced a proposal.
 
 The central authorities are intentionally asymmetric: source files remain
-user/filesystem-owned; `deep-index.db` owns schema-7 indexed, Smart Tag,
+user/filesystem-owned; `deep-index.db` owns schema-8 indexed, Smart Tag,
 relationship, Smart Collection, and privacy state; Saved Views own query rules,
 not membership; graph projection is derived; graph-native decisions stay in a
 separate non-rebuildable sidecar; Change Plans own intent and the Operation
@@ -348,7 +355,7 @@ flowchart LR
         Retained["Bounded text, OCR, media, content evidence"]
         Tags["Deterministic Smart Tag classification"]
         Relations["Bounded relationship feature/enrichment work"]
-        Sqlite["deep-index.db schema 7"]
+        Sqlite["deep-index.db schema 8"]
     end
 
     subgraph Discovery["Current-index discovery"]
@@ -401,6 +408,14 @@ coverage is in `tests/OpenSorSe.Indexing.Sqlite.Tests/BackgroundIndexingServiceT
 `SqliteDeepIndexStoreTests.cs`, and `SqliteRelationshipStoreTests.cs`, plus
 `tests/OpenSorSe.Application.Tests/SavedDiscoveryViewStoreTests.cs` and the
 Search/relationship quality suites.
+
+The [hybrid Search diagram](../HYBRID_SEARCH_v3.md#how-search-works) details the
+query path. SQLite remains authoritative for retained evidence and decisions;
+vectors are a parallel derived index, capped at sixteen provenance-bearing chunks
+per file. `VectorSearchIntegrationTests` covers independent retrieval, fusion,
+100-ID hydration batches, fallback and semantic relationship presentation.
+The opt-in [real-model benchmark](../../eng/benchmarks/VectorSearch/README.md)
+reports representative relevance, latency, source integrity and restart reuse.
 
 ## Safe file-operation path
 
@@ -486,7 +501,7 @@ and focused `MainViewModelTests`.
 
 ```mermaid
 flowchart TB
-    Retained["Retained schema-7 file features"] --> Buckets["Indexed bounded candidate buckets"]
+    Retained["Retained schema-8 file features"] --> Buckets["Indexed bounded candidate buckets"]
     Buckets --> Engine["DeterministicRelationshipEngine v3"]
     Engine --> Evidence["Capped independent evidence families"]
     Evidence --> Edges["Typed automatic edges and evidence"]

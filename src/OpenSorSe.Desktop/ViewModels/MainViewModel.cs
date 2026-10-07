@@ -304,7 +304,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
         IProductReadinessService? productReadinessService = null,
         IReviewedOrganizationService? reviewedOrganizationService = null,
-        StorageManagementViewModel? storageManagement = null)
+        StorageManagementViewModel? storageManagement = null,
+        VectorIndexViewModel? vectorIndex = null,
+        ISemanticRelatedFilesService? semanticRelatedFiles = null)
         : this(
             configurationService,
             loggingService,
@@ -356,7 +358,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             savedDiscoveryViewStore,
             productReadinessService,
             reviewedOrganizationService,
-            storageManagement)
+            storageManagement,
+            vectorIndex,
+            semanticRelatedFiles)
     {
     }
 
@@ -411,7 +415,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
         IProductReadinessService? productReadinessService = null,
         IReviewedOrganizationService? reviewedOrganizationService = null,
-        StorageManagementViewModel? storageManagement = null)
+        StorageManagementViewModel? storageManagement = null,
+        VectorIndexViewModel? vectorIndex = null,
+        ISemanticRelatedFilesService? semanticRelatedFiles = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -464,8 +470,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             clipboard: clipboardService,
             mediaThumbnailProvider: mediaThumbnailProvider,
             smartTagService: smartTagService,
-            savedViewStore: savedDiscoveryViewStore);
-        Collections = new CollectionsViewModel(relationshipService);
+            savedViewStore: savedDiscoveryViewStore,
+            vectorIndex: vectorIndex);
+        Collections = new CollectionsViewModel(relationshipService, semanticRelatedFiles);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
         StructureHistory = new StructureHistoryViewModel(

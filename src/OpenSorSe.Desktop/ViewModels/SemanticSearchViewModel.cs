@@ -83,7 +83,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         IClipboardService? clipboard = null,
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
         ISmartTagService? smartTagService = null,
-        ISavedDiscoveryViewStore? savedViewStore = null)
+        ISavedDiscoveryViewStore? savedViewStore = null,
+        VectorIndexViewModel? vectorIndex = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _indexer = indexer;
@@ -97,6 +98,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _mediaThumbnailProvider = mediaThumbnailProvider;
         _ = smartTagService; // Retained for binary/source-compatible composition while v2.8 removes duplicate selector state.
         _savedViewStore = savedViewStore;
+        VectorIndex = vectorIndex;
         Hits = new ReadOnlyObservableCollection<SemanticSearchHit>(_hits);
         ActiveFilters = new ReadOnlyObservableCollection<SearchFilter>(_activeFilters);
         Sources = new ReadOnlyObservableCollection<IndexingSource>(_sources);
@@ -200,6 +202,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             _ = LoadSavedViewsAsync();
         }
     }
+
+    /// <summary>Gets optional learned-index status and controls.</summary>
+    public VectorIndexViewModel? VectorIndex { get; }
 
     /// <summary>Gets or sets the bounded natural-language query.</summary>
     public string? QueryText

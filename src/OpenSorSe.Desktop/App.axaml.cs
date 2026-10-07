@@ -186,6 +186,8 @@ public partial class App : Avalonia.Application
             RecordLifecycleFailure("Authoritative mutation recovery state", exception);
         }
         desktop.MainWindow = new MainWindow(mainViewModel);
+        _serviceProvider.GetRequiredService<VectorIndexCoordinator>()
+            .InitializeAsync(CancellationToken.None).GetAwaiter().GetResult();
         StartRelationshipRefreshInBackground(_serviceProvider);
         StartKnowledgeGraphInBackground(_serviceProvider);
     }
@@ -296,6 +298,18 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton<IDeepIndexStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<IVectorSearchStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddKeyedSingleton("embeddings", (_, _) => new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        });
+        services.AddSingleton<IModelEmbeddingProvider>(serviceProvider => new OllamaEmbeddingProvider(
+            serviceProvider.GetRequiredKeyedService<HttpClient>("embeddings"),
+            serviceProvider.GetRequiredService<IConfigurationService>()));
+        services.AddSingleton<VectorIndexCoordinator>();
+        services.AddSingleton<VectorIndexViewModel>();
+        services.AddSingleton<ISemanticRelatedFilesService, SemanticRelatedFilesService>();
         services.AddSingleton<IDeepIndexHealthProbe>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IIndexPrivacyStore>(serviceProvider =>

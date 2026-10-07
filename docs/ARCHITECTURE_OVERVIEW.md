@@ -3,7 +3,7 @@
 This is the authoritative top-level architecture for the OmniSorSe v3.0.0-rc.1
 candidate. It extends the v2.13 source while retaining established profile identity
 and the existing application/executor ownership boundaries.
-The durable Search index is schema 7 and Explorer Protocol remains v1.
+The durable Search index is schema 8 and Explorer Protocol remains v1.
 
 The v3 enrichment path is source file → deterministic extraction/OCR → optional
 local AI → validated provenance-bearing application data → incremental Search and
@@ -80,6 +80,30 @@ while generated edges/evidence remain rebuildable. See
 
 ## Component view
 
+### Learned-vector discovery in v3
+
+`IModelEmbeddingProvider` and `IVectorSearchStore` separate optional inference
+from the durable provider. `VectorIndexCoordinator` reads retained catalog text,
+chunks each evidence field with stable file identity and offsets, and atomically
+publishes a complete file's vectors against its current fingerprint. SQLite
+schema 8 stores disposable portable float vectors; no new native vector engine
+is required. Source files are never opened by the embedding worker.
+
+`SemanticSearchService` queries keyword and vector candidates independently.
+Current catalog/privacy/filter eligibility precedes vector top-k; exact-ID
+hydration is batched at the existing 100-ID provider limit. `ReciprocalRankFusion`
+adds reciprocal positions with `k=60`, deduplicates per file, and preserves exact
+filename/stem priority. Model, cosine, evidence field and character span are
+explainable. `SemanticRelatedFilesService` reads stored-vector similarity under
+relationship privacy and explicit pair rejection; it creates no edge or decision.
+
+Model digest/dimensions, catalog updates, moves/deletions, and privacy changes
+invalidate compatibility. Completed files survive restart; missing/failed work
+retries in bounded batches. All failures preserve keyword Search. The shared
+storage owner accounts for logical vector bytes, relocates them with the catalog,
+and pauses vector work before derived-only reclamation. See [Hybrid Search](HYBRID_SEARCH_v3.md)
+for the query diagram, coverage bounds and user controls.
+
 | Area | Ownership and principal entry points |
 | --- | --- |
 | Desktop shell and navigation | `App` builds the service provider and initializes recovery, plugins, workflows, and watchers. `MainViewModel` owns navigation and top-level operation state. |
@@ -92,7 +116,8 @@ while generated edges/evidence remain rebuildable. See
 | Content Intelligence | `IContentIntelligenceProvider` receives only bounded retained evidence and returns normalized topics, textual entities, keywords, an extractive summary, provenance, and a processing fingerprint. `WhisperCppTranscriptionProvider` is an optional user-managed local process adapter; no runtime/model is bundled or downloaded. |
 | Smart Tags and faceted discovery | `ISmartTagClassifier` consumes already retained bounded evidence; `ISmartTagService` coordinates user authority; and the SQLite provider owns schema-6 taxonomy definitions, assignments, decisions, status, complete-index candidates, and canonical facet joins. `JsonSavedDiscoveryViewStore` owns dynamic query rules, never file membership. Classification is deferred behind base Search and does not repeat extraction or modify source metadata. |
 | Explorer Protocol v1 | The dependency-free `OmniSorSe.ExplorerProtocol` project owns only DTOs/enums/version/capabilities. Application `IExplorerDataSource`, `ExplorerReadService`, and the on-demand current-user local named-pipe host project authorized indexed Structure/Search/Context without exposing SQLite or write operations. The host remains dormant unless an explicit session is requested. `ExplorerCompanionLaunchService` discovers a separate OmniBrille executable only on demand and transfers one scoped session through OmniBrille's established one-time current-user handoff pipe; Protocol 1.0 itself is unchanged. |
-| Progressive Search | `SemanticSearchService` combines the compatible existing JSON index with `IProgressiveSearchSource`, then delegates constrained local interpretation, coherent hybrid ranking, explanations, and snippets to provider-neutral Application services. |
+| Progressive Search | `SemanticSearchService` combines compatible JSON and progressive keyword candidates with independent optional learned-vector retrieval. `HybridSearchRanker` owns deterministic tiers; `ReciprocalRankFusion` combines keyword/vector positions and preserves exact-filename intent. |
+| Learned embeddings | `IModelEmbeddingProvider` / `OllamaEmbeddingProvider` own dedicated-model inference; `VectorIndexCoordinator` owns independent bounded refresh; `IVectorSearchStore` / `SqliteDeepIndexStore` own rebuildable vector persistence and freshness; `VectorIndexViewModel` exposes status and controls. |
 | Index privacy and repair | `IIndexPrivacyStore` and `IIndexPrivacyService` expose inspection, forgetting, per-file policy, selective clearing, and durable targeted repair without exposing SQLite or source-file mutation to the ViewModel. |
 | Relationships and context | `IRelationshipEngine`, `IRelationshipStore`, and `IRelationshipService` own bounded evidence, deterministic confidence, virtual Smart Collections/timelines, user corrections, privacy, and repair; the SQLite provider supplies persistence and `CollectionsViewModel` remains provider-neutral. |
 | Knowledge Graph | Provider-neutral graph projection/query/decision/privacy/repair contracts and a durable coordinator own conservative graph behavior; the SQLite provider owns isolated schema-1 sidecars, and `KnowledgeGraphViewModel` owns bounded accessible presentation. |
@@ -266,11 +291,11 @@ records this additive input. Unresolved Moderate, Limited, and rejected
 classifications are excluded, and the existing suggestion-to-Change-Plan
 boundary is unchanged. See [Guided Workflows v2.8](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
 
-## Inherited v1.9 relationships and current schema-7 authority
+## Inherited v1.9 relationships and current schema-8 authority
 
 `IRelationshipEngine` compares only bounded retained index projections and
 publishes automatic edges only with actual evidence. `IRelationshipStore`
-isolates provider persistence; the current SQLite implementation is schema 7,
+isolates provider persistence; the current SQLite implementation is schema 8,
 while `IRelationshipService` coordinates durable
 analysis, manual decisions, virtual collection control, privacy, Search
 expansion, diagnostics, and repair. Views and ViewModels do not use SQL or

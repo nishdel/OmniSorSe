@@ -38,6 +38,8 @@ public sealed class ApplicationStorageService : IApplicationStorageService
     private readonly IContentStore _content;
     private readonly ISemanticIndexStore _semantic;
     private readonly TimeProvider _time;
+    private readonly IVectorSearchStore? _vectors;
+    private readonly VectorIndexCoordinator? _vectorCoordinator;
 
     /// <summary>Creates storage maintenance for the active profile.</summary>
     public ApplicationStorageService(
@@ -46,7 +48,9 @@ public sealed class ApplicationStorageService : IApplicationStorageService
         IDeepIndexStore index,
         IContentStore content,
         ISemanticIndexStore semantic,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IVectorSearchStore? vectors = null,
+        VectorIndexCoordinator? vectorCoordinator = null)
     {
         _paths = paths ?? throw new ArgumentNullException(nameof(paths));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -54,6 +58,8 @@ public sealed class ApplicationStorageService : IApplicationStorageService
         _content = content ?? throw new ArgumentNullException(nameof(content));
         _semantic = semantic ?? throw new ArgumentNullException(nameof(semantic));
         _time = timeProvider ?? TimeProvider.System;
+        _vectors = vectors ?? index as IVectorSearchStore;
+        _vectorCoordinator = vectorCoordinator;
     }
 
     /// <inheritdoc />
@@ -70,6 +76,16 @@ public sealed class ApplicationStorageService : IApplicationStorageService
     {
         var before = await GetUsageAsync(cancellationToken).ConfigureAwait(false);
         var settings = _configuration.Current;
+        // Stop the optional writer before reclaiming disposable vectors. Resuming is explicit
+        // so cleanup cannot immediately regenerate the storage the user just reclaimed.
+        if (_vectorCoordinator is not null)
+        {
+            await _vectorCoordinator.ReclaimAsync(cancellationToken).ConfigureAwait(false);
+        }
+        else if (_vectors is not null)
+        {
+            await _vectors.ClearVectorsAsync(cancellationToken).ConfigureAwait(false);
+        }
         await Task.Run(() =>
         {
             DeleteEligibleFiles("media-temporary", _time.GetUtcNow().UtcDateTime.AddDays(-settings.Storage.TemporaryRetentionDays), false, cancellationToken);
@@ -86,7 +102,7 @@ public sealed class ApplicationStorageService : IApplicationStorageService
         var after = await GetUsageAsync(cancellationToken).ConfigureAwait(false);
         return new ApplicationStorageMaintenance(after, Math.Max(0, before.TotalBytes - after.TotalBytes),
             maintained.IsWithinQuota && after.CacheBytes <= after.MaximumCacheBytes
-                ? "Rebuildable caches were reclaimed. User decisions, accepted tags, relationships and operation history were preserved."
+                ? "Rebuildable caches and learned vectors were reclaimed. User decisions, accepted tags, relationships and operation history were preserved. Resume embeddings under Search when ready to rebuild."
                 : "Safe cleanup completed. Some storage remains above its limit; durable decisions and history were preserved. Increase the relevant limit or review the remaining storage.");
     }
 
@@ -135,6 +151,7 @@ public sealed class ApplicationStorageService : IApplicationStorageService
             new ApplicationStorageCategory("Inside library: OCR text", index.OcrTextBytes, false),
             new ApplicationStorageCategory("Inside library: summaries, topics and AI metadata", index.SummariesAndKeywordsBytes + index.ContentIntelligenceBytes, false),
             new ApplicationStorageCategory("Inside library: search representations", index.SemanticDataBytes, false),
+            new ApplicationStorageCategory("Inside library: disposable learned vectors", index.VectorDataBytes, false),
             new ApplicationStorageCategory("Inside library: relationship data", index.RelationshipDataBytes, false),
             new ApplicationStorageCategory("Inside library: Smart Tags and decisions", index.SmartTagBytes, false),
         });

@@ -373,6 +373,26 @@
                     <TextBlock Text="Search" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Enable local Search"
                               IsChecked="{Binding Draft.SemanticSearchEnabled, Mode=TwoWay}" />
+                    <CheckBox Content="Enable local semantic embeddings"
+                              IsChecked="{Binding Draft.EmbeddingsEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable local semantic embeddings" />
+                    <TextBlock Text="Optional: send retained catalog text to Ollama on this computer using a dedicated embedding model. Existing and new files are indexed in the background. Keyword Search stays available. No source documents are changed."
+                               TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Installed embedding model" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.EmbeddingModel, Mode=TwoWay}"
+                                     AutomationProperties.Name="Dedicated embedding model"
+                                     PlaceholderText="qwen3-embedding:4b" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3" Width="180">
+                            <TextBlock Text="Vector budget (MiB)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumVectorStorageMiB, Mode=TwoWay}"
+                                     AutomationProperties.Name="Disposable vector storage budget" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Uses the configured Ollama endpoint only when it is local. Models are never downloaded automatically. Save settings, then inspect progress or rebuild under Search. Changing model weights invalidates previous vectors."
+                               Classes="page-subtitle" TextWrapping="Wrap" />
                     <TextBlock Text="Uses a local index over names, folders, metadata, document text, OCR, tags, and related concepts. Search remains useful while background coverage is still being built."
                                TextWrapping="Wrap" />
                     <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"

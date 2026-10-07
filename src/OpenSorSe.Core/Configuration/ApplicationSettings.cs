@@ -323,6 +323,15 @@ public sealed class DiagnosticsSettings
 /// <summary>Defines bounded local deterministic Search behavior.</summary>
 public sealed class SemanticSearchSettings
 {
+    /// <summary>Gets whether retained catalog text may be sent to local Ollama for learned embeddings.</summary>
+    public bool EmbeddingsEnabled { get; init; }
+
+    /// <summary>Gets the dedicated embedding model, independent of the chat model.</summary>
+    public string EmbeddingModel { get; init; } = "qwen3-embedding:4b";
+
+    /// <summary>Gets the logical storage budget for disposable learned vectors.</summary>
+    public int MaximumVectorStorageMiB { get; init; } = 256;
+
     /// <summary>Gets or initializes whether local semantic indexing and navigation are enabled.</summary>
     public bool Enabled { get; init; }
 
@@ -335,7 +344,9 @@ public sealed class SemanticSearchSettings
     /// <summary>Validates local semantic-search bounds.</summary>
     public void Validate()
     {
-        if (MaximumDocumentCount is < 1 or > 100_000 ||
+        if (string.IsNullOrWhiteSpace(EmbeddingModel) || EmbeddingModel.Length > 256 ||
+            EmbeddingModel.Any(char.IsControl) || MaximumVectorStorageMiB is < 1 or > 4096 ||
+            MaximumDocumentCount is < 1 or > 100_000 ||
             MaximumResultCount is < 1 or > 1_000)
         {
             throw new ConfigurationValidationException("Search settings are invalid.");
