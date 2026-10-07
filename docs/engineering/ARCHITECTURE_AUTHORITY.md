@@ -1,8 +1,8 @@
 # OmniSorSe architecture and authority map
 
-Status: living, implementation-verified architecture guide. Last verified
-against branch `v2.12-trusted-relationships-context` at commit `d48bb08` on
-2026-08-18.
+Status: living architecture guide. v3 indexing/AI, Organize preference and storage
+boundaries reviewed on 2026-10-05; other subsystem archaeology was verified
+against `v2.12-trusted-relationships-context` at `d48bb08` on 2026-08-18.
 
 Use this document to identify the owner of a concept before changing it. Source
 and tests define implemented behavior when this guide is stale. ADRs preserve
@@ -84,7 +84,8 @@ persistence or mutation authority.
 | Related Files and Smart Collection authority | `IRelationshipStore` | `deep-index.db` | Relationship UI, Search context, Explorer, graph projection | Knowledge Graph projection |
 | Rebuildable Knowledge Graph | `IGraphStore` as a projection of indexed and decision authority | `DataDirectory/index/knowledge-graph.db` | Graph UI and optional Search context | Source observations or user decisions |
 | Graph-native decisions and consent | `IGraphDecisionStore` | `DataDirectory/index/knowledge-decisions.db` | Graph coordinator, reads, privacy/recovery | Legacy relationship/collection decisions |
-| AI review preferences | `IDecisionHistoryStore` | `DataDirectory/decision-history.json` | Explicit AI suggestion requests | Filesystem, Search ranking authority, or Change Plan approval |
+| AI review and scoped Organize preferences | `IDecisionHistoryStore` | `DataDirectory/decision-history.json` | Explicit AI suggestions and remembered source-scoped folder choices | Filesystem, Search ranking authority, or Change Plan approval; routine history/cache cleanup may not erase scoped choices |
+| Active data/cache location | `ApplicationStorageLocation` under the original profile lease | Atomic location receipt and permanent guard in the original configuration directory; verified generation below the selected root | Startup composition before any store opens | Source files, configuration/state relocation, or permission to delete earlier recovery generations; see [storage management](../STORAGE_MANAGEMENT_v3.md) |
 | Explorer session scope | `IExplorerProtocolHost` session manager | Process memory only | Named-pipe request dispatcher | Indexed source registration or durable authorization |
 | Plugin installation and grants | Plugin manager/state store | Plugin directory and `StateDirectory/plugins-state.json` | Contribution registry, workflow resolver | Host DI, persistence, credentials, Change Plan approval |
 | Advanced diagnostics | `IDiagnosticsManager` | Process memory; explicit export only | Diagnostic UI/export | Product/domain state |
@@ -110,14 +111,14 @@ persistence or mutation authority.
 
 | Aspect | Verified current behavior |
 | --- | --- |
-| Purpose and owner | `BackgroundIndexingService` coordinates durable progressive work. `SqliteDeepIndexStore` owns schema-6 indexed state. `SemanticSearchService` interprets and ranks bounded local queries. |
+| Purpose and owner | `BackgroundIndexingService` coordinates durable progressive work. `SqliteDeepIndexStore` owns schema-7 indexed state. `SemanticSearchService` interprets and ranks bounded local queries. |
 | Reads / inputs | Registered source roots, filesystem observations, settings/policy fingerprints, content/media providers, Smart Tag classifier, relationship service, Search query/filter/facet input, optional graph and explicit AI assistance. |
 | Derives / outputs / consumers | Publishes progressive Search documents, coverage, facets, failures, retained bounded evidence, Smart Tags, relationship features, and graph observations. Desktop Search, Home readiness, Explorer Protocol, relationships, and graph consume those projections. |
 | Mutates / persists | Mutates only application-owned index state. Durable sources, work, privacy policy, generated evidence, user Smart Tag/relationship authority, and Search records live in `deep-index.db`. Source files are never changed. |
 | Does not own | Current source-file truth, manual Results, historical catalog state, or graph-native decisions. |
 | Invariants | Durable stages are explicit and restartable: discovery, metadata, fingerprint, text/media, OCR, enrichment, semantic representation, Smart Tags, Search, relationships, completion. Deterministic lexical Search remains available without AI. Privacy forget markers suppress compatible rediscovery. |
 | Failure / cancellation / rollback | Stages distinguish skipped, waiting-for-dependency, retry-scheduled, failed, cancelled, and complete. IO can retry; invalid inputs fail permanently. Pause/cancel/restart state is durable. Derived corruption is preserved and reset only through reviewed recovery. No source rollback is required. |
-| Bounds | Schema 6 / processor `2.6.0`; default 1 GiB quota, 128 KiB extracted text, 64 KiB OCR, eight semantic chunks, concurrency one. Validated ceilings include concurrency 32, 512 relationship candidates, 128 relationships/file, and 2,000 collection members. Search: 512 query chars, 32 tokens, 16 filters, 4,096 fuzzy candidates, 1,000 ranked results, four concurrent queries. |
+| Bounds | Schema 7 / processor `2.6.0`; default 1 GiB quota, 128 KiB extracted text, 64 KiB OCR, eight semantic chunks, concurrency one. Validated ceilings include concurrency 32, 512 relationship candidates, 128 relationships/file, and 2,000 collection members. Search: 512 query chars, 32 tokens, 16 filters, 4,096 fuzzy candidates, 1,000 ranked results, four concurrent queries. |
 | Source / tests | [`BackgroundIndexingService`](../../src/OpenSorSe.Application/Indexing/BackgroundIndexingService.cs), [`DefaultIndexingStageProcessor`](../../src/OpenSorSe.Application/Indexing/DefaultIndexingStageProcessor.cs), [`SqliteDeepIndexStore`](../../src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs), [`SemanticSearchService`](../../src/OpenSorSe.Application/Semantic/SemanticSearchService.cs); SQLite indexing, Search resilience/intelligence/integration, and performance regression tests. |
 | Known limitations | Search still consumes a legacy JSON semantic index alongside SQLite. Progressive same-path data normally wins, but legacy tags are unioned and legacy vectors can be fallback data. See [Derived risks](#derived-risks-and-comprehensibility-debt). |
 
@@ -140,7 +141,7 @@ persistence or mutation authority.
 
 | Aspect | Verified current behavior |
 | --- | --- |
-| Purpose and owner | `RelationshipService` coordinates provider-neutral deterministic relationship analysis and explicit controls; schema-6 `IRelationshipStore` owns retained relationship/collection state. |
+| Purpose and owner | `RelationshipService` coordinates provider-neutral deterministic relationship analysis and explicit controls; schema-7 `IRelationshipStore` owns retained relationship/collection state. |
 | Reads / inputs | Stable indexed file documents, bounded candidate features, exact content/path/topic/entity/time/OCR/media evidence, settings exclusions, explicit pair and collection decisions. |
 | Derives / outputs / consumers | Produces evidence-backed Related Files, aggregate context, Search expansions, virtual Smart Collections, diagnostics, and graph projection input. Desktop, Search, Explorer, backup, and graph consume them. |
 | Mutates / persists | Atomically replaces generated analysis for one file and persists manual links, confirm/reject/always/never corrections, collection metadata, memberships, exclusions, and tombstones in `deep-index.db`. Source files are untouched. |
@@ -159,7 +160,7 @@ persistence or mutation authority.
 | Reads / inputs | Deep-index snapshot manifest/revision, legacy relationship decision manifest, graph-native decision ledger/checkpoint, privacy sequence, resource settings, explicit user graph commands. |
 | Derives / outputs / consumers | Deterministic nodes, edges, evidence, facts, aliases, timeline, bounded traversal and Search context. Knowledge Graph UI and optional Search context consume it. |
 | Mutates / persists | Coordinator publishes generations to `knowledge-graph.db`; graph-native commands append to `knowledge-decisions.db`. `RelationshipGraphAuthorityBridge` routes relationship-owned corrections back to `RelationshipService`. |
-| Does not own | Source observations, source files, Smart Tags, current schema-6 relationship/Smart Collection authority, or base Search availability. |
+| Does not own | Source observations, source files, Smart Tags, current schema-7 relationship/Smart Collection authority, or base Search availability. |
 | Invariants | Graph reads and mutations fence on current source/decision/privacy authority and applied coverage. Stale or invalid authority fails closed. The derived store may be quarantined/replaced without resetting decisions. Provisioning occurs only after explicit consent. |
 | Failure / cancellation / rollback | Jobs persist pending/running/retryable/permanent/waiting/cancelled states with lease fencing. Cancellation is durably acknowledged; unchanged jobs retry at most five times. Prior valid components can remain readable while replacement is pending. Graph failure is isolated from base indexing/Search. Graph-native decision recovery uses managed checkpoints, not Change Plan Undo. |
 | Bounds | Query page 100, projection page 256, eight evidence/edge, 128 edges/node, component 1,024 nodes/4,096 edges, stable depth one/100 nodes, 16 Search seeds, 50 graph and 100 combined context expansions, four workers, 30-second lease, five-second heartbeat/shutdown, five-minute reconciliation. |
@@ -187,12 +188,12 @@ flowchart TD
 
 | Aspect | Verified current behavior |
 | --- | --- |
-| Purpose and owner | Content/media services extract bounded local evidence; deterministic Content Intelligence derives concepts/summaries; Smart Tag service owns user/generated tag separation; AI service owns optional review-only provider requests. |
+| Purpose and owner | Content/media services extract bounded local evidence; deterministic Content Intelligence and optional local AI derive concepts/summaries with distinct provenance; Smart Tag service owns user/generated tag separation. AI indexing enrichment is automatic after structural validation; AI filesystem proposals remain review-only. |
 | Reads / inputs | Known files, bounded native/OCR/media evidence, configuration, optional user-managed Tesseract/ffmpeg/ffprobe/whisper.cpp, explicit Ollama settings/request, exact user selection. |
 | Derives / outputs / consumers | Extracted/OCR text, metadata, transcripts, frames/thumbnails, provenance-bearing topics/entities/summary, Smart Tag candidates, AI rename/folder/document/Search suggestions. Indexing, Search, relationships, Explorer, Files, and review flows consume them. |
-| Mutates / persists | Generated evidence and Smart Tag authority persist in `deep-index.db`; path-keyed content JSON and thumbnails are rebuildable compatibility caches. AI decision history persists reviewed preferences. AI suggestions must become a separate reviewed Change Plan before source mutation. |
+| Mutates / persists | Generated evidence and Smart Tag authority persist in `deep-index.db`. Path-keyed JSON compatibility stores can also retain user tags/decisions; only rebuildable portions may be pruned. Thumbnails are rebuildable. Decision history persists reviewed AI and scoped Organize preferences. AI suggestions must become a separate reviewed Change Plan before source mutation. |
 | Does not own | Source-file truth, Change Plan approval, deterministic Search ordering, or user authority. The unavailable visual-description provider is not a core dependency. |
-| Invariants | Provenance distinguishes deterministic, AI-derived, and user-authored values. Optional absence is explicit. Smart Tag user decisions survive generated-data clearing. Model output is bounded, parsed, normalized, and validated before presentation. |
+| Invariants | Provenance distinguishes deterministic, AI-derived, and user-authored values. Optional absence is explicit. User decisions survive generated-data clearing. Model output is bounded and structurally validated before automatic index incorporation or proposal presentation; neither validation path proves factual correctness. |
 | Failure / cancellation / rollback | Media/provider failure is isolated per file; enabled missing dependencies can leave deeper indexing work waiting while base coverage remains. Cancellation propagates or becomes an explicit cancelled result. AI/provider failure preserves deterministic fallback and cannot mutate. No source rollback applies until a suggestion enters Change Plan execution. |
 | Bounds | Content/media settings bound file size, pages, durations, frames, transcripts, OCR, descriptions, provider timeouts, and temporary storage. AI folder proposals accept at most 12 files; document text 16,384 chars; Ollama prompt 128 KiB and response 1 MiB. |
 | Source / tests | Content, Media, ContentIntelligence, SmartTags, and AI directories under [`OpenSorSe.Application`](../../src/OpenSorSe.Application); [`OllamaSuggestionProvider`](../../src/OpenSorSe.AI/OllamaSuggestionProvider.cs); content pipeline/intelligence, media, Smart Tag, AI suggestion/provider/Search, accessibility, and privacy tests. |

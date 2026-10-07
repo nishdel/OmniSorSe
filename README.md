@@ -20,7 +20,7 @@ require a reviewed Change Plan and separate Apply confirmation. Third-party
 plugins are trusted in-process extensions, not a security sandbox.
 
 <p align="center">
-  <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc"><strong>Download v2.13.0-rc prerelease</strong></a>
+  <a href="docs/RELEASE_STATUS.md"><strong>v3.0.0-rc.1 release status</strong></a>
   · <a href="https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0">Latest stable: v2.4.0</a>
   · <a href="docs/INSTALLATION.md">Installation</a>
   · <a href="docs/CURRENT-STATE.md">Current source</a>
@@ -44,6 +44,22 @@ plugins are trusted in-process extensions, not a security sandbox.
 
 ## How it works
 
+Read [How OmniSorSe Works](docs/HOW_OMNISORSE_WORKS.md) for the complete beginner
+guide. The testing candidate is [v3.0.0-rc.1](docs/RELEASE_NOTES_v3.0.0.md), with
+the [acceptance scope](docs/V3_ACCEPTANCE.md) and
+[manual checklist](docs/MANUAL_TESTING_v3.0.md). The
+[official v3 release page](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1)
+and [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) identify
+availability, exact tag/source commit, installer assets and checksums. A source
+version alone does not establish publication.
+
+The first v3 candidate also includes [learned-vector hybrid Search](docs/HYBRID_SEARCH_v3.md):
+a dedicated local embedding model, incremental indexing, explained reciprocal
+rank fusion and separately labelled Related Files similarity. SQLite remains the
+authoritative catalog; its vector tables are disposable. v2.13 is a historical
+comparison, not the v3 testing target. Begin v3 testing only after the matching
+installer is published from merged `main`.
+
 1. **Choose folders.** OmniSorSe works only with roots you explicitly select.
 2. **Scan and index locally.** It builds a local catalogue of metadata,
    searchable content, relationships, and duplicate evidence.
@@ -57,8 +73,8 @@ plugins are trusted in-process extensions, not a security sandbox.
 
 | Track | What it is | Start here |
 | --- | --- | --- |
-| **Current source: 2.13.0-rc** | The current source restores a clear Scan → Review → Organize workflow and simplifies discovery, relationship, AI, and diagnostic surfaces on top of v2.12. | [Current State](docs/CURRENT-STATE.md) · [v2.13 Release Notes](docs/RELEASE_NOTES_v2.13.0.md) · [Release Status](docs/RELEASE_STATUS.md) |
-| **Current prerelease: v2.13.0-rc** | Exact-source Windows and macOS packages are published for final real-world/manual validation before GA. They are unsigned; macOS packages are also unnotarized. The release page owns the immutable tag, source commit, assets, and checksums. | [Prerelease and downloads](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) · [Installation](docs/INSTALLATION.md) · [Release Notes](docs/RELEASE_NOTES_v2.13.0.md) |
+| **Current source and testing candidate: v3.0.0-rc.1** | Progressive local-AI enrichment, hybrid semantic Search, editable Organize previews and configurable safe storage. Install for testing only when the non-draft prerelease provides the matching installer from merged `main`. | [v3 candidate release](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1) · [Testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) · [Release Status](docs/RELEASE_STATUS.md) |
+| **Historical comparison: v2.13.0-rc** | Earlier exact-source Windows/macOS prerelease, retained as historical evidence. It is not the v3 testing target. | [Historical release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) · [Historical release notes](docs/RELEASE_NOTES_v2.13.0.md) |
 | **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
 
 The v2.4.0 package keeps established OpenSorSe application-data, schema,
@@ -75,10 +91,12 @@ upgrade from creating an empty profile or unnecessary reindex.
 | macOS Apple Silicon | Self-contained DMG | Same support and safety boundary as the Intel package. |
 | Linux x64 | No package; current source build only | Conservative source-build preview; no Linux installer is published. |
 
-The platform table describes the current v2.13.0-rc package line. Download RC
-packages only from the
-[official v2.13.0-rc prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc)
-and verify the accompanying SHA-256 file and SBOM. Checksums detect changed bytes
+The platform table describes supported release artifact types. For v3 testing,
+download only assets actually published on the non-draft
+[official v3.0.0-rc.1 prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1),
+then verify the accompanying SHA-256 file, SBOM and source identity recorded in
+[issue #53](https://github.com/nishdel/OmniSorSe/issues/53). If the matching
+installer is unavailable, v3 installation testing has not opened. Checksums detect changed bytes
 but do not authenticate an unsigned publisher. Users who want the latest stable
 build should use [v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0).
 See [Installation](docs/INSTALLATION.md) for exact filenames, checksum commands,
@@ -86,8 +104,10 @@ upgrade cautions, application-data locations, and Linux guidance.
 
 ## Current source highlights
 
-The v2.13 prerelease keeps the v2.12 architecture and safety boundary
-while making the product easier to understand and operate:
+The v3 source adds progressive local-AI indexing, optional learned embeddings and
+hybrid Search, editable Organize trees with
+remembered folder choices, and configurable storage with protected cleanup. It
+retains the clearer workflow introduced in v2.13:
 
 - Home and navigation lead with Scan, Review, and Organize; Search, Duplicates,
   Related Files, library automation, and graph diagnostics have clearer roles;
@@ -145,8 +165,8 @@ before making a native-platform support claim.
 
 OmniSorSe remains useful without these externally managed components:
 
-- **Ollama-compatible service:** optional bounded assistance and Search
-  reranking over already selected candidates.
+- **Ollama-compatible service:** optional enrichment and bounded assistance;
+  learned semantic Search uses its own opt-in and dedicated local embedding model.
 - **Tesseract 5:** optional local OCR recognition.
 - **ffprobe/ffmpeg:** optional bounded audio/video metadata and representative
   frame processing.
@@ -163,11 +183,11 @@ intent-based map. The shortest routes are:
 | I want to… | Read first | Then continue with… |
 | --- | --- | --- |
 | Understand the project and current state | [Current State](docs/CURRENT-STATE.md) | [Product Vision](PRODUCT_VISION.md) |
-| Install or test the current prerelease | [Installation](docs/INSTALLATION.md) | [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) |
+| Install or test the v3 candidate when published | [Installation](docs/INSTALLATION.md) | [v3.0.0-rc.1 Release Notes](docs/RELEASE_NOTES_v3.0.0.md) and [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) |
 | Use the latest stable release | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
 | Build or contribute | [Developer Guide](docs/DEVELOPER_GUIDE.md) | [Contributing](CONTRIBUTING.md) and [Engineering Principles](ENGINEERING_PRINCIPLES.md) |
 | Understand the architecture | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | [System Map](docs/Architecture/OpenSorSe_System_Map.md) and [Architecture Library](docs/Architecture/README.md) |
-| Review the current source candidate | [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) | [v2.13 manual checklist](docs/MANUAL_TESTING_v2.13.md) |
+| Review the current source candidate | [v3.0.0-rc.1 Release Notes](docs/RELEASE_NOTES_v3.0.0.md) | [v3 manual checklist](docs/MANUAL_TESTING_v3.0.md) |
 | Check validation or readiness | [Release Status](docs/RELEASE_STATUS.md) | [Platform Compatibility](docs/PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates |
 | Research released or historical work | [Release History](RELEASE_HISTORY.md) | [Changelog](docs/CHANGELOG.md) and [historical records](docs/README.md#release-and-implementation-records) |
 

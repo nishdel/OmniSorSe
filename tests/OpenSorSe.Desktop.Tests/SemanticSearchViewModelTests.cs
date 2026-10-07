@@ -14,6 +14,24 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Verifies Semantic Search Beta presentation state, confirmation, cancellation, and safe shell opening.</summary>
 public sealed class SemanticSearchViewModelTests
 {
+    /// <summary>Folder AI choices requeue retained content and reflect durable policy without rebuilding Search.</summary>
+    [Fact]
+    public async Task SourceEnrichment_UpdatesPolicyAndRetainsSearchAvailability()
+    {
+        var background = new BackgroundIndexing();
+        using var viewModel = new SemanticSearchViewModel(new Configuration(true), new Indexer(),
+            new Search([]), new Store(), new Launcher(), background);
+        await viewModel.RefreshIndexingStatusCommand.ExecuteAsync(null);
+        viewModel.SelectedSource = Assert.Single(viewModel.Sources);
+        await viewModel.EnableSourceEnrichmentCommand.ExecuteAsync(null);
+        Assert.True(viewModel.SelectedSource!.AiEnrichmentEnabled);
+        Assert.Contains("enabled", viewModel.SourceEnrichmentText, StringComparison.OrdinalIgnoreCase);
+        Assert.False(viewModel.IsBusy);
+        await viewModel.DisableSourceEnrichmentCommand.ExecuteAsync(null);
+        Assert.False(viewModel.SelectedSource!.AiEnrichmentEnabled);
+        Assert.Equal(2, background.EnrichmentPolicyChangeCount);
+    }
+
     /// <summary>Search organization captures stable IDs and the canonical return context.</summary>
     [Fact]
     public async Task OrganizationSelection_SnapshotsStableIdsAndDiscoveryContext()
@@ -1129,10 +1147,20 @@ public sealed class SemanticSearchViewModelTests
 
     private sealed class BackgroundIndexing : IBackgroundIndexingService, IIndexPrivacyService
     {
-        private readonly IndexingSource _source =
+        private IndexingSource _source =
             new("source", "C:\\Docs", "Documents", IndexingLevel.Standard, true, true, 0, []);
 
         public event EventHandler<IndexingProgressSnapshot>? ProgressChanged;
+
+        public int EnrichmentPolicyChangeCount { get; private set; }
+
+        public Task<int> SetSourceAiEnrichmentAsync(string sourceId, bool enabled, CancellationToken cancellationToken = default)
+        {
+            Assert.Equal(_source.Id, sourceId);
+            _source = _source with { AiEnrichmentEnabled = enabled };
+            EnrichmentPolicyChangeCount++;
+            return Task.FromResult(enabled ? 3 : 0);
+        }
 
         public IndexingProgressSnapshot Progress { get; set; } = new();
 

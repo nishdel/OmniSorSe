@@ -24,6 +24,41 @@
 
             <Border Classes="card">
                 <StackPanel Spacing="8">
+                    <TextBlock Text="Storage" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Index and metadata location (empty uses the default application folder)" TextWrapping="Wrap" />
+                    <TextBox Text="{Binding Draft.StorageDirectoryPath, Mode=TwoWay}"
+                             PlaceholderText="Absolute directory on this computer"
+                             AutomationProperties.Name="Application metadata and index storage directory" />
+                    <TextBlock Text="Save and restart to copy and verify your data at the new location. Configuration, operation history and recovery copies are preserved. Source documents are never moved by this setting." TextWrapping="Wrap" />
+                    <TextBlock Text="Rebuildable cache limit (MiB)" />
+                    <NumericUpDown Value="{Binding Draft.MaximumCacheSizeMiB, Mode=TwoWay}" Minimum="16" Maximum="65536" AutomationProperties.Name="Rebuildable cache limit in MiB" />
+                    <TextBlock Text="Remove temporary data older than (days)" />
+                    <NumericUpDown Value="{Binding Draft.TemporaryRetentionDays, Mode=TwoWay}" Minimum="1" Maximum="365" AutomationProperties.Name="Temporary data retention days" />
+                    <StackPanel Spacing="6" DataContext="{Binding StorageManagement}" x:DataType="vm:StorageManagementViewModel">
+                        <TextBlock Text="{Binding ActiveDataDirectory, StringFormat='Active metadata: {0}'}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ActiveCacheDirectory, StringFormat='Active cache: {0}'}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding PreservedStateDirectory, StringFormat='History and recovery: {0}'}" TextWrapping="Wrap" />
+                        <WrapPanel>
+                            <Button Content="Measure storage" Command="{Binding RefreshCommand}" Margin="0,0,8,0" />
+                            <Button Content="Reclaim rebuildable data" Command="{Binding ReclaimCommand}" />
+                        </WrapPanel>
+                        <TextBlock Text="{Binding SummaryText}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                        <ItemsControl ItemsSource="{Binding UsageRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,3" x:CompileBindings="False">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding SizeText}" />
+                                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <Border Classes="card">
+                <StackPanel Spacing="8">
                     <TextBlock Text="Data &amp; Index Health" FontSize="18" FontWeight="SemiBold" />
                     <TextBlock Text="Runs bounded schema, recovery, owned-store, source, and storage checks. It does not scan documents or repair anything automatically."
                                TextWrapping="Wrap" />
@@ -125,7 +160,7 @@
             <Border Classes="card">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Content Intelligence" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="Derive a small set of local topics, textual entities, and source-grounded summaries from content already retained in the index. These are explainable clues, not objective facts."
+                    <TextBlock Text="Derive topics, entities, and summaries from content already retained in the index. AI-derived information is labeled as inference and is not verified fact."
                                TextWrapping="Wrap" />
                     <CheckBox Content="Enable Content Intelligence"
                               IsChecked="{Binding Draft.ContentIntelligenceEnabled, Mode=TwoWay}"
@@ -135,7 +170,7 @@
                                   IsChecked="{Binding Draft.TopicExtractionEnabled, Mode=TwoWay}" />
                         <CheckBox Margin="0,0,16,6" Content="Detect textual entities"
                                   IsChecked="{Binding Draft.EntityExtractionEnabled, Mode=TwoWay}" />
-                        <CheckBox Margin="0,0,16,6" Content="Generate source-grounded summaries"
+                        <CheckBox Margin="0,0,16,6" Content="Generate summaries"
                                   IsChecked="{Binding Draft.ContentSummaryGenerationEnabled, Mode=TwoWay}" />
                     </WrapPanel>
                     <TextBlock Text="Deterministic processing is local and bounded. It does not identify people from images, call the internet, or move source files."
@@ -338,6 +373,26 @@
                     <TextBlock Text="Search" FontSize="18" FontWeight="SemiBold" />
                     <CheckBox Content="Enable local Search"
                               IsChecked="{Binding Draft.SemanticSearchEnabled, Mode=TwoWay}" />
+                    <CheckBox Content="Enable local semantic embeddings"
+                              IsChecked="{Binding Draft.EmbeddingsEnabled, Mode=TwoWay}"
+                              AutomationProperties.Name="Enable local semantic embeddings" />
+                    <TextBlock Text="Optional: send retained catalog text to Ollama on this computer using a dedicated embedding model. Existing and new files are indexed in the background. Keyword Search stays available. No source documents are changed."
+                               TextWrapping="Wrap" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Installed embedding model" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.EmbeddingModel, Mode=TwoWay}"
+                                     AutomationProperties.Name="Dedicated embedding model"
+                                     PlaceholderText="qwen3-embedding:4b" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="3" Width="180">
+                            <TextBlock Text="Vector budget (MiB)" FontWeight="SemiBold" />
+                            <TextBox Text="{Binding Draft.MaximumVectorStorageMiB, Mode=TwoWay}"
+                                     AutomationProperties.Name="Disposable vector storage budget" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Uses the configured Ollama endpoint only when it is local. Models are never downloaded automatically. Save settings, then inspect progress or rebuild under Search. Changing model weights invalidates previous vectors."
+                               Classes="page-subtitle" TextWrapping="Wrap" />
                     <TextBlock Text="Uses a local index over names, folders, metadata, document text, OCR, tags, and related concepts. Search remains useful while background coverage is still being built."
                                TextWrapping="Wrap" />
                     <Grid IsVisible="{Binding IsAdvancedSettingsVisible}"
@@ -752,7 +807,7 @@
                     <CheckBox Content="Use locally recorded review decisions as concise preference context"
                               IsChecked="{Binding Draft.PreferenceAdaptationEnabled, Mode=TwoWay}" />
                     <WrapPanel>
-                        <Button Margin="0,0,8,8" Content="Reset local decision history" Command="{Binding RequestPreferenceHistoryResetCommand}" />
+                        <Button Margin="0,0,8,8" Content="Reset AI and Organize preference history" Command="{Binding RequestPreferenceHistoryResetCommand}" />
                         <Button Margin="0,0,8,8" IsVisible="{Binding IsPreferenceHistoryResetPending}" Content="Confirm decision-history reset" Command="{Binding ConfirmPreferenceHistoryResetCommand}" />
                         <Button Margin="0,0,8,8" IsVisible="{Binding IsPreferenceHistoryResetPending}" Content="Cancel reset" Command="{Binding CancelPreferenceHistoryResetCommand}" />
                     </WrapPanel>
@@ -763,7 +818,7 @@
                 <views:PluginsView DataContext="{Binding Plugins}" />
             </Border>
 
-            <TextBlock Text="Restart required only to apply active logging changes."
+            <TextBlock Text="Restart required to apply storage location, active logging or background-worker changes."
                        IsVisible="{Binding RestartRequired}"
                        TextWrapping="Wrap" />
             <WrapPanel>

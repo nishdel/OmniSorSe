@@ -27,6 +27,7 @@ public enum SettingsFocusTarget
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly IConfigurationService _configurationService;
+    private readonly ApplicationSettings _startupSettings;
     private readonly IAiSuggestionService? _aiSuggestionService;
     private readonly IAiRequestDiagnosticsStore? _aiRequestDiagnosticsStore;
     private readonly IAiDiagnosticsCollector? _aiDiagnosticsCollector;
@@ -77,6 +78,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     /// <param name="mediaIntelligenceService">The optional provider-neutral media capability service.</param>
     /// <param name="stateBackupService">The optional logical state export/restore service.</param>
     /// <param name="healthService">The optional bounded operational-health service.</param>
+    /// <param name="storageManagement">The optional owned-storage usage and cleanup presentation.</param>
     public SettingsViewModel(
         IConfigurationService configurationService,
         IAiSuggestionService? aiSuggestionService = null,
@@ -89,9 +91,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         PlatformDiagnosticsViewModel? platformDiagnostics = null,
         IMediaIntelligenceService? mediaIntelligenceService = null,
         IStateBackupService? stateBackupService = null,
-        IOperationalHealthService? healthService = null)
+        IOperationalHealthService? healthService = null,
+        StorageManagementViewModel? storageManagement = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
+        _startupSettings = configurationService.Current;
         _aiSuggestionService = aiSuggestionService;
         _aiRequestDiagnosticsStore = aiRequestDiagnosticsStore;
         _aiDiagnosticsCollector = aiDiagnosticsCollector;
@@ -101,6 +105,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _mediaIntelligenceService = mediaIntelligenceService;
         _stateBackupService = stateBackupService;
         _healthService = healthService;
+        StorageManagement = storageManagement;
         Plugins = plugins ?? new PluginsViewModel();
         PlatformDiagnostics = platformDiagnostics;
         ConfigureAdvancedDiagnostics(_configurationService.Current);
@@ -169,6 +174,9 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets local plugin discovery, review, lifecycle, and package-management state.</summary>
     public PluginsViewModel Plugins { get; }
+
+    /// <summary>Gets application-owned storage usage and safe cleanup controls.</summary>
+    public StorageManagementViewModel? StorageManagement { get; }
 
     /// <summary>Gets current platform support, location, and limitation diagnostics.</summary>
     public PlatformDiagnosticsViewModel? PlatformDiagnostics { get; }
@@ -588,7 +596,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         IsPreferenceHistoryResetPending = false;
         Draft = SettingsDraft.FromSettings(_configurationService.Current);
-        RestartRequired = false;
+        RestartRequired = RequiresRestart(_configurationService.Current);
         StatusText = "Settings loaded.";
         Status = StatusPresentation.Information(StatusText);
         SetAiStatus(_configurationService.Current.Ai.Enabled
@@ -674,16 +682,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var previous = _configurationService.Current;
             var settings = Draft.ToSettings();
             settings.Validate();
             await _configurationService.SaveAsync(settings, CancellationToken.None);
             ConfigureAdvancedDiagnostics(settings);
-            RestartRequired =
-                LoggingChanged(previous.Logging, settings.Logging) ||
-                ActiveIndexingWorkersChanged(previous.DeepIndexing, settings.DeepIndexing);
+            RestartRequired = RequiresRestart(settings);
             StatusText = RestartRequired
-                ? "Settings saved and feature visibility updated. Restart OmniSorSe to apply active logging or background-worker changes."
+                ? "Settings saved. Restart OmniSorSe to apply storage location, logging or background-worker changes."
                 : "Settings saved and feature visibility updated.";
             Status = StatusPresentation.Success(StatusText);
             SettingsSaved?.Invoke(this, settings);
@@ -730,7 +735,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         IsPreferenceHistoryResetPending = false;
         Draft = SettingsDraft.FromSettings(new ApplicationSettings());
-        RestartRequired = false;
+        RestartRequired = RequiresRestart(_configurationService.Current);
         StatusText = "Default settings restored. Save to persist them.";
         Status = StatusPresentation.Information(StatusText);
         SetAiStatus(AiAvailabilityState.Disabled, "AI assistance is disabled until enabled and configured.");
@@ -741,7 +746,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         IsPreferenceHistoryResetPending = false;
         Draft = SettingsDraft.FromSettings(_configurationService.Current);
-        RestartRequired = false;
+        RestartRequired = RequiresRestart(_configurationService.Current);
         StatusText = "Unsaved changes discarded.";
         Status = StatusPresentation.Information(StatusText);
     }
@@ -1023,7 +1028,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private void RequestPreferenceHistoryReset()
     {
         IsPreferenceHistoryResetPending = true;
-        StatusText = "Confirm reset to delete only OmniSorSe local AI decision history. Scanned files and other application data will not change.";
+        StatusText = "Confirm reset to delete OmniSorSe local AI and Organize preference history. Scanned files and other application data will not change.";
     }
 
     private void CancelPreferenceHistoryReset()
@@ -1060,14 +1065,14 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         {
             if (version == Volatile.Read(ref _aiOperationVersion))
             {
-                StatusText = "Local AI decision history could not be reset. Existing application data was preserved.";
+                StatusText = "Local AI and Organize preference history could not be reset. Existing application data was preserved.";
             }
         }
         catch (Exception)
         {
             if (version == Volatile.Read(ref _aiOperationVersion))
             {
-                StatusText = "Local AI decision history could not be reset. Existing application data was preserved.";
+                StatusText = "Local AI and Organize preference history could not be reset. Existing application data was preserved.";
             }
         }
         finally
@@ -1321,6 +1326,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         AiAvailabilityState.ModelUnavailable => "The selected model is not installed.",
         _ => fallback,
     };
+
+    private bool RequiresRestart(ApplicationSettings settings) =>
+        !string.Equals(_startupSettings.Storage.DirectoryPath, settings.Storage.DirectoryPath, StringComparison.Ordinal) ||
+        LoggingChanged(_startupSettings.Logging, settings.Logging) ||
+        ActiveIndexingWorkersChanged(_startupSettings.DeepIndexing, settings.DeepIndexing);
 
     private static bool LoggingChanged(LoggingSettings previous, LoggingSettings current) =>
         previous.FileLoggingEnabled != current.FileLoggingEnabled ||

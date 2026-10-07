@@ -141,6 +141,59 @@ public sealed class JsonDecisionHistoryStoreTests
         }
     }
 
+    /// <summary>New AI history must not evict a durable learned organization preference at the shared bound.</summary>
+    [Fact]
+    public async Task AppendAsync_AtCapacity_PreservesOrganizationPreferences()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"opensorse-preferences-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "decision-history.json");
+        Directory.CreateDirectory(directory);
+        var preference = CreateDecision() with { OrganizationScope = new string('A', 64) };
+        var decisions = Enumerable.Range(0, AiDecisionHistoryLimits.MaximumDecisionCount)
+            .Select(index => index == 0 ? preference : CreateDecision() with { RecordedAtUtc = DateTimeOffset.UnixEpoch.AddSeconds(index) })
+            .ToArray();
+        var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
+        try
+        {
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(new { SchemaVersion = 1, Decisions = decisions }, options));
+            var store = new JsonDecisionHistoryStore(path, new LoggingService());
+            await store.AppendAsync(CreateDecision() with { RecordedAtUtc = DateTimeOffset.UtcNow }, CancellationToken.None);
+            var loaded = await store.LoadAsync(CancellationToken.None);
+            Assert.Equal(AiDecisionHistoryLimits.MaximumDecisionCount, loaded.Count);
+            Assert.Contains(preference, loaded);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>Exhausted durable preference capacity fails before replacing the prior file.</summary>
+    [Fact]
+    public async Task AppendAsync_DurablePreferencesFillCapacity_PreservesOriginalBytes()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"opensorse-preferences-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "decision-history.json");
+        Directory.CreateDirectory(directory);
+        var preference = CreateDecision() with { OrganizationScope = new string('A', 64) };
+        var decisions = Enumerable.Range(0, AiDecisionHistoryLimits.MaximumDecisionCount)
+            .Select(index => preference with { RecordedAtUtc = DateTimeOffset.UnixEpoch.AddSeconds(index) }).ToArray();
+        var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
+        try
+        {
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(new { SchemaVersion = 1, Decisions = decisions }, options));
+            var before = await File.ReadAllBytesAsync(path);
+            var store = new JsonDecisionHistoryStore(path, new LoggingService());
+            await Assert.ThrowsAsync<InvalidDataException>(() => store.AppendAsync(
+                preference with { RecordedAtUtc = DateTimeOffset.UtcNow }, CancellationToken.None));
+            Assert.Equal(before, await File.ReadAllBytesAsync(path));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static AiSuggestionDecision CreateDecision() => new(
         AiSuggestionDecisionKind.Tags,
         AiSuggestionDecisionOutcome.Accepted,

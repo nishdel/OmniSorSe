@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/OpenSorSe.AI/OpenSorSe.AI.csproj" />
+    <ProjectReference Include="../../../src/OpenSorSe.Indexing.Sqlite/OpenSorSe.Indexing.Sqlite.csproj" />
+  </ItemGroup>
+</Project>

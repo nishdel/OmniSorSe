@@ -5,7 +5,7 @@
 **Authority:** Concise version/branch/date/integration summary; detailed
 release behavior and validation remain in the linked historical records
 
-**Repository history reviewed:** 2026-08-20
+**Repository history reviewed:** 2026-10-05
 
 This document indexes implemented version milestones without replacing their
 implementation specifications, version notes, validation reports, or manual
@@ -24,6 +24,7 @@ distinguishes public releases from the implementation milestones below.
 
 | Version | Branch | Date | Summary | Major additions | Tests | Merged status |
 | --- | --- | --- | --- | --- | ---: | --- |
+| v3.0.0-rc.1 preparation | `codex/v3-progressive-enrichment` | 2026-10-05 | Progressive understanding and reviewed organization. | Per-source background AI, retained-content enrichment, inferred Search/relationships, editable Organize, verified storage relocation and protected cleanup. | Final evidence in [validation](docs/VALIDATION_v3.0.0.md) | Integration and publication pending; [milestone](https://github.com/nishdel/OmniSorSe/milestone/1). |
 | v0.1 | `coding/v0.1` | 2026-07-17 | Read-only processing foundation. | Scan pipeline, metadata, hashing, classification, duplicates, rules/planning, initial desktop/orchestration. | Not recorded | Implementation lineage is in `main`; branch tip has one later unmerged README-only commit. |
 | v0.2 | `coding/v0.2` | 2026-07-17 | Read-only result exploration. | Immutable snapshots, filters, sorting, paging, details, exact-duplicate review. | 233 | Merged to `main`. |
 | v0.3 | `v0.3` | 2026-07-17 | Optional local suggestions and ranked exploration. | Ollama-compatible provider, validated proposals, decisions/tags, deterministic ranking. | 251 | Merged to `main`. |

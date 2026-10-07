@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Persistence;
+using OpenSorSe.Application.Storage;
 
 namespace OpenSorSe.Application.Content;
 
@@ -17,11 +18,12 @@ public sealed class JsonContentStore : IContentStore
     private readonly string _filePath;
     private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
+    private readonly Func<long>? _maximumCacheBytes;
     private readonly SemaphoreSlim _mutex = new(1, 1);
     private readonly Dictionary<string, string> _diagnosticSessions = new(PathComparer);
 
     /// <summary>Initializes the content store at an explicit absolute application-data path.</summary>
-    public JsonContentStore(string filePath, ILoggingService loggingService)
+    public JsonContentStore(string filePath, ILoggingService loggingService, Func<long>? maximumCacheBytes = null)
     {
         if (string.IsNullOrWhiteSpace(filePath) || !Path.IsPathRooted(filePath))
         {
@@ -29,6 +31,7 @@ public sealed class JsonContentStore : IContentStore
         }
 
         _filePath = filePath;
+        _maximumCacheBytes = maximumCacheBytes;
         _fileAccess = new ApplicationFileAccessCoordinator(filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonContentStore));
@@ -87,10 +90,14 @@ public sealed class JsonContentStore : IContentStore
             var updated = records
                 .Where(candidate => !PathComparer.Equals(candidate.FullPath, normalized.FullPath))
                 .Append(normalized)
-                .OrderByDescending(candidate => candidate.IndexedAtUtc)
-                .Take(MaximumRecordCount)
+                .OrderByDescending(candidate => RebuildableCacheBudget.HasUserAuthority(candidate.Tags))
+                .ThenByDescending(candidate => candidate.IndexedAtUtc)
                 .ToArray();
-            await SaveCoreAsync(updated, cancellationToken).ConfigureAwait(false);
+            if (updated.Count(candidate => RebuildableCacheBudget.HasUserAuthority(candidate.Tags)) > MaximumRecordCount)
+            {
+                throw new InvalidDataException("The content store has reached its retained user-decision capacity. No user decision was removed.");
+            }
+            await SaveCoreAsync(updated.Take(MaximumRecordCount).ToArray(), cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -180,7 +187,7 @@ public sealed class JsonContentStore : IContentStore
         }
     }
 
-    private async Task<IReadOnlyList<ContentRecord>> LoadCoreAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ContentRecord>> LoadCoreAsync(CancellationToken cancellationToken, bool requireValidAuthority = false)
     {
         if (!File.Exists(_filePath))
         {
@@ -217,6 +224,10 @@ public sealed class JsonContentStore : IContentStore
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException)
         {
+            if (requireValidAuthority)
+            {
+                throw new InvalidDataException("The compatibility content store could not be verified. It was preserved because it may contain user decisions.", exception);
+            }
             _logger.LogWarning(exception, "The local content cache is malformed or unsupported and will be rebuilt.");
             return [];
         }
@@ -226,14 +237,35 @@ public sealed class JsonContentStore : IContentStore
         IReadOnlyList<ContentRecord> records,
         CancellationToken cancellationToken)
     {
+        var maximum = Math.Clamp(_maximumCacheBytes?.Invoke() ?? MaximumStoreBytes, 4_096, MaximumStoreBytes);
+        var retained = _maximumCacheBytes is null ? records :
+            RebuildableCacheBudget.RetainNewest(records, record => record.IndexedAtUtc, maximum, JsonOptions, cancellationToken,
+                record => RebuildableCacheBudget.HasUserAuthority(record.Tags));
         await AtomicJsonFile.WriteAsync(
             _filePath,
-            new ContentEnvelope(CurrentSchemaVersion, Order(records)),
+            new ContentEnvelope(CurrentSchemaVersion, Order(retained)),
             JsonOptions,
-            MaximumStoreBytes,
+            maximum,
             cancellationToken,
             static (_, _) => new InvalidDataException(
                 "The local content cache exceeds its supported encoded size.")).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task PruneRebuildableAsync(CancellationToken cancellationToken)
+    {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var records = await LoadCoreAsync(cancellationToken, requireValidAuthority: true).ConfigureAwait(false);
+            var retained = records.Where(record => RebuildableCacheBudget.HasUserAuthority(record.Tags)).ToArray();
+            await SaveCoreAsync(retained, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _mutex.Release();
+        }
     }
 
     private static ContentRecord NormalizeRecord(ContentRecord record)

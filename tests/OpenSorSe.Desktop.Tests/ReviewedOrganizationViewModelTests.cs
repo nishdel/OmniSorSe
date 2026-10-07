@@ -53,6 +53,62 @@ public sealed class ReviewedOrganizationViewModelTests
     }
 
     [Fact]
+    public async Task EditProposedFile_DisablesReviewUntilEditedRequestIsRevalidated()
+    {
+        var recipe = BuiltInWorkflowLibrary.Recipes.Single(item => item.Id == BuiltInWorkflowIds.TrustedClassificationRecipe);
+        var service = new OrganizationService(recipe, CreateProposal(recipe, 1));
+        using var viewModel = new ReviewedOrganizationViewModel(service, new RecipeLibrary(recipe));
+        await viewModel.OpenAsync(new OrganizationSelectionContext(OrganizationSelectionOrigin.Files, "Files", ["file:1"]));
+        await viewModel.PreviewCommand.ExecuteAsync(null);
+        viewModel.SelectedProposalRow = Assert.Single(viewModel.AllRows);
+        viewModel.EditedRelativePath = "Finance/Invoices/chosen.pdf";
+
+        Assert.False(viewModel.ReviewChangesCommand.CanExecute(null));
+        await viewModel.ApplyEditCommand.ExecuteAsync(null);
+
+        var edit = Assert.Single(service.Requests[^1].Edits);
+        Assert.Equal("file:1", edit.FileId);
+        Assert.Equal("Finance/Invoices/chosen.pdf", edit.RelativeTargetPath);
+        Assert.Equal(0, service.CreateCalls);
+    }
+
+    [Fact]
+    public async Task RenameProposedFolder_UpdatesAllSelectedDescendantsBeyondVisiblePreviewLimit()
+    {
+        var recipe = BuiltInWorkflowLibrary.Recipes.Single(item => item.Id == BuiltInWorkflowIds.TrustedClassificationRecipe);
+        var service = new OrganizationService(recipe, CreateProposal(recipe, 125));
+        using var viewModel = new ReviewedOrganizationViewModel(service, new RecipeLibrary(recipe));
+        await viewModel.OpenAsync(new OrganizationSelectionContext(OrganizationSelectionOrigin.Search, "Search",
+            Enumerable.Range(1, 125).Select(index => $"file:{index}").ToArray()));
+        await viewModel.PreviewCommand.ExecuteAsync(null);
+        viewModel.SelectedTreeNode = viewModel.RecommendedTree.Single(node => node.Name == "Finance");
+        viewModel.EditedRelativePath = "Documents";
+
+        await viewModel.ApplyEditCommand.ExecuteAsync(null);
+
+        Assert.Equal(100, viewModel.VisibleRows.Count);
+        Assert.Equal(125, service.Requests[^1].Edits.Count);
+        Assert.All(service.Requests[^1].Edits, edit => Assert.StartsWith("Documents/Invoice/", edit.RelativeTargetPath));
+        Assert.Equal(0, service.CreateCalls);
+    }
+
+    [Fact]
+    public async Task RejectSelectedMove_SendsOnlyAnInertProposalOverride()
+    {
+        var recipe = BuiltInWorkflowLibrary.Recipes.Single(item => item.Id == BuiltInWorkflowIds.TrustedClassificationRecipe);
+        var service = new OrganizationService(recipe, CreateProposal(recipe, 2));
+        using var viewModel = new ReviewedOrganizationViewModel(service, new RecipeLibrary(recipe));
+        await viewModel.OpenAsync(new OrganizationSelectionContext(OrganizationSelectionOrigin.Files, "Files", ["file:1", "file:2"]));
+        await viewModel.PreviewCommand.ExecuteAsync(null);
+        viewModel.SelectedProposalRow = viewModel.AllRows[0];
+
+        await viewModel.RejectMoveCommand.ExecuteAsync(null);
+
+        Assert.True(Assert.Single(service.Requests[^1].Edits).IsRejected);
+        Assert.Equal(0, service.CreateCalls);
+    }
+
+    [Fact]
     public async Task ReviewChanges_RaisesExistingChangePlanOnlyAfterExplicitCommand()
     {
         var recipe = BuiltInWorkflowLibrary.Recipes.Single(item =>
@@ -73,6 +129,24 @@ public sealed class ReviewedOrganizationViewModelTests
         Assert.NotNull(emitted);
         Assert.Equal(1, service.CreateCalls);
         Assert.Contains("No file operation has run", viewModel.StatusText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StaleReviewFailure_ReleasesBusyStateAndRequiresNewPreview()
+    {
+        var recipe = BuiltInWorkflowLibrary.Recipes.Single(item => item.Id == BuiltInWorkflowIds.TrustedClassificationRecipe);
+        var service = new OrganizationService(recipe, CreateProposal(recipe, 1)) { RejectReviewAsStale = true };
+        using var viewModel = new ReviewedOrganizationViewModel(service, new RecipeLibrary(recipe));
+        await viewModel.OpenAsync(new OrganizationSelectionContext(OrganizationSelectionOrigin.Files, "Files", ["file:1"]));
+        await viewModel.PreviewCommand.ExecuteAsync(null);
+
+        await viewModel.ReviewChangesCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsBusy);
+        Assert.False(viewModel.HasProposal);
+        Assert.True(viewModel.PreviewCommand.CanExecute(null));
+        Assert.False(viewModel.ReviewChangesCommand.CanExecute(null));
+        Assert.Contains("stale", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -136,6 +210,7 @@ public sealed class ReviewedOrganizationViewModelTests
     {
         public List<OrganizationPreviewRequest> Requests { get; } = [];
         public int CreateCalls { get; private set; }
+        public bool RejectReviewAsStale { get; init; }
 
         public Task<OrganizationProposalSet> PreviewAsync(
             OrganizationPreviewRequest request,
@@ -158,6 +233,10 @@ public sealed class ReviewedOrganizationViewModelTests
             CancellationToken cancellationToken)
         {
             CreateCalls++;
+            if (RejectReviewAsStale)
+            {
+                throw new InvalidOperationException("The proposal is stale; preview again.");
+            }
             return Task.FromResult(new ChangePlan(
                 ChangePlanSchema.CurrentVersion,
                 "plan:organization",

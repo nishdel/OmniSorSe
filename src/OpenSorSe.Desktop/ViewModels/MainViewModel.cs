@@ -48,6 +48,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         new(NavigationDestination.Dashboard, "Home", FeatureRequirement.Regular, NavigationGroup.Primary, "⌂"),
         new(NavigationDestination.Scan, "Scan", FeatureRequirement.Regular, NavigationGroup.Primary, "⌕"),
         new(NavigationDestination.Results, "Files", FeatureRequirement.Regular, NavigationGroup.Primary, "▤"),
+        new(NavigationDestination.Organize, "Organize", FeatureRequirement.Regular, NavigationGroup.Primary, "⇄"),
         new(NavigationDestination.ReviewChanges, "Review Changes", FeatureRequirement.Regular, NavigationGroup.Primary, "✓"),
         new(NavigationDestination.SemanticSearch, "Search", FeatureRequirement.Regular, NavigationGroup.Secondary, "⌕"),
         new(NavigationDestination.Duplicates, "Duplicates", FeatureRequirement.Regular, NavigationGroup.Secondary, "⧉"),
@@ -302,7 +303,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ISmartTagService? smartTagService = null,
         ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
         IProductReadinessService? productReadinessService = null,
-        IReviewedOrganizationService? reviewedOrganizationService = null)
+        IReviewedOrganizationService? reviewedOrganizationService = null,
+        StorageManagementViewModel? storageManagement = null,
+        VectorIndexViewModel? vectorIndex = null,
+        ISemanticRelatedFilesService? semanticRelatedFiles = null)
         : this(
             configurationService,
             loggingService,
@@ -353,7 +357,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             smartTagService,
             savedDiscoveryViewStore,
             productReadinessService,
-            reviewedOrganizationService)
+            reviewedOrganizationService,
+            storageManagement,
+            vectorIndex,
+            semanticRelatedFiles)
     {
     }
 
@@ -407,7 +414,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ISmartTagService? smartTagService = null,
         ISavedDiscoveryViewStore? savedDiscoveryViewStore = null,
         IProductReadinessService? productReadinessService = null,
-        IReviewedOrganizationService? reviewedOrganizationService = null)
+        IReviewedOrganizationService? reviewedOrganizationService = null,
+        StorageManagementViewModel? storageManagement = null,
+        VectorIndexViewModel? vectorIndex = null,
+        ISemanticRelatedFilesService? semanticRelatedFiles = null)
     {
         ArgumentNullException.ThrowIfNull(configurationService);
         ArgumentNullException.ThrowIfNull(loggingService);
@@ -460,8 +470,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             clipboard: clipboardService,
             mediaThumbnailProvider: mediaThumbnailProvider,
             smartTagService: smartTagService,
-            savedViewStore: savedDiscoveryViewStore);
-        Collections = new CollectionsViewModel(relationshipService);
+            savedViewStore: savedDiscoveryViewStore,
+            vectorIndex: vectorIndex);
+        Collections = new CollectionsViewModel(relationshipService, semanticRelatedFiles);
         KnowledgeGraph = knowledgeGraphViewModel ?? new KnowledgeGraphViewModel();
         CatalogComparison = new CatalogComparisonViewModel(configurationService, catalogStore, comparisonService);
         StructureHistory = new StructureHistoryViewModel(
@@ -487,7 +498,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                     clipboardService,
                     externalFileLauncher)
                 : null,
-            mediaIntelligenceService);
+            mediaIntelligenceService,
+            storageManagement: storageManagement);
         _enableAi = configurationService.Current.Ai.Enabled;
         _showAdvancedFeatures = configurationService.Current.Features.ShowAdvancedFeatures;
         NavigationItems = new ReadOnlyObservableCollection<NavigationItem>(_navigationItems);
@@ -530,6 +542,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.ReviewNavigationRequested += OnReviewNavigationRequested;
         Results.SmartTagReviewCompleted += OnSmartTagReviewCompleted;
         Results.ManageOrganizationRecipesRequested += OnManageOrganizationRecipesRequested;
+        Results.Organization.Opened += OnOrganizationOpened;
+        Results.Organization.BrowseFilesRequested += OnOrganizationBrowseFiles;
+        Results.Organization.BrowseSearchRequested += OnOrganizationBrowseSearch;
         SemanticSearch.OpenInFilesRequested += OnOpenInFilesRequested;
         SemanticSearch.RelatedFilesRequested += OnRelatedFilesRequested;
         SemanticSearch.OrganizationRequested += OnOrganizationRequested;
@@ -881,6 +896,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsWatchedFoldersSelected));
                 OnPropertyChanged(nameof(IsWorkflowsSelected));
                 OnPropertyChanged(nameof(IsResultsSelected));
+                OnPropertyChanged(nameof(IsOrganizeSelected));
                 OnPropertyChanged(nameof(IsReviewChangesSelected));
                 OnPropertyChanged(nameof(IsDuplicatesSelected));
                 OnPropertyChanged(nameof(IsFilesAreaSelected));
@@ -914,6 +930,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         NavigationDestination.WatchedFolders => "Watched Folders",
         NavigationDestination.Workflows => "Workflows",
         NavigationDestination.Results => "Files",
+        NavigationDestination.Organize => "Organize",
         NavigationDestination.ReviewChanges => "Review Changes",
         NavigationDestination.Duplicates => "Duplicates",
         NavigationDestination.Catalog => "Saved scans",
@@ -989,6 +1006,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// </summary>
     public bool IsResultsSelected => SelectedDestination == NavigationDestination.Results;
 
+    /// <summary>Gets whether the editable organization preview is selected.</summary>
+    public bool IsOrganizeSelected => SelectedDestination == NavigationDestination.Organize;
+
     /// <summary>Gets whether Change Plan review is selected.</summary>
     public bool IsReviewChangesSelected => SelectedDestination == NavigationDestination.ReviewChanges;
 
@@ -1062,7 +1082,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Gets whether a later feature-page destination is currently selected.
     /// </summary>
-    public bool IsFeaturePageSelected => !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCollectionsSelected && !IsKnowledgeGraphSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
+    public bool IsFeaturePageSelected => !IsOrganizeSelected && !IsDashboardSelected && !IsScanSelected && !IsWatchedFoldersSelected && !IsWorkflowsSelected && !IsResultsSelected && !IsReviewChangesSelected && !IsDuplicatesSelected && !IsCatalogSelected && !IsCatalogSearchSelected && !IsSemanticSearchSelected && !IsCollectionsSelected && !IsKnowledgeGraphSelected && !IsCatalogComparisonSelected && !IsStructureHistorySelected && !IsRulesSelected && !IsSettingsSelected && !IsDiagnosticsSelected && !IsHistorySelected && !IsHelpSelected && !IsAboutSelected;
 
     /// <summary>
     /// Selects a documented application-shell destination.
@@ -1198,6 +1218,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         Results.ReviewNavigationRequested -= OnReviewNavigationRequested;
         Results.SmartTagReviewCompleted -= OnSmartTagReviewCompleted;
         Results.ManageOrganizationRecipesRequested -= OnManageOrganizationRecipesRequested;
+        Results.Organization.Opened -= OnOrganizationOpened;
+        Results.Organization.BrowseFilesRequested -= OnOrganizationBrowseFiles;
+        Results.Organization.BrowseSearchRequested -= OnOrganizationBrowseSearch;
         SemanticSearch.OpenInFilesRequested -= OnOpenInFilesRequested;
         SemanticSearch.RelatedFilesRequested -= OnRelatedFilesRequested;
         SemanticSearch.OrganizationRequested -= OnOrganizationRequested;
@@ -1318,6 +1341,12 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private void OnOrganizationOpened(object? sender, EventArgs eventArgs) => Navigate(NavigationDestination.Organize);
+
+    private void OnOrganizationBrowseFiles(object? sender, EventArgs eventArgs) => Navigate(NavigationDestination.Results);
+
+    private void OnOrganizationBrowseSearch(object? sender, EventArgs eventArgs) => Navigate(NavigationDestination.SemanticSearch);
+
     private void OnManageOrganizationRecipesRequested(object? sender, EventArgs eventArgs)
     {
         Navigate(NavigationDestination.Workflows);
@@ -1437,15 +1466,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void OnOrganizeRequested(object? sender, EventArgs eventArgs)
     {
-        if (Results.Snapshot is not null)
-        {
-            Navigate(NavigationDestination.Results);
-            StatusText = "Select files and request a rename or folder suggestion. No change occurs until you approve a Change Plan.";
-            return;
-        }
-
-        Navigate(NavigationDestination.SemanticSearch);
-        StatusText = "Find files first, then open them in Files to create a reviewed organization suggestion.";
+        Navigate(NavigationDestination.Organize);
+        StatusText = "Choose files, compare the proposed structure, and edit it before reviewing a Change Plan.";
     }
 
     private async void OnDashboardSavedViewRequested(object? sender, string savedViewId)
@@ -1652,6 +1674,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private async Task QueueCompletedScanForBackgroundIndexingAsync(
         IReadOnlyList<string> folderPaths,
+        bool aiEnrichmentEnabled,
         CancellationToken cancellationToken)
     {
         if (_backgroundIndexingService is null ||
@@ -1664,9 +1687,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             foreach (var folderPath in folderPaths)
             {
-                await _backgroundIndexingService.QueueFolderAsync(
+                await _backgroundIndexingService.QueueFolderWithEnrichmentAsync(
                     folderPath,
-                    _configurationService.Current.DeepIndexing.DefaultLevel,
+                    aiEnrichmentEnabled,
+                    IndexingLevel.Deep,
                     includeSubfolders: true,
                     cancellationToken: cancellationToken);
             }
@@ -1964,11 +1988,19 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         try
         {
-            if (_configurationService.Current.DeepIndexing.InitialScanDepth != request.InitialScanDepth)
+            var initialDepth = request.AiEnrichmentEnabled ? InitialScanDepth.BaseFirst : request.InitialScanDepth;
+            if (_configurationService.Current.DeepIndexing.InitialScanDepth != initialDepth || request.EnableSearchIndex)
             {
                 var settingsDraft = SettingsDraft.FromSettings(_configurationService.Current);
-                settingsDraft.InitialScanDepth = request.InitialScanDepth;
+                settingsDraft.InitialScanDepth = initialDepth;
+                if (request.EnableSearchIndex)
+                {
+                    settingsDraft.DeepIndexingEnabled = true;
+                    settingsDraft.SemanticSearchEnabled = true;
+                }
                 await _configurationService.SaveAsync(settingsDraft.ToSettings(), cancellation.Token);
+                Settings.Load();
+                OnSettingsSaved(this, _configurationService.Current);
             }
 
             ResolvedWorkflowConfiguration? workflow = null;
@@ -2033,6 +2065,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
                 await QueueCompletedScanForBackgroundIndexingAsync(
                     request.FolderPaths,
+                    request.AiEnrichmentEnabled,
                     cancellation.Token);
 
                 Dashboard.UpdateFromCompletedScan(Results.Summary);

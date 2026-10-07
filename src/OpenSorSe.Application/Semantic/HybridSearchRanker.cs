@@ -89,6 +89,14 @@ public static class SearchFileTypeClassifier
 public sealed class HybridSearchRanker : ISearchRanker
 {
     private const double MinimumSemanticSimilarity = 0.20;
+    private static readonly HashSet<string> NaturalLanguageFunctionWords = new(
+        ["a", "an", "the", "and", "or", "but", "if", "as", "at", "by", "for", "from",
+         "in", "into", "of", "on", "onto", "to", "with", "without", "i", "me", "my",
+         "we", "us", "our", "you", "your", "he", "him", "his", "she", "her", "it",
+         "its", "they", "them", "their", "this", "that", "these", "those", "is", "are",
+         "was", "were", "be", "been", "being", "do", "does", "did", "have", "has", "had",
+         "what", "which", "who", "whom", "whose", "how", "why", "when", "where"],
+        StringComparer.Ordinal);
     private readonly IEmbeddingProvider _embeddingProvider;
     private readonly ISearchSnippetFactory _snippetFactory;
 
@@ -106,7 +114,23 @@ public sealed class HybridSearchRanker : ISearchRanker
         SearchInterpretation interpretation,
         IReadOnlyList<SearchCandidateDocument> candidates,
         int maximumResults,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) =>
+        RankCore(interpretation, candidates, maximumResults, cancellationToken, includeHashedSimilarity: true);
+
+    /// <inheritdoc />
+    public IReadOnlyList<RankedSearchCandidate> RankKeywords(
+        SearchInterpretation interpretation,
+        IReadOnlyList<SearchCandidateDocument> candidates,
+        int maximumResults,
+        CancellationToken cancellationToken) =>
+        RankCore(interpretation, candidates, maximumResults, cancellationToken, includeHashedSimilarity: false);
+
+    private IReadOnlyList<RankedSearchCandidate> RankCore(
+        SearchInterpretation interpretation,
+        IReadOnlyList<SearchCandidateDocument> candidates,
+        int maximumResults,
+        CancellationToken cancellationToken,
+        bool includeHashedSimilarity)
     {
         ArgumentNullException.ThrowIfNull(interpretation);
         ArgumentNullException.ThrowIfNull(candidates);
@@ -122,7 +146,15 @@ public sealed class HybridSearchRanker : ISearchRanker
             .Distinct(StringComparer.Ordinal)
             .Take(SearchLimits.MaximumQueryTokens)
             .ToArray();
-        var queryVector = normalizedTopic.Length == 0
+        if (!includeHashedSimilarity)
+        {
+            // A common function word must not give an unrelated document a second RRF
+            // vote. Keep the original phrase/filename checks, all-function-word queries,
+            // and the established deterministic fallback unchanged.
+            var topicTokens = tokens.Where(token => !NaturalLanguageFunctionWords.Contains(token)).ToArray();
+            if (topicTokens.Length > 0) tokens = topicTokens;
+        }
+        var queryVector = !includeHashedSimilarity || normalizedTopic.Length == 0
             ? []
             : _embeddingProvider.Embed(normalizedTopic);
         var ranked = new List<RankedValue>(Math.Min(candidates.Count, maximumResults * 4));
@@ -295,7 +327,8 @@ public sealed class HybridSearchRanker : ISearchRanker
                     components,
                     SearchRankingSignalKind.ContentEntity,
                     "content entities",
-                    "textual entity",
+                    candidate.ContentIntelligence?.Entities.Any(item => item.Origin == ContentIntelligenceOrigin.AiDerived) == true
+                        ? "AI-derived entity" : "textual entity",
                     140,
                     ref rankClass);
                 literalScore += AddFieldMatch(
@@ -304,7 +337,8 @@ public sealed class HybridSearchRanker : ISearchRanker
                     components,
                     SearchRankingSignalKind.ContentIntelligenceSummary,
                     "content summary",
-                    "source-grounded summary",
+                    candidate.ContentIntelligence?.Summary?.Origin == ContentIntelligenceOrigin.AiDerived
+                        ? "AI-derived summary" : "Source-grounded summary",
                     85,
                     ref rankClass);
                 literalScore += AddFieldMatch(
@@ -469,7 +503,7 @@ public sealed class HybridSearchRanker : ISearchRanker
                 .ToArray());
     }
 
-    private static bool MatchesFilters(
+    internal static bool MatchesFilters(
         SearchCandidateDocument candidate,
         IReadOnlyList<SearchFilter> filters,
         ICollection<SearchRankingComponent> components)
@@ -663,7 +697,7 @@ public sealed class HybridSearchRanker : ISearchRanker
 
         if (fields.ContentEntities.Contains(phrase, StringComparison.Ordinal))
         {
-            return ("content entities", "a textual entity");
+            return ("content entities", "a derived entity");
         }
 
         if (fields.ContentTopics.Contains(phrase, StringComparison.Ordinal))
@@ -673,7 +707,7 @@ public sealed class HybridSearchRanker : ISearchRanker
 
         if (fields.ContentIntelligenceSummary.Contains(phrase, StringComparison.Ordinal))
         {
-            return ("content summary", "the source-grounded summary");
+            return ("content summary", "the derived summary");
         }
 
         if (fields.OcrText.Contains(phrase, StringComparison.Ordinal))
@@ -742,8 +776,8 @@ public sealed class HybridSearchRanker : ISearchRanker
             SearchRankingSignalKind.Tag => $"Matched tags: {matched}",
             SearchRankingSignalKind.ExtractedText => "Native text / document text matched",
             SearchRankingSignalKind.ContentTopic => $"Topic match: {matched}",
-            SearchRankingSignalKind.ContentEntity => $"Entity match: {matched}",
-            SearchRankingSignalKind.ContentIntelligenceSummary => "Source-grounded summary matched",
+            SearchRankingSignalKind.ContentEntity => $"{label} matched",
+            SearchRankingSignalKind.ContentIntelligenceSummary => $"{label} matched",
             _ => $"{label} matched",
         };
         return Add(
@@ -1085,9 +1119,14 @@ public sealed class SearchSnippetFactory : ISearchSnippetFactory
             SearchRankingSignalKind.ContentTopic =>
                 (SearchSnippetSource.ContentTopic, "Derived topic", string.Join(", ", candidate.ContentIntelligence?.Topics.Select(item => item.DisplayName) ?? [])),
             SearchRankingSignalKind.ContentEntity =>
-                (SearchSnippetSource.ContentEntity, "Textual entity", string.Join(", ", candidate.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? [])),
+                (SearchSnippetSource.ContentEntity,
+                    candidate.ContentIntelligence?.Entities.Any(item => item.Origin == ContentIntelligenceOrigin.AiDerived) == true
+                        ? "AI-derived entity" : "Textual entity",
+                    string.Join(", ", candidate.ContentIntelligence?.Entities.Select(item => item.DisplayName) ?? [])),
             SearchRankingSignalKind.ContentIntelligenceSummary =>
-                (SearchSnippetSource.ContentIntelligenceSummary, "Source-grounded summary", candidate.ContentIntelligence?.Summary?.Text),
+                (SearchSnippetSource.ContentIntelligenceSummary,
+                    candidate.ContentIntelligence?.Summary?.Origin == ContentIntelligenceOrigin.AiDerived
+                        ? "AI-derived summary" : "Source-grounded summary", candidate.ContentIntelligence?.Summary?.Text),
             SearchRankingSignalKind.Summary =>
                 (SearchSnippetSource.Summary, "Summary", candidate.Summary),
             SearchRankingSignalKind.Chunk =>

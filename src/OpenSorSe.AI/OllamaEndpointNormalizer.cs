@@ -7,6 +7,7 @@ public static class OllamaEndpointNormalizer
     [
         "/api/generate",
         "/api/chat",
+        "/api/embed",
         "/api/tags",
         "/api/version",
         "/api",

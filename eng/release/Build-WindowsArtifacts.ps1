@@ -2,7 +2,7 @@
 param(
     [Parameter()]
     [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$')]
-    [string]$Version = '2.13.0-rc',
+    [string]$Version = '3.0.0-rc.1',
 
     [Parameter()]
     [ValidatePattern('^[0-9a-fA-F]{40}$')]

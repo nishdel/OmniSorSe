@@ -13,6 +13,33 @@ namespace OpenSorSe.Desktop.Tests;
 /// </summary>
 public sealed class SettingsViewModelTests
 {
+    /// <summary>Embeddings remain an independent opt-in and survive unrelated Settings edits.</summary>
+    [Fact]
+    public void EmbeddingSettings_RoundTripWithoutChangingChatModel()
+    {
+        var settings = new ApplicationSettings
+        {
+            SemanticSearch = new SemanticSearchSettings
+            {
+                Enabled = true,
+                EmbeddingsEnabled = true,
+                EmbeddingModel = "test-embedding:latest",
+                MaximumVectorStorageMiB = 128,
+            },
+            Ai = new AiSettings { SelectedModel = "chat:latest" },
+        };
+        var draft = SettingsDraft.FromSettings(settings);
+        draft.MinimumLogLevel = LogLevel.Warning;
+        var saved = draft.ToSettings();
+        saved.Validate();
+        Assert.True(saved.SemanticSearch.EmbeddingsEnabled);
+        Assert.Equal("test-embedding:latest", saved.SemanticSearch.EmbeddingModel);
+        Assert.Equal(128, saved.SemanticSearch.MaximumVectorStorageMiB);
+        Assert.Equal("chat:latest", saved.Ai.SelectedModel);
+        Assert.False(saved.Ai.Enabled);
+        Assert.False(new SemanticSearchSettings().EmbeddingsEnabled);
+    }
+
     /// <summary>The optional companion path round-trips without making OmniBrille a startup dependency.</summary>
     [Fact]
     public void OmniBrillePath_RoundTripsAsOptionalAbsolutePath()
@@ -93,6 +120,58 @@ public sealed class SettingsViewModelTests
         Assert.Equal(LogLevel.Warning, configuration.Current.Logging.MinimumLevel);
         Assert.False(configuration.Current.Logging.FileLoggingEnabled);
         Assert.True(viewModel.RestartRequired);
+    }
+
+    /// <summary>Pending runtime changes survive editing and reloads until saved values match this session's startup configuration.</summary>
+    [Theory]
+    [InlineData("storage")]
+    [InlineData("logging")]
+    [InlineData("workers")]
+    public async Task RestartRequired_PersistsUntilSavedSettingsMatchStartup(string changedGroup)
+    {
+        var startup = new ApplicationSettings
+        {
+            Storage = new StorageSettings { DirectoryPath = Path.Combine(Path.GetTempPath(), "startup-storage") },
+            Logging = new LoggingSettings { MinimumLevel = LogLevel.Warning },
+            DeepIndexing = new DeepIndexingSettings { MaximumConcurrency = 2 },
+        };
+        var configuration = new TestConfigurationService(settings: startup);
+        using var viewModel = new SettingsViewModel(configuration);
+        switch (changedGroup)
+        {
+            case "storage":
+                viewModel.Draft.StorageDirectoryPath = Path.Combine(Path.GetTempPath(), "next-storage");
+                break;
+            case "logging":
+                viewModel.Draft.MinimumLogLevel = LogLevel.Error;
+                break;
+            case "workers":
+                viewModel.Draft.MaximumIndexingConcurrency = 3;
+                break;
+        }
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.True(viewModel.RestartRequired);
+
+        viewModel.Draft.ShowAdvancedFeatures = true;
+        await viewModel.SaveCommand.ExecuteAsync(null);
+        Assert.True(viewModel.RestartRequired);
+        viewModel.Load();
+        Assert.True(viewModel.RestartRequired);
+        viewModel.RestoreDefaultsCommand.Execute(null);
+        Assert.True(viewModel.RestartRequired);
+        viewModel.CancelCommand.Execute(null);
+        Assert.True(viewModel.RestartRequired);
+
+        viewModel.Draft.StorageDirectoryPath = startup.Storage.DirectoryPath;
+        viewModel.Draft.MinimumLogLevel = startup.Logging.MinimumLevel;
+        viewModel.Draft.MaximumIndexingConcurrency = startup.DeepIndexing.MaximumConcurrency;
+        Assert.True(viewModel.RestartRequired);
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.RestartRequired);
+        viewModel.Load();
+        Assert.False(viewModel.RestartRequired);
     }
 
     /// <summary>Verifies every bounded media setting survives the editable draft round trip.</summary>

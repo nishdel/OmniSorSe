@@ -10,7 +10,7 @@ on:
       version:
         description: Exact source product version, including any prerelease label
         required: true
-        default: 2.13.0-rc
+        default: 3.0.0-rc.1
 
 permissions:
   contents: read

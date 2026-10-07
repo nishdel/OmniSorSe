@@ -4,6 +4,13 @@ Repository files define tests. **One GitHub “Release manual testing” issue p
 
 ## Start testing here
 
+For **v3.0.0-rc.1**, use the [version-specific checklist](MANUAL_TESTING_v3.0.md)
+and [live issue #53](https://github.com/nishdel/OmniSorSe/issues/53). It uses the
+per-user installer and covers progressive enrichment, Organize and storage in
+addition to these existing core scenarios. Package identity is assigned only
+after publication; human rows remain Not run. The procedures below retain their
+stated v2.4/v2.13 package identities for historical testing.
+
 1. Choose the exact record in the [index](release-testing/README.md). Latest stable and published prerelease are different records. The next-candidate draft has **no assigned package**; do not substitute another build. No old package was downloaded, installed or retested to prepare these files.
 2. Use a disposable **Windows x64 OS account or VM**. Portable builds still use `%LOCALAPPDATA%\OpenSorSe`; a new extraction folder does not isolate your personal profile. Record OS/build, locale, filesystem, display scale, dependencies and a synthetic environment ID in the issue. The checklist owner is assigned before execution.
 3. For stable v2.4.0 choose `OmniSorSe-v2.4.0-win-x64.zip` and its `OmniSorSe-v2.4.0-SHA256SUMS.txt` from the [stable release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0). For published v2.13.0-rc choose `OmniSorSe-v2.13.0-rc-win-x64.zip` and its matching SHA256SUMS from the [prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc). Verify the **complete** hash against that record and checksum file. In the ZIP's folder, type `powershell` in File Explorer's address bar and run the corresponding command:

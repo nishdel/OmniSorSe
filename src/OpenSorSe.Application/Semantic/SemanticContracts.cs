@@ -70,6 +70,16 @@ public sealed record SemanticSearchHit(
     /// <summary>Gets bounded derived topics, textual entities, and summary provenance.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
+    /// <summary>Gets whether the source requests background AI enrichment.</summary>
+    public bool AiEnrichmentEnabled { get; init; }
+
+    /// <summary>Gets a plain-language distinction between inference already retained and pending work.</summary>
+    public string AiEnrichmentIndicator => ContentIntelligence?.Origin == ContentIntelligenceOrigin.AiDerived
+        ? "AI enriched · inferred information"
+        : AiEnrichmentEnabled
+            ? IsFullyIndexed ? "AI enrichment unavailable for this file" : "AI enrichment pending or waiting"
+            : "Standard indexing";
+
     /// <summary>Gets a compact media-detail line for accessible result presentation.</summary>
     public string? MediaSummary => MediaEvidence is null
         ? null
@@ -89,7 +99,12 @@ public sealed record SemanticSearchHit(
         ? null
         : string.Join(" · ", new[]
         {
+            string.IsNullOrWhiteSpace(ContentIntelligence.DocumentType) ? null : $"Type: {ContentIntelligence.DocumentType}",
+            string.IsNullOrWhiteSpace(ContentIntelligence.Category) ? null : $"Category: {ContentIntelligence.Category}",
             ContentIntelligence.Summary?.Text,
+            ContentIntelligence.Keywords.Count > 0
+                ? $"Tags: {string.Join(", ", ContentIntelligence.Keywords.Take(4))}"
+                : null,
             ContentIntelligence.Topics.Count > 0
                 ? $"Topics: {string.Join(", ", ContentIntelligence.Topics.Take(4).Select(item => item.DisplayName))}"
                 : null,
@@ -130,6 +145,9 @@ public interface ISemanticIndexStore
 
     /// <summary>Clears the application-owned index without changing source files.</summary>
     Task ClearAsync(CancellationToken cancellationToken);
+
+    /// <summary>Prunes regenerable records while preserving any retained accepted/rejected tags.</summary>
+    Task PruneRebuildableAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>Builds and refreshes the local index from application-owned content records.</summary>

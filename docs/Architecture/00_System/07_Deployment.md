@@ -62,7 +62,7 @@ The deployed application consists of the following runtime components.
 | Windows portable package | Contains the native apphost, managed assemblies, native dependencies, self-contained .NET runtime, installation guidance, licenses, and release documentation. |
 | Local Filesystem | Source of folders analyzed read-only; only the separate deterministic restructuring service may move reviewed files after exact confirmation. |
 | Local application data | Holds bounded JSON settings, logs, AI decisions, catalog/search definitions, extracted-content cache, deterministic semantic index, and structure history. |
-| Optional Ollama endpoint | Receives bounded metadata only when enabled for validated review-only suggestions. |
+| Optional Ollama endpoint | Receives bounded metadata for reviewed filesystem proposals, or separately permitted retained text for validated indexed enrichment. Neither path grants source mutation authority. |
 
 ---
 

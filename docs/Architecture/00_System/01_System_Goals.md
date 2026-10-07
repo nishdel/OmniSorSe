@@ -1,5 +1,10 @@
 # OpenSorSe 1.4 System Goals
 
+These version-labelled goals retain the historical v1.4 scope. Current v3 also
+automatically incorporates validated optional AI indexing enrichment into
+application-owned records; source mutation still requires explicit approval.
+See [current system overview](00_Overview.md).
+
 ## Goals
 
 1. Analyze selected folders safely with read-only traversal, metadata, hashes, classification, exact duplicates, progress, and cancellation.

@@ -71,10 +71,18 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
             decisions.Add(sanitized);
             if (decisions.Count > AiDecisionHistoryLimits.MaximumDecisionCount)
             {
-                decisions = decisions
-                    .OrderBy(item => item.RecordedAtUtc)
-                    .TakeLast(AiDecisionHistoryLimits.MaximumDecisionCount)
-                    .ToList();
+                var preferences = decisions.Where(item => item.OrganizationScope is not null).ToArray();
+                var remaining = AiDecisionHistoryLimits.MaximumDecisionCount - preferences.Length;
+                if (remaining < 0 || remaining == 0 && sanitized.OrganizationScope is null)
+                {
+                    throw new InvalidDataException(
+                        "Local organization preferences fill the supported decision-history capacity. Existing preferences were preserved.");
+                }
+
+                // Learned folder choices are durable authority, not replaceable AI request history.
+                decisions = preferences.Concat(decisions.Where(item => item.OrganizationScope is null)
+                        .OrderBy(item => item.RecordedAtUtc).TakeLast(remaining))
+                    .OrderBy(item => item.RecordedAtUtc).ToList();
             }
 
             await SaveCoreAsync(decisions, cancellationToken).ConfigureAwait(false);
@@ -167,6 +175,12 @@ public sealed class JsonDecisionHistoryStore : IDecisionHistoryStore
             !IsRequiredValueValid(decision.Model, AiDecisionHistoryLimits.MaximumProviderIdentifierLength))
         {
             throw new InvalidDataException("The local AI decision history contains an invalid decision.");
+        }
+
+        if (decision.OrganizationScope is { } scope &&
+            (scope.Length != 64 || scope.Any(character => !Uri.IsHexDigit(character))))
+        {
+            throw new InvalidDataException("The local organization preference scope is invalid.");
         }
 
         return decision with

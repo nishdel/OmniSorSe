@@ -9,7 +9,7 @@ namespace OpenSorSe.Application.Indexing;
 public static class DeepIndexingVersion
 {
     /// <summary>Gets the currently supported provider-independent schema version.</summary>
-    public const int SchemaVersion = 6;
+    public const int SchemaVersion = 8;
 
     /// <summary>Gets the configuration version used to invalidate incompatible derived work.</summary>
     public const string ProcessorVersion = "2.6.0";
@@ -204,7 +204,11 @@ public sealed record IndexingSource(
     bool Enabled,
     int Priority,
     IReadOnlyList<string> Exclusions,
-    bool ManagedByWatchedFolders = false);
+    bool ManagedByWatchedFolders = false)
+{
+    /// <summary>Gets whether this source requests automatic local AI after deterministic extraction.</summary>
+    public bool AiEnrichmentEnabled { get; init; }
+}
 
 /// <summary>Describes one durable run that can continue after process restart.</summary>
 public sealed record ResumableIndexingRun(
@@ -237,6 +241,8 @@ public sealed record IndexingFileObservation(
 /// <summary>Describes one durable stage claim returned to an application worker.</summary>
 public sealed record IndexingWorkItem
 {
+    /// <summary>Gets the source AI policy; null retains compatibility for external stage callers.</summary>
+    public bool? AiEnrichmentEnabled { get; init; }
     /// <summary>Gets the durable job identifier.</summary>
     public required string JobId { get; init; }
 
@@ -279,7 +285,7 @@ public sealed record IndexingWorkItem
     /// <summary>Gets durable structured media evidence needed by later indexing stages.</summary>
     public IndexedMediaEvidence? MediaEvidence { get; init; }
 
-    /// <summary>Gets bounded structured topics, textual entities, and source-grounded summary evidence.</summary>
+    /// <summary>Gets bounded structured topics, entities and summary with explicit origin.</summary>
     public IndexedContentIntelligence? ContentIntelligence { get; init; }
 
     /// <summary>Gets regenerated bounded Smart Tag candidates for this stable file identity.</summary>
@@ -405,6 +411,9 @@ public sealed record IndexStorageBreakdown(
 
     /// <summary>Gets logical bytes retained for Smart Tag definitions, assignments, decisions, and bounded evidence.</summary>
     public long SmartTagBytes { get; init; }
+
+    /// <summary>Gets logical bytes for disposable learned vectors and their traceable chunks.</summary>
+    public long VectorDataBytes { get; init; }
 }
 
 /// <summary>Describes current persistent progress suitable for UI binding.</summary>
@@ -511,6 +520,8 @@ public sealed record IndexingProgressSnapshot
 /// <summary>Describes a provider-neutral document available to progressive Search.</summary>
 public sealed record ProgressiveSearchDocument
 {
+    /// <summary>Gets whether this file's source requests background AI enrichment.</summary>
+    public bool AiEnrichmentEnabled { get; init; }
     /// <summary>Gets the durable file identifier.</summary>
     public required string FileId { get; init; }
 

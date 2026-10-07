@@ -32,6 +32,12 @@ public interface IDeepIndexStore : IAsyncDisposable
     /// <summary>Returns configured sources.</summary>
     Task<IReadOnlyList<IndexingSource>> GetSourcesAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Queues retained content for enrichment without scanning or clearing extracted/user data.</summary>
+    Task<int> QueueRetainedEnrichmentAsync(
+        string sourceId, DateTimeOffset queuedAtUtc, int maximumRetries,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("The index provider does not support retained-content enrichment.");
+
     /// <summary>Updates source priority for future claims.</summary>
     Task SetSourcePriorityAsync(string sourceId, int priority, CancellationToken cancellationToken = default);
 
@@ -292,6 +298,18 @@ public interface IBackgroundIndexingService :
         IReadOnlyList<string>? exclusions = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Registers a folder with an explicit source-specific AI policy.</summary>
+    Task<string> QueueFolderWithEnrichmentAsync(
+        string rootPath, bool aiEnrichmentEnabled, IndexingLevel? level = null,
+        bool includeSubfolders = true, IReadOnlyList<string>? exclusions = null,
+        CancellationToken cancellationToken = default) =>
+        QueueFolderAsync(rootPath, level, includeSubfolders, exclusions, cancellationToken);
+
+    /// <summary>Changes source policy and queues retained extraction without rescanning source files.</summary>
+    Task<int> SetSourceAiEnrichmentAsync(string sourceId, bool enabled,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This coordinator does not support retained-content enrichment.");
+
     /// <summary>
     /// Re-discovers only configured sources affected by verified filesystem outcomes. Active work for those
     /// sources is cancelled at a durable boundary before the targeted refresh starts.
@@ -394,7 +412,11 @@ public interface IIndexingEnrichmentProvider
 }
 
 /// <summary>Contains bounded optional enrichment output.</summary>
-public sealed record IndexingEnrichmentResult(string? Summary, IReadOnlyList<string> Keywords);
+public sealed record IndexingEnrichmentResult(string? Summary, IReadOnlyList<string> Keywords)
+{
+    /// <summary>Gets structured concepts with explicit AI provenance, never filesystem instructions.</summary>
+    public OpenSorSe.Application.ContentIntelligence.IndexedContentIntelligence? Intelligence { get; init; }
+}
 
 /// <summary>Signals a malformed durable index that requires explicit recovery.</summary>
 public sealed class DeepIndexCorruptException : IOException

@@ -103,9 +103,19 @@ public partial class App : Avalonia.Application
 
     private void ConfigureDesktopLifetime(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        var applicationPaths = new ApplicationPathProvider();
+        IApplicationPathProvider applicationPaths = new ApplicationPathProvider();
         applicationPaths.EnsureOwnedDirectories();
         _profileOwnershipLease = ProfileOwnershipLease.Acquire(applicationPaths.Paths.StateDirectory);
+        var storageConfiguration = new OpenSorSe.Core.Configuration.JsonConfigurationService(applicationPaths.SettingsFilePath);
+        storageConfiguration.InitializeAsync(CancellationToken.None).GetAwaiter().GetResult();
+        if (storageConfiguration.InitializationWarning is not null &&
+            File.Exists(Path.Combine(applicationPaths.Paths.ConfigurationDirectory, "storage-location.json")))
+        {
+            throw new InvalidDataException("Storage configuration needs recovery before the existing relocated library can be opened.");
+        }
+        applicationPaths = ApplicationStorageLocation.ResolveAsync(
+            applicationPaths, storageConfiguration.Current.Storage, _profileOwnershipLease, CancellationToken.None)
+            .GetAwaiter().GetResult();
         _runStateMarker = ApplicationRunStateMarker.Begin(applicationPaths.Paths.StateDirectory);
         _serviceProvider = CreateServiceProviderForPaths(applicationPaths, _profileOwnershipLease, _runStateMarker);
         _applicationHost = _serviceProvider.GetRequiredService<IApplicationHost>();
@@ -176,6 +186,8 @@ public partial class App : Avalonia.Application
             RecordLifecycleFailure("Authoritative mutation recovery state", exception);
         }
         desktop.MainWindow = new MainWindow(mainViewModel);
+        _serviceProvider.GetRequiredService<VectorIndexCoordinator>()
+            .InitializeAsync(CancellationToken.None).GetAwaiter().GetResult();
         StartRelationshipRefreshInBackground(_serviceProvider);
         StartKnowledgeGraphInBackground(_serviceProvider);
     }
@@ -269,7 +281,9 @@ public partial class App : Avalonia.Application
         {
             return new JsonContentStore(
                 Path.Combine(paths.CacheDirectory, "content-index.json"),
-                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>(),
+                () => serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
+                    .Current.Storage.MaximumCacheSizeMiB * 1024L * 1024L / 3);
         });
         services.AddSingleton<IContentIndexingService, ContentIndexingService>();
         services.AddSingleton<IEmbeddingProvider, FeatureHashingEmbeddingProvider>();
@@ -284,6 +298,18 @@ public partial class App : Avalonia.Application
         });
         services.AddSingleton<IDeepIndexStore>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddSingleton<IVectorSearchStore>(serviceProvider =>
+            serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
+        services.AddKeyedSingleton("embeddings", (_, _) => new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false })
+        {
+            Timeout = Timeout.InfiniteTimeSpan,
+        });
+        services.AddSingleton<IModelEmbeddingProvider>(serviceProvider => new OllamaEmbeddingProvider(
+            serviceProvider.GetRequiredKeyedService<HttpClient>("embeddings"),
+            serviceProvider.GetRequiredService<IConfigurationService>()));
+        services.AddSingleton<VectorIndexCoordinator>();
+        services.AddSingleton<VectorIndexViewModel>();
+        services.AddSingleton<ISemanticRelatedFilesService, SemanticRelatedFilesService>();
         services.AddSingleton<IDeepIndexHealthProbe>(serviceProvider =>
             serviceProvider.GetRequiredService<SqliteDeepIndexStore>());
         services.AddSingleton<IIndexPrivacyStore>(serviceProvider =>
@@ -314,6 +340,9 @@ public partial class App : Avalonia.Application
         services.AddSingleton<IIndexFileDiscovery, PhysicalIndexFileDiscovery>();
         services.AddSingleton<IBackgroundResourceMonitor, PortableBackgroundResourceMonitor>();
         services.AddSingleton<IIndexingStageProcessor, DefaultIndexingStageProcessor>();
+        services.AddSingleton<IIndexingEnrichmentProvider, OllamaIndexingEnrichmentProvider>();
+        services.AddSingleton<OpenSorSe.Application.Storage.IApplicationStorageService, OpenSorSe.Application.Storage.ApplicationStorageService>();
+        services.AddSingleton<StorageManagementViewModel>();
         services.AddSingleton<BackgroundIndexingService>();
         services.AddSingleton<IBackgroundIndexingService>(serviceProvider =>
             serviceProvider.GetRequiredService<BackgroundIndexingService>());
@@ -376,7 +405,9 @@ public partial class App : Avalonia.Application
         {
             return new JsonSemanticIndexStore(
                 Path.Combine(paths.CacheDirectory, "semantic-index.json"),
-                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>());
+                serviceProvider.GetRequiredService<OpenSorSe.Core.Logging.ILoggingService>(),
+                () => serviceProvider.GetRequiredService<OpenSorSe.Core.Configuration.IConfigurationService>()
+                    .Current.Storage.MaximumCacheSizeMiB * 1024L * 1024L / 3);
         });
         services.AddSingleton<ISemanticIndexer, SemanticIndexer>();
         services.AddSingleton<ISearchQueryInterpreter, DeterministicSearchQueryInterpreter>();

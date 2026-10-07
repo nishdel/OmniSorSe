@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using OpenSorSe.Application.ContentIntelligence;
+using OpenSorSe.Application.AI;
 using OpenSorSe.Application.Indexing;
 using OpenSorSe.Application.SmartTags;
 using OpenSorSe.Core.Platform;
@@ -18,7 +19,7 @@ namespace OpenSorSe.Application.Workflows;
 /// Reuses Sorting Recipes to create bounded actual-file previews from durable indexed identities.
 /// Preview is read-only; only an unchanged explicitly approved preview reaches <see cref="IChangePlanFactory"/>.
 /// </summary>
-public sealed class ReviewedOrganizationService : IReviewedOrganizationService
+public sealed partial class ReviewedOrganizationService : IReviewedOrganizationService
 {
     private const string ManualProfileId = "manual:reviewed-organization";
     private const string ManualProfileName = "Reviewed organization";
@@ -26,17 +27,20 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
     private readonly IWorkflowTemplateEngine _templates;
     private readonly IChangePlanFactory _changePlans;
     private readonly IPathSemantics _paths;
+    private readonly IDecisionHistoryStore? _decisions;
 
     public ReviewedOrganizationService(
         IReviewedOrganizationEvidenceSource indexing,
         IWorkflowTemplateEngine templates,
         IChangePlanFactory changePlans,
-        IPathSemantics? paths = null)
+        IPathSemantics? paths = null,
+        IDecisionHistoryStore? decisions = null)
     {
         _indexing = indexing ?? throw new ArgumentNullException(nameof(indexing));
         _templates = templates ?? throw new ArgumentNullException(nameof(templates));
         _changePlans = changePlans ?? throw new ArgumentNullException(nameof(changePlans));
         _paths = paths ?? PlatformServices.CurrentPathSemantics;
+        _decisions = decisions;
     }
 
     public async Task<OrganizationProposalSet> PreviewAsync(
@@ -50,6 +54,13 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        if (request.Strategy is { } strategy && !Enum.IsDefined(strategy) ||
+            request.Edits.Count > WorkflowLibraryLimits.MaximumOrganizationSelection ||
+            request.Edits.Any(edit => !selectedIds.Contains(edit.FileId, StringComparer.Ordinal)) ||
+            request.Edits.Select(edit => edit.FileId).Distinct(StringComparer.Ordinal).Count() != request.Edits.Count)
+        {
+            throw new ArgumentException("The organization strategy or edited selection is invalid.", nameof(request));
+        }
         if (selectedIds.Length == 0)
         {
             throw new ArgumentException("Select at least one indexed file.", nameof(request));
@@ -101,6 +112,10 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
         }
 
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(source.RootPath));
+        var edits = request.Edits.ToDictionary(edit => edit.FileId, StringComparer.Ordinal);
+        var preferences = request.UseLearnedPreferences
+            ? await LoadPreferencesAsync(source.Id, cancellationToken).ConfigureAwait(false)
+            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var rows = new List<OrganizationProposalRow>(selectedIds.Length);
         var availability = ProductTokens.ToDictionary(token => token, _ => 0, StringComparer.OrdinalIgnoreCase);
         foreach (var fileId in selectedIds)
@@ -139,16 +154,27 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
             var evaluation = _templates.Evaluate(
                 recipe,
                 new RecipeEvaluationContext(root, document.FullPath, evidence));
-            rows.Add(CreateRow(document, root, evaluation, evidence, evidenceWarnings));
+            var row = CreateRow(document, root, evaluation, evidence, evidenceWarnings);
+            edits.TryGetValue(fileId, out var edit);
+            rows.Add(ApplyOrganizationChoices(row, root, request, edit, preferences));
+        }
+
+        // Rejection remains possible even when a previously selected identity no longer resolves.
+        for (var index = 0; index < rows.Count; index++)
+        {
+            if (edits.TryGetValue(rows[index].FileId, out var edit) && edit.IsRejected)
+            {
+                rows[index] = rows[index] with { IsRejected = true };
+            }
         }
 
         MarkProposalCollisions(rows);
         var projectedFileActions = rows.Count(row => row.IsEligible);
         var projectedDirectories = CountRequiredDirectories(root, rows.Where(row => row.IsEligible));
         var warnings = new List<string>();
-        if (rows.Any(row => row.Readiness == OrganizationProposalReadiness.CannotPropose))
+        if (rows.Any(row => !row.IsRejected && !row.IsUnchanged && row.Readiness == OrganizationProposalReadiness.CannotPropose))
         {
-            warnings.Add("Every selected file must have a safe proposal before Review Changes. Edit the recipe or reduce the selection.");
+            warnings.Add("Each included move must have a safe proposal before Review Changes. Edit or reject unresolved moves.");
         }
 
         if (projectedFileActions + projectedDirectories > ChangePlanSchema.MaximumActions)
@@ -176,7 +202,12 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
             projectedDirectories,
             Array.AsReadOnly(warnings.ToArray()),
             sensitive,
-            fingerprint);
+            fingerprint)
+        {
+            Strategy = request.Strategy,
+            Edits = Array.AsReadOnly(request.Edits.ToArray()),
+            UseLearnedPreferences = request.UseLearnedPreferences,
+        };
     }
 
     public async Task<ChangePlan> CreateChangePlanAsync(
@@ -193,7 +224,12 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
         }
 
         var fresh = await PreviewAsync(
-            new OrganizationPreviewRequest(proposal.Recipe, proposal.SelectedFileIds),
+            new OrganizationPreviewRequest(proposal.Recipe, proposal.SelectedFileIds)
+            {
+                Strategy = proposal.Strategy,
+                Edits = proposal.Edits,
+                UseLearnedPreferences = proposal.UseLearnedPreferences,
+            },
             cancellationToken).ConfigureAwait(false);
         if (!fresh.CanCreateChangePlan ||
             !string.Equals(fresh.Fingerprint, proposal.Fingerprint, StringComparison.Ordinal))
@@ -202,7 +238,7 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
                 "The organization preview is stale because files, evidence, destinations, or recipe inputs changed. Preview again before Review Changes.");
         }
 
-        var proposals = fresh.Rows.Select((row, index) =>
+        var proposals = fresh.Rows.Where(row => row.IsEligible).Select((row, index) =>
         {
             var target = row.TargetPath!;
             var currentDirectory = Path.GetDirectoryName(row.CurrentPath);
@@ -227,15 +263,17 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
                 fresh.Recipe.Revision,
                 new ReadOnlyDictionary<string, string>(values),
                 Array.AsReadOnly(sources),
-                false,
+                row.UsesAiEvidence,
                 row.Warnings,
                 row.MissingEvidence);
             return new ChangeActionProposal(
                 sameDirectory ? ChangeActionType.RenameFile : ChangeActionType.MoveFile,
                 row.CurrentPath,
                 target,
-                ChangeSuggestionSource.DeterministicRule,
-                $"Reviewed organization recipe \"{fresh.Recipe.Name}\" r{fresh.Recipe.Revision} using trusted local evidence.",
+                fresh.Edits.Any(edit => edit.FileId == row.FileId && edit.RelativeTargetPath is not null)
+                    ? ChangeSuggestionSource.ManualUserEdit
+                    : row.UsesAiEvidence ? ChangeSuggestionSource.Ai : ChangeSuggestionSource.DeterministicRule,
+                string.Join(" ", row.Reasons),
                 index + 1,
                 row.FileId,
                 row.SourceLength,
@@ -268,9 +306,17 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
             .Distinct(StringComparer.Ordinal)
             .ToList();
         var target = evaluation.ProposedDestinationPath;
+        long? observedLength = null;
+        DateTimeOffset? observedModified = null;
         if (!File.Exists(document.FullPath))
         {
             conflicts.Add("The indexed source file is no longer available.");
+        }
+        else
+        {
+            var live = new FileInfo(document.FullPath);
+            observedLength = live.Length;
+            observedModified = live.LastWriteTimeUtc;
         }
 
         if (target is not null && !_paths.PathsEqual(target, document.FullPath))
@@ -316,7 +362,15 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
             Array.AsReadOnly(warnings.ToArray()),
             Array.AsReadOnly(conflicts.Distinct(StringComparer.Ordinal).ToArray()),
             document.Length,
-            document.ModifiedTimeUtc);
+            document.ModifiedTimeUtc)
+        {
+            ObservedSourceLength = observedLength,
+            UsesAiEvidence = evaluation.RequiresAiDerivedValues,
+            ObservedSourceModifiedAtUtc = observedModified,
+            RecommendedRelativeDestination = relativeDestination is "." ? string.Empty : relativeDestination,
+            Reasons = Array.AsReadOnly(mappings.Select(item => $"{item.Token}: {item.Value} ({item.EvidenceSource}).")
+                .Prepend("Organization recipe recommendation.").ToArray()),
+        };
     }
 
     private static IReadOnlyDictionary<string, RecipeFieldValue> BuildEvidence(
@@ -351,8 +405,29 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
         var messages = new List<string>();
         AddSingularTrustedTag(document.SmartTags, SmartTagType.Theme, "theme", values, messages);
         AddSingularTrustedTag(document.SmartTags, SmartTagType.DocumentType, "documentType", values, messages);
+        if (document.ContentIntelligence is { Provider: "ollama-indexing" } intelligence)
+        {
+            AddEnrichedValue("documentType", intelligence.DocumentType, SmartTagType.DocumentType);
+            AddEnrichedValue("theme", intelligence.Category, SmartTagType.Theme);
+        }
         warnings = Array.AsReadOnly(messages.ToArray());
         return new ReadOnlyDictionary<string, RecipeFieldValue>(values);
+
+        void AddEnrichedValue(string token, string? value, SmartTagType type)
+        {
+            // Accepted/rejected user classifications take precedence over derived enrichment.
+            if (values.ContainsKey(token) || string.IsNullOrWhiteSpace(value) ||
+                document.SmartTags.Any(tag => tag.Definition.Type == type &&
+                    (tag.State == SmartTagAssignmentState.Accepted ||
+                     tag.Decision == SmartTagDecision.Rejected &&
+                     string.Equals(tag.Definition.DisplayName, value, StringComparison.OrdinalIgnoreCase))))
+            {
+                return;
+            }
+
+            values[token] = new RecipeFieldValue(value, "AI classification (not user-confirmed)", IsAiDerived: true);
+            messages.Add("AI classification informed this proposal. Review the meaning and destination before applying file changes.");
+        }
     }
 
     private static void AddSingularTrustedTag(
@@ -417,7 +492,7 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
     private void MarkProposalCollisions(List<OrganizationProposalRow> rows)
     {
         var collisions = rows
-            .Where(row => row.TargetPath is not null && row.Readiness != OrganizationProposalReadiness.CannotPropose)
+            .Where(row => row.IsEligible)
             .GroupBy(row => NormalizeCollisionPath(row.TargetPath!), _paths.Comparer)
             .Where(group => group.Count() > 1)
             .SelectMany(group => group.Select(row => row.FileId))
@@ -513,11 +588,16 @@ public sealed class ReviewedOrganizationService : IReviewedOrganizationService
                 .Append(row.CurrentPath).Append('|')
                 .Append(row.TargetPath).Append('|')
                 .Append(row.Readiness).Append('|')
+                .Append(row.IsRejected).Append('|')
+                .Append(row.IsUnchanged).Append('|')
+                .Append(row.UsesAiEvidence).Append('|')
                 .Append(row.SourceLength).Append('|')
-                .Append(row.SourceModifiedAtUtc?.ToUniversalTime().Ticks).Append('\n');
+                .Append(row.SourceModifiedAtUtc?.ToUniversalTime().Ticks).Append('|')
+                .Append(row.ObservedSourceLength).Append('|')
+                .Append(row.ObservedSourceModifiedAtUtc?.ToUniversalTime().Ticks).Append('\n');
             foreach (var mapping in row.Evidence)
             {
-                builder.Append(mapping.Token).Append('=').Append(mapping.Value).Append(';');
+                builder.Append(mapping.Token).Append('=').Append(mapping.Value).Append(':').Append(mapping.EvidenceSource).Append(';');
             }
 
             builder.Append('\n');

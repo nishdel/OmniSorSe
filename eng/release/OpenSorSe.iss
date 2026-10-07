@@ -1,8 +1,8 @@
 #ifndef AppVersion
-  #define AppVersion "2.13.0-rc"
+  #define AppVersion "3.0.0-rc.1"
 #endif
 #ifndef AppFileVersion
-  #define AppFileVersion "2.13.0.0"
+  #define AppFileVersion "3.0.0.0"
 #endif
 #ifndef AppSource
   #error AppSource must identify the validated self-contained publish directory.

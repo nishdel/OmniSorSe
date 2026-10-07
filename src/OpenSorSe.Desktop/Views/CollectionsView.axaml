@@ -279,6 +279,27 @@
 
                                 <Border Classes="card">
                                     <StackPanel Spacing="6">
+                                        <TextBlock Text="Semantic similarity suggestions" FontWeight="SemiBold" />
+                                        <TextBlock Text="These suggestions share meaning; they are not verified relationships. Relationship type and confidence filters above apply to retained evidence."
+                                                   TextWrapping="Wrap" Classes="page-subtitle" />
+                                        <TextBlock Text="{Binding SemanticStatusText}" TextWrapping="Wrap"
+                                                   AutomationProperties.LiveSetting="Polite" />
+                                        <ItemsControl ItemsSource="{Binding SemanticSuggestions}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="rel:SemanticRelatedFile">
+                                                    <StackPanel Margin="4" Spacing="2">
+                                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding FullPath}" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="card">
+                                    <StackPanel Spacing="6">
                                         <TextBlock Text="Corrections for this file" FontWeight="SemiBold" />
                                         <TextBlock Text="Includes Not Related corrections even when the pair is hidden from Related Files."
                                                    Classes="page-subtitle"

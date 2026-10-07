@@ -1,5 +1,31 @@
 # OmniSorSe Safety and Privacy
 
+## v3 enrichment and storage boundary
+
+Optional local AI automatically enriches application-owned catalog/index data
+after structural validation. Inferences retain their provider/origin and never
+override user decisions, source bytes or embedded metadata. Filesystem proposals
+still require review, preflight, explicit Apply, durable journaling and Undo.
+Input document text is untrusted data and receives no path or execution authority.
+
+Schema 8 retains per-source enrichment policy and adds disposable learned-vector
+tables. Their model identity, chunk text, field offsets and float vectors stay in
+application storage and may contain sensitive derived information. The separate
+embedding opt-in authorizes bounded retained-text requests to the configured
+loopback Ollama endpoint; no model is downloaded automatically. Disabled or
+unavailable embeddings preserve deterministic Search. Relationship similarity
+never creates a factual edge or overrides an explicit rejection/privacy rule.
+Forget, suppression, content/enrichment change, moves and deletion invalidate
+vectors; cleanup clears only derived vectors after pausing their worker.
+
+Storage relocation copies and
+verifies registered data/cache entries before atomically selecting a generation;
+the original profile lock/configuration/history identity stays fixed. An
+unavailable active location fails startup. Recovery copies are retained and count
+as additional disk usage outside the active inventory. The main index and legacy
+JSON records with accepted/rejected tags contain durable authority; pruning must
+retain them. See [v3 recovery notes](RELEASE_NOTES_v3.0.0.md).
+
 **Document type:** Living current safety and privacy contract
 
 OmniSorSe is local-first and non-destructive by default. Scanning,
@@ -341,7 +367,8 @@ a competing profile merely because its visible name changed.
 | Saved Views | `saved-discovery-views.json` | Up to 100 versioned current-index query/filter rules; result membership is never stored and contents remain local. |
 | Content cache | `content-index.json` | Bounded extracted metadata, native/OCR text, page provenance, and extraction fingerprint used locally; source and component/settings fingerprints enable reuse/invalidation. |
 | Semantic index | `semantic-index.json` | Up to 10,000 bounded entries with normalized terms, accepted tag evidence, and deterministic vectors. |
-| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Released v2.2 schema 4 added content-hash-shared bounded media evidence. Released v2.3 added bounded Content Intelligence and relationship terms as schema 5. Unreleased v2.6 adds normalized Smart Tag definitions, assignments, decisions, and status as schema 6 through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. Existing stages, privacy, repair, retention, quota, and integrity policy remain. |
+| Durable Search index | `index/deep-index.db` plus up to three managed `backups/deep-index-*.db` copies and associated SQLite sidecars | Current schema 8 retains extracted content, enrichment provenance, tags and explicit decisions; earlier schema migrations introduced shared media/content intelligence and Smart Tags. Schema 7 added source enrichment policy; schema 8 adds disposable learned vectors and per-file retry state through the same transactional recovery-copy migration. Corruption/newer schemas fail closed; no source-file copies are stored. |
+| Learned vector index | Derived tables inside `index/deep-index.db` | Stable file/model/fingerprint identity, bounded retained-text chunks and portable numeric vectors. Logical usage is counted separately; privacy/freshness/model gates apply before retrieval. Rebuild/reclamation never removes authoritative catalog or user decisions. |
 | Knowledge Graph projection | `index/knowledge-graph.db` and bounded quarantined/recovery sidecars | Schema 1 derived nodes, edges, facts, evidence references, aliases, completed manifests, generations, component watermarks, jobs, and privacy-minimized operational diagnostics. It is optional, default off, reproducible from retained authority, and never stores source-file copies. |
 | Knowledge Graph decisions | `index/knowledge-decisions.db` plus bounded reviewed recovery points/journals | Schema 1 manual entities, aliases, link/unlink/merge/split/rejection/privacy decisions, tombstones, fences, and restore metadata. This is authoritative user intent, separate from the rebuildable graph projection and v1.9 relationship authority. |
 | Structure history | `structure-history.json` | Up to 250 records and 4,000 nodes per snapshot with relative paths, fingerprints, previews, outcomes, and applied state. |

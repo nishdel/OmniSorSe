@@ -213,8 +213,8 @@ unbounded recursive query added to the current schema-6 relationship provider.
    caps graph-only targets at 50 and all contextual targets at 100, preserving
    exact/literal and v1.9 direct-relationship priority.
 
-Keep `deep-index.db` at schema 6 unless an explicit migration design changes
-it. Schema-6 relationship, pair, Smart Collection, Smart Tag, and privacy
+Keep `deep-index.db` at schema 7 unless an explicit migration design changes
+it. Schema 7 adds source AI policy to the existing relationship, pair, Smart Collection, Smart Tag, and privacy
 authority remains upstream; the graph mirror is derived. Do not collapse
 ingested and applied source, decision,
 or privacy watermarks. Do not turn stale or repair-required graph data into a

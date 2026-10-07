@@ -6,6 +6,127 @@ namespace OpenSorSe.Desktop.Tests;
 /// <summary>Validates provider-neutral relationship presentation and index-only user control.</summary>
 public sealed class CollectionsViewModelTests
 {
+    /// <summary>Retained relationships are shown while optional model lookup is still pending.</summary>
+    [Fact]
+    public async Task RelatedFiles_PublishesEvidenceBeforeSemanticLookupCompletes()
+    {
+        var semantic = new ControlledSemanticService();
+        using var viewModel = new CollectionsViewModel(new RelationshipServiceStub(), semantic);
+        await viewModel.RefreshAsync();
+
+        viewModel.SelectedFile = viewModel.Files[0];
+
+        Assert.True(viewModel.IsBusy);
+        Assert.Single(viewModel.RelatedFiles);
+        Assert.Single(viewModel.Corrections);
+        Assert.Empty(viewModel.SemanticSuggestions);
+        Assert.Contains("Loaded", viewModel.StatusText, StringComparison.Ordinal);
+        Assert.Contains("Checking", viewModel.SemanticStatusText, StringComparison.Ordinal);
+        var finished = ObserveSemanticCompletion(viewModel, "Semantic results for first.");
+        semantic.FirstResult.SetResult(ControlledSemanticService.Result("first"));
+        await finished;
+
+        Assert.Equal("semantic-first", Assert.Single(viewModel.SemanticSuggestions).FileId);
+    }
+
+    /// <summary>A superseded lookup is cancelled and its late result cannot prevent the latest selection from loading.</summary>
+    [Fact]
+    public async Task RelatedFiles_SelectionDuringLookupRefreshesLatestAndDiscardsLateResults()
+    {
+        var semantic = new ControlledSemanticService();
+        using var viewModel = new CollectionsViewModel(new RelationshipServiceStub(), semantic);
+        await viewModel.RefreshAsync();
+        viewModel.SelectedFile = viewModel.Files[0];
+        var finished = ObserveSemanticCompletion(viewModel, "Semantic results for second.");
+
+        viewModel.SelectedFile = viewModel.Files[1];
+        Assert.True(semantic.FirstCancellation.IsCancellationRequested);
+        Assert.Empty(viewModel.SemanticSuggestions);
+        // Simulate a provider that completes despite cancellation; the presentation must
+        // discard this result and drain the queued latest selection without an Apply click.
+        semantic.FirstResult.SetResult(ControlledSemanticService.Result("first"));
+        await finished;
+
+        Assert.Equal(["first", "second"], semantic.RequestedIds);
+        Assert.Equal("second", viewModel.SelectedFile.FileId);
+        Assert.Single(viewModel.RelatedFiles);
+        Assert.Equal("semantic-second", Assert.Single(viewModel.SemanticSuggestions).FileId);
+        Assert.False(viewModel.IsBusy);
+    }
+
+    private static Task ObserveSemanticCompletion(CollectionsViewModel viewModel, string expectedStatus)
+    {
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Observe(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (!viewModel.IsBusy && viewModel.SemanticStatusText == expectedStatus)
+            {
+                viewModel.PropertyChanged -= Observe;
+                finished.TrySetResult();
+            }
+        }
+        viewModel.PropertyChanged += Observe;
+        return finished.Task.WaitAsync(TimeSpan.FromSeconds(10));
+    }
+
+    private sealed class ControlledSemanticService : ISemanticRelatedFilesService
+    {
+        public TaskCompletionSource<SemanticRelatedFilesResult> FirstResult { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public CancellationToken FirstCancellation { get; private set; }
+        public List<string> RequestedIds { get; } = [];
+        public Task<SemanticRelatedFilesResult> GetRelatedAsync(string fileId, CancellationToken cancellationToken = default)
+        {
+            RequestedIds.Add(fileId);
+            if (fileId == "first")
+            {
+                FirstCancellation = cancellationToken;
+                return FirstResult.Task;
+            }
+            return Task.FromResult(Result(fileId));
+        }
+        public static SemanticRelatedFilesResult Result(string id) => new(
+            [new SemanticRelatedFile("semantic-" + id, id + ".txt", id + ".txt", "Similar meaning only")],
+            "Semantic results for " + id + ".");
+    }
+
+    /// <summary>Semantic suggestions do not acquire retained relationship authority or mutation commands.</summary>
+    [Fact]
+    public async Task RelatedFiles_SemanticSuggestionsAreSeparateFromEvidence()
+    {
+        var service = new RelationshipServiceStub();
+        using var viewModel = new CollectionsViewModel(service, new SemanticService());
+        await viewModel.RefreshAsync();
+        viewModel.SelectedFile = viewModel.Files[0];
+
+        Assert.Single(viewModel.RelatedFiles);
+        Assert.Equal("semantic-only", Assert.Single(viewModel.SemanticSuggestions).FileId);
+        Assert.Contains("not a verified relationship", viewModel.SemanticStatusText, StringComparison.Ordinal);
+        Assert.Null(viewModel.SelectedRelatedFile);
+        Assert.False(viewModel.MarkRelatedCommand.CanExecute(null));
+    }
+
+    /// <summary>An optional similarity failure leaves direct retained evidence inspectable.</summary>
+    [Fact]
+    public async Task RelatedFiles_SemanticFailurePreservesDirectRelationships()
+    {
+        using var viewModel = new CollectionsViewModel(new RelationshipServiceStub(), new SemanticService(fail: true));
+        await viewModel.RefreshAsync();
+        viewModel.SelectedFile = viewModel.Files[0];
+
+        Assert.Single(viewModel.RelatedFiles);
+        Assert.Empty(viewModel.SemanticSuggestions);
+        Assert.Contains("temporarily unavailable", viewModel.SemanticStatusText, StringComparison.Ordinal);
+    }
+
+    private sealed class SemanticService(bool fail = false) : ISemanticRelatedFilesService
+    {
+        public Task<SemanticRelatedFilesResult> GetRelatedAsync(string fileId, CancellationToken cancellationToken = default) => fail
+            ? Task.FromException<SemanticRelatedFilesResult>(new IOException("offline"))
+            : Task.FromResult(new SemanticRelatedFilesResult(
+                [new SemanticRelatedFile("semantic-only", "tent.txt", "tent.txt", "Model test; cosine 0.8; chunk 1")],
+                "Similar meaning is not a verified relationship."));
+    }
+
     /// <summary>Verifies refresh and selection expose collection evidence, members, and timeline without filesystem access.</summary>
     [Fact]
     public async Task RefreshAndSelectCollection_PublishesInspectableEvidence()

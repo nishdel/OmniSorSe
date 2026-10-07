@@ -29,7 +29,8 @@ flowchart LR
 | Catalog/search/comparison | Reads/writes bounded OpenSorSe-owned historical metadata only. |
 | OCR/metadata | Locally reads supported files under bounds; source files remain unchanged. |
 | Semantic build/search/clear | Writes or removes only the local rebuildable semantic index. |
-| AI generate/review | Sends bounded metadata only after explicit enablement; accepting creates a non-mutating Change Plan. |
+| AI indexing enrichment | After source/global/capability opt-in, sends bounded retained text to the selected local model; validates and incorporates inferred information into owned Search/relationships without source writeback. |
+| AI filesystem proposal/review | Sends bounded evidence after explicit enablement; accepting creates a non-mutating Change Plan that still requires approval. |
 | Review Changes | Approves/rejects/edits actions, validates, shows final summary, and requires explicit Apply. |
 | Structure preview/diagram/current capture | Reads metadata and writes preview history only. |
 | Apply Plan | After separate confirmation and immediate revalidation, journals and verifies approved rename/move/create-directory actions without overwrite. |

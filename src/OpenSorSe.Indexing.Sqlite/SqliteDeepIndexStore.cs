@@ -15,7 +15,7 @@ namespace OpenSorSe.Indexing.Sqlite;
 /// <summary>
 /// Implements the provider-independent durable indexing store with an application-owned SQLite database.
 /// </summary>
-public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHealthProbe, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IDisposable
+public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHealthProbe, IIndexPrivacyStore, IRelationshipStore, ISmartTagStore, IVectorSearchStore, IDisposable
 {
     private const int MaximumSearchDocuments = 100_000;
     private const int MaximumFailureRecords = 10_000;
@@ -50,9 +50,13 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     WHERE name IN (
                         'index_meta', 'index_sources', 'index_files', 'index_stage_states',
                         'smart_tag_definitions', 'file_smart_tag_assignments', 'file_smart_tag_decisions',
-                        'ix_index_files_deleted', 'ix_file_smart_tags_tag');
+                        'ix_index_files_deleted', 'ix_file_smart_tags_tag',
+                        'index_vector_documents', 'index_vector_chunks', 'ix_vector_chunks_file', 'index_vector_failures',
+                        'vector_file_updated', 'vector_content_updated', 'vector_content_deleted',
+                        'vector_media_updated', 'vector_media_deleted', 'vector_privacy_inserted',
+                        'vector_privacy_updated', 'vector_source_updated');
                     """), CultureInfo.InvariantCulture);
-                var requiredObjectsPresent = requiredCount == 9;
+                var requiredObjectsPresent = requiredCount == 21;
                 var healthy = schemaVersion == DeepIndexingVersion.SchemaVersion && requiredObjectsPresent;
                 return new DeepIndexHealthSnapshot(
                     healthy,
@@ -121,6 +125,16 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                         if (version < 6)
                         {
                             ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
+                        }
+
+                        if (version < 7)
+                        {
+                            EnsureColumn(connection, transaction, "index_sources", "ai_enrichment_enabled", "INTEGER NOT NULL DEFAULT 0");
+                        }
+
+                        if (version < 8)
+                        {
+                            ExecuteNonQuery(connection, transaction, VectorSchema);
                         }
 
                         ExecuteNonQuery(
@@ -226,7 +240,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     SELECT r.id, r.status, r.discovery_complete,
                            s.id, s.root_path, s.display_name, s.indexing_level,
                            s.include_subfolders, s.enabled, s.priority, s.exclusions_json,
-                           s.managed_by_watched_folders
+                           s.managed_by_watched_folders, s.ai_enrichment_enabled
                     FROM index_runs r
                     JOIN index_sources s ON s.id = r.source_id
                     WHERE r.id = (
@@ -255,7 +269,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                             reader.GetBoolean(8),
                             reader.GetInt32(9),
                             DeserializeStrings(reader.GetString(10)),
-                            reader.GetBoolean(11)),
+                            reader.GetBoolean(11))
+                        { AiEnrichmentEnabled = reader.GetBoolean(12) },
                         (IndexingRunStatus)reader.GetInt32(1),
                         reader.GetBoolean(2)));
                 }
@@ -281,10 +296,10 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     INSERT INTO index_sources(
                         id, root_path, root_path_key, display_name, indexing_level,
                         include_subfolders, enabled, priority, exclusions_json,
-                        managed_by_watched_folders, created_utc_ticks, updated_utc_ticks)
+                        managed_by_watched_folders, ai_enrichment_enabled, created_utc_ticks, updated_utc_ticks)
                     VALUES(
                         $id, $root, $rootKey, $display, $level,
-                        $include, $enabled, $priority, $exclusions, $watched, $now, $now)
+                        $include, $enabled, $priority, $exclusions, $watched, $ai, $now, $now)
                     ON CONFLICT(id) DO UPDATE SET
                         root_path = excluded.root_path,
                         root_path_key = excluded.root_path_key,
@@ -295,6 +310,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                         priority = excluded.priority,
                         exclusions_json = excluded.exclusions_json,
                         managed_by_watched_folders = excluded.managed_by_watched_folders,
+                        ai_enrichment_enabled = excluded.ai_enrichment_enabled,
                         updated_utc_ticks = excluded.updated_utc_ticks;
                     """,
                     ("$id", source.Id),
@@ -307,6 +323,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     ("$priority", source.Priority),
                     ("$exclusions", JsonSerializer.Serialize(source.Exclusions.Take(128))),
                     ("$watched", source.ManagedByWatchedFolders ? 1 : 0),
+                    ("$ai", source.AiEnrichmentEnabled ? 1 : 0),
                     ("$now", now));
                 return 0;
             },
@@ -323,7 +340,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 command.CommandText =
                     """
                     SELECT id, root_path, display_name, indexing_level, include_subfolders,
-                           enabled, priority, exclusions_json, managed_by_watched_folders
+                           enabled, priority, exclusions_json, managed_by_watched_folders, ai_enrichment_enabled
                     FROM index_sources
                     ORDER BY priority DESC, display_name COLLATE NOCASE, id;
                     """;
@@ -340,7 +357,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                         reader.GetBoolean(5),
                         reader.GetInt32(6),
                         DeserializeStrings(reader.GetString(7)),
-                        reader.GetBoolean(8)));
+                        reader.GetBoolean(8))
+                    { AiEnrichmentEnabled = reader.GetBoolean(9) });
                 }
 
                 return sources;
@@ -601,7 +619,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                            COALESCE(p.suppress_summary, 0),
                            COALESCE(p.suppress_semantic, 0),
                            COALESCE(p.force_reprocess, 0),
-                           c.content_intelligence_json
+                           c.content_intelligence_json, s.ai_enrichment_enabled
                     FROM index_jobs j
                     JOIN index_runs r ON r.id = j.run_id
                     JOIN index_sources s ON s.id = r.source_id
@@ -672,6 +690,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     ContentIntelligence = reader.IsDBNull(25)
                         ? null
                         : TryDeserializeContentIntelligence(reader.GetString(25)),
+                    AiEnrichmentEnabled = reader.GetBoolean(26),
                 };
                 reader.Close();
                 var changed = ExecuteNonQuery(
@@ -1422,7 +1441,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                            COALESCE(p.suppress_ocr, 0),
                            COALESCE(p.suppress_summary, 0),
                            COALESCE(p.suppress_semantic, 0),
-                           m.evidence_json, c.content_intelligence_json
+                           m.evidence_json, c.content_intelligence_json, s.ai_enrichment_enabled
                     FROM index_files f
                     JOIN index_sources s ON s.id = f.source_id
                     LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -1462,6 +1481,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     documents.Add(new ProgressiveSearchDocument
                     {
                         FileId = reader.GetString(0),
+                        AiEnrichmentEnabled = reader.GetBoolean(23) && !suppressSummary && indexingLevel != IndexingLevel.Basic,
                         FullPath = fullPath,
                         FileName = Path.GetFileName(fullPath),
                         RelativePath = reader.GetString(2),
@@ -2148,7 +2168,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                            COALESCE(p.suppress_ocr, 0),
                            COALESCE(p.suppress_summary, 0),
                            COALESCE(p.suppress_semantic, 0),
-                           m.evidence_json, c.content_intelligence_json
+                           m.evidence_json, c.content_intelligence_json, s.ai_enrichment_enabled
                     FROM index_files f
                     JOIN index_sources s ON s.id = f.source_id
                     LEFT JOIN index_content c ON c.content_hash = f.content_hash
@@ -2187,6 +2207,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     documents.Add(new ProgressiveSearchDocument
                     {
                         FileId = reader.GetString(0),
+                        AiEnrichmentEnabled = reader.GetBoolean(23) && !suppressSummary && indexingLevel != IndexingLevel.Basic,
                         FullPath = fullPath,
                         FileName = Path.GetFileName(fullPath),
                         RelativePath = reader.GetString(2),
@@ -2783,11 +2804,38 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                     }
 
                     var deletedCutoff = nowUtc.AddDays(-settings.DeletedFileRetentionDays).UtcTicks;
+                    // File deletion cascades through authority tables. Keep missing-file identities
+                    // whenever a user decision depends on them; only derived-only identities expire.
                     var deletedCount = ExecuteNonQuery(
                         connection,
                         transaction,
-                        "DELETE FROM index_files WHERE deleted_utc_ticks IS NOT NULL AND deleted_utc_ticks <= $cutoff;",
-                        ("$cutoff", deletedCutoff));
+                        """
+                        DELETE FROM index_files
+                        WHERE deleted_utc_ticks IS NOT NULL AND deleted_utc_ticks <= $cutoff
+                          AND NOT EXISTS (SELECT 1 FROM file_smart_tag_decisions d WHERE d.file_id = index_files.id)
+                          AND NOT EXISTS (
+                            SELECT 1 FROM file_smart_tag_assignments a WHERE a.file_id = index_files.id
+                              AND (a.origin = $userOrigin OR a.assignment_state = $acceptedTag))
+                          AND NOT EXISTS (
+                            SELECT 1 FROM relationship_pair_overrides o
+                            WHERE o.first_file_id = index_files.id OR o.second_file_id = index_files.id)
+                          AND NOT EXISTS (
+                            SELECT 1 FROM index_relationships r
+                            WHERE (r.first_file_id = index_files.id OR r.second_file_id = index_files.id)
+                              AND (r.is_manual = 1 OR r.decision <> 0))
+                          AND NOT EXISTS (
+                            SELECT 1 FROM smart_collection_member_overrides o WHERE o.file_id = index_files.id)
+                          AND NOT EXISTS (
+                            SELECT 1 FROM smart_collection_members m JOIN smart_collections c ON c.id = m.collection_id
+                            WHERE m.file_id = index_files.id AND
+                              (m.membership_source = $manualMember OR c.creation_source <> $automaticCollection
+                               OR c.is_pinned = 1 OR c.is_user_renamed = 1));
+                        """,
+                        ("$cutoff", deletedCutoff),
+                        ("$userOrigin", (int)SmartTagOrigin.User),
+                        ("$acceptedTag", (int)SmartTagAssignmentState.Accepted),
+                        ("$manualMember", (int)CollectionMembershipSource.Manual),
+                        ("$automaticCollection", (int)SmartCollectionCreationSource.Automatic));
                     if (deletedCount > 0)
                     {
                         actions.Add(new IndexMaintenanceAction("expired-deleted-files", 0, nowUtc));
@@ -2808,6 +2856,17 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 }
 
                 ExecuteNonQuery(connection, null, "PRAGMA wal_checkpoint(TRUNCATE);");
+                if (GetPhysicalSize() > maximumBytes)
+                {
+                    var vectors = ExecuteNonQuery(connection, null, "DELETE FROM index_vector_documents;");
+                    if (vectors > 0)
+                    {
+                        actions.Add(new IndexMaintenanceAction("quota-pruned-learned-vectors", 0, nowUtc));
+                        ExecuteNonQuery(connection, null, "VACUUM;");
+                        ExecuteNonQuery(connection, null, "PRAGMA wal_checkpoint(TRUNCATE);");
+                    }
+                }
+
                 if (GetPhysicalSize() > maximumBytes)
                 {
                     var chunkCount = ExecuteNonQuery(connection, null, "DELETE FROM index_chunks;");
@@ -2911,6 +2970,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 EnsureColumn(connection, transaction, "index_content", "content_intelligence_json", "TEXT");
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionFive);
                 ExecuteNonQuery(connection, transaction, SqliteDeepIndexSchema.CreateVersionSix);
+                EnsureColumn(connection, transaction, "index_sources", "ai_enrichment_enabled", "INTEGER NOT NULL DEFAULT 0");
+                ExecuteNonQuery(connection, transaction, VectorSchema);
                 ExecuteNonQuery(
                     connection,
                     transaction,
@@ -3698,6 +3759,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
             MediaDerivedDataBytes = media,
             ContentIntelligenceBytes = contentIntelligence,
             SmartTagBytes = smartTags,
+            VectorDataBytes = ScalarInt64(connection, "SELECT COALESCE(SUM(byte_count),0) FROM index_vector_documents;"),
         };
     }
 
@@ -4437,7 +4499,7 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
         command.CommandText =
             """
             SELECT s.id, s.root_path, s.display_name, s.indexing_level, s.include_subfolders,
-                   s.enabled, s.priority, s.exclusions_json, s.managed_by_watched_folders
+                   s.enabled, s.priority, s.exclusions_json, s.managed_by_watched_folders, s.ai_enrichment_enabled
             FROM index_runs r
             JOIN index_sources s ON s.id = r.source_id
             WHERE r.id = $run;
@@ -4458,7 +4520,8 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
             reader.GetBoolean(5),
             reader.GetInt32(6),
             DeserializeStrings(reader.GetString(7)),
-            reader.GetBoolean(8));
+            reader.GetBoolean(8))
+        { AiEnrichmentEnabled = reader.GetBoolean(9) };
     }
 
     private void ValidateObservation(IndexingSource source, IndexingFileObservation observation)
@@ -4653,6 +4716,9 @@ public sealed partial class SqliteDeepIndexStore : IDeepIndexStore, IDeepIndexHe
                 intelligence.Topics is null ||
                 intelligence.Entities is null ||
                 intelligence.Keywords is null ||
+                !Enum.IsDefined(intelligence.Origin) ||
+                intelligence.DocumentType is { } documentType && !IsBoundedContentText(documentType, 80) ||
+                intelligence.Category is { } category && !IsBoundedContentText(category, 80) ||
                 intelligence.Topics.Count > 64 ||
                 intelligence.Entities.Count > 64 ||
                 intelligence.Keywords.Count > 128 ||

@@ -7,6 +7,7 @@ using OpenSorSe.Application.Relationships;
 using OpenSorSe.Core.Configuration;
 using OpenSorSe.Core.Platform;
 using OpenSorSe.Indexing.Sqlite;
+using OpenSorSe.Indexing.Sqlite.KnowledgeGraph;
 
 namespace OpenSorSe.Indexing.Sqlite.Tests;
 
@@ -14,6 +15,91 @@ namespace OpenSorSe.Indexing.Sqlite.Tests;
 public sealed class SqliteRelationshipStoreTests
 {
     private static readonly DateTimeOffset Epoch = new(2026, 8, 3, 12, 0, 0, TimeSpan.Zero);
+
+    /// <summary>Retained AI concepts create durable incremental relationships and graph edges for previously unrelated files.</summary>
+    [Fact]
+    public async Task RetainedEnrichmentRefreshesRelationshipsAndGraphProjectionAfterRestart()
+    {
+        using var fixture = new Fixture();
+        string firstFileId;
+        string relationshipId;
+        await using (var store = await fixture.CreatePopulatedStoreAsync(opaqueFiles: true))
+        {
+            var files = await store.GetRelationshipFilesAsync(10);
+            firstFileId = files[0].FileId;
+            var reconciliation = new ReconciliationSignal();
+            var service = new RelationshipService(
+                new Configuration(), store, new DeterministicRelationshipEngine(new FixedTimeProvider(Epoch)),
+                derivedProjectionInvalidator: reconciliation.SignalAsync);
+            foreach (var file in files)
+            {
+                await service.AnalyzeFileAsync(file.FileId);
+            }
+
+            Assert.Empty(await service.GetRelatedFilesAsync(firstFileId));
+            var inference = IndexingEnrichmentValidator.Parse("""
+                {"summary":"Electricity account correspondence.","documentType":"bill","category":"finance",
+                 "tags":["electricity","utility"],"topics":["household energy","monthly consumption"],
+                 "entities":[{"kind":"Organization","name":"EnBW"}]}
+                """, "test-model");
+            var source = Assert.Single(await store.GetSourcesAsync());
+            await store.UpsertSourceAsync(source with { AiEnrichmentEnabled = true, Level = IndexingLevel.Deep });
+            Assert.Equal(2, await store.QueueRetainedEnrichmentAsync(source.Id, Epoch.AddDays(2), 3));
+            while (await store.ClaimNextAsync(Epoch.AddDays(2)) is { } work)
+            {
+                var next = work.Stage switch
+                {
+                    IndexingStage.SummaryKeywordsGenerated => IndexingStage.SemanticRepresentationGenerated,
+                    IndexingStage.SemanticRepresentationGenerated => IndexingStage.SmartTagsClassified,
+                    IndexingStage.SmartTagsClassified => IndexingStage.SearchIndexUpdated,
+                    IndexingStage.SearchIndexUpdated => IndexingStage.RelationshipAnalysisCompleted,
+                    IndexingStage.RelationshipAnalysisCompleted => IndexingStage.FileFullyIndexed,
+                    IndexingStage.FileFullyIndexed => (IndexingStage?)null,
+                    _ => throw new InvalidOperationException("Retained enrichment must not rediscover or extract files."),
+                };
+                var output = work.Stage == IndexingStage.SummaryKeywordsGenerated
+                    ? new IndexingStageOutput
+                    {
+                        Status = IndexingStageStatus.Complete,
+                        ContentIntelligence = inference,
+                        Summary = inference.Summary!.Text,
+                        Keywords = inference.Keywords,
+                    }
+                    : new IndexingStageOutput { Status = IndexingStageStatus.Complete };
+                if (work.Stage == IndexingStage.RelationshipAnalysisCompleted)
+                {
+                    Assert.False((await service.AnalyzeFileAsync(work.FileId)).Skipped);
+                }
+
+                await store.SaveStageOutputAsync(work, output, next, Epoch.AddDays(2), TimeSpan.Zero, null);
+            }
+
+            var related = Assert.Single(await service.GetRelatedFilesAsync(firstFileId));
+            relationshipId = related.Relationship.Id;
+            Assert.Contains(related.Relationship.Evidence, item => item.Kind == RelationshipEvidenceKind.ContentEntity &&
+                item.Origin == RelationshipEvidenceOrigin.AiDerived && item.Explanation.Contains("EnBW", StringComparison.Ordinal));
+            Assert.Contains(related.Relationship.Evidence, item => item.Kind == RelationshipEvidenceKind.ContentTopic &&
+                item.Origin == RelationshipEvidenceOrigin.AiDerived);
+            Assert.Equal(4, reconciliation.Count);
+        }
+
+        await using var reopened = fixture.CreateStore();
+        await reopened.InitializeAsync();
+        var retained = Assert.Single(await reopened.GetRelatedFilesAsync(firstFileId, null, null, RelatedFileSort.Confidence, 10));
+        Assert.Equal(relationshipId, retained.Relationship.Id);
+        Assert.Contains(retained.Relationship.Evidence, item => item.Origin == RelationshipEvidenceOrigin.AiDerived);
+        await using var projectionSource = new SqliteGraphProjectionSource(fixture.DatabasePath);
+        var snapshot = await projectionSource.OpenCompletedSnapshotAsync();
+        var page = await projectionSource.ReadPageAsync(snapshot, null, 100);
+        Assert.True(page.IsLastPage);
+        var observation = Assert.Single(page.Observations.OfType<GraphRelationshipObservation>());
+        Assert.Equal(relationshipId, observation.RelationshipId);
+        Assert.False(observation.IsRejected);
+        Assert.Contains(observation.Evidence, item => item.EvidenceKey.Contains(":ai:", StringComparison.Ordinal));
+        var projection = new DeterministicGraphProjectionBuilder(new ConservativeGraphIdentityResolver())
+            .Build(observation, snapshot, Epoch.AddDays(2));
+        Assert.Equal(GraphEdgeKind.RelatedFile, Assert.Single(projection.Edges).Kind);
+    }
 
     /// <summary>Verifies the application service incrementally relates later files to previously indexed features.</summary>
     [Fact]
@@ -877,7 +963,7 @@ public sealed class SqliteRelationshipStoreTests
 
         public SqliteDeepIndexStore CreateStore() => new(DatabasePath, PlatformServices.CurrentPathSemantics);
 
-        public async Task<SqliteDeepIndexStore> CreatePopulatedStoreAsync()
+        public async Task<SqliteDeepIndexStore> CreatePopulatedStoreAsync(bool opaqueFiles = false)
         {
             var store = CreateStore();
             await store.InitializeAsync();
@@ -897,8 +983,8 @@ public sealed class SqliteRelationshipStoreTests
             var run = await store.BeginRunAsync(source.Id, Epoch);
             var observations = Enumerable.Range(0, _fileCount)
                 .Select(index => new IndexingFileObservation(
-                    Path.Combine(Root, $"invoice-{1234 + index}.pdf"),
-                    $"records{Path.DirectorySeparatorChar}invoice-{1234 + index}.pdf",
+                    Path.Combine(Root, opaqueFiles ? (index == 0 ? "alpha.txt" : "beta.txt") : $"invoice-{1234 + index}.pdf"),
+                    opaqueFiles ? (index == 0 ? "alpha.txt" : "beta.txt") : $"records{Path.DirectorySeparatorChar}invoice-{1234 + index}.pdf",
                     "identity-" + index,
                     "synthetic-volume",
                     100 + index,
@@ -928,9 +1014,9 @@ public sealed class SqliteRelationshipStoreTests
                 var output = claim.Stage switch
                 {
                     IndexingStage.ContentFingerprinted => new IndexingStageOutput { Status = IndexingStageStatus.Complete, ContentHash = "hash-" + claim.FileId },
-                    IndexingStage.TextExtracted => new IndexingStageOutput { Status = IndexingStageStatus.Complete, ExtractedText = "Mercedes invoice synthetic text " + claim.FileId },
-                    IndexingStage.SummaryKeywordsGenerated => new IndexingStageOutput { Status = IndexingStageStatus.Complete, Summary = "Mercedes invoice", Keywords = ["mercedes", "invoice"] },
-                    IndexingStage.SemanticRepresentationGenerated => new IndexingStageOutput { Status = IndexingStageStatus.Complete, SemanticRepresentation = [1f, 0f] },
+                    IndexingStage.TextExtracted => new IndexingStageOutput { Status = IndexingStageStatus.Complete, ExtractedText = opaqueFiles ? claim.FileId : "Mercedes invoice synthetic text " + claim.FileId },
+                    IndexingStage.SummaryKeywordsGenerated => new IndexingStageOutput { Status = IndexingStageStatus.Complete, Summary = opaqueFiles ? null : "Mercedes invoice", Keywords = opaqueFiles ? [] : ["mercedes", "invoice"] },
+                    IndexingStage.SemanticRepresentationGenerated => new IndexingStageOutput { Status = IndexingStageStatus.Complete, SemanticRepresentation = opaqueFiles ? null : [1f, 0f] },
                     _ => new IndexingStageOutput { Status = IndexingStageStatus.Complete },
                 };
                 await store.SaveStageOutputAsync(claim, output, next, Epoch.AddDays(1), TimeSpan.Zero, null);

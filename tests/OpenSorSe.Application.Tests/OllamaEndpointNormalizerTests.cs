@@ -11,6 +11,8 @@ public sealed class OllamaEndpointNormalizerTests
     [InlineData("http://127.0.0.1:11434/api", "http://127.0.0.1:11434/")]
     [InlineData("http://127.0.0.1:11434/api/tags/", "http://127.0.0.1:11434/")]
     [InlineData("http://127.0.0.1:11434/api/generate", "http://127.0.0.1:11434/")]
+    [InlineData("http://127.0.0.1:11434/api/embed", "http://127.0.0.1:11434/")]
+    [InlineData("https://example.test/base/api/embed/", "https://example.test/base/")]
     [InlineData("https://example.test/ollama/api/version", "https://example.test/ollama/")]
     [InlineData("https://example.test/base/api/chat", "https://example.test/base/")]
     public void TryNormalize_SupportedEndpoint_ProducesTrailingSlashBase(string input, string expected)

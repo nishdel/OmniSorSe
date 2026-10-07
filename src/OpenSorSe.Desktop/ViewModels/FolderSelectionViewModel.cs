@@ -28,6 +28,7 @@ public sealed class FolderSelectionViewModel : ViewModelBase
     private double _overrideMaximumFileSizeMiB = 1024;
     private string _newProfileName = string.Empty;
     private InitialScanDepth _initialScanDepth = InitialScanDepth.BaseFirst;
+    private bool _aiEnrichmentEnabled;
 
     /// <summary>
     /// Initializes folder-selection commands.
@@ -110,6 +111,13 @@ public sealed class FolderSelectionViewModel : ViewModelBase
 
     /// <summary>Gets the available initial indexing schedules.</summary>
     public IReadOnlyList<InitialScanDepthOption> AvailableInitialScanDepths { get; } = InitialScanDepthOptions.All;
+
+    /// <summary>Gets or sets the explicit enrichment choice for newly scanned folders.</summary>
+    public bool AiEnrichmentEnabled
+    {
+        get => _aiEnrichmentEnabled;
+        set => SetProperty(ref _aiEnrichmentEnabled, value);
+    }
 
     /// <summary>Gets or sets the plain-language option selected in the scan UI.</summary>
     public InitialScanDepthOption SelectedInitialScanDepthOption
@@ -324,6 +332,8 @@ public sealed class FolderSelectionViewModel : ViewModelBase
         {
             ProfileId = SelectedWorkflowProfile.Id,
             InitialScanDepth = SelectedInitialScanDepth,
+            AiEnrichmentEnabled = AiEnrichmentEnabled,
+            EnableSearchIndex = true,
             OneTimeOverride = UseOneTimeOverride
                 ? new WorkflowProfileOverride(
                     MaximumFileSizeBytes: checked((long)(OverrideMaximumFileSizeMiB * 1024 * 1024)),

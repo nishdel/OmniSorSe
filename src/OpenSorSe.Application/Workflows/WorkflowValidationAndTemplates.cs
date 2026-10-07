@@ -313,7 +313,7 @@ public sealed partial class WorkflowTemplateEngine : IWorkflowTemplateEngine
 
         if (aiRequired)
         {
-            warnings.Add("One or more values came from explicitly approved AI-derived metadata.");
+            warnings.Add("One or more values came from AI-derived metadata; review the proposal before applying file changes.");
         }
 
         if (missing.Count > unresolvedRequired.Length)

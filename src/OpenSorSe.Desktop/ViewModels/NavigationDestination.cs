@@ -64,4 +64,7 @@ public enum NavigationDestination
 
     /// <summary>Displays static application metadata and external-resource requests.</summary>
     About,
+
+    /// <summary>Edits and reviews proposed folder organization before execution.</summary>
+    Organize,
 }

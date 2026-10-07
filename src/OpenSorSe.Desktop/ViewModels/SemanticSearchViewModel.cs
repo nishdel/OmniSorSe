@@ -83,7 +83,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         IClipboardService? clipboard = null,
         IMediaThumbnailProvider? mediaThumbnailProvider = null,
         ISmartTagService? smartTagService = null,
-        ISavedDiscoveryViewStore? savedViewStore = null)
+        ISavedDiscoveryViewStore? savedViewStore = null,
+        VectorIndexViewModel? vectorIndex = null)
     {
         _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
         _indexer = indexer;
@@ -97,6 +98,7 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         _mediaThumbnailProvider = mediaThumbnailProvider;
         _ = smartTagService; // Retained for binary/source-compatible composition while v2.8 removes duplicate selector state.
         _savedViewStore = savedViewStore;
+        VectorIndex = vectorIndex;
         Hits = new ReadOnlyObservableCollection<SemanticSearchHit>(_hits);
         ActiveFilters = new ReadOnlyObservableCollection<SearchFilter>(_activeFilters);
         Sources = new ReadOnlyObservableCollection<IndexingSource>(_sources);
@@ -182,6 +184,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         CancelIndexingCommand = new AsyncRelayCommand(CancelIndexingAsync, CanCancelIndexing);
         RetryFailedItemsCommand = new AsyncRelayCommand(RetryFailedItemsAsync, CanRetryFailedItems);
         PrioritizeSourceCommand = new AsyncRelayCommand(PrioritizeSourceAsync, () => _backgroundIndexingService is not null && SelectedSource is not null);
+        EnableSourceEnrichmentCommand = new AsyncRelayCommand(() => SetSourceEnrichmentAsync(true), CanChangeSourceEnrichment);
+        DisableSourceEnrichmentCommand = new AsyncRelayCommand(() => SetSourceEnrichmentAsync(false), CanChangeSourceEnrichment);
         RemoveSourceCommand = new AsyncRelayCommand(RemoveSourceAsync, () => _backgroundIndexingService is not null && SelectedSource is not null);
         RebuildBackgroundIndexCommand = new AsyncRelayCommand(RebuildBackgroundIndexAsync, () => _backgroundIndexingService is not null && !IsBusy);
         MaintainIndexCommand = new AsyncRelayCommand(MaintainIndexAsync, () => _backgroundIndexingService is not null && !IsBusy);
@@ -198,6 +202,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             _ = LoadSavedViewsAsync();
         }
     }
+
+    /// <summary>Gets optional learned-index status and controls.</summary>
+    public VectorIndexViewModel? VectorIndex { get; }
 
     /// <summary>Gets or sets the bounded natural-language query.</summary>
     public string? QueryText
@@ -453,6 +460,9 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _selectedSource, value))
             {
                 PrioritizeSourceCommand.NotifyCanExecuteChanged();
+                EnableSourceEnrichmentCommand.NotifyCanExecuteChanged();
+                DisableSourceEnrichmentCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(SourceEnrichmentText));
                 RemoveSourceCommand.NotifyCanExecuteChanged();
                 RequestForgetSourceCommand.NotifyCanExecuteChanged();
                 ConfirmForgetSourceCommand.NotifyCanExecuteChanged();
@@ -782,6 +792,19 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the selected-source prioritization command.</summary>
     public IAsyncRelayCommand PrioritizeSourceCommand { get; }
+
+    /// <summary>Gets the command to enrich retained content without rescanning source files.</summary>
+    public IAsyncRelayCommand EnableSourceEnrichmentCommand { get; }
+
+    /// <summary>Gets the command to disable future AI processing for this folder.</summary>
+    public IAsyncRelayCommand DisableSourceEnrichmentCommand { get; }
+
+    /// <summary>Gets the selected folder's durable local-AI policy.</summary>
+    public string SourceEnrichmentText => SelectedSource is null
+        ? "Select an indexed folder to change background AI enrichment."
+        : SelectedSource.AiEnrichmentEnabled
+            ? "AI enrichment enabled. Validated inferences improve Search and Related Files automatically."
+            : "Standard indexing. Enable AI enrichment to process already-extracted content.";
 
     /// <summary>Gets the selected-source removal command.</summary>
     public IAsyncRelayCommand RemoveSourceCommand { get; }
@@ -1972,6 +1995,39 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
         await RefreshIndexingStatusAsync();
     }
 
+    private bool CanChangeSourceEnrichment() =>
+        _backgroundIndexingService is not null && SelectedSource is not null && !IsBusy;
+
+    private async Task SetSourceEnrichmentAsync(bool enabled)
+    {
+        var source = SelectedSource;
+        if (_backgroundIndexingService is null || source is null || IsBusy)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var queued = await _backgroundIndexingService.SetSourceAiEnrichmentAsync(source.Id, enabled, CancellationToken.None);
+            await RefreshIndexingStatusAsync();
+            SelectedSource = Sources.FirstOrDefault(item => item.Id == source.Id);
+            Status = StatusPresentation.Success(enabled
+                ? $"AI enrichment enabled; {queued:N0} retained file(s) queued. Local AI and document interpretation must be enabled in Settings."
+                : "Future AI enrichment disabled for this folder. Existing indexed information is retained.");
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
+        {
+            Status = StatusPresentation.Warning("The enrichment choice could not be applied. Finish current discovery or check local storage, then retry.");
+        }
+        finally
+        {
+            IsBusy = false;
+            EnableSourceEnrichmentCommand.NotifyCanExecuteChanged();
+            DisableSourceEnrichmentCommand.NotifyCanExecuteChanged();
+        }
+    }
+
     private async Task RemoveSourceAsync()
     {
         if (_backgroundIndexingService is null || SelectedSource is null)
@@ -2083,6 +2139,8 @@ public sealed class SemanticSearchViewModel : ViewModelBase, IDisposable
 
     private void NotifyBackgroundCommands()
     {
+        EnableSourceEnrichmentCommand.NotifyCanExecuteChanged();
+        DisableSourceEnrichmentCommand.NotifyCanExecuteChanged();
         PauseIndexingCommand.NotifyCanExecuteChanged();
         ResumeIndexingCommand.NotifyCanExecuteChanged();
         CancelIndexingCommand.NotifyCanExecuteChanged();

@@ -6,6 +6,16 @@
 
 ## Implementation Status
 
+**Current v3 boundary:** optional `OllamaIndexingEnrichmentProvider` automatically
+enriches retained indexed content after structural validation, with inferred
+provenance. The existing durable queue, Search and relationship owners incorporate
+each completed file. Source files remain untouched; rename/folder proposals still
+require Change Plan review and explicit approval. See
+[ADR-007](../99_Appendix/ADR-007_Automatic_Indexed_Inference.md) and
+[How OmniSorSe Works](../../HOW_OMNISORSE_WORKS.md). The version-labelled sections
+below describe the earlier suggestion workflow; their review-only scope does not
+describe v3 indexed enrichment.
+
 OpenSorSe 1.3 preserves and extends the v0.9.1/v1.0 optional-AI boundary. AI is disabled by default, with independent rename, folder-structure, and document-text-interpretation capability switches, a profile policy, and a separate default-off choice per watched root. Application-owned feature gates reject disabled, invalid, or unconfigured calls before `IAiSuggestionProvider` can run. `AiPromptBuilder` produces capability-specific deterministic bounded prompts; rename/folder prompts remain metadata-only, while document interpretation accepts only bounded normalized extracted text after its separate gate and explicit one-document request. `AiResponseParser` and `AiSuggestionValidator` reject malformed, invented, duplicate, unsafe, or excessive output as a whole. The only results are immutable, unverified review proposals and bounded local review decisions. No AI proposal mutates a filesystem or enters execution.
 
 Model discovery/selection, connection retry, readiness, and capabilities appear whenever AI is enabled. Endpoint and timeout controls plus raw request inspection are progressively disclosed by Advanced mode. Readiness distinguishes not configured, not checked, server unavailable/available, selected model missing, ready, running, failed, and cancelled. A terminal request always releases its request cancellation source and refreshes commands, so cancellation or failure cannot permanently block retry. The exact saved model is passed to the next request; Ollama loads it on demand, and the Desktop shows the model reported by the validated proposal. Ollama supports empty-request preloading and `keep_alive`-based unloading, but OpenSorSe deliberately does neither during selection: that would create extra model communication and memory/lifecycle policy outside the user’s requested suggestion. The next explicit request names and loads the selected model.

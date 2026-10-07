@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenSorSe.Core.Logging;
 using OpenSorSe.Core.Persistence;
+using OpenSorSe.Application.Storage;
 
 namespace OpenSorSe.Application.Semantic;
 
@@ -15,10 +16,11 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
     private readonly string _filePath;
     private readonly ApplicationFileAccessCoordinator _fileAccess;
     private readonly ILogger _logger;
+    private readonly Func<long>? _maximumCacheBytes;
     private readonly SemaphoreSlim _mutex = new(1, 1);
 
     /// <summary>Initializes the index store at an explicit absolute application-data path.</summary>
-    public JsonSemanticIndexStore(string filePath, ILoggingService loggingService)
+    public JsonSemanticIndexStore(string filePath, ILoggingService loggingService, Func<long>? maximumCacheBytes = null)
     {
         if (string.IsNullOrWhiteSpace(filePath) || !Path.IsPathRooted(filePath))
         {
@@ -26,6 +28,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
         }
 
         _filePath = filePath;
+        _maximumCacheBytes = maximumCacheBytes;
         _fileAccess = new ApplicationFileAccessCoordinator(filePath);
         _logger = (loggingService ?? throw new ArgumentNullException(nameof(loggingService)))
             .CreateLogger(nameof(JsonSemanticIndexStore));
@@ -67,14 +70,7 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
         await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await AtomicJsonFile.WriteAsync(
-                _filePath,
-                new SemanticEnvelope(CurrentSchemaVersion, normalized),
-                JsonOptions,
-                MaximumFileBytes,
-                cancellationToken,
-                static (_, _) => new InvalidDataException(
-                    "The semantic index exceeds its supported encoded size.")).ConfigureAwait(false);
+            await SaveCoreAsync(normalized, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -132,18 +128,41 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
 
     private Task SaveCoreAsync(
         IReadOnlyList<SemanticIndexEntry> entries,
-        CancellationToken cancellationToken) =>
-        AtomicJsonFile.WriteAsync(
+        CancellationToken cancellationToken)
+    {
+        var maximum = Math.Clamp(_maximumCacheBytes?.Invoke() ?? MaximumFileBytes, 4_096, MaximumFileBytes);
+        var retained = _maximumCacheBytes is null ? entries :
+            RebuildableCacheBudget.RetainNewest(entries, entry => entry.IndexedAtUtc, maximum, JsonOptions, cancellationToken,
+                entry => RebuildableCacheBudget.HasUserAuthority(entry.Tags));
+        return AtomicJsonFile.WriteAsync(
             _filePath,
-            new SemanticEnvelope(CurrentSchemaVersion, entries),
+            new SemanticEnvelope(CurrentSchemaVersion, retained),
             JsonOptions,
-            MaximumFileBytes,
+            maximum,
             cancellationToken,
             static (_, _) => new InvalidDataException(
                 "The semantic index exceeds its supported encoded size."));
+    }
+
+    /// <inheritdoc />
+    public async Task PruneRebuildableAsync(CancellationToken cancellationToken)
+    {
+        using var fileAccess = await _fileAccess.AcquireAsync(cancellationToken).ConfigureAwait(false);
+        await _mutex.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var entries = await LoadCoreAsync(cancellationToken, requireValidAuthority: true).ConfigureAwait(false);
+            var retained = entries.Where(entry => RebuildableCacheBudget.HasUserAuthority(entry.Tags)).ToArray();
+            await SaveCoreAsync(retained, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _mutex.Release();
+        }
+    }
 
     private async Task<IReadOnlyList<SemanticIndexEntry>> LoadCoreAsync(
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool requireValidAuthority = false)
     {
         if (!File.Exists(_filePath))
         {
@@ -175,6 +194,10 @@ public sealed class JsonSemanticIndexStore : ISemanticIndexStore
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException)
         {
+            if (requireValidAuthority)
+            {
+                throw new InvalidDataException("The compatibility search store could not be verified. It was preserved because it may contain user decisions.", exception);
+            }
             _logger.LogWarning(exception, "The local semantic index is malformed or unsupported and will be rebuilt.");
             return [];
         }

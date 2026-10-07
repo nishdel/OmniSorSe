@@ -289,6 +289,55 @@ public sealed class DeepIndexingStageTests
         Assert.Contains("quarterly", complete.Keywords!);
     }
 
+    /// <summary>Per-file OCR suppression excludes shared retained OCR from local AI requests.</summary>
+    [Fact]
+    public async Task EnrichmentDoesNotTransmitSuppressedRetainedOcr()
+    {
+        var enrichment = new FakeEnrichment { Available = true };
+        var processor = CreateProcessor(enrichment: enrichment);
+        var work = Work(IndexingStage.SummaryKeywordsGenerated) with
+        {
+            Level = IndexingLevel.Deep,
+            AiEnrichmentEnabled = true,
+            SuppressOcr = true,
+            ExtractedText = "Allowed native content",
+            OcrText = "PRIVATE OCR CONTENT",
+            MediaEvidence = new IndexedMediaEvidence
+            {
+                Kind = MediaKind.Image,
+                Metadata = new MediaMetadata { Kind = MediaKind.Image },
+                OcrText = "PRIVATE MEDIA OCR",
+                MetadataProvider = "test",
+                MetadataProviderVersion = "1",
+                ProcessingFingerprint = "test",
+                Status = MediaExtractionStatus.Completed,
+            },
+        };
+
+        var result = await processor.ProcessAsync(work, new DeepIndexingSettings());
+
+        Assert.Equal(IndexingStageStatus.Complete, result.Status);
+        Assert.Contains("Allowed native content", enrichment.ReceivedText, StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATE", enrichment.ReceivedText, StringComparison.Ordinal);
+    }
+
+    /// <summary>An explicit Standard source does not inherit another source's global AI default.</summary>
+    [Fact]
+    public async Task StandardSourceDoesNotCallConfiguredAiProvider()
+    {
+        var enrichment = new FakeEnrichment { Available = true };
+        var processor = CreateProcessor(enrichment: enrichment);
+        var result = await processor.ProcessAsync(Work(IndexingStage.SummaryKeywordsGenerated) with
+        {
+            AiEnrichmentEnabled = false,
+            ExtractedText = "Native standard index text",
+            Level = IndexingLevel.Deep,
+        }, new DeepIndexingSettings { AiProcessingEnabled = true });
+
+        Assert.Equal(IndexingStageStatus.Complete, result.Status);
+        Assert.Empty(enrichment.ReceivedText);
+    }
+
     /// <summary>Verifies the existing enrichment stage progressively produces structured local concepts.</summary>
     [Fact]
     public async Task SummaryStageProducesStructuredContentIntelligenceWithoutAi()
@@ -751,6 +800,7 @@ public sealed class DeepIndexingStageTests
 
     private sealed class FakeEnrichment : IIndexingEnrichmentProvider
     {
+        public string ReceivedText { get; private set; } = string.Empty;
         public bool Available { get; set; }
 
         public string Version => "fake-v1";
@@ -761,10 +811,13 @@ public sealed class DeepIndexingStageTests
         public Task<IndexingEnrichmentResult> EnrichAsync(
             string fileName,
             string boundedText,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new IndexingEnrichmentResult(
+            CancellationToken cancellationToken = default)
+        {
+            ReceivedText = boundedText;
+            return Task.FromResult(new IndexingEnrichmentResult(
                 "A local bounded summary.",
                 ["quarterly", "report"]));
+        }
     }
 
     private sealed class TemporaryDirectory : IDisposable

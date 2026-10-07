@@ -8,6 +8,9 @@ namespace OpenSorSe.Desktop.ViewModels;
 public sealed class CollectionsViewModel : ViewModelBase, IDisposable
 {
     private readonly IRelationshipService? _service;
+    private readonly ISemanticRelatedFilesService? _semanticRelatedFiles;
+    private readonly ObservableCollection<SemanticRelatedFile> _semanticSuggestions = [];
+    private string _semanticStatusText = "Semantic similarity has not been inspected.";
     private readonly ObservableCollection<SmartCollection> _collections = [];
     private readonly ObservableCollection<SmartCollectionMember> _members = [];
     private readonly ObservableCollection<FileRelationship> _relationships = [];
@@ -16,6 +19,9 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     private readonly ObservableCollection<RelatedFile> _relatedFiles = [];
     private readonly ObservableCollection<RelationshipPairCorrection> _corrections = [];
     private CancellationTokenSource? _operation;
+    private CancellationTokenSource? _relatedOperation;
+    private bool _relatedRefreshPending;
+    private bool _disposed;
     private SmartCollection? _selectedCollection;
     private SmartCollection? _mergeCollection;
     private SmartCollectionMember? _selectedMember;
@@ -45,9 +51,11 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Initializes the relationship and Smart Collection presentation.</summary>
-    public CollectionsViewModel(IRelationshipService? service)
+    public CollectionsViewModel(IRelationshipService? service, ISemanticRelatedFilesService? semanticRelatedFiles = null)
     {
         _service = service;
+        _semanticRelatedFiles = semanticRelatedFiles;
+        SemanticSuggestions = new ReadOnlyObservableCollection<SemanticRelatedFile>(_semanticSuggestions);
         Collections = new ReadOnlyObservableCollection<SmartCollection>(_collections);
         Members = new ReadOnlyObservableCollection<SmartCollectionMember>(_members);
         Relationships = new ReadOnlyObservableCollection<FileRelationship>(_relationships);
@@ -127,6 +135,16 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets direct related files for the selected file.</summary>
     public ReadOnlyObservableCollection<RelatedFile> RelatedFiles { get; }
+
+    /// <summary>Gets semantic discovery suggestions separately from retained relationship evidence.</summary>
+    public ReadOnlyObservableCollection<SemanticRelatedFile> SemanticSuggestions { get; }
+
+    /// <summary>Gets optional model/index availability without changing relationship authority.</summary>
+    public string SemanticStatusText
+    {
+        get => _semanticStatusText;
+        private set => SetProperty(ref _semanticStatusText, value);
+    }
 
     /// <summary>Gets bounded explicit pair corrections involving the selected file.</summary>
     public ReadOnlyObservableCollection<RelationshipPairCorrection> Corrections { get; }
@@ -211,6 +229,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _selectedFile, value))
             {
                 NotifyCommands();
+                Replace(_relatedFiles, []);
+                Replace(_corrections, []);
+                Replace(_semanticSuggestions, []);
+                // Only superseded reads are cancelled here; a selected-file change must
+                // never cancel a reviewed relationship mutation using the shared busy state.
+                if (!_disposed) _relatedOperation?.Cancel();
                 _ = RefreshRelatedFilesAsync();
             }
         }
@@ -525,15 +549,25 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
 
     private async Task RefreshRelatedFilesAsync()
     {
-        if (_service is null || SelectedFile is null || IsBusy)
+        if (_disposed) return;
+        if (IsBusy)
+        {
+            _relatedRefreshPending = true;
+            return;
+        }
+        if (_service is null || SelectedFile is null)
         {
             Replace(_relatedFiles, []);
             Replace(_corrections, []);
+            Replace(_semanticSuggestions, []);
+            _relatedRefreshPending = false;
             return;
         }
 
+        _relatedRefreshPending = false;
         var fileId = SelectedFile.FileId;
         using var operation = BeginOperation();
+        _relatedOperation = operation;
         try
         {
             var related = await _service.GetRelatedFilesAsync(
@@ -543,23 +577,50 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
                 RelatedFileSort,
                 cancellationToken: operation.Token);
             var corrections = await _service.GetCorrectionsAsync(fileId, cancellationToken: operation.Token);
+            operation.Token.ThrowIfCancellationRequested();
+            if (!string.Equals(SelectedFile?.FileId, fileId, StringComparison.Ordinal)) return;
+
+            // Retained evidence is ready independently of the optional model's latency.
+            Replace(_relatedFiles, related);
+            Replace(_corrections, corrections);
+            Replace(_semanticSuggestions, []);
+            SelectedRelatedFile = _relatedFiles.FirstOrDefault(item =>
+                string.Equals(item.FileId, SelectedRelatedFile?.FileId, StringComparison.Ordinal));
+            SelectedCorrection = _corrections.FirstOrDefault(item =>
+                string.Equals(item.FirstFileId, SelectedCorrection?.FirstFileId, StringComparison.Ordinal) &&
+                string.Equals(item.SecondFileId, SelectedCorrection?.SecondFileId, StringComparison.Ordinal));
+            StatusText = related.Count == 0
+                ? "No retained direct relationships match the current filters."
+                : $"Loaded {related.Count:N0} direct related files with retained evidence.";
+            SemanticStatusText = "Checking optional semantic similarity…";
+            SemanticRelatedFilesResult semantic;
+            try
+            {
+                semantic = _semanticRelatedFiles is null
+                    ? new([], "Semantic similarity is unavailable. Evidence-backed relationships remain available.")
+                    : await _semanticRelatedFiles.GetRelatedAsync(fileId, operation.Token);
+            }
+            catch (OperationCanceledException) when (operation.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                semantic = new([], "Semantic similarity is temporarily unavailable. Evidence-backed relationships remain available.");
+            }
+            operation.Token.ThrowIfCancellationRequested();
             if (string.Equals(SelectedFile?.FileId, fileId, StringComparison.Ordinal))
             {
-                Replace(_relatedFiles, related);
-                Replace(_corrections, corrections);
-                SelectedRelatedFile = _relatedFiles.FirstOrDefault(item =>
-                    string.Equals(item.FileId, SelectedRelatedFile?.FileId, StringComparison.Ordinal));
-                SelectedCorrection = _corrections.FirstOrDefault(item =>
-                    string.Equals(item.FirstFileId, SelectedCorrection?.FirstFileId, StringComparison.Ordinal) &&
-                    string.Equals(item.SecondFileId, SelectedCorrection?.SecondFileId, StringComparison.Ordinal));
-                StatusText = related.Count == 0
-                    ? "No retained direct relationships match the current filters."
-                    : $"Loaded {related.Count:N0} direct related files with retained evidence.";
+                Replace(_semanticSuggestions, semantic.Files);
+                SemanticStatusText = semantic.Message;
             }
         }
         catch (OperationCanceledException) when (operation.IsCancellationRequested)
         {
-            StatusText = "Related Files refresh was cancelled.";
+            if (!_relatedRefreshPending && string.Equals(SelectedFile?.FileId, fileId, StringComparison.Ordinal))
+            {
+                SemanticStatusText = "Semantic similarity refresh was cancelled. Retained evidence remains available.";
+            }
         }
         catch (Exception)
         {
@@ -567,7 +628,12 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
         }
         finally
         {
+            _relatedOperation = null;
             EndOperation(operation);
+            if (_relatedRefreshPending && !_disposed)
+            {
+                await RefreshRelatedFilesAsync();
+            }
         }
     }
 
@@ -976,6 +1042,8 @@ public sealed class CollectionsViewModel : ViewModelBase, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        _disposed = true;
+        _relatedRefreshPending = false;
         var operation = Interlocked.Exchange(ref _operation, null);
         operation?.Cancel();
         operation?.Dispose();

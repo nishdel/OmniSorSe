@@ -8,6 +8,9 @@ namespace OpenSorSe.Core.Configuration;
 /// </summary>
 public sealed class ApplicationSettings
 {
+    /// <summary>Gets or initializes application-owned location and cache limits.</summary>
+    public StorageSettings Storage { get; init; } = new();
+
     /// <summary>
     /// Gets or initializes application-wide feature-presentation settings.
     /// </summary>
@@ -52,6 +55,7 @@ public sealed class ApplicationSettings
     /// <summary>Creates a snapshot changing only logging while preserving every unrelated capability.</summary>
     public ApplicationSettings WithLogging(LoggingSettings logging) => new()
     {
+        Storage = Storage,
         Features = Features,
         Logging = logging ?? throw new ArgumentNullException(nameof(logging)),
         Diagnostics = Diagnostics,
@@ -68,6 +72,7 @@ public sealed class ApplicationSettings
     /// <summary>Creates a snapshot changing only diagnostics while preserving every unrelated capability.</summary>
     public ApplicationSettings WithDiagnostics(DiagnosticsSettings diagnostics) => new()
     {
+        Storage = Storage,
         Features = Features,
         Logging = Logging,
         Diagnostics = diagnostics ?? throw new ArgumentNullException(nameof(diagnostics)),
@@ -87,6 +92,7 @@ public sealed class ApplicationSettings
     /// </summary>
     public ApplicationSettings WithShellFeatureSwitches(bool aiEnabled, bool showAdvancedFeatures) => new()
     {
+        Storage = Storage,
         Features = new FeatureSettings
         {
             ShowAdvancedFeatures = showAdvancedFeatures,
@@ -124,6 +130,7 @@ public sealed class ApplicationSettings
     /// <returns>A settings snapshot that preserves every unrelated value.</returns>
     public ApplicationSettings WithFilesPageDetailsPanelWidthRatio(double ratio) => new()
     {
+        Storage = Storage,
         Features = new FeatureSettings
         {
             ShowAdvancedFeatures = Features.ShowAdvancedFeatures,
@@ -149,6 +156,13 @@ public sealed class ApplicationSettings
     /// </exception>
     public void Validate()
     {
+        if (Storage is null)
+        {
+            throw new ConfigurationValidationException("Storage settings are required.");
+        }
+
+        Storage.Validate();
+
         if (Features is null)
         {
             throw new ConfigurationValidationException("Feature settings are required.");
@@ -309,6 +323,15 @@ public sealed class DiagnosticsSettings
 /// <summary>Defines bounded local deterministic Search behavior.</summary>
 public sealed class SemanticSearchSettings
 {
+    /// <summary>Gets whether retained catalog text may be sent to local Ollama for learned embeddings.</summary>
+    public bool EmbeddingsEnabled { get; init; }
+
+    /// <summary>Gets the dedicated embedding model, independent of the chat model.</summary>
+    public string EmbeddingModel { get; init; } = "qwen3-embedding:4b";
+
+    /// <summary>Gets the logical storage budget for disposable learned vectors.</summary>
+    public int MaximumVectorStorageMiB { get; init; } = 256;
+
     /// <summary>Gets or initializes whether local semantic indexing and navigation are enabled.</summary>
     public bool Enabled { get; init; }
 
@@ -321,7 +344,9 @@ public sealed class SemanticSearchSettings
     /// <summary>Validates local semantic-search bounds.</summary>
     public void Validate()
     {
-        if (MaximumDocumentCount is < 1 or > 100_000 ||
+        if (string.IsNullOrWhiteSpace(EmbeddingModel) || EmbeddingModel.Length > 256 ||
+            EmbeddingModel.Any(char.IsControl) || MaximumVectorStorageMiB is < 1 or > 4096 ||
+            MaximumDocumentCount is < 1 or > 100_000 ||
             MaximumResultCount is < 1 or > 1_000)
         {
             throw new ConfigurationValidationException("Search settings are invalid.");
