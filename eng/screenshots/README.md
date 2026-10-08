@@ -36,7 +36,7 @@ dotnet build eng/screenshots/Screenshots.csproj --configuration Release \
   -p:SourceRevisionId=df3984fab5eaf94424ec6cd032e91468799d62d6
 xvfb-run -a -s "-screen 0 1920x1200x24 -nolisten tcp" \
   dotnet .artifacts/screenshot-build/bin/Screenshots/release/OmniSorSe.Screenshots.dll \
-  .artifacts/v3-docs-runtime .artifacts/v3-docs
+  /tmp/omnisorse-v3-docs .artifacts/v3-docs
 python3 eng/screenshots/verify.py .artifacts/v3-docs
 ```
 

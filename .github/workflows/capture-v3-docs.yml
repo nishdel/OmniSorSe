@@ -75,7 +75,7 @@ jobs:
           set -euo pipefail
           timeout 300s xvfb-run -a -s "-screen 0 1920x1200x24 -nolisten tcp" \
             dotnet .artifacts/screenshot-build/bin/Screenshots/release/OmniSorSe.Screenshots.dll \
-            .artifacts/v3-docs-runtime .artifacts/v3-docs \
+            /tmp/omnisorse-v3-docs .artifacts/v3-docs \
             2>&1 | tee .artifacts/v3-docs/capture.log
 
       - name: Verify complete capture evidence

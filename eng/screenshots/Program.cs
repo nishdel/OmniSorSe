@@ -9,6 +9,7 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Presenters;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -179,9 +180,30 @@ internal sealed class CaptureApp : App
             var searchView = window.GetVisualDescendants().OfType<SemanticSearchView>().Single();
             var explanation = FindExpander(searchView, "Why this result?");
             explanation.IsExpanded = true;
+            await SettleAsync();
+            explanation.BringIntoView();
+            await SettleAsync();
+            var explanationBody = explanation.Content as Control
+                ?? throw new InvalidOperationException("The real ranking explanation body was not realized.");
+            explanationBody.BringIntoView();
+            await SettleAsync();
+            var explanationViewport = explanationBody.GetVisualAncestors().OfType<ScrollContentPresenter>().First();
+            var bodyPosition = explanationBody.TranslatePoint(new Point(0, 0), explanationViewport)
+                ?? throw new InvalidOperationException("The ranking explanation has no viewport position.");
+            Require(explanationBody.IsEffectivelyVisible && explanationBody.Bounds.Height > 0 &&
+                bodyPosition.Y >= -1 && bodyPosition.Y + explanationBody.Bounds.Height <= explanationViewport.Bounds.Height + 1,
+                "The complete ranking explanation body must be visible inside the result-list viewport.");
+            _facts["rankingExplanationViewport"] = new
+            {
+                top = bodyPosition.Y,
+                height = explanationBody.Bounds.Height,
+                viewportHeight = explanationViewport.Bounds.Height,
+                fullyVisible = true,
+            };
             await CaptureAsync(window, "02-search-ranking.png", "Expanded real ranking explanation",
                 main.SemanticSearch.Hits[0].Explanation);
             explanation.IsExpanded = false;
+            explanation.GetVisualAncestors().OfType<ScrollViewer>().First().Offset = Vector.Zero;
 
             // This is the documented production in-memory rule-review API, not persisted rules
             // or fabricated matches. These rules are not executed and are added after scanning.
@@ -238,7 +260,12 @@ internal sealed class CaptureApp : App
             await main.Collections.SelectFileAsync(budget.FileId);
             await WaitUntilAsync(() => !main.Collections.IsBusy && main.Collections.SelectedFile?.FileId == budget.FileId,
                 TimeSpan.FromSeconds(30), "Selected file relationships");
-            Require(main.Collections.RelatedFiles.Count > 0, "The real relationship engine must retain evidence for the selected budget.");
+            main.Collections.RelationshipFilter = RelationshipType.DocumentSet;
+            await main.Collections.RefreshRelatedFilesCommand.ExecuteAsync(null);
+            Require(main.Collections.RelatedFiles.Count == 1 &&
+                main.Collections.RelatedFiles[0].FileName == "Household budget copy.txt",
+                "The real DocumentSet filter must show the retained exact-content relationship.");
+            _facts["relatedFileFilter"] = nameof(RelationshipType.DocumentSet);
             _facts["relatedFiles"] = main.Collections.RelatedFiles.Select(file => new
             {
                 file.FileName, file.Relationship.Type, file.Relationship.Confidence, file.Relationship.Explanation,

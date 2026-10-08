@@ -31,6 +31,8 @@ assert manifest["facts"]["embeddingsEnabled"] is False
 assert manifest["facts"]["duplicateGroupCount"] == 1
 assert len(manifest["facts"]["relatedFiles"]) > 0
 assert len(manifest["facts"]["searchResults"]) >= 3
+assert manifest["facts"]["rankingExplanationViewport"]["fullyVisible"] is True
+assert manifest["facts"]["relatedFileFilter"] == "DocumentSet"
 assert manifest["facts"]["organization"]["applied"] is False
 assert sorted(path.name for path in root.glob("*.png")) == EXPECTED
 assert [capture["filename"] for capture in manifest["captures"]] == EXPECTED
