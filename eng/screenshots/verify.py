@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import math
 import struct
 import sys
 from pathlib import Path
@@ -31,7 +32,29 @@ assert manifest["facts"]["embeddingsEnabled"] is False
 assert manifest["facts"]["duplicateGroupCount"] == 1
 assert len(manifest["facts"]["relatedFiles"]) > 0
 assert len(manifest["facts"]["searchResults"]) >= 3
-assert manifest["facts"]["rankingExplanationViewport"]["fullyVisible"] is True
+visibility = manifest["facts"]["rankingExplanationViewport"]
+assert visibility["fullyVisible"] is True and visibility["tolerance"] == 1
+window = visibility["window"]
+body = visibility["body"]
+visible = visibility["visibleIntersection"]
+ancestors = visibility["clippingAncestors"]
+assert any(ancestor["type"] == "ScrollViewer" for ancestor in ancestors)
+rectangles = [window] + [ancestor["rectangle"] for ancestor in ancestors]
+for rectangle in rectangles + [body, visible]:
+    assert all(math.isfinite(value) for value in rectangle.values())
+    assert rectangle["width"] > 0 and rectangle["height"] > 0
+left = max(rectangle["x"] for rectangle in rectangles)
+top = max(rectangle["y"] for rectangle in rectangles)
+right = min(rectangle["x"] + rectangle["width"] for rectangle in rectangles)
+bottom = min(rectangle["y"] + rectangle["height"] for rectangle in rectangles)
+assert right > left and bottom > top
+assert abs(visible["x"] - left) < 0.001 and abs(visible["y"] - top) < 0.001
+assert abs(visible["width"] - (right - left)) < 0.001
+assert abs(visible["height"] - (bottom - top)) < 0.001
+assert visible["width"] <= window["width"] and visible["height"] <= window["height"]
+assert body["x"] >= left - 1 and body["y"] >= top - 1
+assert body["x"] + body["width"] <= right + 1
+assert body["y"] + body["height"] <= bottom + 1
 assert manifest["facts"]["relatedFileFilter"] == "DocumentSet"
 assert manifest["facts"]["organization"]["applied"] is False
 assert sorted(path.name for path in root.glob("*.png")) == EXPECTED

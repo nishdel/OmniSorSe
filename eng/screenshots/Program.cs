@@ -9,7 +9,6 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Controls.Presenters;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -187,19 +186,7 @@ internal sealed class CaptureApp : App
                 ?? throw new InvalidOperationException("The real ranking explanation body was not realized.");
             explanationBody.BringIntoView();
             await SettleAsync();
-            var explanationViewport = explanationBody.GetVisualAncestors().OfType<ScrollContentPresenter>().First();
-            var bodyPosition = explanationBody.TranslatePoint(new Point(0, 0), explanationViewport)
-                ?? throw new InvalidOperationException("The ranking explanation has no viewport position.");
-            Require(explanationBody.IsEffectivelyVisible && explanationBody.Bounds.Height > 0 &&
-                bodyPosition.Y >= -1 && bodyPosition.Y + explanationBody.Bounds.Height <= explanationViewport.Bounds.Height + 1,
-                "The complete ranking explanation body must be visible inside the result-list viewport.");
-            _facts["rankingExplanationViewport"] = new
-            {
-                top = bodyPosition.Y,
-                height = explanationBody.Bounds.Height,
-                viewportHeight = explanationViewport.Bounds.Height,
-                fullyVisible = true,
-            };
+            _facts["rankingExplanationViewport"] = VerifyVisibleRectangle(explanationBody, window);
             await CaptureAsync(window, "02-search-ranking.png", "Expanded real ranking explanation",
                 main.SemanticSearch.Hits[0].Explanation);
             explanation.IsExpanded = false;
@@ -379,6 +366,68 @@ internal sealed class CaptureApp : App
         Console.WriteLine($"Captured {filename}: {width}x{height}, {png.Length} bytes. {actualStatus}");
         await WriteManifestAsync(false, null);
     }
+
+    private static object VerifyVisibleRectangle(Control content, Window window)
+    {
+        var windowRectangle = new Rect(window.ClientSize);
+        var bodyRectangle = BoundsInWindow(content, window);
+        var visibleRectangle = windowRectangle;
+        var clippingAncestors = content.GetVisualAncestors()
+            .Where(ancestor => ancestor.ClipToBounds || ancestor is ScrollViewer).ToArray();
+        Require(clippingAncestors.OfType<ScrollViewer>().Any(),
+            "The ranking explanation must have a real result-list scroll viewport.");
+        var clips = new List<object>();
+        foreach (var ancestor in clippingAncestors)
+        {
+            var rectangle = BoundsInWindow(ancestor, window);
+            visibleRectangle = visibleRectangle.Intersect(rectangle);
+            clips.Add(new
+            {
+                type = ancestor.GetType().Name,
+                ancestor.ClipToBounds,
+                rectangle = DescribeRectangle(rectangle),
+            });
+        }
+
+        Require(content.IsEffectivelyVisible && bodyRectangle.Width > 0 && bodyRectangle.Height > 0 &&
+            visibleRectangle.Width > 0 && visibleRectangle.Height > 0 &&
+            bodyRectangle.Left >= visibleRectangle.Left - 1 &&
+            bodyRectangle.Top >= visibleRectangle.Top - 1 &&
+            bodyRectangle.Right <= visibleRectangle.Right + 1 &&
+            bodyRectangle.Bottom <= visibleRectangle.Bottom + 1,
+            "The complete ranking explanation body must fit inside the window and every clipping viewport on both axes.");
+        return new
+        {
+            coordinateSpace = "MainWindow client coordinates in device-independent pixels",
+            window = DescribeRectangle(windowRectangle),
+            body = DescribeRectangle(bodyRectangle),
+            visibleIntersection = DescribeRectangle(visibleRectangle),
+            clippingAncestors = clips,
+            tolerance = 1,
+            fullyVisible = true,
+        };
+    }
+
+    private static Rect BoundsInWindow(Visual visual, Window window)
+    {
+        var topLeft = visual.TranslatePoint(new Point(0, 0), window)
+            ?? throw new InvalidOperationException("A ranking visibility ancestor has no window position.");
+        var bottomRight = visual.TranslatePoint(new Point(visual.Bounds.Width, visual.Bounds.Height), window)
+            ?? throw new InvalidOperationException("A ranking visibility ancestor has no window bounds.");
+        Require(double.IsFinite(topLeft.X) && double.IsFinite(topLeft.Y) &&
+            double.IsFinite(bottomRight.X) && double.IsFinite(bottomRight.Y) &&
+            bottomRight.X >= topLeft.X && bottomRight.Y >= topLeft.Y,
+            "Ranking visibility requires finite rectangular bounds.");
+        return new Rect(topLeft, bottomRight);
+    }
+
+    private static object DescribeRectangle(Rect rectangle) => new
+    {
+        x = rectangle.X,
+        y = rectangle.Y,
+        width = rectangle.Width,
+        height = rectangle.Height,
+    };
 
     private static Expander FindExpander(Control root, string header) =>
         root.GetVisualDescendants().OfType<Expander>().FirstOrDefault(item => Equals(item.Header, header))
