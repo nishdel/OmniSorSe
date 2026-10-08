@@ -1,0 +1,6 @@
+ATLAS PROJECT — MILESTONES
+Synthetic demonstration document — no personal data.
+
+12 October: review the local file library requirements.
+16 October: complete the accessibility and search review.
+20 October: publish the agreed documentation after the release candidate review.

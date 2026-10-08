@@ -1,0 +1,100 @@
+name: Capture v3 documentation
+run-name: Native v3 documentation pixels from ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - codex/v3-visual-documentation
+    paths:
+      - eng/screenshots/**
+      - .github/workflows/capture-v3-docs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AVALONIA_TELEMETRY_OPTOUT: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  CAPTURE_HARNESS_SHA: ${{ github.sha }}
+  PRODUCTION_SHA: df3984fab5eaf94424ec6cd032e91468799d62d6
+
+jobs:
+  capture:
+    name: Production Avalonia window on Linux X11
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact harness source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify immutable production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/v3-docs
+          {
+            echo "Harness commit: $(git rev-parse HEAD)"
+            echo "Production commit: $PRODUCTION_SHA"
+            echo "RC tag commit: $(git rev-parse 'v3.0.0-rc.1^{commit}')"
+            test "$(git rev-parse HEAD)" = "$CAPTURE_HARNESS_SHA"
+            test "$(git rev-parse 'v3.0.0-rc.1^{commit}')" = "$PRODUCTION_SHA"
+            git diff --exit-code "$PRODUCTION_SHA" -- src Directory.Build.props Directory.Build.targets Directory.Packages.props global.json NuGet.config NuGet.Config nuget.config .editorconfig
+            echo "Production source and build inputs match the immutable RC."
+          } 2>&1 | tee .artifacts/v3-docs/source-identity.log
+
+      - name: Use repository .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Install native X11 capture dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y xvfb xauth imagemagick x11-utils \
+            libx11-6 libice6 libsm6 libfontconfig1 libfreetype6 libxrandr2 libxi6 \
+            libxcursor1 libxrender1 libgl1 libegl1 libglib2.0-0t64 fonts-dejavu-core
+
+      - name: Build isolated capture harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet build eng/screenshots/Screenshots.csproj --configuration Release \
+            --artifacts-path .artifacts/screenshot-build \
+            -p:SourceRevisionId="$PRODUCTION_SHA" --nologo 2>&1 | tee .artifacts/v3-docs/build.log
+
+      - name: Capture seven actual native window states
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          AVALONIA_SCREEN_SCALE_FACTORS: "1"
+        run: |
+          set -euo pipefail
+          timeout 300s xvfb-run -a -s "-screen 0 1920x1200x24 -nolisten tcp" \
+            dotnet .artifacts/screenshot-build/bin/Screenshots/release/OmniSorSe.Screenshots.dll \
+            .artifacts/v3-docs-runtime .artifacts/v3-docs \
+            2>&1 | tee .artifacts/v3-docs/capture.log
+
+      - name: Verify complete capture evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 eng/screenshots/verify.py .artifacts/v3-docs
+          identify .artifacts/v3-docs/*.png | tee .artifacts/v3-docs/image-dimensions.log
+          git diff --exit-code "$PRODUCTION_SHA" -- src Directory.Build.props Directory.Build.targets Directory.Packages.props global.json NuGet.config NuGet.Config nuget.config .editorconfig
+          git diff --exit-code -- eng/screenshots/fixtures
+
+      - name: Upload pixels, provenance and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: v3-native-documentation-${{ github.sha }}
+          path: |
+            .artifacts/v3-docs/*.png
+            .artifacts/v3-docs/*.json
+            .artifacts/v3-docs/*.log
+          if-no-files-found: warn
+          retention-days: 30
