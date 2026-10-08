@@ -10,6 +10,8 @@ Word document, photograph, or its embedded metadata. An AI inference is labelled
 as an inference even after it passes structural checks; those checks cannot prove
 that a model's interpretation is factually correct.
 
+## Library workflow
+
 ```mermaid
 flowchart TD
     A[Add folder and choose indexing] --> B[Scan files]

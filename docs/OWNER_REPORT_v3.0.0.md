@@ -1,5 +1,21 @@
 # v3 milestone owner report
 
+## Published candidate and visual follow-up — 2026-10-08
+
+PR #54 merged as `df3984fab5eaf94424ec6cd032e91468799d62d6`; the matching
+v3.0.0-rc.1 prerelease is published. The outstanding visual documentation is
+addressed by [PR #55](https://github.com/nishdel/OmniSorSe/pull/55): seven real
+synthetic-data captures in the [README gallery](../README.md#v3-screenshot-gallery),
+with [source/harness hashes and evidence](images/README.md#v3-capture-provenance).
+The architecture and Search diagrams render on GitHub. Production source,
+schema, protocol, published tag and binaries are unchanged by this follow-up.
+The [living release status](RELEASE_STATUS.md) owns current validation evidence;
+PR #55 records its final documentation commit, checks and merge identity. All
+24 human acceptance rows remain Not run. The earlier implementation report below
+is preserved at its original checkpoint and does not supersede those records.
+
+## Historical implementation checkpoint
+
 The task is to implement the agreed 38-item milestone and publish an installable
 major-version testing candidate, including learned-vector hybrid Search before
 the first v3 RC. The current code adds progressive local-AI

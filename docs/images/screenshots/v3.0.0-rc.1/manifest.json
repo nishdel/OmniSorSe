@@ -1,0 +1,396 @@
+{
+  "format": 1,
+  "productionTag": "v3.0.0-rc.1",
+  "productionSourceRevision": "df3984fab5eaf94424ec6cd032e91468799d62d6",
+  "captureHarnessRevision": "1ea2569b8c54aa6496517b33c23eeb7d9d991f8a",
+  "productionAssemblyVersion": "3.0.0-rc.1\u002Bdf3984fab5eaf94424ec6cd032e91468799d62d6",
+  "os": "Ubuntu 24.04.5 LTS",
+  "architecture": "X64",
+  "framework": ".NET 10.0.12",
+  "display": ":99",
+  "theme": "Light",
+  "width": 1600,
+  "height": 1000,
+  "capturedAtUtc": "2026-10-08T12:29:09.448517+00:00",
+  "fixture": "Nine synthetic UTF-8 text documents, including one byte-identical duplicate pair.",
+  "evidenceScope": "Native Linux X11 production-window pixels; command-driven synthetic workflow. Not a human usability, Windows, macOS, or learned-model validation.",
+  "completed": true,
+  "error": null,
+  "facts": {
+    "fixtureFiles": {
+      "Archive/Household budget copy.txt": "74322b5ab3b65f01783aa12ae6f3c99b6b878b0a01bcc259319020233d2694dc",
+      "Garden/Planting notes.txt": "b8d5d064a07dbb794b201d5e72d8a49669e6f565d916672d1c958e9b9eaf2380",
+      "Inbox/Alpine camping checklist.txt": "d9c687f3e08b5130f95cd06c8f7d70a5fbf26fb8a4d8c4aaa994ed39ffa16690",
+      "Inbox/Campsite booking.txt": "69795390b6de840e858cea11996cf50461d219185abc45db044b8f92f248bc9e",
+      "Inbox/Electricity statement.txt": "ae1d23d2b5a346f63127333ed23c6d4d56b43dcc95505e93d2b2d27bdb79ed75",
+      "Inbox/Household budget.txt": "74322b5ab3b65f01783aa12ae6f3c99b6b878b0a01bcc259319020233d2694dc",
+      "Inbox/Weekend trail notes.txt": "900003dbf2270e84bbc1b9ad6bf3843785bdd426c3dad6093c69157c8587721e",
+      "Work/Atlas project meeting.txt": "c2910c8dcf90edc110c304be9dd1638590f187964aae4235c42791e275c5d39c",
+      "Work/Atlas project milestones.txt": "43e4d443c799e31b2b4e6673c012aa257c169d3f6476d13356d55ac591bce537"
+    },
+    "fixtureSha256": "cb67ef3a06b71db795be9283924aba53a0ef338018f43372b014e50ec4d63837",
+    "indexedDocumentCount": 9,
+    "indexProgress": {
+      "RunId": "59a01df586444c359e52a6c42d9e94d1",
+      "Status": 6,
+      "CurrentStage": null,
+      "CurrentFile": null,
+      "TotalDiscovered": 9,
+      "DiscoveryComplete": true,
+      "Processed": 9,
+      "Completed": 9,
+      "Skipped": 0,
+      "Failed": 0,
+      "Waiting": 0,
+      "RetryScheduled": 0,
+      "Remaining": 0,
+      "OverallPercentage": 100,
+      "FilesPerSecond": 0,
+      "EstimatedRemaining": null,
+      "IndexSizeBytes": 602112,
+      "MaximumIndexSizeBytes": 1073741824,
+      "Coverage": {
+        "KnownFileCount": 9,
+        "FilenameAndMetadataCount": 9,
+        "ExtractedTextCount": 9,
+        "OcrCount": 0,
+        "SemanticCount": 9,
+        "FullyIndexedCount": 9,
+        "IsIncomplete": false,
+        "ExcludedSourceCount": 0,
+        "WaitingForOcrCount": 0,
+        "WaitingForAiCount": 0,
+        "FailedStageCount": 0,
+        "IsAvailable": true
+      },
+      "IsBaseCoverageComplete": true,
+      "PhasePercentage": 100,
+      "Phase": 7
+    },
+    "aiEnabled": false,
+    "embeddingsEnabled": false,
+    "semanticIndexStatus": {
+      "State": 0,
+      "IndexedFiles": 0,
+      "PendingFiles": 0,
+      "StoredBytes": 0,
+      "Message": "Learned semantic search is disabled."
+    },
+    "searchQuery": "camping",
+    "searchResults": [
+      {
+        "FileName": "Alpine camping checklist.txt",
+        "Explanation": "Filename contains the Search phrase; Exact phrase matched a keyword; All topic terms matched the filename; folder path matched; keyword matched; Topic match: camping; textual entity matched; Source-grounded summary matched; metadata matched; Native text / document text matched; summary matched; selected document text matched; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Campsite booking.txt",
+        "Explanation": "Exact phrase matched a keyword; Filename contains topic terms; folder path matched; keyword matched; Topic match: camping; textual entity matched; Source-grounded summary matched; metadata matched; Native text / document text matched; summary matched; selected document text matched; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Weekend trail notes.txt",
+        "Explanation": "Exact phrase matched a keyword; keyword matched; Topic match: camping; Native text / document text matched; selected document text matched; Related concepts: limited; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Electricity statement.txt",
+        "Explanation": "Shared content topics: data., demonstration, OCTOBER; Shared keyword: 2026, 2040; Same source and indexed folder; Filesystem modified timestamps are within two hours; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Household budget.txt",
+        "Explanation": "Shared content topics: data., demonstration, OCTOBER; Shared keyword: 2026; Same source and indexed folder; Filesystem modified timestamps are within two hours; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Household budget copy.txt",
+        "Explanation": "Shared content topics: data., demonstration, October; Shared keyword: 2026; Filesystem modified timestamps are within two hours; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Planting notes.txt",
+        "Explanation": "Shared content topics: data., demonstration, personal; Shared typed entity: ProductOrProject: Synthetic; Shared keyword: notes; Filesystem modified timestamps are within two hours; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Atlas project meeting.txt",
+        "Explanation": "Shared content topics: data., demonstration; Shared keyword: notes; Filesystem modified timestamps are within two hours; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      },
+      {
+        "FileName": "Atlas project milestones.txt",
+        "Explanation": "Shared content topics: data., demonstration; Shared keyword: personal; Filesystem modified timestamps are within two hours; File is fully indexed",
+        "CoverageIndicator": "Fully indexed",
+        "AiEnrichmentIndicator": "Standard indexing"
+      }
+    ],
+    "rankingExplanationViewport": {
+      "coordinateSpace": "MainWindow client coordinates in device-independent pixels",
+      "window": {
+        "x": 0,
+        "y": 0,
+        "width": 1600,
+        "height": 1000
+      },
+      "body": {
+        "x": 318,
+        "y": 863,
+        "width": 1201,
+        "height": 51
+      },
+      "visibleIntersection": {
+        "x": 301,
+        "y": 799,
+        "width": 1235,
+        "height": 132
+      },
+      "clippingAncestors": [
+        {
+          "type": "Expander",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 301,
+            "y": 799,
+            "width": 1235,
+            "height": 132
+          }
+        },
+        {
+          "type": "ListBoxItem",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 578,
+            "width": 1274,
+            "height": 411
+          }
+        },
+        {
+          "type": "ScrollContentPresenter",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 578,
+            "width": 1274,
+            "height": 3699
+          }
+        },
+        {
+          "type": "ScrollViewer",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 578,
+            "width": 1274,
+            "height": 3699
+          }
+        },
+        {
+          "type": "Border",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 578,
+            "width": 1274,
+            "height": 3699
+          }
+        },
+        {
+          "type": "ListBox",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 578,
+            "width": 1274,
+            "height": 3699
+          }
+        },
+        {
+          "type": "ScrollContentPresenter",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 646,
+            "width": 1274,
+            "height": 285
+          }
+        },
+        {
+          "type": "ScrollViewer",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 289,
+            "y": 646,
+            "width": 1274,
+            "height": 285
+          }
+        },
+        {
+          "type": "SemanticSearchView",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 274,
+            "y": 22,
+            "width": 1304,
+            "height": 924
+          }
+        },
+        {
+          "type": "MainWindow",
+          "ClipToBounds": true,
+          "rectangle": {
+            "x": 0,
+            "y": 0,
+            "width": 1600,
+            "height": 1000
+          }
+        }
+      ],
+      "tolerance": 1,
+      "fullyVisible": true
+    },
+    "rulesScope": "Synthetic in-memory rule inputs; current production review-only surface; not persisted or executed.",
+    "organization": {
+      "strategy": "Improve my structure",
+      "NamingPattern": "{originalName}",
+      "DestinationPattern": "{category}",
+      "StatusText": "Each included move must have a safe proposal before Review Changes. Edit or reject unresolved moves.",
+      "ActionCountText": "Projected actions: 1 file \u002B 1 folder = 2 / 1000.",
+      "rows": [
+        {
+          "CurrentPath": "/tmp/omnisorse-v3-docs/Sample library/Inbox/Alpine camping checklist.txt",
+          "TargetPath": "No safe target available",
+          "Readiness": "Cannot propose",
+          "ReasonText": "Organization recipe recommendation. {category}: document (deterministic file category). {originalName}: Alpine camping checklist (filesystem filename)."
+        },
+        {
+          "CurrentPath": "/tmp/omnisorse-v3-docs/Sample library/Inbox/Campsite booking.txt",
+          "TargetPath": "No safe target available",
+          "Readiness": "Cannot propose",
+          "ReasonText": "Organization recipe recommendation. {category}: document (deterministic file category). {originalName}: Campsite booking (filesystem filename)."
+        },
+        {
+          "CurrentPath": "/tmp/omnisorse-v3-docs/Sample library/Inbox/Electricity statement.txt",
+          "TargetPath": "/tmp/omnisorse-v3-docs/Sample library/Inbox/document/Electricity statement.txt",
+          "Readiness": "Reliable",
+          "ReasonText": "Organization recipe recommendation. {category}: document (deterministic file category). {originalName}: Electricity statement (filesystem filename). Improve my structure: retain the existing hierarchy and group by the recommended folder."
+        },
+        {
+          "CurrentPath": "/tmp/omnisorse-v3-docs/Sample library/Inbox/Household budget.txt",
+          "TargetPath": "No safe target available",
+          "Readiness": "Cannot propose",
+          "ReasonText": "Organization recipe recommendation. {category}: document (deterministic file category). {originalName}: Household budget (filesystem filename)."
+        },
+        {
+          "CurrentPath": "/tmp/omnisorse-v3-docs/Sample library/Inbox/Weekend trail notes.txt",
+          "TargetPath": "No safe target available",
+          "Readiness": "Cannot propose",
+          "ReasonText": "Organization recipe recommendation. {category}: document (deterministic file category). {originalName}: Weekend trail notes (filesystem filename)."
+        }
+      ],
+      "applied": false
+    },
+    "duplicateGroupCount": 1,
+    "relatedFileFilter": "DocumentSet",
+    "relatedFiles": [
+      {
+        "FileName": "Household budget copy.txt",
+        "Type": 8,
+        "Confidence": 2,
+        "Explanation": "Identical content fingerprint; Matching extracted document text fingerprint; Matching bounded summary fingerprint; Shared content topics: belongs, BUDGET, data.; Shared typed entity: ProductOrProject: Electricity, ProductOrProject: Groceries, ProductOrProject: Rent; Shared filename terms: budget, household; Shared keyword: 150, 2026, 320; Related indexed concepts corroborate non-semantic evidence"
+      }
+    ],
+    "relatedSemanticStatus": "Semantic similarity is disabled. Evidence-backed relationships remain available.",
+    "indexingStatusText": "Indexing state: complete",
+    "semanticStatusText": "Learned semantic search is disabled.",
+    "sourceFixtureUnchanged": true
+  },
+  "captures": [
+    {
+      "filename": "01-search.png",
+      "scenario": "Search",
+      "actualStatus": "Local results are ready. All known files have complete indexing coverage. Semantic embeddings are disabled; keyword Search is active.",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 165068,
+      "sha256": "8c511d90e2cdae48f3654fe3aac8f3f9678b2b323f8a9943b4e0dd413d8293a4",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    },
+    {
+      "filename": "02-search-ranking.png",
+      "scenario": "Expanded real ranking explanation",
+      "actualStatus": "Filename contains the Search phrase; Exact phrase matched a keyword; All topic terms matched the filename; folder path matched; keyword matched; Topic match: camping; textual entity matched; Source-grounded summary matched; metadata matched; Native text / document text matched; summary matched; selected document text matched; File is fully indexed",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 172169,
+      "sha256": "fd974e45d7fdb51eed76a7c86e9053da9c3916432db6b2e1e6790299259d044f",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    },
+    {
+      "filename": "03-rules.png",
+      "scenario": "Sorting rules",
+      "actualStatus": "Rules loaded.",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 97868,
+      "sha256": "3ecebd51a3ce9bbc09f0b2867f2395a85660029b4de8a70da15e4c351543404b",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    },
+    {
+      "filename": "04-organize.png",
+      "scenario": "Current and recommended folder trees",
+      "actualStatus": "Each included move must have a safe proposal before Review Changes. Edit or reject unresolved moves.",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 149328,
+      "sha256": "c7bed38556c97335559c74102bef78fd0ccf95a97a133f085366a50c93398eaf",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    },
+    {
+      "filename": "05-duplicates.png",
+      "scenario": "Exact duplicate pair",
+      "actualStatus": "1 duplicate group(s) available.",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 167894,
+      "sha256": "b0a18b62866a7e33a1bd2c3ba835d2ef7ff18077fde48fd0306de259fc239360",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    },
+    {
+      "filename": "06-related-files.png",
+      "scenario": "Evidence-backed Related Files",
+      "actualStatus": "Loaded 1 direct related files with retained evidence.",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 196564,
+      "sha256": "040b59eb97ead3379870d536ea48670b3bec06345502390750e43f2c26b50a20",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    },
+    {
+      "filename": "07-ai-indexing-status.png",
+      "scenario": "Actual disabled model and local indexing status",
+      "actualStatus": "Learned semantic search is disabled.",
+      "width": 1600,
+      "height": 1000,
+      "bytes": 199452,
+      "sha256": "778d1068fc865ca606487921b7730efee3ee53545034cd20ad902508948c4a9e",
+      "nativeHandleType": "XID",
+      "method": "ImageMagick import -window \u003Creal X11 window ID\u003E -strip"
+    }
+  ]
+}
