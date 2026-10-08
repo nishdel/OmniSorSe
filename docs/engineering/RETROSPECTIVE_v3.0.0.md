@@ -202,3 +202,39 @@ supported Mermaid fences, the system map's existing five diagrams, required
 documentation-router entries and ADR structure, and no tracked generated evidence.
 The new benchmark is opt-in; its small-corpus results must stay separate from
 full-suite, large-library, native installer and human confidence.
+
+## Visual-documentation follow-up — 2026-10-08
+
+The outstanding gallery was captured through the unchanged production Avalonia
+window on Linux X11/Xvfb, using the isolated synthetic fixture and existing
+commands in [the capture harness](../../eng/screenshots/README.md).
+[Run 37777001533](https://github.com/nishdel/OmniSorSe/actions/runs/37777001533)
+produced seven native PNGs; source paths and hashes remained unchanged. The lead
+and independent reviewer inspected the pixels, provenance and source directly.
+The first successful native run still hid the ranking body below the viewport;
+it was rejected, then recaptured after scrolling. Independent review then found
+that the initial visibility assertion measured a 3,699-pixel content extent
+rather than the visible viewport. The corrected check intersects the window with
+all clipping ancestors on both axes; the manifest verifier independently
+recomputes that intersection. The complete set was recaptured again.
+
+OmniLAB was attempted first through the existing verified frozen runtime and
+configuration. The selected `gpt-oss:20b` request
+`277f883d-45c3-4236-b16a-7f3183c927e4` returned an Ollama-unavailable error and
+an explicit Codex handoff, with no usable model contribution. Direct Codex
+implementation and independent review completed the work. No service or model
+configuration was changed to force availability.
+
+Documentation review found that remote main already contained the published RC
+while the living release-status page still said publication was pending. A dated
+current checkpoint now records the verified publication and retains the old
+checkpoint as history. The seven Mermaid diagrams were checked in GitHub's actual
+renderer, not inferred from balanced Markdown fences.
+
+Candidate observation V1: a successful capture process and valid image dimensions
+can still omit the intended evidence. The rejected ranking image supports keeping
+both a targeted viewport assertion and original-resolution visual inspection.
+This remains a candidate lesson; no rule or skill was self-promoted. Human
+accessibility, subjective relevance, real-library and normal-user installer checks
+remain unperformed. The [capture provenance](../images/README.md) records the
+reproducible boundary without claiming those checks passed.

@@ -16,12 +16,46 @@ Repository history places the stable released lineage through v2.4.0 in
 `main`. GitHub `main` also contains the linear v2.5-v2.12 candidate history and
 the v2.13 Product Clarity & Workflow integration. v2.4.0 remains the latest
 stable release. v2.13.0-rc and v2.12.0-rc are historical prerelease baselines;
-v3.0.0-rc.1 is the testing candidate covered by this source checkpoint. Manual/real-world,
+v3.0.0-rc.1 is the published testing candidate. Manual/real-world,
 signing, notarization, and GA gates remain open.
 
 ## Current release and source
 
-### v3.0.0-rc.1 source checkpoint — prerelease integration pending (2026-10-07)
+### v3.0.0-rc.1 published candidate (2026-10-08 verification)
+
+[PR #54](https://github.com/nishdel/OmniSorSe/pull/54) is merged. The non-draft
+[v3.0.0-rc.1 prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1)
+is published from `df3984fab5eaf94424ec6cd032e91468799d62d6`. Its annotated tag
+object is `5fbafb0df7f04acce01c872a172ed29f1d06ee04`. Windows installer/ZIP,
+macOS Intel/Apple Silicon DMGs, SBOM and checksums are available; Linux remains
+a source-build preview. v2.4.0 remains the latest stable release.
+
+[Exact-main validation](https://github.com/nishdel/OmniSorSe/actions/runs/37678187837)
+passed the normal four-host matrix, including 2,072 tests in each of Debug and
+Release per host, formatting, documentation/dependency policy, vulnerability
+audit and native package smoke.
+[Packaging](https://github.com/nishdel/OmniSorSe/actions/runs/37678362921) passed;
+the published assets were downloaded and independently checked against their
+SHA-256 file, embedded source identity and SBOM. [Issue #53](https://github.com/nishdel/OmniSorSe/issues/53)
+records the exact candidate and human-test entry point. All 24 human acceptance
+rows remain **Not run**; publisher signing, notarization and GA gates remain open.
+
+The outstanding seven-view screenshot deliverable is now captured and reviewed
+in [the README gallery](../README.md#v3-screenshot-gallery), with
+[exact provenance](images/README.md#v3-capture-provenance). The real production
+window ran on disposable Linux X11 with synthetic files and disabled optional
+models. [Capture run 37777001533](https://github.com/nishdel/OmniSorSe/actions/runs/37777001533)
+passed. All seven agreed Mermaid diagrams were also observed rendering as
+populated SVGs on GitHub with no parser errors. The scoped
+[visual-documentation follow-up, PR #55](https://github.com/nishdel/OmniSorSe/pull/55),
+contains only documentation and capture tooling; it does not update the published
+RC tag or binaries. Human-test status remains unchanged.
+
+The following October 7 source checkpoint is preserved as historical evidence.
+Its pending-publication and capture-failure statements describe that earlier
+checkpoint, not the current published state.
+
+### Historical v3.0.0-rc.1 source checkpoint — integration was pending (2026-10-07)
 
 The major testing candidate is being implemented on `codex/v3-progressive-enrichment`
 from main `727ce2d`. [Milestone 1](https://github.com/nishdel/OmniSorSe/milestone/1)

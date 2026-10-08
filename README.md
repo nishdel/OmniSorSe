@@ -42,6 +42,42 @@ plugins are trusted in-process extensions, not a security sandbox.
   Ollama-compatible assistance, workflows, or trusted plugins without making
   them prerequisites for ordinary scanning and Search.
 
+## v3 screenshot gallery
+
+Every image below shows **v3.0.0-rc.1 candidate at `df3984f`**, built from the
+published RC's unchanged production source. These are real Ubuntu 24.04 X11
+window captures, using nine synthetic documents, the Light theme and 1600×1000
+pixels. Linux is a source-build preview. AI enrichment and learned embeddings
+are disabled in this sample; ordinary indexing and Search remain available.
+[Capture provenance and reproduction](docs/images/README.md#v3-capture-provenance).
+Click an image to inspect it at full size.
+
+![v3 Search finds the Alpine camping checklist in a synthetic library and reports that keyword Search is active](docs/images/screenshots/v3.0.0-rc.1/01-search.png)
+
+**Search:** the real `camping` query ranks the sample checklist first and shows
+its filename evidence and indexing coverage.
+
+| Ranking explanation | Rules review |
+| --- | --- |
+| ![v3 Search with Why this result expanded to show the actual filename, keyword and retained-text ranking explanation](docs/images/screenshots/v3.0.0-rc.1/02-search-ranking.png) | ![v3 Sorting Recipes displays two synthetic in-memory rules and explicitly describes its review-only scope](docs/images/screenshots/v3.0.0-rc.1/03-rules.png) |
+| **Why this result?** exposes the actual deterministic ranking explanation. | **Rules:** the current desktop reviews supplied in-memory rules; it does not create, persist or execute them. |
+
+| Organize proposal | Duplicates |
+| --- | --- |
+| ![v3 Organize compares current and recommended trees for five selected files with unresolved moves still requiring review](docs/images/screenshots/v3.0.0-rc.1/04-organize.png) | ![v3 Duplicates shows the two byte-identical synthetic household budget files with neither selected for removal](docs/images/screenshots/v3.0.0-rc.1/05-duplicates.png) |
+| **Organize:** compare a real proposal, including unresolved moves. No changes have been applied. | **Duplicates:** inspect the actual identical-content pair before selecting any removal proposal. |
+
+| Related Files | AI and indexing status |
+| --- | --- |
+| ![v3 Related Files uses the DocumentSet filter to show retained identical-content evidence for the budget copy and separately states that semantic similarity is disabled](docs/images/screenshots/v3.0.0-rc.1/06-related-files.png) | ![v3 Search reports learned semantic search disabled and background indexing complete for all nine synthetic files](docs/images/screenshots/v3.0.0-rc.1/07-ai-indexing-status.png) |
+| **Related Files:** retained DocumentSet evidence is shown separately from optional semantic similarity. | **Indexing:** all nine documents are indexed; the optional learned model is disabled. |
+
+Explore the rendered [library workflow](docs/HOW_OMNISORSE_WORKS.md#library-workflow),
+[architecture map](docs/Architecture/OpenSorSe_System_Map.md#high-level-ownership-and-communication-map)
+and [hybrid Search diagram](docs/HYBRID_SEARCH_v3.md#how-search-works).
+These captures document the interface; human acceptance remains
+[Not run](docs/MANUAL_TESTING_v3.0.md).
+
 ## How it works
 
 Read [How OmniSorSe Works](docs/HOW_OMNISORSE_WORKS.md) for the complete beginner

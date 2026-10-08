@@ -1,0 +1,6 @@
+ATLAS PROJECT — MEETING NOTES
+Synthetic demonstration document — no personal data.
+
+Review the local file library requirements and prepare a release candidate.
+Agree on search examples, accessibility checks and documentation screenshots.
+Next milestone: complete the review on 16 October 2026.

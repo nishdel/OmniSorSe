@@ -1,80 +1,80 @@
 # OmniSorSe public media assets
 
 This directory owns public documentation imagery. The tracked
-`opensorse-logo.png` is the genuine current application mark; its retained
-filename is a compatibility detail. No real application screenshot, GIF, or
-usage video is currently approved in the repository.
+`opensorse-logo.png` is the current application mark; its retained filename is a
+compatibility detail. The [README gallery](../../README.md#v3-screenshot-gallery)
+now contains seven reviewed real v3 captures. No v2 capture or usage video is
+presented as v3 evidence.
 
-The v3.0.0-rc.1 screenshots are a required incomplete deliverable. Native capture
-timed out, including two retries with the visible rebuilt application window;
-no screenshot has been captured. Startup smoke and source review do not satisfy
-this requirement. Keep the gallery absent until genuine captures are reviewed.
+## v3 capture provenance
 
-Do not use mockups, AI-generated UI, design-tool previews, or an older interface
-as evidence of the current product. The historical
-[v2.0 screenshot checklist](../SCREENSHOT_CHECKLIST_v2.0.md) remains preserved
-as release evidence; this file owns the current capture layout.
+The complete set is in [screenshots/v3.0.0-rc.1](screenshots/v3.0.0-rc.1).
+The unmodified [manifest](screenshots/v3.0.0-rc.1/manifest.json) records per-image
+SHA-256 values, exact synthetic-fixture hashes, actual indexing/search/proposal
+facts, and successful source-integrity checks before and after cleanup.
 
-## Screenshot layout
+| Property | Recorded value |
+| --- | --- |
+| Product | v3.0.0-rc.1 candidate; production source build |
+| Published production source | `df3984fab5eaf94424ec6cd032e91468799d62d6` |
+| Capture harness source | `1ea2569b8c54aa6496517b33c23eeb7d9d991f8a` |
+| Native capture run | [37777001533](https://github.com/nishdel/OmniSorSe/actions/runs/37777001533), 2026-10-08 |
+| Platform | Ubuntu 24.04.5 LTS, x64, .NET 10.0.12, X11 under Xvfb |
+| Appearance | Light theme, 1600×1000 native pixels, 100% scaling |
+| Inputs | Nine committed synthetic UTF-8 documents, including one identical pair |
+| Models | AI enrichment and learned embeddings explicitly disabled; no fabricated model output |
+| Original files | Same path set and SHA-256 values before and after the run; no Apply invoked |
+| Image processing | Native X11 window capture with ImageMagick `import -strip`; no resizing, compositing or retouching |
 
-Keep released and candidate captures separate:
+The [capture harness and reproduction instructions](../../eng/screenshots/README.md)
+use the production Avalonia `MainWindow`, composition root, view-models and
+services in a fresh isolated profile. The workflow checks that production files,
+build inputs and the existing RC tag match the recorded production commit. It
+drives real scan, text extraction, Search, relationship analysis and Organize
+proposal commands. This is a Linux source preview, not a Linux release package
+or an installed Windows/macOS capture.
 
-```text
-docs/images/screenshots/
-├── v2.4.0/
-│   ├── home.png
-│   ├── search.png
-│   └── review-changes.png
-└── v3.0.0-rc.1/
-    ├── search.png
-    ├── ranking-explanation.png
-    ├── rules.png
-    ├── organize.png
-    ├── duplicates.png
-    ├── related-files.png
-    └── ai-indexing-status.png
-```
+Avalonia documents [X11 with Xvfb](https://docs.avaloniaui.net/docs/deployment/docker)
+for its Linux desktop backend; ImageMagick documents native X server/window
+capture through [import](https://imagemagick.org/import/). This supported path
+replaced the earlier failed Windows app-access/capture attempts. It does not use
+Avalonia's headless test renderer or generated UI images.
 
-This is the capture plan; the listed screenshots are not existing assets.
-Capture v2.4.0 only from its published package. Capture v3.0.0-rc.1 from the actual
-application built from a recorded clean commit, or from its matching released
-package when available. Each caption must identify `v2.4.0 release` or
-`v3.0.0-rc.1 candidate at <short SHA>` and its source/package identity. Never mix
-versions without labels. A working-tree capture must explicitly disclose that
-state and cannot establish final released-commit identity.
+## Reviewed views and boundaries
 
-Before committing a capture:
+| Image | What is actually visible |
+| --- | --- |
+| [Search](screenshots/v3.0.0-rc.1/01-search.png) | The real `camping` query, first-ranked sample checklist, filename evidence and complete indexing coverage. |
+| [Ranking explanation](screenshots/v3.0.0-rc.1/02-search-ranking.png) | The expanded first-result explanation, scrolled into the results viewport. The harness asserts the full explanation body is visible. |
+| [Rules](screenshots/v3.0.0-rc.1/03-rules.png) | Two synthetic in-memory inputs in the existing review-only Sorting Recipes surface. They were added after scanning and never executed. |
+| [Organize](screenshots/v3.0.0-rc.1/04-organize.png) | Current/recommended trees for five selected files; one eligible move and unresolved rows. This is a proposal, not an approved or applied plan. |
+| [Duplicates](screenshots/v3.0.0-rc.1/05-duplicates.png) | The real exact-hash budget pair. No file is selected for removal. |
+| [Related Files](screenshots/v3.0.0-rc.1/06-related-files.png) | The production DocumentSet filter shows retained identical-content evidence for the budget copy; the separate semantic-similarity panel reports disabled. |
+| [AI/indexing status](screenshots/v3.0.0-rc.1/07-ai-indexing-status.png) | Nine completed documents, zero failed/skipped/remaining; learned semantic Search is disabled. |
 
-- use a dedicated disposable account or VM and synthetic files only;
-- prefer a consistent 1600×1000 window at 100% scaling and one theme;
-- exclude usernames, personal paths, file-picker history, notifications,
-  secrets, endpoints, prompts, private text/OCR, GPS, and diagnostics;
-- inspect every pixel at original resolution and strip image metadata;
-- record source SHA, operating system, package/source identity, theme, and
-  synthetic-fixture revision in the change description;
-- write alt text that explains the visible workflow.
+All seven PNGs were inspected at original resolution. Their only PNG chunks are
+IHDR, IDAT and IEND; metadata was stripped during capture. The first native run
+captured an expanded ranking header with its explanation below the viewport;
+that set was rejected. The committed set comes entirely from the corrected run.
 
-The required v3 set covers seven real views: Search, ranking explanation, Rules,
-Organize, Duplicates, Related Files and AI/indexing status. Show semantic similarity
-separately from verified relationship evidence and show the actual optional model
-and indexing state. When reviewed assets exist, lead with Search and group the
-remaining six views into compact pairs. Do not publish an empty gallery or reserve
-broken image slots.
+The fixture's repeated wording and timestamps can produce broad automatic
+relationships. These images establish the displayed workflow, not ranking
+quality, model inference, accessibility, installer behavior or human usability.
+All 24 [human acceptance rows](../MANUAL_TESTING_v3.0.md) remain **Not run**.
+The published RC tag and release assets are unchanged by this follow-up.
 
-## Short usage video
+## Future capture rules
 
-A real 60–90 second captioned video would materially improve the landing page
-after the static captures are approved. It should show a synthetic library:
+Use a disposable profile and synthetic inputs only. Keep versioned sets separate,
+record exact product and harness/package identities, and identify the version in
+each gallery's introduction. Inspect every image at original resolution, verify
+its hash, strip metadata, and give it meaningful alt text. Never substitute an
+older interface, a mockup or an AI-generated image for a real application capture.
+App access and successful startup alone are not capture evidence.
 
-1. Home readiness and navigation.
-2. An explicit scan with bounded progress.
-3. Search with a facet and **Why this result?** evidence.
-4. Files and Related Files with user-controlled relationship decisions.
-5. An organization proposal entering Review Changes.
-6. A disposable Apply followed by Operation History and safe Undo.
-7. Settings showing AI optional and disabled by default.
-8. An end card identifying v3.0.0-rc.1 and its source/package identity.
-
-Do not show OmniBrille as though it were included here. Avoid committing a
-large GIF or MP4 to ordinary source history; use an approved versioned media
-host and keep only a lightweight genuine poster image in this directory.
+The historical [v2.0 screenshot checklist](../SCREENSHOT_CHECKLIST_v2.0.md) remains
+release evidence. A future real 60–90 second captioned video could show scanning,
+Search, Related Files, a reviewed Change Plan and a disposable Apply/Undo flow.
+It must identify its exact source/package and use an approved versioned media
+host rather than adding a large GIF or MP4 to source history. OmniBrille is a
+separate companion and must not appear to be bundled here.
