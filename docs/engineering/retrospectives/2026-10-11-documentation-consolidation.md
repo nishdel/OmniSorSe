@@ -1,9 +1,9 @@
 # Run retrospective — canonical documentation consolidation
 
-**Date:** 2026-10-11  
-**Task category:** Documentation and validation tooling only  
-**Risk domains:** Historical evidence, current/readiness authority, link compatibility  
-**Implementation/review basis:** main `783bd6f4b914bb0d141d26ebff8e66a4e4aa6a3f`  
+**Date:** 2026-10-11
+**Task category:** Documentation and validation tooling only
+**Risk domains:** Historical evidence, current/readiness authority, link compatibility
+**Implementation/review basis:** main `783bd6f4b914bb0d141d26ebff8e66a4e4aa6a3f`
 **Author:** Codex lead; independent Documentation/adversarial reviewer
 
 ## Outcome
@@ -21,7 +21,7 @@ See the [run report](../reports/2026-10-11-documentation-consolidation.md).
 - Versioned manual records are not uniformly empty templates: v1.6 has an
   attestation, v2.2–v2.7 mix different evidence classes, and v3 has 24 unrun rows.
 - Thirty published absolute old links are pinned snapshots; nine relative links
-  need correction. Neither case needs precautionary compatibility stubs.
+  were corrected and verified without changing release assets/state. Neither case needs precautionary compatibility stubs.
 - Original architecture/specification archives retain distinct planned intent;
   their existence is not current implementation evidence.
 

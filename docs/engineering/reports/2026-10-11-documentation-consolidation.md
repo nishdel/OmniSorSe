@@ -28,10 +28,13 @@ checkbox status retained. Repeated evidence-policy text shares an anchor.
 Authenticated GitHub inventory covered release bodies, all open/closed issue
 and PR bodies, issue comments and PR review comments. Thirty absolute links to
 removed paths point to surviving immutable tags/commits and stay unchanged.
-Nine relative links in five older release bodies require correction to pinned
-canonical document/section URLs after this consolidation commit is pushed.
-No compatibility stubs are needed. No release is published and no issue result
-is altered by this task.
+Nine relative links in five older release bodies were corrected to canonical
+document/section URLs pinned to pushed consolidation commit
+`74aab129c366dfcb4f1f43ddc8cfcf0cf5a08dcd`.
+Each updated body was reread and compared with the exact expected substitutions;
+asset IDs/names/sizes/digests/URLs, tags, target commits, draft/prerelease flags
+and publication timestamps were unchanged. No compatibility stubs are needed.
+No release was published and no issue result was altered.
 
 ## OmniLAB and independent review
 
@@ -134,9 +137,10 @@ active-document link defects and no external moving-link blockers.
 
 The authenticated audit found 30 absolute migrated-document URLs pinned to
 surviving tags/commits, plus nine relative links in v2.0.0 through v2.4.0 release
-bodies. The prepared correction changes only those nine destinations to the
-canonical documents at this consolidation commit. Final delivery records the
-write/verification result. No compatibility stub is retained.
+bodies. The correction changed only those nine destinations to the canonical documents
+at `74aab129c366dfcb4f1f43ddc8cfcf0cf5a08dcd` and verified every resulting body.
+All five updates succeeded; no external link remains blocked and no compatibility
+stub is retained.
 
 ## Canonical destinations
 
@@ -205,3 +209,18 @@ route readers through historical files by default.
 | [docs/WORKFLOW_AND_INDEXING_QUALITY.md](../../WORKFLOW_AND_INDEXING_QUALITY.md) | 1 |
 | [docs/WORKFLOW_PORTABILITY.md](../../WORKFLOW_PORTABILITY.md) | 1 |
 | [docs/images/README.md](../../images/README.md) | 1 |
+
+## Published reference corrections
+
+| Existing release | Corrected documentation links | Result |
+| --- | ---: | --- |
+| [v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) | 2 | Body verified; assets, tag and publication unchanged |
+| [v2.3.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.3.0) | 2 | Body verified; assets, tag and publication unchanged |
+| [v2.2.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.2.0) | 2 | Body verified; assets, tag and publication unchanged |
+| [v2.1.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.1.0) | 1 | Body verified; assets, tag and publication unchanged |
+| [v2.0.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.0.0) | 2 | Body verified; assets, tag and publication unchanged |
+
+The complete branch diff, including added files, passes `git diff --check`
+after removing four Markdown hard-break spaces found by the staged check.
+The branch is pushed for PR review; no merge or release publication is authorized
+or performed by this delivery.
