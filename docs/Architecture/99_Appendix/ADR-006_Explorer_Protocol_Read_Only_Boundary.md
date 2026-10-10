@@ -47,5 +47,5 @@ The surviving source and history do not establish a reliable complete alternativ
 - `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`
 - `tests/OpenSorSe.Application.Tests/ExplorerProtocolTests.cs`
 - `tests/OpenSorSe.Application.Tests/ExplorerCompanionLaunchTests.cs`
-- [Explorer Protocol transition](../../OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
-- [OmniBrille companion handoff](../../OMNIBRILLE_COMPANION_HANDOFF_v2.5.md)
+- [Explorer Protocol transition](../../OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md)
+- [OmniBrille companion handoff](../../OMNIBRILLE_COMPANION_HANDOFF.md)

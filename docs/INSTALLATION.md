@@ -24,7 +24,7 @@ OmniSorSe v2.4.0 remains the
 [latest stable release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0).
 No Linux installer is published; Linux x64 remains a source-build preview. Do
 not download packages from unrelated sites. Read [Release Status](RELEASE_STATUS.md)
-and the [v3.0.0-rc.1 Release Notes](RELEASE_NOTES_v3.0.0.md) before relying on
+and the [v3.0.0-rc.1 Release Notes](CHANGELOG.md#release-v3-0-0) before relying on
 the prerelease.
 
 The earlier [v2.13 prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc)
@@ -36,7 +36,7 @@ The visible rename deliberately continues using established OpenSorSe
 application-data directories, the Windows installer AppId/default install
 directory, and the macOS bundle identifier so existing profiles are not
 orphaned. Current stores migrate through their owned schema paths. See the
-[v2.4 transition design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md).
+[v2.4 transition design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md).
 
 ## Windows x64 installer
 
@@ -163,7 +163,7 @@ Learned semantic Search has its own **local semantic embeddings** switch and
 dedicated embedding-model setting; it does not require the chat/enrichment
 switch. Select an already installed embedding model and a loopback Ollama
 endpoint. The Search model/indexing panel shows progress and fallback state for
-existing and newly indexed files. See [Hybrid Search](HYBRID_SEARCH_v3.md).
+existing and newly indexed files. See [Hybrid Search](HYBRID_SEARCH.md).
 
 AI and individual capabilities are disabled by default. Ordinary scanning,
 OCR, Search interpretation/ranking, snippets, explanations, Change Plan
@@ -229,7 +229,7 @@ Plugin code runs in-process with the current user’s operating-system
 permissions. Install only packages whose source and publisher you trust.
 Assembly-load-context isolation and SHA-256 integrity checks are not a sandbox
 or publisher authentication. See
-[Local Plugin Packages](LOCAL_PLUGIN_PACKAGES_v1.4.md).
+[Local Plugin Packages](LOCAL_PLUGIN_PACKAGES.md).
 
 ## Application data
 
@@ -321,5 +321,5 @@ data is a separate explicit user decision.
 - **A plugin is blocked:** review compatibility, dependencies, integrity,
   grants, quarantine, native runtime identifier, and restart requirements.
 
-See [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) and
+See [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING.md#support-v1-8) and
 [Safety and Privacy](SAFETY_AND_PRIVACY.md).

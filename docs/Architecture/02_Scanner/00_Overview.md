@@ -61,5 +61,5 @@ See [Unified Advanced Diagnostics](../01_Core/10_Advanced_Diagnostics.md).
 * [Folder Scanner](01_Folder_Scanner.md)
 * [Cancellation](07_Cancellation.md)
 * [Scanner Error Handling](08_Error_Handling.md)
-* [v1.2 Watched Folders and Incremental Scanning](09_v1.2_Watched_Folders_and_Incremental_Scanning.md)
+* [v1.2 Watched Folders and Incremental Scanning](09_Watched_Folders_and_Incremental_Scanning.md)
 * [Release Status](../../RELEASE_STATUS.md)

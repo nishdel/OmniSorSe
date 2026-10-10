@@ -60,7 +60,7 @@ that set was rejected. The committed set comes entirely from the corrected run.
 The fixture's repeated wording and timestamps can produce broad automatic
 relationships. These images establish the displayed workflow, not ranking
 quality, model inference, accessibility, installer behavior or human usability.
-All 24 [human acceptance rows](../MANUAL_TESTING_v3.0.md) remain **Not run**.
+All 24 [human acceptance rows](../MANUAL_TESTING.md#manual-v3-0) remain **Not run**.
 The published RC tag and release assets are unchanged by this follow-up.
 
 ## Future capture rules
@@ -72,9 +72,46 @@ its hash, strip metadata, and give it meaningful alt text. Never substitute an
 older interface, a mockup or an AI-generated image for a real application capture.
 App access and successful startup alone are not capture evidence.
 
-The historical [v2.0 screenshot checklist](../SCREENSHOT_CHECKLIST_v2.0.md) remains
+The historical [v2.0 screenshot checklist](README.md#historical-v2-0-screenshots) remains
 release evidence. A future real 60–90 second captioned video could show scanning,
 Search, Related Files, a reviewed Change Plan and a disposable Apply/Undo flow.
 It must identify its exact source/package and use an approved versioned media
 host rather than adding a large GIF or MP4 to source history. OmniBrille is a
 separate companion and must not appear to be bundled here.
+
+
+<a id="historical-v2-0-screenshots"></a>
+## v2.0
+
+[Source at consolidation baseline](https://github.com/nishdel/OmniSorSe/blob/783bd6f4b914bb0d141d26ebff8e66a4e4aa6a3f/docs/SCREENSHOT_CHECKLIST_v2.0.md). Historical wording and evidence apply only to this version.
+
+<details>
+<summary>Version-specific scenarios, decisions and evidence</summary>
+
+No mock or generated UI image may be presented as an application screenshot.
+If native capture cannot be completed reliably during release engineering,
+leave the README without screenshots and complete this checklist later without
+blocking code, packaging, or safety validation.
+
+Every capture must use a disposable application-data root and synthetic demo
+folders. Review the full image at original resolution before commit.
+
+- [ ] Dashboard or Scan page with synthetic roots and no user/profile path.
+- [ ] Background indexing progress with synthetic filenames and representative
+      stage/coverage/storage information.
+- [ ] Search with synthetic results, visible filters, bounded snippets, and a
+      truthful “Why this result?” explanation.
+- [ ] Knowledge Graph with synthetic evidence and no private aliases or paths.
+- [ ] Smart Collections or Related Files using synthetic relationships.
+- [ ] Change Plan review using disposable synthetic source/destination paths.
+- [ ] Verify no screenshot contains a username, personal filename, personal
+      path, secret, token, private prompt, raw document/OCR text, or sensitive
+      diagnostic.
+- [ ] Crop cleanly, retain readable resolution, use descriptive lowercase file
+      names in `docs/images/screenshots/`, and add meaningful README alt text.
+- [ ] Confirm the screenshot matches the exact released application rather than
+      a mock, design surface, or AI-generated image.
+
+**Status:** intentionally unchecked; no real v2.0 screenshots are claimed yet.
+
+</details>

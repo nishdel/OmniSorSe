@@ -67,5 +67,5 @@ a successful three-host run, while the current v2.4 implementation task records
 Windows execution and cross-target compilation only. Linux continues using the
 legacy-compatible `opensorse` XDG subdirectories so the product rename cannot
 orphan a prior profile. Use the current
-[v2.4 manual checklist](MANUAL_TESTING_v2.4.md) before making a broader support
+[v2.4 manual checklist](MANUAL_TESTING.md#manual-v2-4) before making a broader support
 statement.

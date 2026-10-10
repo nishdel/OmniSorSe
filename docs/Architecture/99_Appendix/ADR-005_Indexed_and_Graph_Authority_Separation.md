@@ -59,5 +59,5 @@ The surviving source and history do not establish a reliable complete alternativ
 - `src/OpenSorSe.Indexing.Sqlite/KnowledgeGraph/SqliteGraphStorageLifecycle.cs`
 - `tests/OpenSorSe.Indexing.Sqlite.Tests/StateBackupServiceTests.cs`
 - `tests/OpenSorSe.Application.Tests/KnowledgeGraph/GraphReleaseGateMatrixTests.cs`
-- [Knowledge Graph design](../06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md)
-- [Relationship context](../06_Search/10_v1.9_Relationships_Context.md)
+- [Knowledge Graph design](../06_Search/11_Knowledge_Graph_Stability_Design.md)
+- [Relationship context](../06_Search/10_Relationships_Context.md)

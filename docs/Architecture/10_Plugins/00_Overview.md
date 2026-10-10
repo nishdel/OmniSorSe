@@ -1,6 +1,6 @@
 # Plugins Overview
 
-> OpenSorSe v1.4 implements the bounded foundation documented in [06_v1.4_Plugin_Foundation.md](06_v1.4_Plugin_Foundation.md). Broader capabilities described below remain design material unless that document includes them.
+> OpenSorSe v1.4 implements the bounded foundation documented in [06_Plugin_Foundation.md](06_Plugin_Foundation.md). Broader capabilities described below remain design material unless that document includes them.
 
 ---
 

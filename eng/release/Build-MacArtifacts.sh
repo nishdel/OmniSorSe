@@ -82,9 +82,9 @@ PY
 )"
 printf '{"productVersion":"%s","baseVersion":"%s","sourceRevision":"%s","configuration":"Release","targetFramework":"net10.0","runtimeIdentifier":"%s","runtimeVersion":"%s","selfContained":true}\n' \
   "$version" "$base_version" "$source_revision" "$rid" "$runtime_version" > "$resources_directory/OmniSorSe.build.json"
-release_notes="$repository_root/docs/RELEASE_NOTES_v$base_version.md"
+release_notes="$repository_root/docs/CHANGELOG.md"
 if [[ ! -f "$release_notes" ]]; then
-  echo "Release notes for v$base_version are missing: $release_notes" >&2
+  echo "Cumulative release notes are missing: $release_notes" >&2
   exit 1
 fi
 cp "$release_notes" "$resources_directory/RELEASE_NOTES.md"

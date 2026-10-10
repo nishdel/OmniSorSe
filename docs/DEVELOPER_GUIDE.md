@@ -23,7 +23,7 @@ native package paths for read-only and non-mutating functionality; Linux x64
 remains a source-build preview. The solution targets .NET 10 LTS and the exact SDK
 selection is in `global.json`. Linux contributors should also read
 [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md), while release maintainers
-should read [Native Release Packaging](RELEASE_PACKAGING_v2.0.md).
+should read [Native Release Packaging](RELEASE_PACKAGING.md).
 
 Confirm the intended base before creating a branch. A product version, branch,
 or package name is not proof that a commit is integrated; inspect `main`, its
@@ -226,7 +226,7 @@ and temporary application-data roots. Cover manifest hash/count rejection,
 idempotent rebuild, fencing, expired claims, cancellation at publication,
 watermark lag, privacy races, backup privacy floors, corruption/newer schemas,
 query/traversal bounds, Search fallback, and unchanged source files. Never scan
-a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH_v2.0.md).
+a developer directory. See [Knowledge Graph v2.0](KNOWLEDGE_GRAPH.md).
 
 ## 10. Trace a Change Plan
 
@@ -299,8 +299,8 @@ behavior.
 
 The host does not provide direct mutation, approval, credentials, arbitrary
 storage, or dependency injection. External plugin code still runs in-process
-with the current user's permissions. See the [Extension SDK](EXTENSION_SDK_v1.4.md)
-and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
+with the current user's permissions. See the [Extension SDK](EXTENSION_SDK.md)
+and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE.md).
 
 ## 14. Add a media provider
 
@@ -319,7 +319,7 @@ and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
    authoritative metadata.
 6. Evaluate license, redistribution, package size, offline/network behavior,
    and all runtime targets before adding a dependency. See
-   [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
+   [Media Intelligence v2.2](MEDIA_INTELLIGENCE.md).
 
 ## 15. Add a Content Intelligence provider
 
@@ -339,7 +339,7 @@ and [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md).
 6. For an external runtime, use safe argument lists, owned temporary storage,
    finite output/time/concurrency, cancellation, and capability detection. Do
    not download a model silently. See
-   [Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md).
+   [Content Intelligence v2.3](CONTENT_INTELLIGENCE.md).
 
 ## Common pitfalls
 

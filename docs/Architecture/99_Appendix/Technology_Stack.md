@@ -53,7 +53,7 @@ not use SQL or SQLite types. A future reviewed server provider can implement
 those contracts; PostgreSQL is not a current desktop dependency.
 
 See [Product Vision](../../../PRODUCT_VISION.md) and
-[Deep Indexing Architecture](../00_System/10_v1.7_Deep_Indexing_Architecture.md).
+[Deep Indexing Architecture](../00_System/10_Deep_Indexing_Architecture.md).
 
 ## Optional components
 
