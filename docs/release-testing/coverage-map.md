@@ -1,17 +1,18 @@
 # Legacy manual coverage map
 
 This is a definition/routing catalog, not an execution ledger. Use the
-[manual release-testing guide](../MANUAL_RELEASE_TESTING.md) and the release's
+[manual release-testing guide](../MANUAL_TESTING.md#release-testing-procedure) and the release's
 single GitHub testing issue for results. The short core table does not waive
 the older unresolved requirements below.
 
 ## Stable source IDs and dispositions
 
 `OS-L2.10-001` means the first checkbox in
-[`MANUAL_TESTING_v2.10.md`](../MANUAL_TESTING_v2.10.md), counting every checkbox
+[`../MANUAL_TESTING.md#manual-v2-10`](../MANUAL_TESTING.md#manual-v2-10), counting every checkbox within that version section
 from top to bottom, including checked historical evidence. Use the same
-`OS-L<version>-NNN` convention for the other checkbox files. Frozen source
-checklists retain their wording and order. The source heading plus ordinal
+`OS-L<version>-NNN` convention for the other version sections. The linked Git source snapshots retain exact
+wording; the canonical sections retain checkbox order and status while shared
+procedures use a common definition. The source heading plus ordinal
 locates the exact acceptance requirement; an ordinal is not a test result.
 
 - **Core** links a reusable core definition. If a row also retains a
@@ -36,14 +37,14 @@ checked items later in this file retain only their original scope; no result
 is transferred onto another candidate, package, environment or test.
 
 Reusable definitions:
-[M01 launch](../MANUAL_RELEASE_TESTING.md#os-m01),
-[M02 scan](../MANUAL_RELEASE_TESTING.md#os-m02),
-[M03 Search](../MANUAL_RELEASE_TESTING.md#os-m03),
-[M04 review](../MANUAL_RELEASE_TESTING.md#os-m04),
-[M05 Apply/Undo](../MANUAL_RELEASE_TESTING.md#os-m05),
-[M06 duplicates](../MANUAL_RELEASE_TESTING.md#os-m06),
-[M07 settings](../MANUAL_RELEASE_TESTING.md#os-m07),
-[M08 keyboard/layout](../MANUAL_RELEASE_TESTING.md#os-m08).
+[M01 launch](../MANUAL_TESTING.md#release-testing-procedure-os-m01),
+[M02 scan](../MANUAL_TESTING.md#release-testing-procedure-os-m02),
+[M03 Search](../MANUAL_TESTING.md#release-testing-procedure-os-m03),
+[M04 review](../MANUAL_TESTING.md#release-testing-procedure-os-m04),
+[M05 Apply/Undo](../MANUAL_TESTING.md#release-testing-procedure-os-m05),
+[M06 duplicates](../MANUAL_TESTING.md#release-testing-procedure-os-m06),
+[M07 settings](../MANUAL_TESTING.md#release-testing-procedure-os-m07),
+[M08 keyboard/layout](../MANUAL_TESTING.md#release-testing-procedure-os-m08).
 `C01`–`C12` refer to the conditional definitions in the same guide. A reference
 to one is a starting scenario; retained variations stated below still apply.
 
@@ -56,7 +57,7 @@ and the same evidence owner. Neither link claims a run occurred in this task.
 
 ## v2.10 master matrix — 61 items
 
-Source: [v2.10 full definitions](../MANUAL_TESTING_v2.10.md).
+Source: [v2.10 full definitions](../MANUAL_TESTING.md#manual-v2-10).
 “Conditional: original” always means this exact source item, not an omitted
 or replaced gate.
 
@@ -126,7 +127,7 @@ or replaced gate.
 
 ## v2.11 addendum — 20 items
 
-Source: [v2.11 full definitions](../MANUAL_TESTING_v2.11.md).
+Source: [v2.11 full definitions](../MANUAL_TESTING.md#manual-v2-11).
 
 | Stable source ID | Original requirement | Disposition / retained destination |
 | --- | --- | --- |
@@ -153,7 +154,7 @@ Source: [v2.11 full definitions](../MANUAL_TESTING_v2.11.md).
 
 ## v2.12 addendum — 24 items
 
-Source: [v2.12 full definitions](../MANUAL_TESTING_v2.12.md).
+Source: [v2.12 full definitions](../MANUAL_TESTING.md#manual-v2-12).
 
 | Stable source ID | Original requirement | Disposition / retained destination |
 | --- | --- | --- |
@@ -184,7 +185,7 @@ Source: [v2.12 full definitions](../MANUAL_TESTING_v2.12.md).
 
 ## v2.13 addendum — 25 items
 
-Source: [v2.13 full definitions](../MANUAL_TESTING_v2.13.md).
+Source: [v2.13 full definitions](../MANUAL_TESTING.md#manual-v2-13).
 
 | Stable source ID | Original requirement | Disposition / retained destination |
 | --- | --- | --- |
@@ -232,7 +233,7 @@ distinction.
 
 ### v1.1 — 34 source checkboxes
 
-Source: [v1.1 definitions](../MANUAL_TESTING_v1.1.md).
+Source: [v1.1 definitions](../MANUAL_TESTING.md#manual-v1-1).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -244,7 +245,7 @@ Source: [v1.1 definitions](../MANUAL_TESTING_v1.1.md).
 
 ### v1.2 — 45 source checkboxes
 
-Source: [v1.2 definitions](../MANUAL_TESTING_v1.2.md).
+Source: [v1.2 definitions](../MANUAL_TESTING.md#manual-v1-2).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -257,7 +258,7 @@ Source: [v1.2 definitions](../MANUAL_TESTING_v1.2.md).
 
 ### v1.3 — 39 source checkboxes
 
-Source: [v1.3 definitions](../MANUAL_TESTING_v1.3.md).
+Source: [v1.3 definitions](../MANUAL_TESTING.md#manual-v1-3).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -272,7 +273,7 @@ Source: [v1.3 definitions](../MANUAL_TESTING_v1.3.md).
 
 ### v1.4 — 30 source checkboxes
 
-Source: [v1.4 definitions](../MANUAL_TESTING_v1.4.md).
+Source: [v1.4 definitions](../MANUAL_TESTING.md#manual-v1-4).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -285,7 +286,7 @@ Source: [v1.4 definitions](../MANUAL_TESTING_v1.4.md).
 
 ### v1.5 — 23 source checkboxes
 
-Source: [v1.5 definitions](../MANUAL_TESTING_v1.5.md).
+Source: [v1.5 definitions](../MANUAL_TESTING.md#manual-v1-5).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -295,7 +296,7 @@ Source: [v1.5 definitions](../MANUAL_TESTING_v1.5.md).
 
 ### v1.6 — 38 source checkboxes
 
-Source: [v1.6 definitions](../MANUAL_TESTING_v1.6.md).
+Source: [v1.6 definitions](../MANUAL_TESTING.md#manual-v1-6).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -310,7 +311,7 @@ Source: [v1.6 definitions](../MANUAL_TESTING_v1.6.md).
 
 ### v1.7 — 31 source checkboxes
 
-Source: [v1.7 definitions](../MANUAL_TESTING_v1.7.md).
+Source: [v1.7 definitions](../MANUAL_TESTING.md#manual-v1-7).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -324,7 +325,7 @@ Source: [v1.7 definitions](../MANUAL_TESTING_v1.7.md).
 
 ### v1.8 — 48 source checkboxes
 
-Source: [v1.8 definitions](../MANUAL_TESTING_v1.8.md).
+Source: [v1.8 definitions](../MANUAL_TESTING.md#manual-v1-8).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -337,7 +338,7 @@ Source: [v1.8 definitions](../MANUAL_TESTING_v1.8.md).
 
 ### v1.9 — 65 source checkboxes
 
-Source: [v1.9 definitions](../MANUAL_TESTING_v1.9.md).
+Source: [v1.9 definitions](../MANUAL_TESTING.md#manual-v1-9).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -352,7 +353,7 @@ Source: [v1.9 definitions](../MANUAL_TESTING_v1.9.md).
 
 ### v2.0 — 111 source checkboxes
 
-Source: [v2.0 definitions](../MANUAL_TESTING_v2.0.md).
+Source: [v2.0 definitions](../MANUAL_TESTING.md#manual-v2-0).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -370,7 +371,7 @@ Source: [v2.0 definitions](../MANUAL_TESTING_v2.0.md).
 
 ### v2.1 — 34 source checkboxes
 
-Source: [v2.1 definitions](../MANUAL_TESTING_v2.1.md).
+Source: [v2.1 definitions](../MANUAL_TESTING.md#manual-v2-1).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -382,7 +383,7 @@ Source: [v2.1 definitions](../MANUAL_TESTING_v2.1.md).
 
 ### v2.2 — 67 source checkboxes
 
-Source: [v2.2 definitions](../MANUAL_TESTING_v2.2.md).
+Source: [v2.2 definitions](../MANUAL_TESTING.md#manual-v2-2).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -397,7 +398,7 @@ Source: [v2.2 definitions](../MANUAL_TESTING_v2.2.md).
 
 ### v2.3 — 54 source checkboxes
 
-Source: [v2.3 definitions](../MANUAL_TESTING_v2.3.md).
+Source: [v2.3 definitions](../MANUAL_TESTING.md#manual-v2-3).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -414,7 +415,7 @@ Source: [v2.3 definitions](../MANUAL_TESTING_v2.3.md).
 
 ### v2.4 — 63 source checkboxes
 
-Source: [v2.4 definitions](../MANUAL_TESTING_v2.4.md).
+Source: [v2.4 definitions](../MANUAL_TESTING.md#manual-v2-4).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -428,7 +429,7 @@ Source: [v2.4 definitions](../MANUAL_TESTING_v2.4.md).
 
 ### v2.5 — 59 source checkboxes
 
-Source: [v2.5 definitions](../MANUAL_TESTING_v2.5.md).
+Source: [v2.5 definitions](../MANUAL_TESTING.md#manual-v2-5).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -443,7 +444,7 @@ Source: [v2.5 definitions](../MANUAL_TESTING_v2.5.md).
 
 ### v2.6 — 55 source checkboxes
 
-Source: [v2.6 definitions](../MANUAL_TESTING_v2.6.md).
+Source: [v2.6 definitions](../MANUAL_TESTING.md#manual-v2-6).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -459,7 +460,7 @@ Source: [v2.6 definitions](../MANUAL_TESTING_v2.6.md).
 
 ### v2.7 — 36 source checkboxes
 
-Source: [v2.7 definitions](../MANUAL_TESTING_v2.7.md).
+Source: [v2.7 definitions](../MANUAL_TESTING.md#manual-v2-7).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -473,7 +474,7 @@ Source: [v2.7 definitions](../MANUAL_TESTING_v2.7.md).
 
 ### v2.8 — 38 source checkboxes
 
-Source: [v2.8 definitions](../MANUAL_TESTING_v2.8.md).
+Source: [v2.8 definitions](../MANUAL_TESTING.md#manual-v2-8).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -487,7 +488,7 @@ Source: [v2.8 definitions](../MANUAL_TESTING_v2.8.md).
 
 ### v2.9 — 36 source checkboxes
 
-Source: [v2.9 definitions](../MANUAL_TESTING_v2.9.md).
+Source: [v2.9 definitions](../MANUAL_TESTING.md#manual-v2-9).
 
 | Exact source ID range | Source section | Disposition |
 | --- | --- | --- |
@@ -508,7 +509,7 @@ for the 21 small-model table rows in order. These IDs prevent ambiguous
 references to the repeated printed step 15. Keep each selected check in its
 own issue row; do not treat these ranges as a compound test.
 
-Source: [v1.0 definitions](../MANUAL_TESTING_v1.0.md): 182 numbered
+Source: [v1.0 definitions](../MANUAL_TESTING.md#manual-v1-0): 182 numbered
 paragraphs, 22 diagnostic bullets, and 21 model cases. All remain
 conditional historical definitions; absent observations are Unknown / Not
 recorded. These historical actions use v1.0 capabilities and wording, including
@@ -540,7 +541,7 @@ Smart Tags, graph or current Change Plan controls onto that release.
 | OS-T1.0-008–OS-T1.0-014 | Small-model matrix, approximately 4B | Conditional: seven separate original model cases; exact installed model required. |
 | OS-T1.0-015–OS-T1.0-021 | Small-model matrix, approximately 7B/8B | Conditional: seven separate original model cases; exact installed model required. |
 
-Inherited [v0.9.1 definitions](../MANUAL_TESTING_v0.9.1.md) contain 55
+Inherited [v0.9.1 definitions](../MANUAL_TESTING.md#manual-v0-9-1) contain 55
 numbered instructions: `OS-N0.9.1-001`–`OS-N0.9.1-055`, counted in source
 order. Each remains a conditional original case, with the source section as
 its action/acceptance reference. Setup and expected-result prose in both
@@ -554,7 +555,7 @@ owner decisions, not current permission to merge or publish.
 - v2.2/v2.3/v2.4 checked provider, migration, protocol and package observations
   retain their documented controlled scope. Broad desktop, screen-reader,
   provider/model and native-platform gaps stay open where the sources say so.
-- The [v1.6 validation report](../V1.6_VALIDATION_REPORT.md) records maintainer
+- The [v1.6 validation report](../VALIDATION.md#validation-v1-6) records maintainer
   interactive smoke at report scope. Its unchecked detailed checklist cannot
   be converted into 38 individual passes without matching observations.
 - Where a historical observation lacks exact package/hash, person/date, host

@@ -1,0 +1,47 @@
+# Semantic Search Beta
+
+**Version scope:** Introduced in v1. This is the canonical subject document;
+version-specific statements below retain that scope. Consult [Current State](../../CURRENT-STATE.md)
+and source/tests for subsequent authority, schema and runtime changes.
+Exact prior text: [Source at consolidation baseline](https://github.com/nishdel/OmniSorSe/blob/783bd6f4b914bb0d141d26ebff8e66a4e4aa6a3f/docs/Architecture/06_Search/07_v1_Semantic_Index.md).
+
+> Compatibility note: in OpenSorSe 1.7 the user-facing feature is named
+> **Search**. Internal `Semantic*` contracts and `semantic-index.json` remain
+> stable, and the durable provider-neutral index augments this compatible store.
+
+## Purpose
+
+Semantic Search Beta provides local, explainable hybrid retrieval across filenames, paths, confirmed/suggested tags, deterministic categories, metadata, native text, and OCR text. It does not require AI or a network service.
+
+## Components
+
+| Component | Responsibility |
+| --- | --- |
+| `IEmbeddingProvider` | Produces deterministic normalized vectors |
+| `ISemanticIndexer` | Incrementally builds/removes versioned records |
+| `ISemanticIndexStore` | Loads, atomically saves, clears, and recovers the index |
+| `ISemanticSearchService` | Combines lexical, provenance, metadata, and vector signals |
+
+The bundled provider uses bounded token feature hashing into 256 dimensions. It is deterministic and portable, not a claim of model-grade semantic quality.
+
+## Ranking
+
+Exact filename and confirmed user-tag matches dominate. Embedded metadata, path, dates, categories, text terms, and vector similarity follow. Suggested tags and low-confidence OCR remain down-weighted. Each hit lists its contributing signals and score.
+
+## Lifecycle
+
+```mermaid
+flowchart LR
+    Snapshot["Completed snapshot + extraction"] --> Documents
+    Documents --> Fingerprints
+    Fingerprints --> Diff["Compare persisted index"]
+    Diff --> Add
+    Diff --> Update
+    Diff --> Remove
+    Add --> Atomic
+    Update --> Atomic["Atomic semantic-index.json"]
+    Remove --> Atomic
+    Corrupt["Corrupt/unsupported index"] --> Rebuild["Controlled rebuild"]
+```
+
+Indexing and search are cancellable, bounded, local, and never alter source files.

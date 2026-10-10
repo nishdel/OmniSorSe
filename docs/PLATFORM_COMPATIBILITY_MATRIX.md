@@ -43,7 +43,7 @@ or release claim.
 
 Hosted workflow configuration becomes evidence only after an exact run result is
 reviewed and linked. Native/manual observations belong in the
-[v2.11 addendum](MANUAL_TESTING_v2.11.md).
+[v2.11 addendum](MANUAL_TESTING.md#manual-v2-11).
 
 ## Evidence baseline
 
@@ -51,7 +51,7 @@ reviewed and linked. Native/manual observations belong in the
   `ubuntu-latest`, and `macos-latest` CI. Each runner restored, built and tested
   Debug/Release, rejected skips, checked formatting/analyzers/whitespace, and
   ran repository-policy tests. See the
-  [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md).
+  [v1.6 Validation Report](VALIDATION.md#validation-v1-6).
 - The maintainer reported v1.6 interactive smoke validation with no
   release-blocking issue, but did not record detailed per-platform desktop,
   filesystem, assistive-technology, Tesseract, Ollama, or plugin observations.
@@ -60,14 +60,14 @@ reviewed and linked. Native/manual observations belong in the
   schema and verifies the expected native SQLite
   asset in each output. Those cross-target builds ran on Windows and do not
   prove native Linux/macOS execution. See the
-  [v1.7](V1.7_VALIDATION_REPORT.md) and
-  [v1.8](V1.8_VALIDATION_REPORT.md) and
-  [v1.9](V1.9_VALIDATION_REPORT.md) validation reports.
+  [v1.7](VALIDATION.md#validation-v1-7) and
+  [v1.8](VALIDATION.md#validation-v1-8) and
+  [v1.9](VALIDATION.md#validation-v1-9) validation reports.
 - v1.9 and v2.0 interactive platform/manual validation remain unchecked.
 - The v2.0 release gate runs the complete suite on native Windows, Ubuntu, and
   macOS, compiles all four runtime identifiers, verifies SQLite assets, and
   builds/inspects Windows and both native macOS packages. Exact evidence belongs
-  in the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md); no stronger
+  in the [v2.0 Validation Report](VALIDATION.md#validation-v2-0); no stronger
   interactive claim follows from automation alone.
 - Exact-main baseline `d682997` passed the complete Windows, Ubuntu, macOS Intel,
   and macOS Apple Silicon matrix in

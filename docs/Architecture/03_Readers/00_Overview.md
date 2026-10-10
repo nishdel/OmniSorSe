@@ -13,7 +13,7 @@ image headers/EXIF, bounded lazy thumbnails, existing OCR reuse, optional
 `ffprobe` audio/video metadata, and optional bounded `ffmpeg` representative
 frames. It defines transcription and visual-description contracts but bundles
 no implementation. The authoritative scope and format list are in
-[Media Intelligence v2.2](../../MEDIA_INTELLIGENCE_v2.2.md).
+[Media Intelligence v2.2](../../MEDIA_INTELLIGENCE.md).
 
 Rich document layout, handwriting/table recognition, archive readers, formula
 evaluation, embedded-object execution, full-fidelity parsing, broad codec

@@ -75,9 +75,9 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination $appli
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'THIRD_PARTY_NOTICES.md') -Destination $applicationDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\dependency-licenses.json') -Destination $applicationDirectory
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\INSTALLATION.md') -Destination $applicationDirectory
-$releaseNotes = Join-Path $repositoryRoot "docs\RELEASE_NOTES_v$baseVersion.md"
+$releaseNotes = Join-Path $repositoryRoot 'docs\CHANGELOG.md'
 if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
-    throw "Release notes for v$baseVersion are missing: $releaseNotes"
+    throw "Cumulative release notes are missing: $releaseNotes"
 }
 Copy-Item -LiteralPath $releaseNotes -Destination (Join-Path $applicationDirectory 'RELEASE_NOTES.md')
 if ($Version -ne $baseVersion) {

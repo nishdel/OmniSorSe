@@ -50,4 +50,4 @@ per-tag review would prevent the agreed incremental enrichment workflow.
 and `RetainedEnrichmentRefreshesRelationshipsAndGraphProjectionAfterRestart` cover
 validation, source preservation, privacy, incremental Search and retained graph
 integration. The actual-provider smoke and its limits are in
-[v3 validation](../../VALIDATION_v3.0.0.md).
+[v3 validation](../../VALIDATION.md#validation-v3-0-0).

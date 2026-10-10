@@ -150,59 +150,23 @@ public sealed partial class RepositoryDocumentationTests
             "engineering/DEVELOPMENT_SYSTEM.md",
             "engineering/RISK_VALIDATION_MATRIX.md",
             "engineering/LEARNING_SYSTEM.md",
-            "USER_GUIDE_v1.9.md",
-            "TROUBLESHOOTING_v1.8.md",
-            "MANUAL_TESTING_v1.9.md",
-            "VERSION_NOTES_v1.9.md",
-            "RELATIONSHIPS_AND_COLLECTIONS_v1.9.md",
-            "V1.9_IMPLEMENTATION_REPORT.md",
-            "V1.9_VALIDATION_REPORT.md",
-            "MANUAL_TESTING_v2.0.md",
-            "RELEASE_READINESS_v2.0.md",
-            "RELEASE_NOTES_v2.0.0.md",
-            "RELEASE_NOTES_v2.1.0.md",
-            "RELEASE_NOTES_v2.2.0.md",
-            "CONTENT_INTELLIGENCE_v2.3.md",
-            "MANUAL_TESTING_v2.3.md",
-            "RELEASE_NOTES_v2.3.0.md",
-            "OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md",
-            "MANUAL_TESTING_v2.4.md",
-            "PRODUCTION_HARDENING_v2.10.md",
-            "OPERATIONAL_RUNBOOKS_v2.10.md",
-            "MANUAL_TESTING_v2.10.md",
-            "RELEASE_NOTES_v2.10.0.md",
-            "SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md",
-            "MANUAL_TESTING_v2.11.md",
-            "RELEASE_NOTES_v2.11.0.md",
-            "TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md",
-            "MANUAL_TESTING_v2.12.md",
-            "RELEASE_NOTES_v2.12.0.md",
-            "SEARCH_AND_AI_QUALITY_v2.1.md",
-            "MANUAL_TESTING_v2.1.md",
-            "RELEASE_PACKAGING_v2.0.md",
-            "SCREENSHOT_CHECKLIST_v2.0.md",
-            "V2.0_COMPATIBILITY_MATRIX.md",
+            "DOCUMENTATION_POLICY.md",
+            "MANUAL_TESTING.md",
+            "CHANGELOG.md",
+            "VALIDATION.md",
+            "IMPLEMENTATION_HISTORY.md",
+            "USER_GUIDE.md",
+            "TROUBLESHOOTING.md",
+            "MAINTAINER_GUIDE.md",
+            "RELEASE_PACKAGING.md",
+            "images/README.md",
             "PLATFORM_COMPATIBILITY_MATRIX.md",
             "LINUX_BUILD_AND_LAUNCH.md",
             "SAFETY_AND_PRIVACY.md",
             "ARCHITECTURE_OVERVIEW.md",
             "REPOSITORY_STRUCTURE.md",
             "DEVELOPER_GUIDE.md",
-            "MAINTAINER_GUIDE.md",
             "Architecture/OpenSorSe_System_Map.md",
-            "EXTENSION_SDK_v1.4.md",
-            "PLUGIN_AUTHOR_GUIDE_v1.4.md",
-            "PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md",
-            "WORKFLOW_PORTABILITY_v1.5.md",
-            "WATCHED_FOLDERS_LINUX_v1.5.md",
-            "Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md",
-            "Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md",
-            "Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md",
-            "Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md",
-            "Architecture/06_Search/10_v1.9_Relationships_Context.md",
-            "Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md",
-            "Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md",
-            "Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md",
             "Implementation_Spec/README.md",
         };
 
@@ -229,6 +193,31 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("## Latest stable release", index, StringComparison.Ordinal);
         Assert.Contains("## Current source and prerelease lineage", index, StringComparison.Ordinal);
         Assert.Contains("## Release and implementation records", index, StringComparison.Ordinal);
+    }
+
+    /// <summary>Living subjects cannot silently acquire version-suffixed sibling guides.</summary>
+    [Fact]
+    public void LivingDocumentation_UsesCanonicalSubjectPaths()
+    {
+        var violations = new List<string>();
+        foreach (var file in MarkdownFiles())
+        {
+            var path = Relative(file).Replace('\\', '/');
+            var name = Path.GetFileName(path);
+            var repetitive = Regex.IsMatch(name, @"^(MANUAL_TESTING|RELEASE_NOTES|VERSION_NOTES)_v\d", RegexOptions.IgnoreCase);
+            var versioned = Regex.IsMatch(name, @"(?:_v\d|^V\d+(?:\.\d+)*_)", RegexOptions.IgnoreCase);
+            // These are individually scoped architectural/event archives, not living guide families.
+            // New scopes require an explicit exception in docs/DOCUMENTATION_POLICY.md.
+            var archived = path.StartsWith("docs/Implementation_Spec/", StringComparison.Ordinal) ||
+                           path == "docs/engineering/RETROSPECTIVE_v3.0.0.md";
+            if (repetitive || (versioned && !archived))
+            {
+                violations.Add(path);
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            $"Use a canonical subject document and an internal version section:{Environment.NewLine}{string.Join(Environment.NewLine, violations)}");
     }
 
     /// <summary>Verifies native release automation names every supported artifact and no Linux installer.</summary>
@@ -336,9 +325,9 @@ public sealed partial class RepositoryDocumentationTests
             "eng",
             "release",
             "New-ReleaseSbom.ps1"));
-        Assert.Contains("RELEASE_NOTES_v$baseVersion.md", windowsPackaging, StringComparison.Ordinal);
-        Assert.Contains("RELEASE_NOTES_v$base_version.md", macPackaging, StringComparison.Ordinal);
-        Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("docs\\CHANGELOG.md", windowsPackaging, StringComparison.Ordinal);
+        Assert.Contains("docs/CHANGELOG.md", macPackaging, StringComparison.Ordinal);
+
         Assert.Contains("VALIDATION_BUILD.md", windowsPackaging, StringComparison.Ordinal);
         Assert.Contains("VALIDATION_BUILD.md", macPackaging, StringComparison.Ordinal);
         Assert.Contains("baseVersion = $baseVersion", windowsPackaging, StringComparison.Ordinal);
@@ -375,7 +364,7 @@ public sealed partial class RepositoryDocumentationTests
         Assert.Contains("stapler validate", macValidation, StringComparison.Ordinal);
         Assert.Contains("omnisorse:sourceRevision", sbomGeneration, StringComparison.Ordinal);
         Assert.Contains("-ne $SourceRevision", sbomGeneration, StringComparison.Ordinal);
-        Assert.DoesNotContain("RELEASE_NOTES_v2.0.0.md", macPackaging, StringComparison.Ordinal);
+
     }
 
     /// <summary>Verifies one repository authority selects .NET 10 for every project and release path.</summary>

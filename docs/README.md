@@ -1,300 +1,68 @@
 # OmniSorSe documentation index
 
-This is the authoritative navigation page for repository documentation. It
-explains what each important document contains, when to read it, and whether it
-is living guidance or a historical/version snapshot.
-
-The v3 milestone has an [acceptance map](V3_ACCEPTANCE.md),
-[validation evidence](VALIDATION_v3.0.0.md), [owner report](OWNER_REPORT_v3.0.0.md)
-and [engineering retrospective](engineering/RETROSPECTIVE_v3.0.0.md).
-
-## Authority rules
-
-When documents overlap, use this order:
-
-1. current source and tests define implemented behavior;
-2. [Current State](CURRENT-STATE.md) owns volatile version, runtime, schema,
-   protocol, authority, and confidence facts;
-3. current living product, architecture, engineering, safety, and release-status
-   documents explain that behavior;
-4. current version-specific guides/specifications explain their subsystem or
-   release boundary;
-5. older versioned documents and the packaged v1.0 tree are historical
-   evidence;
-6. planned roadmap concepts and old long-term architecture are not evidence of
-   implementation.
-
-[Release Status](RELEASE_STATUS.md) is authoritative for current readiness.
-[Release History](../RELEASE_HISTORY.md) is the concise historical index.
-[Product Roadmap](../PRODUCT_ROADMAP.md) is authoritative for future planning.
+Start with one route. Source and tests define behavior; [Current State](CURRENT-STATE.md)
+owns current source facts, and [Release Status](RELEASE_STATUS.md) owns readiness.
+Historical sections preserve their original version and evidence boundaries.
 
 ## Start here
 
-For a beginner-friendly tour, read [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md).
-The v3 candidate's [acceptance map](V3_ACCEPTANCE.md),
-[release notes](RELEASE_NOTES_v3.0.0.md), [Organize guide](ORGANIZE.md), and
-[manual checklist](MANUAL_TESTING_v3.0.md) describe the current implementation
-work. Publication status is tracked separately; a candidate branch is not a release.
-Storage location, cache bounds and recovery are explained in
-[Storage management](STORAGE_MANAGEMENT_v3.md).
-Dedicated local embeddings, vector lifecycle, similarity and reciprocal rank
-fusion are described in [Hybrid Search](HYBRID_SEARCH_v3.md).
-The opt-in [learned-vector benchmark](../eng/benchmarks/VectorSearch/README.md)
-defines synthetic real-model relevance, latency, restart and integrity checks.
-
-Choose one route; do not read the repository as a flat document catalog. Each
-route links to deeper versioned or historical evidence only when it is useful.
-
-| Intent | Read first | Continue with | Boundary |
-| --- | --- | --- | --- |
-| Current project state | [Repository README](../README.md), then [Current State](CURRENT-STATE.md) | [Product Vision](../PRODUCT_VISION.md) | Current source truth; not a release claim |
-| Test the published prerelease | [Installation](INSTALLATION.md) | [v3.0.0-rc.1 Release Notes](RELEASE_NOTES_v3.0.0.md) and [issue #53](https://github.com/nishdel/OmniSorSe/issues/53) | Begin when the official v3 release supplies the matching merged-source installer; v2.13 is historical prerelease evidence |
-| Use the latest stable release | [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | [Installation](INSTALLATION.md) | v2.4.0 remains the latest stable release |
-| Develop or contribute | [Developer Guide](DEVELOPER_GUIDE.md) and [Contributing](../CONTRIBUTING.md) | [Repository Structure](REPOSITORY_STRUCTURE.md), [Architecture Library](Architecture/README.md), and [Engineering workflow](engineering/README.md) | Current `main` and scoped engineering policy |
-| Understand architecture visually | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) and [System Map](Architecture/OpenSorSe_System_Map.md) | [Architecture Authority Map](engineering/ARCHITECTURE_AUTHORITY.md) | Living architecture and ownership |
-| Understand the current source candidate | [v3.0.0-rc.1 Release Notes](RELEASE_NOTES_v3.0.0.md) | [v3 Manual Testing](MANUAL_TESTING_v3.0.md) and [acceptance map](V3_ACCEPTANCE.md) | v3 source is under release validation; publication and human acceptance are separate gates |
-| Start a manual release test | [Short test guide](MANUAL_RELEASE_TESTING.md) | [Release index and issue drafts](release-testing/README.md) | Definitions here; human execution in one issue per release |
-| Validate or assess readiness | [Release Status](RELEASE_STATUS.md) | [Platform Compatibility](PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates | Observed evidence remains separate from unchecked gates |
-| Research releases or history | [Release History](../RELEASE_HISTORY.md) | [Changelog](CHANGELOG.md), [release records](#release-and-implementation-records), and specifications | Historical evidence; not current authority |
-
-For product or architecture decisions, then read [Product Vision](../PRODUCT_VISION.md)
-and [Engineering Principles](../ENGINEERING_PRINCIPLES.md). For implementation,
-continue with [Repository Structure](REPOSITORY_STRUCTURE.md),
-[Contributing](../CONTRIBUTING.md), and the [Developer Guide](DEVELOPER_GUIDE.md).
-The engineering router leads to the scoped
-[architecture-authority map](engineering/ARCHITECTURE_AUTHORITY.md),
-[development system](engineering/DEVELOPMENT_SYSTEM.md),
-[risk/validation matrix](engineering/RISK_VALIDATION_MATRIX.md), and
-[controlled learning system](engineering/LEARNING_SYSTEM.md); load only those
-needed for the task.
+| Intent | Canonical route |
+| --- | --- |
+| Current project state | [Repository README](../README.md) → [Current State](CURRENT-STATE.md) |
+| Test the published prerelease | [Installation](INSTALLATION.md) → [Manual testing](MANUAL_TESTING.md) → [issue #53](https://github.com/nishdel/OmniSorSe/issues/53) |
+| Use the latest stable release | [v2.4 release record](CHANGELOG.md#release-v2-4-0) and the [official release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
+| Understand the current source candidate | [How OmniSorSe Works](HOW_OMNISORSE_WORKS.md), [acceptance criteria](ACCEPTANCE_CRITERIA.md), [v3 changes](CHANGELOG.md#release-v3-0-0) |
+| Develop or contribute | [Contributing](../CONTRIBUTING.md), [Developer Guide](DEVELOPER_GUIDE.md), [Engineering workflow](engineering/README.md) |
+| Validate or assess readiness | [Release Status](RELEASE_STATUS.md), [Validation](VALIDATION.md), [Platform compatibility](PLATFORM_COMPATIBILITY_MATRIX.md) |
+| Research releases or history | [Changelog](CHANGELOG.md), [technical chronology](../RELEASE_HISTORY.md), [Implementation history](IMPLEMENTATION_HISTORY.md) |
 
 ## Current project authorities
 
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [Repository README](../README.md) | Concise product/current-source boundary, capabilities, safety, platform, build, and navigation. | First contact with the project. | Living |
-| [Current State](CURRENT-STATE.md) | Current version/runtime/schema/protocol boundary, implemented behavior, active limits, and validation confidence. | First source of truth after the project overview. | Living and authoritative for current implementation state |
-| [Product Vision](../PRODUCT_VISION.md) | Purpose, audience, goals, current-versus-future behavior, AI/privacy/control philosophy, Search/storage reasoning. | Before product or architectural decisions. | Living and authoritative for product philosophy |
-| [Product Roadmap](../PRODUCT_ROADMAP.md) | Version branches, dependencies, merge state, completed/in-progress/planned concepts, research, and backlog. | Before describing or proposing future work. | Living and authoritative for roadmap status |
-| [Engineering Principles](../ENGINEERING_PRINCIPLES.md) | Reasoning for architecture, MVVM, stores/providers, testing, releases, CI, performance, safety, compatibility, and recovery. | Before a cross-cutting change or review. | Living and authoritative for cross-cutting engineering policy |
-| [Release History](../RELEASE_HISTORY.md) | Concise branch/date/test/merge history with links to detailed records. | When tracing how the product evolved. | Living historical index |
-| [Release Status](RELEASE_STATUS.md) | Exact current branch, integration, automated/manual validation, package, tag, and publication facts. | Before making a readiness or release claim. | Living and authoritative for current readiness |
+| Subject | Living documents |
+| --- | --- |
+| Product and roadmap | [Product Vision](../PRODUCT_VISION.md), [Product Roadmap](../PRODUCT_ROADMAP.md), [Engineering Principles](../ENGINEERING_PRINCIPLES.md) |
+| Architecture and ownership | [Architecture Overview](ARCHITECTURE_OVERVIEW.md), [System Map](Architecture/OpenSorSe_System_Map.md), [Architecture library](Architecture/README.md), [Repository Structure](REPOSITORY_STRUCTURE.md) |
+| Safety and privacy | [Safety and Privacy](SAFETY_AND_PRIVACY.md), [Knowledge Graph security](SECURITY.md), [Dependency policy](FOSS_DEPENDENCY_POLICY.md) |
+| Engineering system | [Authority map](engineering/ARCHITECTURE_AUTHORITY.md), [Development system](engineering/DEVELOPMENT_SYSTEM.md), [Risk and validation](engineering/RISK_VALIDATION_MATRIX.md), [Learning system](engineering/LEARNING_SYSTEM.md) |
+| Documentation | [Policy and archival exceptions](DOCUMENTATION_POLICY.md), [migration register](engineering/documentation-migration.tsv) |
+
+## User and subsystem guidance
+
+| Subject | Canonical documents |
+| --- | --- |
+| Getting started and recovery | [User guide](USER_GUIDE.md), [Installation](INSTALLATION.md), [Troubleshooting](TROUBLESHOOTING.md), [Operational runbooks](OPERATIONAL_RUNBOOKS.md), [Linux build and launch](LINUX_BUILD_AND_LAUNCH.md) |
+| Search and understanding | [Hybrid Search](HYBRID_SEARCH.md), [Search and AI quality](SEARCH_AND_AI_QUALITY.md), [Media intelligence](MEDIA_INTELLIGENCE.md), [Content intelligence](CONTENT_INTELLIGENCE.md), [Smart Tags](EXPLAINABLE_SMART_TAGS.md), [Faceted discovery](SCALABLE_FACETED_DISCOVERY.md) |
+| Relationships | [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS.md), [Trusted relationships](TRUSTED_RELATIONSHIPS_CONTEXT.md), [Knowledge Graph](KNOWLEDGE_GRAPH.md), [Graph compatibility](KNOWLEDGE_GRAPH_COMPATIBILITY.md) |
+| Organization and workflow | [Organize](ORGANIZE.md), [Reviewed organization](REVIEWED_INTELLIGENT_ORGANIZATION.md), [Guided workflows](GUIDED_WORKFLOWS_PRODUCT_COHERENCE.md), [Workflow and indexing quality](WORKFLOW_AND_INDEXING_QUALITY.md), [Workflow portability](WORKFLOW_PORTABILITY.md) |
+| Storage and operations | [Storage management](STORAGE_MANAGEMENT.md), [Production hardening](PRODUCTION_HARDENING.md), [Runtime readiness](SUPPORTED_RUNTIME_PLATFORM_READINESS.md), [Watched folders on Linux](WATCHED_FOLDERS_LINUX.md) |
+| Explorer integration | [Transition and Explorer Protocol](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md), [OmniBrille handoff](OMNIBRILLE_COMPANION_HANDOFF.md) |
+| Plugins | [SDK](EXTENSION_SDK.md), [Author guide](PLUGIN_AUTHOR_GUIDE.md), [Manifest](PLUGIN_MANIFEST_REFERENCE.md), [Local packages](LOCAL_PLUGIN_PACKAGES.md), [Platform compatibility](PLUGIN_PLATFORM_COMPATIBILITY.md) |
 
 ## Latest stable release
 
-These records describe v2.4.0, the latest stable release. They do not
-describe every capability currently present on GitHub `main`.
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [v2.4 OmniSorSe transition and Explorer Protocol](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md) | Rename compatibility, executable/package decisions, protocol contracts/transport/security/limits, and future companion boundary. | Before changing branding, profile paths, packaging identity, or Explorer integration. | Current released design and implementation record |
-| [v2.4 Manual Testing](MANUAL_TESTING_v2.4.md) | Separates genuine Windows profile/installer and external two-process protocol evidence from unchecked accessibility and native-platform scenarios. | During v2.4 review and maintenance. | Current release evidence tracker |
-| [v2.4.0 Release Notes](RELEASE_NOTES_v2.4.0.md) | Downloads, transition/protocol changes, compatibility, trust status, limitations, and validation boundary. | Before installing or publishing v2.4.0. | Current release snapshot |
+**v2.4.0** remains the latest stable release. Its [published release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0)
+owns exact downloadable assets and publication state. Later implementation
+milestones and the v3 testing candidate do not establish stable/GA acceptance.
 
 ## Current source and prerelease lineage
 
-The following records explain the integrated v2.5-v2.12 lineage distributed as
-the historical v2.12.0-rc prerelease and inherited by the historical v2.13 prerelease. The v2.5-v2.11
-records are not standalone releases; automated RC packaging is not manual/GA
-validation.
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [v2.5 Workflow & Indexing Quality](WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) | Post-operation reconciliation, scan-depth scheduling, progressive Search coverage, safety, and non-goals. | During v2.5 implementation and review. | Unreleased implementation record |
-| [OmniBrille companion handoff](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md) | Optional desktop discovery, one-time current-user handoff pipe, scoped Protocol v1 session, failure lifecycle, and threat model. | During v2.5 integration and security review. | Unreleased additive integration contract |
-| [v2.5 Manual Testing](MANUAL_TESTING_v2.5.md) | Separates automated evidence from Windows interactive scrolling and workflow checks. | During v2.5 review. | Unreleased evidence tracker |
-| [v2.6 Explainable Smart Tags](EXPLAINABLE_SMART_TAGS_v2.6.md) | Schema-6 authority, taxonomy, evidence fusion, classification, Search/filter, privacy, and progressive-indexing boundaries. | During v2.6 implementation and review. | Unreleased implementation record |
-| [v2.6 Manual Testing](MANUAL_TESTING_v2.6.md) | Separates automated evidence from migration, classifier-quality, desktop, accessibility, performance, and native-platform checks. | During v2.6 review. | Unreleased evidence tracker |
-| [v2.7 Scalable Faceted Discovery](SCALABLE_FACETED_DISCOVERY_v2.7.md) | Complete-library candidate eligibility, bounded hydration, canonical facets/counts, dynamic Saved Views, extraction, privacy, and non-goals. | During v2.7 implementation and review. | Unreleased implementation record |
-| [v2.7 Manual Testing](MANUAL_TESTING_v2.7.md) | Separates automated large-library evidence from desktop, screen-reader, DPI, extraction, and native-platform checks. | During v2.7 review. | Unreleased evidence tracker |
-| [v2.8 Guided Workflows](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md) | Durable Home readiness, stable Search-to-Files context, continuous Smart Tag review, organization evidence, privacy, and preserved architecture boundaries. | During v2.8 implementation and review. | Unreleased implementation record |
-| [v2.8 Manual Testing](MANUAL_TESTING_v2.8.md) | Separates automated workflow-contract evidence from desktop, optional-tool, DPI, screen-reader, file-operation, and native-platform checks. | During v2.8 review. | Unreleased evidence tracker |
-| [v2.9 Reviewed Intelligent Organization](REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md) | Existing recipe authority, stable-ID selection, trusted tokens, ephemeral preview, action budgeting, privacy/path safety, and Change Plan handoff. | During v2.9 implementation and review. | Unreleased implementation record |
-| [v2.9 Manual Testing](MANUAL_TESTING_v2.9.md) | Separates automated recipe/proposal safety evidence from desktop, accessibility, filesystem, partial-failure, and native-platform checks. | During v2.9 review. | Unreleased evidence tracker |
-| [v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md) | Profile ownership, recovery-store corruption, bounded PDFs, state backup/restore, Forget, health, provenance, AI containment, and preserved architecture boundaries. | During v2.10 implementation, review, and recovery work. | Unreleased implementation record |
-| [v2.10 Operational Runbooks](OPERATIONAL_RUNBOOKS_v2.10.md) | Concise evidence-preserving procedures for corrupt state, migration, indexing, mutation recovery, backup, providers, and release mismatch. | When diagnosing production failures. | Living v2.10 candidate runbook |
-| [v2.10 Manual Testing](MANUAL_TESTING_v2.10.md) | One deduplicated unchecked matrix for the outstanding v2.5-v2.10 interactive, recovery, scale, accessibility, provider, packaging, and native-platform gates. | During maintainer sign-off. | Unreleased evidence tracker |
-| [v2.10.0 Release Notes](RELEASE_NOTES_v2.10.0.md) | Candidate scope, preserved boundaries, residual native risk, and validation status without claiming a package or release. | Before reviewing or publishing v2.10.0. | Unreleased candidate snapshot |
-| [v2.11 Supported Runtime & Platform Readiness](SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md) | .NET 10 authority, compatibility findings, package/runtime provenance, support evidence levels, and preserved architecture. | During v2.11 review and release engineering. | Unreleased implementation record |
-| [v2.11 Manual Testing](MANUAL_TESTING_v2.11.md) | Concise runtime/package/platform addendum to the v2.10 master matrix. | During native maintainer sign-off. | Unreleased evidence tracker |
-| [v2.11.0 Release Notes](RELEASE_NOTES_v2.11.0.md) | Runtime migration, provenance changes, support boundaries, and non-goals without claiming publication. | Before reviewing or publishing v2.11.0. | Unreleased candidate snapshot |
-| [v2.12 Trusted Relationships & Context](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) | Evidence families, pair authority, bounded candidates/reanalysis, direct UX, format-2 backup, privacy, and Protocol 1.0 integration. | During v2.12 implementation and review. | Current prerelease implementation record |
-| [v2.12 Manual Testing](MANUAL_TESTING_v2.12.md) | Relationship-specific quality, lifecycle, accessibility, scale, and companion gates. | During maintainer sign-off. | Current unchecked prerelease evidence tracker |
-| [v2.12.0-rc Release Notes](RELEASE_NOTES_v2.12.0.md) | Downloads, user-visible relationship changes, trust status, automated evidence, and remaining manual validation. | Before installing or testing v2.12.0-rc. | Published prerelease snapshot |
-| [v2.13.0-rc Release Notes](RELEASE_NOTES_v2.13.0.md) | Product hierarchy, Review/Duplicates/AI/Search/Smart Tag/relationship clarity, preserved boundaries, and candidate evidence. | During v2.13 review and release engineering. | Current prerelease |
-| [v2.13 Manual Testing](MANUAL_TESTING_v2.13.md) | Interactive workflow, resize/DPI, keyboard/screen-reader, real-library, provider, and package checks. | Before any v2.13 release-quality claim. | Current unchecked candidate evidence tracker |
-
-## Released, inherited, and supporting documentation
-
-These guides remain useful because their subsystem behavior is inherited by
-the current source, or because they preserve released evidence. Their version
-labels do not make them the authority for current version/readiness facts.
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [v2.3.0 Release Notes](RELEASE_NOTES_v2.3.0.md) | Historical Content Intelligence/local-transcription release snapshot. | When reviewing v2.3.0. | Historical release snapshot |
-| [v2.2.0 Release Notes](RELEASE_NOTES_v2.2.0.md) | Historical Media Intelligence/UX changes and validation boundary. | When reviewing the v2.2 milestone. | Historical release snapshot |
-| [v2.1.0 Release Notes](RELEASE_NOTES_v2.1.0.md) | Historical Search/AI downloads, changes, and validation boundary. | When reviewing the v2.1 milestone. | Historical release snapshot |
-| [v2.0.0 Release Notes](RELEASE_NOTES_v2.0.0.md) | Historical v2.0 downloads, changes, and integration boundary. | When reviewing the v2.0 milestone. | Historical release snapshot |
-| [v2.1 Search and AI Quality](SEARCH_AND_AI_QUALITY_v2.1.md) | Ranking, optional Ollama reranking, model states, progress, privacy, recovery workflows, and limits. | When using or changing current Search/AI behavior. | Current feature guide |
-| [v2.1 Manual Testing](MANUAL_TESTING_v2.1.md) | Fully unchecked real-host Search, AI, timing, duplicate, notification, Help, packaging, and accessibility scenarios. | During explicit maintainer/community testing. | Current evidence tracker |
-| [v2.2 Media Intelligence](MEDIA_INTELLIGENCE_v2.2.md) | Provider architecture, supported media evidence, optional tools, bounds, privacy, Search/Related Files integration, and limitations. | When using or changing v2.2 media behavior. | Current feature guide |
-| [v2.2 Manual Testing](MANUAL_TESTING_v2.2.md) | Observed controlled Windows provider/OCR/migration evidence and explicitly unchecked interactive/platform scenarios. | During explicit v2.2 maintainer testing. | Current evidence tracker |
-| [v2.3 Content Intelligence](CONTENT_INTELLIGENCE_v2.3.md) | Bounded deterministic concepts/summaries, optional user-managed whisper.cpp, schema 5, Search/Related Files integration, privacy, evaluation decisions, and limitations. | When reviewing or changing v2.3 Content Intelligence. | Current feature guide |
-| [v2.3 Manual Testing](MANUAL_TESTING_v2.3.md) | Separate automated, native-provider, interactive, and platform scenarios with no unobserved result claimed. | During v2.3 maintainer/community validation. | Current evidence tracker |
-| [v2.0 Native Packaging](RELEASE_PACKAGING_v2.0.md) | Native artifact construction, validation, checksums, signing status, and publication order. | Before building or publishing release artifacts. | Living release procedure |
-| [Public Media Guide](images/README.md) | Current genuine-capture policy, screenshot locations, version labelling, and the short-video storyboard. | Before adding any public screenshot or usage video. | Living documentation-media guidance |
-| [v2.0 Screenshot Checklist](SCREENSHOT_CHECKLIST_v2.0.md) | Unchecked privacy-safe capture checklist retained from the v2.0 release cycle. | When auditing the historical v2.0 media evidence. | Historical manual evidence |
-| [Safety and Privacy](SAFETY_AND_PRIVACY.md) | Complete current source-file mutation, AI, watcher, workflow, plugin, storage, diagnostics, Search, recovery, and Undo boundaries. | Before any privacy, persistence, provider, plugin, or file-operation change. | Living and authoritative |
-| [v2.0 Security Notes](SECURITY_v2.0.md) | Knowledge Graph trust boundaries, hostile-input/resource defenses, store recovery, and explicit non-claims. | Before graph provider, query, suggestion, diagnostics, or recovery changes. | Current implemented security boundary |
-| [Changelog](CHANGELOG.md) | Detailed user-visible changes by historical version. | When release-by-release detail is required. | Cumulative historical record |
-| [Documentation Inventory](DOCUMENTATION_INVENTORY.md) | v2.4-basis family classification, overlap, retention, consolidation, and documentation debt. | For historical audit evidence before removing or consolidating an old path. | Historical v2.4 audit snapshot |
-
-The former [project philosophy](project_philosophy.md) and
-[roadmap](roadmap.md) paths are retained as compatibility navigation pages.
-Their authoritative content now lives in the root Product Vision and Product
-Roadmap.
-
-## User guidance and release evidence
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [Installation](INSTALLATION.md) | Current source-build instructions, historical package boundary, optional dependencies, rename compatibility, update/uninstall, and application data. | Before installing, building, updating, or removing OmniSorSe. | Living |
-| [OpenSorSe 1.9 User Guide](USER_GUIDE_v1.9.md) | Inherited v1.9 relationships, Smart Collections, Search context, privacy, and repair. | When using inherited v1.9 workflows. | Current inherited guidance |
-| [Relationships and Collections](RELATIONSHIPS_AND_COLLECTIONS_v1.9.md) | Evidence/confidence, virtual collections, user control, Search context, privacy, and limits. | Before relying on or changing relationship behavior. | Current feature guide |
-| [OpenSorSe 2.0 Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) | Graph scope, consent, storage, lifecycle, browsing/Search, privacy, repair, limits, and deferred work. | When using, testing, or changing Knowledge Graph. | Current feature guide |
-| [OpenSorSe 2.0 Version Notes](VERSION_NOTES_v2.0.md) | Concise changes, compatibility, defaults, and limits. | For the v2.0 overview. | Historical released-version snapshot |
-| [OpenSorSe 1.8 Troubleshooting](TROUBLESHOOTING_v1.8.md) | Inherited Search/index failure, coverage, privacy, repair, and diagnostic guidance. | When Search or indexing is unclear or fails. | Current inherited guidance |
-| [OpenSorSe 1.9 Manual Testing](MANUAL_TESTING_v1.9.md) | Interactive relationship/collection scenarios, intentionally unchecked until observed. | When auditing the v1.9 evidence boundary. | Historical version-specific evidence template |
-| [OpenSorSe 1.9 Version Notes](VERSION_NOTES_v1.9.md) | Concise v1.9 user-visible changes and limits. | For the v1.9 milestone overview. | Historical released-version snapshot |
-| [v1.9 Implementation Report](V1.9_IMPLEMENTATION_REPORT.md) | What v1.9 changed and reused. | For historical implementation evidence, not general onboarding. | Historical implementation snapshot |
-| [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md) | Exact automated evidence and explicit manual exclusions. | Before citing v1.9 validation totals. | Historical validation snapshot |
-| [v2.0 Implementation Report](V2.0_IMPLEMENTATION_REPORT.md) | Architecture and compatibility described before final v2.0 integration corrections. | For historical candidate archaeology; do not use for current status or final test totals. | Historical pre-integration candidate snapshot; superseded for status |
-| [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md) | Exact automated, native-target, packaging, and explicit manual-exclusion evidence. | Before citing v2.0 validation. | Historical released-version evidence |
-| [Platform Compatibility Matrix](PLATFORM_COMPATIBILITY_MATRIX.md) | Current support vocabulary and Windows/Linux/macOS capability evidence. | Before making a platform claim. | Living |
-| [Linux Build and Launch](LINUX_BUILD_AND_LAUNCH.md) | Linux source validation, run, and framework-dependent publish steps. | For Linux source work. | Living, conservative preview guidance |
-
-The v1.9 guide builds on stable earlier workflows. Use the versioned v1.1-v1.8
-guides only when the current guide links to an inherited subsystem or when
-researching that release.
-
-## Current architecture and inherited subsystem records
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [Architecture Overview](ARCHITECTURE_OVERVIEW.md) | Current component ownership, flows, persistence, safety invariants, concurrency, and debt. | Start of any architecture investigation. | Living and authoritative |
-| [System Map](Architecture/OpenSorSe_System_Map.md) | Five Mermaid views of adapters, communication, processing, safe execution, and plugins. | When relationships are easier to understand visually. | Living and authoritative |
-| [Repository Structure](REPOSITORY_STRUCTURE.md) | Actual project reference graph, project responsibilities, tests, and change locations. | Before selecting a project to edit. | Living and authoritative |
-| [Architecture Library Index](Architecture/README.md) | Which detailed subsystem documents are current versus historical/long-term design. | Before reading any detailed architecture file. | Living |
-| [v1.7 Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md) | Provider-neutral durable stages, SQLite boundary, recovery, identity, quota, and coverage. | For historical foundations; verify current schema/authority in Current State and the Architecture Overview. | Historical inherited foundation |
-| [v1.8 Search Intelligence and Privacy Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md) | Ranking, filters, snippets, concurrency, schema 2, privacy, and repair. | For historical Search/privacy foundations; verify current behavior in source and current architecture. | Historical inherited foundation |
-| [v2.1 Search and AI Quality](SEARCH_AND_AI_QUALITY_v2.1.md) | Filename ranking, optional bounded Ollama ordering, model states, indexing clarity, result commands, privacy, fallback, and limitations. | For current v2.1 behavior and user guidance. | Current released subsystem |
-| [v2.1 Search and AI Quality Architecture](Architecture/06_Search/12_v2.1_Search_AI_Quality.md) | Deterministic authority, provider boundaries, bounded reranking protocol, cancellation, diagnostics, and compatibility. | For current Search or Ollama implementation work. | Current released subsystem architecture |
-| [v2.2 Media Intelligence](MEDIA_INTELLIGENCE_v2.2.md) | Provider-neutral extraction, schema-4 media evidence, bounded optional tools, Search, relationships, privacy, and diagnostics. | For media/index provider work. | Current released subsystem |
-| [v2.3 Content Intelligence](CONTENT_INTELLIGENCE_v2.3.md) | Provider-neutral bounded concepts, extractive summaries, optional local whisper.cpp process boundary, schema 5, ranking, relationships, privacy, and failure isolation. | For current v2.3 content/provider/index work. | Current released subsystem |
-| [v1.9 Relationships and Context Architecture](Architecture/06_Search/10_v1.9_Relationships_Context.md) | Evidence, confidence, incremental discovery, schema 3, virtual collections, Search context, privacy, and graph bounds. | For the inherited relationship foundation; use Current State and the v2.12 record for current schema-6 authority. | Historical schema-3 foundation |
-| [Advanced Diagnostics](Architecture/01_Core/10_Advanced_Diagnostics.md) | Current detailed diagnostics model and privacy. | For instrumentation/export changes. | Current subsystem contract |
-| [OCR and Metadata](Architecture/03_Readers/10_v1_OCR_and_Metadata.md) | Implemented extraction/OCR capability and bounds. | For extraction or OCR work. | Current subsystem contract |
-| [Small-model Prompt Contracts](Architecture/04_AI/11_Small_Model_Prompt_Contracts.md) | Implemented prompt/structured-output rules. | For optional AI changes. | Current subsystem contract |
-| [Change Plans and Operation Journal](Architecture/07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md) | Current supported mutation/recovery boundary. | Before any organization or filesystem action change. | Current subsystem contract |
-| [Watched Folders](Architecture/02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md) | Current hint/reconciliation/incremental-processing boundary. | For watcher work. | Current subsystem contract |
-| [Workflow Profiles and Recipes](Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md) | Current workflow/recipe policy and Change Plan integration. | For workflow changes. | Current subsystem contract |
-| [Plugin Foundation](Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md) | Current plugin host/SDK/package/trust boundary. | For host or extension changes. | Current subsystem contract |
-
-[Implementation specification 059](Implementation_Spec/v1.7/059_Deep_Indexing_Foundation.md)
-and [implementation specification 060](Implementation_Spec/v1.8/060_Search_Intelligence_Quality_and_Privacy.md),
-plus [implementation specification 061](Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md),
-are release-specific implementation records. Use the architecture documents
-above for the living subsystem model.
-
-## v2.0 release and design evidence
-
-The design package remains historical rationale and acceptance evidence for the
-v2.0 implementation. Source and tests define what is actually implemented;
-unchecked manual or historical RC gates remain incomplete.
-
-| Document | What it contains | Status |
-| --- | --- | --- |
-| [v2.0 Knowledge Graph guide](KNOWLEDGE_GRAPH_v2.0.md) | Implemented stable scope, storage, projection/recovery, Search, privacy, repair, bounds, and deferred work. | Current feature guide |
-| [v2.0 Knowledge Graph stability architecture](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md) | Isolated graph/decision stores, conservative scope, identity, projection, states, bounds, privacy, and RC policy. | Design authority implemented by v2.0 |
-| [v2.0 specification package](Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md) | Failure, migration, recovery, concurrency, integrity, and automated-test acceptance plans. | Accepted implementation authority |
-| [v2.0 compatibility matrix](V2.0_COMPATIBILITY_MATRIX.md) | v1.7/v1.8/v1.9 upgrade and rollback requirements. | Current compatibility boundary |
-| [v2.0 release-readiness checklist](RELEASE_READINESS_v2.0.md) | Historical implementation, validation, RC, and release gates. | Unchecked evidence template; no unobserved completion claimed |
-| [v2.0 manual checklist](MANUAL_TESTING_v2.0.md) | Interactive migration, recovery, graph, Search, privacy, resource, accessibility, and regression scenarios. | Fully unchecked |
-| [v2.0 RC stabilization plan](V2.0_RC_STABILIZATION_PLAN.md) | Structured soak, fault, upgrade/rollback, privacy, platform, accessibility, and exit gates. | Follow-up/community validation guide; no completion claimed |
-
-These records do not prove validation that has not been run and do not
-supersede v1.9 authority for existing relationships, Collections, privacy, or
-schema-3 persistence.
-
-## Contributors and maintainers
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [Contributing](../CONTRIBUTING.md) | Prerequisites, repository layout, MVVM, safety, tests, documentation, branches, manual validation, release and review expectations. | Before making a contribution. | Living |
-| [Developer Guide](DEVELOPER_GUIDE.md) | Guided clone/build/test flow and traces through Scan, Search, Change Plans, and plugins. | For a first code change or subsystem trace. | Living |
-| [Maintainer Guide](MAINTAINER_GUIDE.md) | Release gates, version metadata, migrations, safety, journal/plugin compatibility, and documentation maintenance. | Before integration or release work. | Living |
-| [Coding Standards](Architecture/99_Appendix/Coding_Standards.md) | Code readability and implementation-level conventions. | During implementation/review. | Living companion to Engineering Principles |
-| [Naming Conventions](Architecture/99_Appendix/Naming_Conventions.md) | General naming guidance. | When introducing public/domain vocabulary. | Living guidance; actual source/domain terms take precedence |
-| [Technology Stack](Architecture/99_Appendix/Technology_Stack.md) | Current runtime, UI, persistence, Search, OCR, AI, plugin, test, and documentation technology. | Before adding or describing a dependency. | Living |
-| [Glossary](Architecture/99_Appendix/Glossary.md) | Current shared product and architecture terminology. | When terminology is ambiguous. | Living and authoritative for vocabulary |
-| [ADR Index](Architecture/99_Appendix/ADR.md) | Accepted ADRs and decision-record policy. | Before revisiting an accepted decision or proposing a new one. | Living index; accepted ADRs are immutable records |
-| [FOSS Dependency Policy](FOSS_DEPENDENCY_POLICY.md) | License/inventory rules and optional component policy. | Before adding or distributing a dependency. | Living |
-
-## Plugin authors
-
-| Document | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [Extension SDK](EXTENSION_SDK_v1.4.md) | Public contracts, extension points, capabilities, bounds, lifetime, and safety. | First plugin-author document. | Current stable SDK contract introduced in v1.4 |
-| [Plugin Author Guide](PLUGIN_AUTHOR_GUIDE_v1.4.md) | Minimal plugin example, reliability, security, privacy, and versioning. | When implementing a plugin. | Current stable guide |
-| [Manifest Reference](PLUGIN_MANIFEST_REFERENCE_v1.4.md) | Strict schema, fields, extension points, capabilities, paths, and dependencies. | When creating `plugin.json`. | Current stable schema plus v1.5 addendum |
-| [Local Plugin Packages](LOCAL_PLUGIN_PACKAGES_v1.4.md) | ZIP layout, install/upgrade/rollback/removal, and trust. | When packaging or installing a plugin. | Current stable package contract |
-| [Plugin Platform Compatibility](PLUGIN_PLATFORM_COMPATIBILITY_v1.5.md) | Runtime identifier/native-dependency additions. | For cross-platform plugins. | Current addendum |
-| [Workflow Portability](WORKFLOW_PORTABILITY_v1.5.md) | Filename/platform policy in portable workflows. | For workflow/plugin portability. | Current addendum |
-| [Watched Folders on Linux](WATCHED_FOLDERS_LINUX_v1.5.md) | Linux watcher limits and reconciliation. | For Linux watcher integrations. | Current addendum |
-
-External plugins run in-process with the current user’s permissions.
-Load-context isolation and hashes are not a security sandbox or publisher
-authentication.
+**v3.0.0-rc.1** is the published testing candidate. Use [current facts](CURRENT-STATE.md),
+[release-specific checks](MANUAL_TESTING.md#manual-v3-0), [validation evidence](VALIDATION.md#validation-v3-0-0)
+and the [release](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1).
+The repository's 24 human scenarios remain **Not run**. v2.13/v2.12 are historical
+prerelease fixtures. Automated and package smoke do not establish human acceptance.
 
 ## Release and implementation records
 
-| Document/family | What it contains | When to read it | Status |
-| --- | --- | --- | --- |
-| [Release History](../RELEASE_HISTORY.md) | Concise complete milestone index. | Start of historical research. | Living historical index |
-| [Changelog](CHANGELOG.md) | Detailed cumulative changes. | User-visible version detail. | Historical record |
-| [Implementation Specification Index](Implementation_Spec/README.md) | Numbered specifications, proposals, decisions, and acceptance boundaries. | Implementation archaeology and release-specific rationale. | Living index over historical records |
-| `VERSION_NOTES_v*.md` | User-facing change summary for one version. | When researching that version. | Historical/version snapshots; v2.0 is a candidate snapshot |
-| `MANUAL_TESTING_v*.md` | Interactive checklist and observed/unobserved state for one version. | Manual validation or evidence review. | Historical/version snapshots |
-| `USER_GUIDE_v*.md` and `TROUBLESHOOTING_v*.md` | User behavior and support at that version. | Compatibility and historical UX research. | Historical except current v1.9/inherited guidance |
-| `V*.*_IMPLEMENTATION_REPORT.md` | What a major branch implemented. | Detailed implementation evidence. | Historical/candidate snapshots; preserve |
-| `V*.*_VALIDATION_REPORT.md` | Exact local/hosted/manual evidence and exclusions. | Before quoting validation. | Historical/pending candidate records; preserve |
-| `DATA_MODEL_v1.0.md`, `MIGRATION_v1.0.md`, `RELEASE_CHECKLIST_v1.0.md` | v1.0 data, migration, and packaging assumptions. | v1.0 compatibility or package research. | Historical snapshots |
+| Subject | Canonical record |
+| --- | --- |
+| Release changes and chronology | [Changelog](CHANGELOG.md), [Release History](../RELEASE_HISTORY.md) |
+| Release process and packaging | [Maintainer Guide](MAINTAINER_GUIDE.md), [Native release packaging](RELEASE_PACKAGING.md) |
+| Testing and evidence | [Manual testing](MANUAL_TESTING.md), [Validation methodology and history](VALIDATION.md), [release-testing issue preparation](release-testing/README.md) |
+| Technical implementation | [Implementation history](IMPLEMENTATION_HISTORY.md), [specification archive](Implementation_Spec/README.md) |
+| Media policy and provenance | [Screenshots and media](images/README.md) |
+| Documentation archaeology | [Original inventory](DOCUMENTATION_INVENTORY.md), [consolidation report](engineering/reports/2026-10-11-documentation-consolidation.md) |
 
-## Historical architecture and packaged release
-
-Most unversioned detailed files below `Architecture/01_Core` through
-`Architecture/10_Plugins` were original design-library documents. Some describe
-broad readers, reports, databases, generic services, or plugin models that are
-not current implementation. The [Architecture Library Index](Architecture/README.md)
-classifies the current exceptions. Treat all others as historical/long-term
-design.
-
-The entire `release/OpenSorSe-v1.0.0/` tree is a frozen distribution snapshot:
-package README, release notes, changelog, documentation copies, license files,
-and binaries describe that package only. Do not update it to match current
-source. Intentional exact copies inside that tree are package contents, not
-living-document duplicates.
-
-## Documentation maintenance
-
-- Update living documents when current behavior or policy changes.
-- Add or update a version snapshot only as part of that version’s work.
-- Do not rewrite old implementation, validation, release, or manual evidence to
-  look current.
-- Link to authoritative detail instead of copying it.
-- Label planned and research material explicitly.
-- Run documentation link/Mermaid tests and `git diff --check` after changes.
-- Consult the historical v2.4
-  [Documentation Inventory](DOCUMENTATION_INVENTORY.md) and current Git/source
-  evidence before removing or consolidating a path.
+Update one canonical document per subject. Add version sections instead of
+version-suffixed siblings. Use Git history, tags, GitHub releases and CI artifacts
+for exact snapshots; exceptions require the [documented policy](DOCUMENTATION_POLICY.md).

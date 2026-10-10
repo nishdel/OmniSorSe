@@ -40,7 +40,7 @@ flowchart TD
 
 Learned embeddings are a separate optional background step. The catalog owns
 retained facts, inferences and decisions; vectors can be cleared and regenerated.
-See [how hybrid Search works](HYBRID_SEARCH_v3.md) for the query diagram, model
+See [how hybrid Search works](HYBRID_SEARCH.md) for the query diagram, model
 controls, ranking, partial coverage and keyword fallback.
 
 | Stage | What does it do? | What code/tool implements it? | Why this approach? |
