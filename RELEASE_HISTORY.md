@@ -1,5 +1,9 @@
 # OmniSorSe release history
 
+This document owns technical branch, merge and publication chronology.
+User-visible changes live only in [Changelog](docs/CHANGELOG.md). Historical
+checkpoint states below do not override [current readiness](docs/RELEASE_STATUS.md).
+
 **Document type:** Living historical index
 
 **Authority:** Concise version/branch/date/integration summary; detailed
@@ -20,45 +24,45 @@ For verified publication classification and package-bound manual-test drafts, se
 the [release-testing index](docs/release-testing/README.md). Its dated GitHub inventory
 distinguishes public releases from the implementation milestones below.
 
-## Version overview
+## Technical integration chronology
 
-| Version | Branch | Date | Summary | Major additions | Tests | Merged status |
-| --- | --- | --- | --- | --- | ---: | --- |
-| v3.0.0-rc.1 preparation | `codex/v3-progressive-enrichment` | 2026-10-05 | Progressive understanding and reviewed organization. | Per-source background AI, retained-content enrichment, inferred Search/relationships, editable Organize, verified storage relocation and protected cleanup. | Final evidence in [validation](docs/VALIDATION_v3.0.0.md) | Integration and publication pending; [milestone](https://github.com/nishdel/OmniSorSe/milestone/1). |
-| v0.1 | `coding/v0.1` | 2026-07-17 | Read-only processing foundation. | Scan pipeline, metadata, hashing, classification, duplicates, rules/planning, initial desktop/orchestration. | Not recorded | Implementation lineage is in `main`; branch tip has one later unmerged README-only commit. |
-| v0.2 | `coding/v0.2` | 2026-07-17 | Read-only result exploration. | Immutable snapshots, filters, sorting, paging, details, exact-duplicate review. | 233 | Merged to `main`. |
-| v0.3 | `v0.3` | 2026-07-17 | Optional local suggestions and ranked exploration. | Ollama-compatible provider, validated proposals, decisions/tags, deterministic ranking. | 251 | Merged to `main`. |
-| v0.4 | `v0.9` (batched line) | 2026-07-18 | Opt-in local catalog. | Bounded atomic snapshot persistence and historical reopening. | 260 | Merged to `main`; no dedicated remote v0.4 branch. |
-| v0.5 | `v0.9` (batched line) | 2026-07-18 | Catalog Search and maintenance. | Cross-snapshot metadata/tag Search, removal, two-step clear. | 267 | Merged to `main`; no dedicated remote v0.5 branch. |
-| v0.6 | `v0.9` (batched line) | 2026-07-18 | User-managed result tags. | Bounded tag editing, Search refresh, catalog-backed persistence. | 274 | Merged to `main`; no dedicated remote v0.6 branch. |
-| v0.7 | `v0.9` (batched line) | 2026-07-18 | Saved catalog searches. | Separate bounded query presets, rerun/remove/reset. | 283 | Merged to `main`; no dedicated remote v0.7 branch. |
-| v0.8 | `v0.9` (batched line) | 2026-07-18 | Snapshot identity and scope. | Catalog schema 2, names, source roots, legacy read compatibility. | 290 | Merged to `main`; no dedicated remote v0.8 branch. |
-| v0.9 | `v0.9` | 2026-07-18 | Historical snapshot comparison. | Bounded metadata/tag comparison, scope warnings, filters and cancellation. | 330 | Merged to `main`. |
-| v0.9.1 | `v0.9.1` | 2026-07-24 | Optional AI and feature controls. | Default-off gates, strict structured output, provider hardening, diagnostics, Help, Duplicate View. | 453 | Merged to `main`. |
-| v1.0 | `v1.0` | 2026-07-26 | Integrated local understanding and structure history. | Extraction/OCR, local semantic retrieval, tags, Advanced Diagnostics, structure planning/history, Windows package. | 627 | Merged to `main`; tagged `v1.0.0`. |
-| v1.1 | `v1.1` | 2026-07-26 | Safe File Operations and Robustness. | Change Plans, Review Changes, journal-before-mutation, verification, rollback, recovery, Undo. | 659 | Merged to `main`. |
-| v1.2 | `v1.2-watched-folders` | 2026-07-26 | Watched Folders and Incremental Scanning. | Reconciled watcher hints, incremental catalogues, ignores, stability/retry, reviewed suggestions. | 724 | Merged to `main`. |
-| v1.3 | `v1.3-workflow-profiles` | 2026-07-26 | Workflow Profiles and Recipe Library. | Typed profiles/recipes, safe templates, snapshots, assignments, import/export, provenance. | 761 | Merged to `main`. |
-| v1.4 | `v1.4-plugin-foundation` | 2026-07-27 | Plugin Foundation and Extension SDK. | Standalone SDK, eight bounded extension points, local packages, grants, integrity/lifecycle isolation. | 836 | Merged to `main`. |
-| v1.5 | `v1.5-cross-platform-foundation` | 2026-07-27 | Cross-Platform Foundation and Linux Preview. | Platform adapters, XDG paths, Linux semantics, plugin RIDs, source CI foundation. | 850 | Merged to `main`. |
-| v1.6 | `v1.6-reliability-performance` | 2026-07-28 | Reliability, Performance and Production Hardening. | Shared atomic persistence, bounded resources, lifecycle/cancellation hardening, accessibility, native CI. | 895 | Merged to `main`. |
-| v1.7 | `v1.7-deep-indexing-foundation` | 2026-07-29 | Deep Indexing Foundation. | Provider-neutral durable indexing, embedded SQLite, progressive Search, quotas, recovery and controls. | 987 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
-| v1.8 | `v1.8-search-intelligence-privacy` | 2026-07-29 | Search Intelligence, Quality and Privacy. | Hybrid ranker, visible filters, explanations/snippets, coverage, index privacy/repair, relevance gates. | 1,086 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
-| v1.9 | `v1.9-relationships-context` | 2026-08-03 | Relationships, Context & Smart Collections. | Evidence-backed relationships, virtual collections/timeline, user corrections, contextual Search, privacy/repair, schema 3. | 1,128 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
-| v2.0.0 | `v2.0-knowledge-graph` | 2026-08-11 | Knowledge Graph and integrated v1.7-v1.9 release. | Optional conservative graph projection, isolated schema-1 graph/decision sidecars, bounded browsing/Search context, privacy and recovery. | 1,486 | Merged to `main` by explicit history-preserving release merge after exact-tip Windows, Ubuntu, and macOS validation. Manual/community testing begins with publication. |
-| v2.1.0 | `v2.1-search-ai-quality` | 2026-08-11 | Search & AI Quality. | Deterministic filename relevance and typo quality, optional bounded Ollama reranking, truthful scan timing, safe duplicate recovery, dismissible notifications, privacy clarity, Related Files guidance, and contextual Help. | 1,531 | Released through an explicit history-preserving merge into `main`; automated validation is not a claim of broad interactive validation across arbitrary hosts, models, or accessibility technology. |
-| v2.2.0 | `v2.2-media-intelligence` | 2026-08-11 | Media Intelligence. | Bounded image/EXIF/GPS metadata, optional local OCR, lazy thumbnails, optional ffprobe/ffmpeg metadata and representative frames, unified media Search/relationships, scan ETA, multi-group duplicate recovery, and navigation/privacy clarity. | 1,603 | Released through an explicit history-preserving merge into `main`; controlled Windows native OCR/media/migration and automated packaging evidence do not claim broad interactive or native Linux/macOS media validation. |
-| v2.3.0 | `v2.3-content-intelligence` | 2026-08-12 | Content Intelligence & Local Understanding. | Bounded topics/keywords, textual entities, extractive summaries, provenance, optional user-managed whisper.cpp transcription, grounded Search evidence, explainable cross-media relationships, generic-topic suppression, and schema 5. | 1,637 | Released through an explicit history-preserving merge into `main`; controlled Windows-native whisper.cpp/ffprobe/ffmpeg and genuine schema-4-to-5 evidence do not claim native Linux/macOS transcription or broad interactive validation. |
-| v2.4.0 | `v2.4-omnisorse-transition` | 2026-08-12 | OmniSorSe Transition & Explorer Foundation. | Active OmniSorSe product/package identity with in-place OpenSorSe profile compatibility, plus a dormant authenticated, authorized-root-scoped, bounded, read-only local Explorer Protocol v1. | 1,671 | Released through an explicit history-preserving merge into `main`; genuine Windows profile/installer transition and external two-process protocol validation do not claim broad interactive accessibility or native Linux/macOS protocol execution. |
-| v2.5 candidate | `v2.5-workflow-indexing-quality` | 2026-08-13 | Workflow Completion & Indexing Quality. | Post-mutation reconciliation, base-search-first indexing, truthful indexing phases, organization clarity, and optional scoped OmniBrille handoff. | 1,702 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.6 candidate | `v2.6-explainable-smart-tags` | 2026-08-14 | Explainable Smart Tags. | Schema-6 Theme/Document Type and User Tag authority, bounded deterministic classification, reviewable decisions, and canonical Search filters. | 1,729 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.7 candidate | `v2.7-scalable-faceted-discovery` | 2026-08-14 | Scalable Faceted Discovery. | Complete-index candidate selection, contextual facets/counts, dynamic Saved Views, and bounded document extraction. | 1,753 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.8 candidate | `v2.8-guided-workflows-product-coherence` | 2026-08-15 | Guided Workflows & Product Coherence. | Stable-identity Search/Files navigation, durable Home readiness, continuous Smart Tag review, and coherent organization entry points. | Not separately recorded | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.9 candidate | `v2.9-reviewed-intelligent-organization` | 2026-08-15 | Reviewed Intelligent Organization. | Bounded stable-ID selection, recipe preview, trusted evidence/fallbacks, collision checks, and existing Change Plan handoff. | 1,795 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.10 candidate | `v2.10-production-hardening-operational-resilience` | 2026-08-16 | Production Hardening & Operational Resilience. | Single-writer profile ownership, fail-closed recovery stores, health/lifecycle checks, logical state backup/restore, and coordinated Forget. | 1,829 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.11 candidate | `v2.11-supported-runtime-platform-readiness` | 2026-08-17 | Supported Runtime & Platform Readiness. | .NET 10 migration, stronger source/RID/runtime provenance, and clearer compile/native/package evidence boundaries. | 1,832 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
-| v2.12.0-rc | `main` (lineage from `v2.12-trusted-relationships-context`) | 2026-09-04 | Trusted Relationships & Context prerelease. | Stronger bounded relationship evidence, reversible pair authority, direct Related Files, relationship-only reanalysis, and format-2 authored-state backup. | 1,870 integrated tree | Candidate and engineering-system commits are ancestors of published GitHub `main`; the exact candidate branch ref remains remote. Exact-main four-host and native package workflows passed, including the six-file package set and scripted Windows installer lifecycle. Packages are unsigned/unnotarized and intended for final manual validation before GA. |
-| v2.13.0-rc | `main` (from `codex/product-clarity-issue-pass`) | 2026-09-04 | Product Clarity & Workflow prerelease. | Clear Scan → Review → Organize hierarchy, explicit Change Plan/duplicate intent, discoverable optional AI and Smart Tags, simplified Search/relationship/graph surfaces, accessible status hierarchy, guarded relationship authority, and recent indexing throughput/ETA. | 1,878 integrated tree | Integrated through normal pull-request review. Exact-main four-host and native package workflows gate the annotated tag and GitHub prerelease; published packages remain unsigned/unnotarized and intended for final manual validation before GA. |
+| Version | Branch | Date | Recorded tests / evidence | Integration / publication chronology |
+| --- | --- | --- | --- | --- |
+| v3.0.0-rc.1 preparation | `codex/v3-progressive-enrichment` | 2026-10-05 | Final evidence in [validation](docs/VALIDATION.md#validation-v3-0-0) | At the preparation checkpoint, integration and publication were pending; [milestone](https://github.com/nishdel/OmniSorSe/milestone/1). |
+| v0.1 | `coding/v0.1` | 2026-07-17 | Not recorded | Implementation lineage is in `main`; branch tip has one later unmerged README-only commit. |
+| v0.2 | `coding/v0.2` | 2026-07-17 | 233 | Merged to `main`. |
+| v0.3 | `v0.3` | 2026-07-17 | 251 | Merged to `main`. |
+| v0.4 | `v0.9` (batched line) | 2026-07-18 | 260 | Merged to `main`; no dedicated remote v0.4 branch. |
+| v0.5 | `v0.9` (batched line) | 2026-07-18 | 267 | Merged to `main`; no dedicated remote v0.5 branch. |
+| v0.6 | `v0.9` (batched line) | 2026-07-18 | 274 | Merged to `main`; no dedicated remote v0.6 branch. |
+| v0.7 | `v0.9` (batched line) | 2026-07-18 | 283 | Merged to `main`; no dedicated remote v0.7 branch. |
+| v0.8 | `v0.9` (batched line) | 2026-07-18 | 290 | Merged to `main`; no dedicated remote v0.8 branch. |
+| v0.9 | `v0.9` | 2026-07-18 | 330 | Merged to `main`. |
+| v0.9.1 | `v0.9.1` | 2026-07-24 | 453 | Merged to `main`. |
+| v1.0 | `v1.0` | 2026-07-26 | 627 | Merged to `main`; tagged `v1.0.0`. |
+| v1.1 | `v1.1` | 2026-07-26 | 659 | Merged to `main`. |
+| v1.2 | `v1.2-watched-folders` | 2026-07-26 | 724 | Merged to `main`. |
+| v1.3 | `v1.3-workflow-profiles` | 2026-07-26 | 761 | Merged to `main`. |
+| v1.4 | `v1.4-plugin-foundation` | 2026-07-27 | 836 | Merged to `main`. |
+| v1.5 | `v1.5-cross-platform-foundation` | 2026-07-27 | 850 | Merged to `main`. |
+| v1.6 | `v1.6-reliability-performance` | 2026-07-28 | 895 | Merged to `main`. |
+| v1.7 | `v1.7-deep-indexing-foundation` | 2026-07-29 | 987 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
+| v1.8 | `v1.8-search-intelligence-privacy` | 2026-07-29 | 1,086 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
+| v1.9 | `v1.9-relationships-context` | 2026-08-03 | 1,128 | Merged to `main` through the v2.0.0 integration; no standalone tag or package is claimed. |
+| v2.0.0 | `v2.0-knowledge-graph` | 2026-08-11 | 1,486 | Merged to `main` by explicit history-preserving release merge after exact-tip Windows, Ubuntu, and macOS validation. Manual/community testing begins with publication. |
+| v2.1.0 | `v2.1-search-ai-quality` | 2026-08-11 | 1,531 | Released through an explicit history-preserving merge into `main`; automated validation is not a claim of broad interactive validation across arbitrary hosts, models, or accessibility technology. |
+| v2.2.0 | `v2.2-media-intelligence` | 2026-08-11 | 1,603 | Released through an explicit history-preserving merge into `main`; controlled Windows native OCR/media/migration and automated packaging evidence do not claim broad interactive or native Linux/macOS media validation. |
+| v2.3.0 | `v2.3-content-intelligence` | 2026-08-12 | 1,637 | Released through an explicit history-preserving merge into `main`; controlled Windows-native whisper.cpp/ffprobe/ffmpeg and genuine schema-4-to-5 evidence do not claim native Linux/macOS transcription or broad interactive validation. |
+| v2.4.0 | `v2.4-omnisorse-transition` | 2026-08-12 | 1,671 | Released through an explicit history-preserving merge into `main`; genuine Windows profile/installer transition and external two-process protocol validation do not claim broad interactive accessibility or native Linux/macOS protocol execution. |
+| v2.5 candidate | `v2.5-workflow-indexing-quality` | 2026-08-13 | 1,702 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.6 candidate | `v2.6-explainable-smart-tags` | 2026-08-14 | 1,729 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.7 candidate | `v2.7-scalable-faceted-discovery` | 2026-08-14 | 1,753 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.8 candidate | `v2.8-guided-workflows-product-coherence` | 2026-08-15 | Not separately recorded | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.9 candidate | `v2.9-reviewed-intelligent-organization` | 2026-08-15 | 1,795 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.10 candidate | `v2.10-production-hardening-operational-resilience` | 2026-08-16 | 1,829 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.11 candidate | `v2.11-supported-runtime-platform-readiness` | 2026-08-17 | 1,832 | Candidate commit is an ancestor of published GitHub `main`; its exact branch ref is also remote. No release tag/package is claimed. |
+| v2.12.0-rc | `main` (lineage from `v2.12-trusted-relationships-context`) | 2026-09-04 | 1,870 integrated tree | Candidate and engineering-system commits are ancestors of published GitHub `main`; the exact candidate branch ref remains remote. Exact-main four-host and native package workflows passed, including the six-file package set and scripted Windows installer lifecycle. Packages are unsigned/unnotarized and intended for final manual validation before GA. |
+| v2.13.0-rc | `main` (from `codex/product-clarity-issue-pass`) | 2026-09-04 | 1,878 integrated tree | Integrated through normal pull-request review. Exact-main four-host and native package workflows gate the annotated tag and GitHub prerelease; published packages remain unsigned/unnotarized and intended for final manual validation before GA. |
 
 ## Evidence and detail
 
@@ -71,19 +75,19 @@ reports:
   specifications from v0.1 through v1.9.
 - [Release Status](docs/RELEASE_STATUS.md) — current integration, validation,
   manual, packaging, tag, and publication state.
-- [v1.0 Version Notes](docs/VERSION_NOTES_v1.0.md) and the frozen
+- [v1.0 Version Notes](docs/CHANGELOG.md#notes-v1-0) and the frozen
   [v1.0 package release notes](release/OpenSorSe-v1.0.0/RELEASE_NOTES.md).
-- [v1.6 Implementation Report](docs/V1.6_IMPLEMENTATION_REPORT.md) and
-  [Validation Report](docs/V1.6_VALIDATION_REPORT.md).
-- [v1.7 Implementation Report](docs/V1.7_IMPLEMENTATION_REPORT.md) and
-  [Validation Report](docs/V1.7_VALIDATION_REPORT.md).
-- [v1.8 Implementation Report](docs/V1.8_IMPLEMENTATION_REPORT.md) and
-  [Validation Report](docs/V1.8_VALIDATION_REPORT.md).
-- [v1.9 Implementation Report](docs/V1.9_IMPLEMENTATION_REPORT.md) and
-  [Validation Report](docs/V1.9_VALIDATION_REPORT.md).
-- [v2.0 Implementation Report](docs/V2.0_IMPLEMENTATION_REPORT.md),
-  [Validation Report](docs/V2.0_VALIDATION_REPORT.md), and
-  [RC Stabilization Plan](docs/V2.0_RC_STABILIZATION_PLAN.md).
+- [v1.6 Implementation Report](docs/IMPLEMENTATION_HISTORY.md#implementation-v1-6) and
+  [Validation Report](docs/VALIDATION.md#validation-v1-6).
+- [v1.7 Implementation Report](docs/IMPLEMENTATION_HISTORY.md#implementation-v1-7) and
+  [Validation Report](docs/VALIDATION.md#validation-v1-7).
+- [v1.8 Implementation Report](docs/IMPLEMENTATION_HISTORY.md#implementation-v1-8) and
+  [Validation Report](docs/VALIDATION.md#validation-v1-8).
+- [v1.9 Implementation Report](docs/IMPLEMENTATION_HISTORY.md#implementation-v1-9) and
+  [Validation Report](docs/VALIDATION.md#validation-v1-9).
+- [v2.0 Implementation Report](docs/IMPLEMENTATION_HISTORY.md#implementation-v2-0),
+  [Validation Report](docs/VALIDATION.md#validation-v2-0), and
+  [RC Stabilization Plan](docs/MAINTAINER_GUIDE.md#historical-v2-0-stabilization).
 - [Release Status](docs/RELEASE_STATUS.md) and the v2.5-v2.13 implementation,
   manual-testing, and candidate release-note records indexed by the
   [documentation router](docs/README.md) own the later candidate detail.

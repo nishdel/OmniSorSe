@@ -109,4 +109,4 @@ tests, zero-skip validation, analyzers, style and whitespace formatting, and
 documentation policy on Windows, Ubuntu, and macOS.
 
 Exact executed evidence belongs in
-[the v1.6 validation report](../../V1.6_VALIDATION_REPORT.md).
+[the v1.6 validation report](../../VALIDATION.md#validation-v1-6).

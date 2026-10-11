@@ -10,7 +10,7 @@
 - Environment: planned disposable Windows x64 account/VM; actual OS/build, locale, filesystem, scale, dependencies/profile predecessor **Not recorded**.
 - Checklist owner: **Unassigned**.
 
-**Definition links:** these drafts currently link `blob/main` for new definitions. Before publishing the issue, replace those links with the reviewed documentation commit containing this change and check the anchors. Historical source links are already pinned to released commits. Documentation identity is separate from package identity. [Start testing here](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#start-testing-here).
+**Definition links:** these drafts currently link `blob/main` for new definitions. Before publishing the issue, replace those links with the reviewed documentation commit containing this change and check the anchors. Historical source links are already pinned to released commits. Documentation identity is separate from package identity. [Start testing here](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-start-testing-here).
 
 Use this issue as the sole live results record. New tests start No / Not tested; historical missing evidence uses Unknown / Not recorded. Tested: No / Partially / Yes / N/A / Unknown (historical only). Result: Not tested / Pass / Fail / Blocked / N/A / Not recorded (historical only). Issue registered: — / Not needed / Pending / linked issue number. Pass requires all expected results observed and Tested=Yes. Fail needs Pending or a linked defect; Blocked/N/A need a reason; N/A is never a pass. Record the actual performer/date; an agent may only transcribe real observations. Search existing issues before creating a defect; closed defects still need retesting.
 
@@ -20,14 +20,14 @@ Summary — Passed: 0 / Failed: 0 / Blocked: 0 / Not tested: 8 / N/A: 0 / Not re
 
 | ID | Test | Expected result | Tested | Result | Issue registered | Tester / date | Evidence / notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [OS-M01](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m01) | Portable launch | Correct version opens; first scan is usable. | No | Not tested | — | — | — |
-| [OS-M02](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m02) | Scan sample | Four files found; sources unchanged. | No | Not tested | — | — | — |
-| [OS-M03](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m03) | Search filename | Known file found in sample. | No | Not tested | — | — | — |
-| [OS-M04](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m04) | Review proposal | Approval alone changes no files. | No | Not tested | — | — | — |
-| [OS-M05](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m05) | Apply and Undo | Reviewed copy moves; Undo restores it. | No | Not tested | — | — | — |
-| [OS-M06](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m06) | Duplicate review | Identical pair grouped; files unchanged. | No | Not tested | — | — | — |
-| [OS-M07](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m07) | Settings persistence | Saved value survives restart. | No | Not tested | — | — | — |
-| [OS-M08](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_RELEASE_TESTING.md#os-m08) | Keyboard and layout | Focus and controls remain usable. | No | Not tested | — | — | — |
+| [OS-M01](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m01) | Portable launch | Correct version opens; first scan is usable. | No | Not tested | — | — | — |
+| [OS-M02](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m02) | Scan sample | Four files found; sources unchanged. | No | Not tested | — | — | — |
+| [OS-M03](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m03) | Search filename | Known file found in sample. | No | Not tested | — | — | — |
+| [OS-M04](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m04) | Review proposal | Approval alone changes no files. | No | Not tested | — | — | — |
+| [OS-M05](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m05) | Apply and Undo | Reviewed copy moves; Undo restores it. | No | Not tested | — | — | — |
+| [OS-M06](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m06) | Duplicate review | Identical pair grouped; files unchanged. | No | Not tested | — | — | — |
+| [OS-M07](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m07) | Settings persistence | Saved value survives restart. | No | Not tested | — | — | — |
+| [OS-M08](https://github.com/nishdel/OmniSorSe/blob/main/docs/MANUAL_TESTING.md#release-testing-procedure-os-m08) | Keyboard and layout | Focus and controls remain usable. | No | Not tested | — | — | — |
 
 The table is ready for the next candidate; none of its tests has started. Before starting M01, fill source/package/hash and environment. If testing is attempted while the package is missing, record M01 as Blocked with that reason. Add changed-feature conditional rows and affected retest IDs when the candidate exists. No published package's result carries over.
 

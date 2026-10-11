@@ -59,21 +59,21 @@ checkpoint, not the current published state.
 
 The major testing candidate is being implemented on `codex/v3-progressive-enrichment`
 from main `727ce2d`. [Milestone 1](https://github.com/nishdel/OmniSorSe/milestone/1)
-tracks the complete [38-item acceptance baseline](V3_ACCEPTANCE.md).
+tracks the complete [38-item acceptance baseline](ACCEPTANCE_CRITERIA.md).
 Implementation is in [PR #54](https://github.com/nishdel/OmniSorSe/pull/54).
 Hosted Windows validation at `c6999de` passed 1,957 tests in each configuration
 and every gate. Native macOS verification corrected the system temporary-path
 guard and then a dangling-link test cleanup error. The historical October 5 GitHub
 Actions incident also caused jobs to end without acquiring runners. Exact-source
 four-platform validation, integration, packaging, tagging and publication are
-not complete; [Validation](VALIDATION_v3.0.0.md) records the evidence boundaries.
+not complete; [Validation](VALIDATION.md#validation-v3-0-0) records the evidence boundaries.
 Human acceptance remains
-[Not run](MANUAL_TESTING_v3.0.md) and begins after candidate publication.
+[Not run](MANUAL_TESTING.md#manual-v3-0) and begins after candidate publication.
 The previously published v2.13 package is not the v3 installer.
 
 The first candidate now also requires the implemented dedicated-model hybrid
 Search, schema-8 disposable vectors, explicit semantic Related Files suggestions
-and model/indexing/storage controls in the [acceptance map](V3_ACCEPTANCE.md).
+and model/indexing/storage controls in the [acceptance map](ACCEPTANCE_CRITERIA.md).
 The learned-vector continuation remains under final validation with uncommitted
 changes. After the earlier 215-test focused pass, the central Windows runner
 passed 2,069 tests in each configuration with zero failures/skips, three formatting
@@ -97,7 +97,7 @@ triggered a new app-access approval that timed out; no screenshot is available.
 Human acceptance remains Not run.
 OmniLAB supplied limited accepted review advice, while failed implementation
 requests and one automatically rejected schema-review escalation required direct
-Codex fallback. [Validation](VALIDATION_v3.0.0.md) records exact outcomes.
+Codex fallback. [Validation](VALIDATION.md#validation-v3-0-0) records exact outcomes.
 
 No final remote-main SHA, release-tag target, installer checksum or publication
 is assigned by this source checkpoint. The official
@@ -224,18 +224,18 @@ real-filesystem validation remain manual.
 | v1.3 Workflow Profiles and Recipe Library | Source implementation and automated validation complete; manual GUI/filesystem/provider/platform/package verification pending | Debug/Release builds and 761 automated tests passed with zero failures/skips; formatting and diff validation clean. | Persistent typed profiles/recipes, safe templates/previews, immutable resolution snapshots, watched/manual integration, Change Plan provenance, profile-aware AI gates, import/export/recovery, Workflows UI, and documentation. |
 | v1.4 Plugin Foundation and Extension SDK | Source implementation and automated validation complete; manual GUI/filesystem/hostile-package/runtime/platform/package verification pending | Debug/Release builds and 836 automated tests passed with zero failures/skips; formatting, documentation, Mermaid-structure, dependency-policy, SDK-documentation, and diff validation clean. | Stable SDK, eight bounded extension points, strict discovery/manifests/dependencies/integrity, in-process lifecycle isolation, explicit grants, local packages, built-in references, workflow/Change Plan provenance, Plugins UI, and documentation. |
 | v1.5 Cross-Platform Foundation and Linux Preview | Source implementation complete; local Windows automated validation and hosted Ubuntu execution status recorded below; manual Linux desktop/filesystem validation pending | Final exact build/test/format/documentation results are recorded in the validation baseline below. CI is defined for Windows and Ubuntu and publishes no artifacts. | Platform contracts/capabilities, Windows/Linux path and identity adapters, XDG persistence, platform-aware execution, recipe filename modes, plugin RIDs, safe external-tool discovery, desktop adapters, diagnostics, Linux instructions, and CI. |
-| v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](V1.6_VALIDATION_REPORT.md). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
-| v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](V1.7_VALIDATION_REPORT.md). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
-| v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
-| v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](V1.9_VALIDATION_REPORT.md), and the [manual checklist](MANUAL_TESTING_v1.9.md) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
-| v2.0 Knowledge Graph | Integrated into `main` by explicit history-preserving release merge after complete local and exact-tip hosted validation; broad manual/community testing begins with publication | Non-incremental zero-warning Debug/Release builds and 1,486 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, indexing, relationship, migration/recovery, concurrency/cancellation, performance, policy, vulnerability, and four-runtime cross-target gates passed. Exact-tip Windows, Ubuntu, and macOS CI passed. The Windows portable ZIP and unsigned installer passed controlled package validation. See the [v2.0 Validation Report](V2.0_VALIDATION_REPORT.md). The [release-readiness](RELEASE_READINESS_v2.0.md) and [manual](MANUAL_TESTING_v2.0.md) checklists remain fully unchecked. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
+| v1.6 Reliability, Performance, and Production Hardening | Source implementation, local and hosted automated validation, and required interactive manual smoke validation complete | Clean restore; Debug/Release builds with zero warnings/errors; 895 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; local runtime-target builds and native Windows/Ubuntu/macOS CI passed. The maintainer completed the required interactive smoke testing with no release-blocking issues. See [v1.6 Validation Report](VALIDATION.md#validation-v1-6). | Atomic persistence, cross-instance coordination, performance/memory/cancellation hardening, watcher/task/observer lifecycle reliability, host-independent path syntax, accessibility, diagnostics/version cleanup, and 45 additional test cases. |
+| v1.7 Deep Indexing Foundation | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | Clean restore; zero-warning Debug/Release builds; 987 tests passed in each configuration with zero failures/skips; analyzer/style/format/docs/dependency/diff gates clean; advisory audit clean after pinning SQLitePCLRaw 2.1.12; four runtime-target builds passed. See [v1.7 Validation Report](VALIDATION.md#validation-v1-7). | Provider-independent durable indexing, embedded SQLite schema/recovery, Basic/Standard/Deep policy, progressive Search, progress/control/storage UI, privacy-safe diagnostics, naming/accessibility, and expanded recovery/concurrency/performance coverage. |
+| v1.8 Search Intelligence, Quality and Privacy | Source implementation and local automated validation complete; exact hosted evidence is not self-recorded in the repository; interactive manual validation is not claimed | 1,086 tests passed in each Debug/Release configuration with no failures/skips; all recorded automated gates are in [v1.8 Validation Report](VALIDATION.md#validation-v1-8). | Deterministic hybrid ranking, constrained visible filters, explanations/snippets, richer progressive coverage, relevance measurement, indexed-data inspection/forgetting, selective repair, Search hardening, and AI-optional behavior. |
+| v1.9 Relationships, Context & Smart Collections | Source implementation and local automated validation complete on its dedicated branch; interactive manual validation is not claimed | 1,128 tests passed in each Debug/Release configuration with zero failures/skips; all recorded local gates are in the [v1.9 Validation Report](VALIDATION.md#validation-v1-9), and the [manual checklist](MANUAL_TESTING.md#manual-v1-9) remains unchecked. | Provider-neutral deterministic relationships, evidence/confidence, virtual Smart Collections/context/timeline, user corrections, contextual Search, index-only privacy/repair, SQLite schema 3, accessible UI, and bounded graph/performance controls. |
+| v2.0 Knowledge Graph | Integrated into `main` by explicit history-preserving release merge after complete local and exact-tip hosted validation; broad manual/community testing begins with publication | Non-incremental zero-warning Debug/Release builds and 1,486 tests passed in each configuration with zero failures/skips; Search, Knowledge Graph, indexing, relationship, migration/recovery, concurrency/cancellation, performance, policy, vulnerability, and four-runtime cross-target gates passed. Exact-tip Windows, Ubuntu, and macOS CI passed. The Windows portable ZIP and unsigned installer passed controlled package validation. See the [v2.0 Validation Report](VALIDATION.md#validation-v2-0). The [release-readiness](RELEASE_STATUS.md#historical-v2-0-readiness) and [manual](MANUAL_TESTING.md#manual-v2-0) checklists remain fully unchecked. | Optional conservative graph projection, isolated schema-1 derived/decision sidecars, completed manifests, durable recovery/fencing, bounded browsing and Search context, privacy/repair, and accessible MVVM UI. |
 | v2.1 Search & AI Quality | Released as v2.1.0 from `v2.1-search-ai-quality` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,531 tests passed in each configuration with zero failures/skips. Policy, vulnerability, four-runtime, exact-main hosted, native-package, and checksum gates are release records. Broad interactive validation across arbitrary hosts/models is not claimed. | Deterministic filename relevance and typo quality, optional bounded Ollama ordering of known results, model/failure clarity, truthful scan/index progress, result actions, safe duplicate recovery, dismissible notifications, privacy wording, Related Files guidance, and contextual Help. |
 | v2.2 Media Intelligence | Released as v2.2.0 from `v2.2-media-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,603 tests passed in each configuration with zero failures/skips before integration. Search/media/index/migration/duplicate/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows native-provider evidence includes real Tesseract OCR, ffprobe/ffmpeg media processing, and schema-3-to-4 migration; broad interactive and native Linux/macOS media validation is not claimed. | First-class bounded image/audio/video evidence, EXIF/GPS, OCR, lazy thumbnails, optional ffprobe metadata, optional capped ffmpeg frames, unified Search, conservative media relationships, scan ETA, batch duplicate review, clearer navigation/privacy, and schema 4. |
 | v2.3 Content Intelligence & Local Understanding | Released as v2.3.0 from `v2.3-content-intelligence` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,637 tests passed in each configuration with zero failures/skips. Search/Content Intelligence/transcription/media/index/migration/privacy/accessibility/performance and four-runtime compile gates passed. Controlled Windows-native evidence includes official whisper.cpp 1.9.2 audio/video transcription, Transcript-to-Search, cancellation, ffprobe/ffmpeg, and a genuine schema-4-to-5 migration; native Tesseract was not repeated and broad interactive/native Linux/macOS validation is not claimed. | Bounded deterministic topics/textual entities/extractive summaries with provenance, schema 5, grounded Search and cross-media Related Files signals, generic-topic suppression, and an optional user-managed whisper.cpp CLI/model process adapter. No bundled model/runtime or visual-description provider. |
 | v2.4 OmniSorSe Transition & Explorer Foundation | Released as v2.4.0 from `v2.4-omnisorse-transition` through a history-preserving merge into `main` | Non-incremental zero-warning Debug/Release builds and 1,671 tests passed in each configuration with zero failures/skips. Genuine Windows published-v2.3 profile reuse and installer transition, external two-process protocol lifecycle/security, four-runtime compile, exact-main, and native packaging gates passed. Broad interactive accessibility and native Linux/macOS protocol execution are not claimed. | Active OmniSorSe branding with compatibility-in-place legacy profiles/schema 5 and a dormant authenticated/source-scoped/bounded/read-only Explorer Protocol v1 for the future optional OmniExplorer. |
-| v2.11 Supported Runtime & Platform Readiness | Published from GitHub `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING_v2.11.md) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
-| v2.12 Trusted Relationships & Context | Published as the `v2.12.0-rc` GitHub prerelease from exact tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; not stable/GA | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests at the original publication commit. After the first published-main run exposed three macOS portability/fixture failures, correction commit `d81f154` and exact-main merge `542e14a` passed the full four-host matrix. Later reconciliation/navigation commit `1cf1910` passed 1,870 Debug and Release tests locally; exact-main merge `3bb3919`, report-only commit `ffc29ed`, and exact-main baseline `d682997` each passed the complete hosted matrix. The exact-source `4dd27d6` package workflow validated the published six-file bundle, Windows scripted installer lifecycle/data preservation, and native macOS package smoke. The [v2.12 manual addendum](MANUAL_TESTING_v2.12.md) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or broader native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
-| v2.13 Product Clarity & Workflow | Current `v2.13.0-rc` GitHub prerelease; not stable/GA | SDK 10.0.400 local qualification passed zero-warning Debug/Release builds and 1,878/1,878 tests in each configuration with no skips; focused Search relevance (1), performance regression (16), and repository policy (14); formatting/style/analyzers; AXAML parsing; 18-project vulnerability audit; diff checks; and native `win-x64` self-contained publish/smoke. PR #47 and its first exact-main merge passed the complete four-host matrix. PR #49 corrected the macOS Intel catalog-comparison cancellation liveness issue without changing timeout policy; its head passed three genuine macOS Intel runs, and the corrected exact-main merge passed Windows, Ubuntu, macOS ARM, and a fourth macOS Intel run. The first otherwise-valid package bundle was withheld because independent review found a stale embedded v2.12 installation guide; current public assets are rebuilt from the corrected exact-main commit and the GitHub prerelease owns their final package/tag/checksum evidence. The [v2.13 manual checklist](MANUAL_TESTING_v2.13.md) remains unchecked. | Restores Scan → Review → Organize hierarchy, progressively discloses Search/technical controls, keeps optional AI visible without enabling it, clarifies Change Plans/duplicates/Smart Tags/relationships, adds consistent accessible status presentation and relationship-authority confirmations, and corrects recent indexing throughput/ETA calculation. |
+| v2.11 Supported Runtime & Platform Readiness | Published from GitHub `main` as unreleased candidate source; not tagged, packaged, or published as a GitHub Release | Local SDK 10.0.400 validation: no-cache restore; zero-warning non-incremental Debug/Release builds; 1,832 tests passed in each configuration with zero failures/skips; formatting/analyzer/policy gates clean; four-RID self-contained publish and Windows package smoke passed. Native Linux/macOS execution, installer lifecycle, signing/notarization, and interactive validation remain unperformed. The [manual addendum](MANUAL_TESTING.md#manual-v2-11) remains unchecked. | Moves the complete v2.10 product baseline to net10.0, strengthens package runtime/RID/source evidence, and preserves schema 6, Protocol v1, product behavior, conservative platform mutation, and dependency boundaries. |
+| v2.12 Trusted Relationships & Context | Published as the `v2.12.0-rc` GitHub prerelease from exact tagged `main` commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; not stable/GA | Exact integrated-tree validation passed forced no-cache restore; zero-warning Debug/Release builds; 1,861 tests in each configuration with zero failures/skips; focused relationship, Search, SQLite lifecycle/backup/Forget, Explorer, UI/accessibility, 100k-scale, documentation/configuration, formatting, policy, 18-project vulnerability audit, Skill validation, diff/fsck, and native local `win-x64` publish/smoke gates. A clean remote clone independently passed no-cache restore, Release build, and 1,861/1,861 Release tests at the original publication commit. After the first published-main run exposed three macOS portability/fixture failures, correction commit `d81f154` and exact-main merge `542e14a` passed the full four-host matrix. Later reconciliation/navigation commit `1cf1910` passed 1,870 Debug and Release tests locally; exact-main merge `3bb3919`, report-only commit `ffc29ed`, and exact-main baseline `d682997` each passed the complete hosted matrix. The exact-source `4dd27d6` package workflow validated the published six-file bundle, Windows scripted installer lifecycle/data preservation, and native macOS package smoke. The [v2.12 manual addendum](MANUAL_TESTING.md#manual-v2-12) remains fully unchecked; no interactive quality, accessibility, OmniBrille, removable-source, or broader native cross-platform identity claim is made. | Extends the existing schema-6 relationship authority with capped evidence families, reversible pair authority, graph-independent direct Related Files, bounded candidate/reanalysis work, aggregated Protocol 1.0 output, and `.oms-state` format 2 for authored Smart Collection state. |
+| v2.13 Product Clarity & Workflow | Current `v2.13.0-rc` GitHub prerelease; not stable/GA | SDK 10.0.400 local qualification passed zero-warning Debug/Release builds and 1,878/1,878 tests in each configuration with no skips; focused Search relevance (1), performance regression (16), and repository policy (14); formatting/style/analyzers; AXAML parsing; 18-project vulnerability audit; diff checks; and native `win-x64` self-contained publish/smoke. PR #47 and its first exact-main merge passed the complete four-host matrix. PR #49 corrected the macOS Intel catalog-comparison cancellation liveness issue without changing timeout policy; its head passed three genuine macOS Intel runs, and the corrected exact-main merge passed Windows, Ubuntu, macOS ARM, and a fourth macOS Intel run. The first otherwise-valid package bundle was withheld because independent review found a stale embedded v2.12 installation guide; current public assets are rebuilt from the corrected exact-main commit and the GitHub prerelease owns their final package/tag/checksum evidence. The [v2.13 manual checklist](MANUAL_TESTING.md#manual-v2-13) remains unchecked. | Restores Scan → Review → Organize hierarchy, progressively discloses Search/technical controls, keeps optional AI visible without enabling it, clarifies Change Plans/duplicates/Smart Tags/relationships, adds consistent accessible status presentation and relationship-authority confirmations, and corrects recent indexing throughput/ETA calculation. |
 
 ## Release/readiness boundary for current source
 
@@ -299,7 +299,7 @@ OpenSorSe-owned bounded JSON stores may retain settings, logs, AI review decisio
 
 The exact clean local automated results, independently parsed Debug and Release
 TRX totals, relevance/performance gates, target builds, and advisory audit are
-recorded in the [v1.8 Validation Report](V1.8_VALIDATION_REPORT.md). The report
+recorded in the [v1.8 Validation Report](VALIDATION.md#validation-v1-8). The report
 explicitly leaves exact-tip hosted evidence to a post-commit handoff; that
 hosted result is not self-recorded in the repository. No interactive manual
 scenario is marked complete.
@@ -314,7 +314,7 @@ gates passed. The validation report leaves exact immutable
 push/synchronization and native Windows/Ubuntu/macOS GitHub Actions evidence to
 the post-commit handoff; that hosted result is not self-recorded in the
 repository. Interactive manual validation is not claimed. See the
-[v1.7 Validation Report](V1.7_VALIDATION_REPORT.md).
+[v1.7 Validation Report](VALIDATION.md#validation-v1-7).
 
 ## v1.6 validation
 
@@ -326,7 +326,7 @@ for Windows x64, Linux x64, macOS x64, and macOS ARM64. Native Windows, Ubuntu,
 and macOS CI also passed. The maintainer subsequently completed the required
 interactive manual smoke testing and reported no release-blocking issues. Exact
 automated and manual status is recorded in
-[V1.6 Validation Report](V1.6_VALIDATION_REPORT.md).
+[V1.6 Validation Report](VALIDATION.md#validation-v1-6).
 
 ## v1.5 validation baseline
 
@@ -376,9 +376,9 @@ read-only local interface for a future separate OmniExplorer without adding a
 renderer, network listener, or direct database access. Automated/native package
 evidence is not a claim of broad interactive validation on every host,
 filesystem, display scaling, or accessibility technology. See the
-[v2.4 release notes](RELEASE_NOTES_v2.4.0.md),
-[transition/protocol guide](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md),
-and [manual checklist](MANUAL_TESTING_v2.4.md). OpenSorSe v2.3.0 and earlier
+[v2.4 release notes](CHANGELOG.md#release-v2-4-0),
+[transition/protocol guide](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md),
+and [manual checklist](MANUAL_TESTING.md#manual-v2-4). OpenSorSe v2.3.0 and earlier
 documents, tags, releases, and validation records remain historical evidence.
 
 ## Current development
@@ -394,9 +394,9 @@ Forget coordination, bounded health/lifecycle checks, and exact build
 provenance. Schema remains 6, Explorer Protocol remains v1, OmniBrille is not
 modified, and no production dependency or new product capability is added.
 Automated results are recorded only after definitive validation; every item in
-the [master manual checklist](MANUAL_TESTING_v2.10.md) remains unchecked. See
-[v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md) and the
-[operational runbooks](OPERATIONAL_RUNBOOKS_v2.10.md).
+the [master manual checklist](MANUAL_TESTING.md#manual-v2-10) remains unchecked. See
+[v2.10 Production Hardening](PRODUCTION_HARDENING.md) and the
+[operational runbooks](OPERATIONAL_RUNBOOKS.md).
 
 Definitive Windows-host automated validation passed a forced no-cache restore,
 non-incremental Debug and Release builds with zero warnings/errors, and 1,829
@@ -434,8 +434,8 @@ performance (24), and documentation/dependency policy (8). Formatting/style/
 analyzers, vulnerability audit, `git diff --check`, and `git fsck --full`
 passed. Release compilation passed for `win-x64`, `linux-x64`, `osx-x64`, and
 `osx-arm64`; this does not claim native Linux/macOS runtime validation. See
-[v2.9 Reviewed Intelligent Organization](REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
-and the [manual checklist](MANUAL_TESTING_v2.9.md).
+[v2.9 Reviewed Intelligent Organization](REVIEWED_INTELLIGENT_ORGANIZATION.md)
+and the [manual checklist](MANUAL_TESTING.md#manual-v2-9).
 
 OmniSorSe v2.8 **Guided Workflows & Product Coherence** was implemented on
 `v2.8-guided-workflows-product-coherence` from the committed v2.7 release
@@ -447,8 +447,8 @@ and reviewed organization through stable-identity navigation while preserving
 schema 6, Search/facet semantics, Smart Tag authority, progressive indexing,
 Explorer Protocol v1, and OmniBrille separation. Interactive desktop,
 screen-reader, DPI, optional-tool, and native-platform execution remain manual
-release gates. See [v2.8 Guided Workflows](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
-and the [manual checklist](MANUAL_TESTING_v2.8.md).
+release gates. See [v2.8 Guided Workflows](GUIDED_WORKFLOWS_PRODUCT_COHERENCE.md)
+and the [manual checklist](MANUAL_TESTING.md#manual-v2-8).
 
 OmniSorSe v2.7 **Scalable Faceted Discovery** was implemented and locally
 validated on
@@ -462,8 +462,8 @@ query model; schema 6 and Explorer Protocol v1 remain unchanged. Debug and
 Release each pass 1,753 tests with zero failures/skips, and all four supported
 RID-specific Release compilations pass. Interactive desktop, DPI, screen-reader,
 and native Linux/macOS execution remain manual release gates. See
-[v2.7 Scalable Faceted Discovery](SCALABLE_FACETED_DISCOVERY_v2.7.md) and the
-[manual checklist](MANUAL_TESTING_v2.7.md).
+[v2.7 Scalable Faceted Discovery](SCALABLE_FACETED_DISCOVERY.md) and the
+[manual checklist](MANUAL_TESTING.md#manual-v2-7).
 
 OmniSorSe v2.6 **Explainable Smart Tags** was committed on
 `v2.6-explainable-smart-tags` from the committed v2.5 release candidate. It is
@@ -474,8 +474,8 @@ versioned Theme/Document Type definitions, generated
 assignments, explicit User Tags, and accept/reject decisions. Classification
 reuses bounded local evidence and runs as a deferred stage so v2.5 base-first
 Search remains usable first. Explorer Protocol remains v1 and OmniBrille is not
-modified. See [v2.6 Explainable Smart Tags](EXPLAINABLE_SMART_TAGS_v2.6.md) and
-[manual checklist](MANUAL_TESTING_v2.6.md).
+modified. See [v2.6 Explainable Smart Tags](EXPLAINABLE_SMART_TAGS.md) and
+[manual checklist](MANUAL_TESTING.md#manual-v2-6).
 
 OmniSorSe v2.5 **Workflow Completion & Indexing Quality** was implemented on
 `v2.5-workflow-indexing-quality`, is included in the published v2.12.0-rc
@@ -487,9 +487,9 @@ clarity improvements. It also includes an optional lazy, scoped desktop handoff
 to the separately installed OmniBrille companion. Explorer Protocol v1's wire
 contract/version, schema 5, release tags, packages, and the published v2.4.0
 state are unchanged. See the
-[v2.5 implementation record](WORKFLOW_AND_INDEXING_QUALITY_v2.5.md) and
-[manual checklist](MANUAL_TESTING_v2.5.md), plus the
-[companion handoff contract](OMNIBRILLE_COMPANION_HANDOFF_v2.5.md).
+[v2.5 implementation record](WORKFLOW_AND_INDEXING_QUALITY.md) and
+[manual checklist](MANUAL_TESTING.md#manual-v2-5), plus the
+[companion handoff contract](OMNIBRILLE_COMPANION_HANDOFF.md).
 
 ## Latest stable release identity
 
@@ -553,3 +553,198 @@ by v1.2-v2.0. Historical branch names are retained as created: v1.1 used
 `v1.1`, v0.1/v0.2 used `coding/v0.1` and `coding/v0.2`, and v0.4-v0.9 were
 delivered together on `v0.9`. Planned roadmap entries have no branch until
 implementation actually begins.
+
+
+<a id="historical-v2-0-readiness"></a>
+## v2.0
+
+[Source at consolidation baseline](https://github.com/nishdel/OmniSorSe/blob/783bd6f4b914bb0d141d26ebff8e66a4e4aa6a3f/docs/RELEASE_READINESS_v2.0.md). Historical wording and evidence apply only to this version.
+
+<details>
+<summary>Version-specific scenarios, decisions and evidence</summary>
+
+**Status:** Retained implementation/interactive evidence checklist. Every gate
+is intentionally unchecked.
+
+This checklist records the original implementation and interactive evidence
+matrix without retroactively inventing results. Final automated, integration,
+packaging, tagging, and publication facts are recorded in Git/GitHub and the
+v2.0 validation/release evidence. Broad manual/community testing begins after
+publication; no unchecked item below is implied complete by that decision.
+
+<a id="historical-v2-0-readiness-scope-and-architecture"></a>
+#### Scope and architecture
+
+- [ ] Stable, experimental, and deferred scope matches the accepted stability design and candidate source.
+- [ ] No deferred person/biometric, graph canvas, conversation, autonomous,
+      remote, or unrestricted-traversal capability entered the release.
+- [ ] Accepted Tag nodes remain deferred unless a separately reviewed
+      provider-neutral accepted-tag identity, ownership, persistence, and
+      rename/move reconciliation contract is implemented and validated.
+- [ ] Provider-neutral Application contracts contain no SQLite/UI details.
+- [ ] Knowledge Graph work is outside `FileFullyIndexed` and cannot block
+      existing indexing or Search.
+- [ ] `deep-index.db` remains schema 3 and v1.9 compatibility is demonstrated.
+- [ ] v1.9 relationship/Smart Collection decisions retain their sole existing
+      authority; imported graph observations are non-authoritative and the new
+      ledger owns only graph-native decisions.
+- [ ] Existing relationship/context types are not presented as automatically
+      resolved real-world entities, and merge/split rejects incompatible node
+      kinds.
+- [ ] The implementation does not treat the audited v1.9 metadata fingerprint,
+      absent relationship tags, unused Workflow evidence, whole-field text/OCR
+      fingerprints, or modification-only timeline as richer facts.
+
+<a id="historical-v2-0-readiness-migration-backup-and-compatibility"></a>
+#### Migration, backup, and compatibility
+
+- [ ] Clean v1.7, v1.8, and v1.9 fixture upgrades pass.
+- [ ] Every meaningful decision/graph migration interruption boundary passes.
+- [ ] Every legacy manual-decision import boundary is idempotent and complete.
+- [ ] A completed stable-primary-key manifest with terminal counts/hashes is
+      the reconciliation authority; timestamp cursors and notifications are
+      demonstrably hints only, and interrupted generations retire nothing.
+- [ ] Observation ingestion and component-applied watermarks are independent
+      and atomic at their own transaction boundaries, so poison work cannot
+      block or hide later observations.
+- [ ] Legacy decision updates/removals made before import, during normal v2 use,
+      and during a rollback launch with v1.9 reconcile without dual authority
+      or resurrection.
+- [ ] Backup manifests/checksums/integrity and staged restore pass.
+- [ ] The outer lifecycle lock is acquired before either sidecar lifecycle
+      transaction, and no decision/graph transaction or writer gate is nested.
+- [ ] Last known-good recovery/pre-migration copy cannot be pruned incorrectly.
+- [ ] Unsupported newer and current-version malformed schemas are preserved and
+      rejected actionably.
+- [ ] Low-disk preflight and write-time full-disk recovery pass.
+- [ ] Rollback launch with v1.9 is demonstrated without sidecar data loss.
+- [ ] Catalog, scan, watcher, duplicate, workflow, plugin, Change Plan, journal,
+      recovery, and Undo compatibility gates pass.
+
+<a id="historical-v2-0-readiness-determinism-integrity-and-user-decisions"></a>
+#### Determinism, integrity, and user decisions
+
+- [ ] Identical input produces canonical identical graph output repeatedly and
+      on supported hosts using the documented canonical serialization/export,
+      not SQLite database bytes.
+- [ ] Ambiguous/fuzzy/semantic-only identities never auto-merge.
+- [ ] Every automatic edge has current resolvable evidence and a truthful
+      explanation.
+- [ ] Manual merge, split, alias, edge, rejection, exclusion, and forget intent
+      survives migration, restart, selective repair, and full rebuild.
+- [ ] Corrupt individual graph records are quarantined/selectively repaired.
+- [ ] Graph corruption never requires deleting the complete deep index.
+- [ ] Decision corruption has a verified recovery path without guessing from
+      derived rows.
+- [ ] An unvalidated/corrupt decision store fails graph list/detail reads and
+      Search expansion closed unless an exact validated decision snapshot is
+      available; ordinary v1.9 Search remains usable.
+- [ ] Rename, move, modification, deletion, source removal, and stale evidence
+      invalidate only the intended components.
+
+<a id="historical-v2-0-readiness-lifecycle-and-failure-recovery"></a>
+#### Lifecycle and failure recovery
+
+- [ ] Run control, job execution, component freshness, and component integrity
+      are stored as orthogonal axes with explicit valid combinations and
+      transitions. `PauseRequested` and `CancelRequested` intent is durable;
+      the projected Pending, Running, Complete, Paused, Cancelled,
+      RetryableFailure, PermanentFailure, WaitingForDependency,
+      WaitingForResources, Stale, and RepairRequired states are durable and
+      tested.
+- [ ] Restart and cancellation pass at every durable stage.
+- [ ] Repeated Pause/Resume and Cancel/Retry are idempotent.
+- [ ] Expired leases recover without stale running jobs or duplicate claims.
+- [ ] Coordinator fencing epochs and per-job claim tokens reject publication
+      after renewal failure, reclaim, cancellation, or shutdown.
+- [ ] Crash during cancellation preserves cancellation intent.
+- [ ] Database busy/locked, low disk, dependency loss, malformed input, and
+      repeated interruption reach the documented state.
+- [ ] Concurrent Search/publication and maintenance/read tests pass.
+- [ ] Safe shutdown meets the validated hard deadline.
+
+<a id="historical-v2-0-readiness-bounds-performance-and-responsiveness"></a>
+#### Bounds, performance, and responsiveness
+
+- [ ] No automatic path performs unbounded all-pairs work.
+- [ ] Candidate, bucket, alias, degree, evidence, traversal, Search expansion,
+      queue, history, storage, and memory ceilings pass boundary/adversarial
+      tests.
+- [ ] Durable inbox/job row-and-byte limits, generation retention, transaction
+      size/time, component cascades, and backup reserve fail with explicit
+      backpressure rather than dropping work or decisions.
+- [ ] Stable traversal remains one hop; any two-hop experiment is bounded and
+      opt-in.
+- [ ] Large synthetic graph, cancellation, restart, cleanup, and selective/full
+      rebuild performance gates pass without unsupported scale claims.
+- [ ] Search responsiveness and exact/literal ordering do not regress during
+      graph build/repair/maintenance.
+- [ ] Existing relationship and graph expansions share the documented seed and
+      combined-result ceilings, deduplicate by File ID, never double-score one
+      projected relationship, and expose independent visible controls.
+- [ ] Indexing coverage and graph-projection coverage remain separately
+      calculated, displayed, diagnosed, and represented in no-result states.
+- [ ] No UI-thread blocking, accessibility-tree explosion, or shutdown hang is
+      reproducible.
+- [ ] Async refresh preserves or deterministically relocates selection/focus;
+      keyboard, click/touch, high contrast, text scaling, non-color status, and
+      accessible confirmation gates pass.
+
+<a id="historical-v2-0-readiness-privacy-diagnostics-and-source-safety"></a>
+#### Privacy, diagnostics, and source safety
+
+- [ ] Forget/exclusion is restrictive at every cross-store crash boundary.
+- [ ] Disable, clear-derived, clear-decisions, and forget have distinct
+      disclosed effects; older backups cannot resurrect a completed privacy
+      decision, and minimum tombstone retention is documented.
+- [ ] Each acknowledged privacy action has a committed post-decision recovery
+      point; restore rejects backups below the validated minimum-restorable
+      privacy sequence and fails closed if that floor cannot be proven.
+- [ ] UI and privacy documentation identifies graph stores, decision stores,
+      backups, aliases, labels, evidence references, and quarantine copies as
+      sensitive local metadata and makes no encryption-at-rest claim.
+- [ ] Default logs/diagnostics omit document text, OCR, summaries, aliases,
+      complete queries, prompts, vectors, secrets, and unnecessary paths.
+- [ ] Diagnostics/export review and redaction tests pass.
+- [ ] Original synthetic source files remain byte-for-byte unchanged after
+      every graph/privacy/repair action.
+- [ ] Ollama/OCR unavailability does not block stable graph or ordinary Search.
+- [ ] Graph data inspection, retention, storage, backup, forget, and repair
+      documentation matches actual behavior.
+
+<a id="historical-v2-0-readiness-complete-validation"></a>
+#### Complete validation
+
+- [ ] Forced restore passes.
+- [ ] Non-incremental Debug build and complete Debug suite pass.
+- [ ] Non-incremental Release build and complete Release suite pass.
+- [ ] Independently parsed test totals show zero failed and zero skipped.
+- [ ] Static analyzers, formatting, architecture, dependency, and documentation
+      policies pass.
+- [ ] Vulnerability audit has no unresolved critical/high finding.
+- [ ] Supported cross-target builds and native SQLite asset checks pass.
+- [ ] Search, relationship, graph, migration/recovery, security, and performance
+      regression suites pass.
+- [ ] `git diff --check` and full artifact/private-data diff audit pass.
+- [ ] Hosted CI succeeds for the exact candidate commit on every supported host.
+
+<a id="historical-v2-0-readiness-manual-and-release-process"></a>
+#### Manual and release process
+
+- [ ] Every item in [the v2.0 manual checklist](MANUAL_TESTING.md#manual-v2-0) has
+      maintainer evidence.
+- [ ] A dedicated release-candidate stabilization phase completed after feature
+      freeze.
+- [ ] Only blocker fixes entered the candidate after freeze and were fully
+      revalidated.
+- [ ] The final repository is clean and contains no generated graph/database,
+      test result, diagnostics, log, credential, or machine-specific artifact.
+- [ ] Merge, tag, package, and publication decisions were each explicitly
+      authorized and accurately documented.
+
+Any reproducible data loss, lost decision, nondeterministic projection, stale
+running job, unbounded graph work, Search regression, whole-index graph repair,
+UI hang, diagnostics disclosure, source-file mutation, skipped test, or
+critical/high vulnerability leaves this checklist blocked.
+
+</details>

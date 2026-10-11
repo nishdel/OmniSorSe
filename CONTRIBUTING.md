@@ -37,7 +37,8 @@ git diff --check
 dotnet run --project .\src\OpenSorSe.Desktop\OpenSorSe.Desktop.csproj
 ```
 
-Run both complete configurations before requesting review. Do not skip or
+For product changes, run both complete configurations before requesting review.
+Documentation-only changes use the focused checks in the risk/validation matrix. Do not skip or
 weaken an existing test to make a change pass.
 
 ## Branch and commit guidance
@@ -199,7 +200,10 @@ Every behavior change should update the smallest authoritative document:
   and manual checklist as applicable;
 - public API: meaningful XML documentation.
 
-Retain historical versioned documentation. If a document is removed, preserve
+Update the existing canonical document for each subject and release; add a
+version section instead of a version-suffixed sibling. Use Git history, tags,
+GitHub releases and CI artifacts for exact snapshots. Versioned files require
+an explicit [documented exception](docs/DOCUMENTATION_POLICY.md). If a document is removed, preserve
 its useful information elsewhere, update inbound links, and state why.
 Do not rewrite a release report, validation report, manual checklist,
 implementation specification, or packaged-release document to describe current
@@ -225,7 +229,7 @@ Native release artifacts are built by the reviewed scripts under
 generated outside normal source tracking, must correspond to one exact green
 commit, and must pass payload, startup/shutdown, uninstall or bundle, native
 SQLite, and checksum checks before publication. See
-[Native Release Packaging](docs/RELEASE_PACKAGING_v2.0.md).
+[Native Release Packaging](docs/RELEASE_PACKAGING.md).
 
 Do not infer a release from a version string, successful build, source branch,
 or unchecked release checklist.
@@ -271,7 +275,7 @@ local contribution still retains this optional development path.
 
 During release preparation, prepare or update one release-testing issue from
 [`.github/ISSUE_TEMPLATE/release-manual-testing.md`](.github/ISSUE_TEMPLATE/release-manual-testing.md)
-and the [manual test definitions](docs/MANUAL_RELEASE_TESTING.md). Review affected definitions whenever
+and the [manual test definitions](docs/MANUAL_TESTING.md#release-testing-procedure). Review affected definitions whenever
 user-visible behavior changes; do not create a new issue for every development
 task. Keep exact candidate/package/source/hash and environment above one status
 table. The issue owns execution results; repository documents own procedures.

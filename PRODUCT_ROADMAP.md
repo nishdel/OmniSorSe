@@ -33,7 +33,7 @@ For concise dates, test totals, and links to historical evidence, see
 
 **v3.0.0-rc.1** is implemented on `codex/v3-progressive-enrichment` and undergoing
 final release integration. It adds background local-AI indexing, editable Organize
-previews and owned-storage management. See the [38-item map](docs/V3_ACCEPTANCE.md)
+previews and owned-storage management. See the [38-item map](docs/ACCEPTANCE_CRITERIA.md)
 and [release gates](docs/RELEASE_STATUS.md). Richer image/audio/video understanding
 and additional OCR providers remain future extensions; no other agreed current
 requirement is silently deferred. This is preparation, not publication evidence.
@@ -342,7 +342,7 @@ tip `a2a9a071600de74759937f05a7be61f85e9d5d93`.
 v2.0.0 release merge after exact-tip Windows, Ubuntu, and macOS CI. Completed
 interactive/community validation is not claimed.
 
-The [stability-first design](docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md)
+The [stability-first design](docs/Architecture/06_Search/11_Knowledge_Graph_Stability_Design.md)
 defines the bounded graph projection implemented over existing v1.9 files, relationships,
 collections, and explicit decisions. It prioritizes failure isolation,
 determinism, conservative identity, correction preservation, selective repair,
@@ -365,9 +365,9 @@ graphs are deferred.
 publication are performed by the release workflow from the exact integrated
 source. The fully unchecked manual and RC checklists remain
 follow-up/community evidence trackers rather than claims of completed testing.
-See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH_v2.0.md),
-[validation report](docs/V2.0_VALIDATION_REPORT.md), and
-[RC plan](docs/V2.0_RC_STABILIZATION_PLAN.md).
+See the [Knowledge Graph guide](docs/KNOWLEDGE_GRAPH.md),
+[validation report](docs/VALIDATION.md#validation-v2-0), and
+[RC plan](docs/MAINTAINER_GUIDE.md#historical-v2-0-stabilization).
 
 ## Current release
 
@@ -388,9 +388,9 @@ the future separate OmniExplorer application. OmniExplorer itself, rendering,
 voice, standalone scanning, remote access, and protocol writes are outside this
 release.
 
-See [v2.4 transition/protocol design](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
-and [v2.4 manual testing](docs/MANUAL_TESTING_v2.4.md), plus the
-[v2.4.0 release notes](docs/RELEASE_NOTES_v2.4.0.md).
+See [v2.4 transition/protocol design](docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md)
+and [v2.4 manual testing](docs/MANUAL_TESTING.md#manual-v2-4), plus the
+[v2.4.0 release notes](docs/CHANGELOG.md#release-v2-4-0).
 
 ## Previous release
 
@@ -413,9 +413,9 @@ No visual-description provider, learned embedding model, vector database,
 cloud transcription, telemetry, or biometric identity feature is introduced.
 Optional runtime/model absence never disables ordinary Search.
 
-See [Content Intelligence v2.3](docs/CONTENT_INTELLIGENCE_v2.3.md),
-[v2.3.0 release notes](docs/RELEASE_NOTES_v2.3.0.md), and the
-[v2.3 manual checklist](docs/MANUAL_TESTING_v2.3.md).
+See [Content Intelligence v2.3](docs/CONTENT_INTELLIGENCE.md),
+[v2.3.0 release notes](docs/CHANGELOG.md#release-v2-3-0), and the
+[v2.3 manual checklist](docs/MANUAL_TESTING.md#manual-v2-3).
 
 ## Earlier release
 
@@ -431,8 +431,8 @@ EXIF/GPS, OCR, thumbnails, and optional ffprobe/ffmpeg processing. It also
 delivered scan ETA, multi-group duplicate recovery, corrected scrolling,
 primary Search navigation, and clearer privacy wording.
 
-See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE_v2.2.md) and
-[v2.2.0 release notes](docs/RELEASE_NOTES_v2.2.0.md).
+See the [Media Intelligence guide](docs/MEDIA_INTELLIGENCE.md) and
+[v2.2.0 release notes](docs/CHANGELOG.md#release-v2-2-0).
 
 ## Integrated v2.12 prerelease lineage
 
@@ -457,8 +457,8 @@ require Change Plan review. OmniExplorer, protocol expansion, server/cloud
 architecture, autonomous organization, embeddings, and graph rendering are
 outside this release.
 
-See [v2.5 workflow and indexing design](docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md)
-and [v2.5 manual testing](docs/MANUAL_TESTING_v2.5.md).
+See [v2.5 workflow and indexing design](docs/WORKFLOW_AND_INDEXING_QUALITY.md)
+and [v2.5 manual testing](docs/MANUAL_TESTING.md#manual-v2-5).
 
 ### v2.6 — Explainable Smart Tags
 
@@ -484,8 +484,8 @@ user-controlled decisions, clearing/forget semantics, and compact Files details.
 It does not write file metadata, add embeddings/cloud classification, mutate
 files automatically, modify OmniBrille, or change Explorer Protocol v1.
 
-See [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS_v2.6.md) and the
-[v2.6 manual checklist](docs/MANUAL_TESTING_v2.6.md).
+See [v2.6 Explainable Smart Tags](docs/EXPLAINABLE_SMART_TAGS.md) and the
+[v2.6 manual checklist](docs/MANUAL_TESTING.md#manual-v2-6).
 
 ### v2.7 — Scalable Faceted Discovery
 
@@ -510,8 +510,8 @@ XLSX/PPTX text improvements. Fast/searchable-first indexing, Smart Tag user
 authority, exact filename ranking, human-reviewed Change Plans, local privacy,
 OmniBrille separation, and Protocol v1 remain unchanged.
 
-See [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY_v2.7.md)
-and [v2.7 manual testing](docs/MANUAL_TESTING_v2.7.md).
+See [v2.7 Scalable Faceted Discovery](docs/SCALABLE_FACETED_DISCOVERY.md)
+and [v2.7 manual testing](docs/MANUAL_TESTING.md#manual-v2-7).
 
 ### v2.8 — Guided Workflows & Product Coherence
 
@@ -539,8 +539,8 @@ Schema 6, deterministic Search ranking/candidate retrieval, progressive
 indexing, Saved View persistence, Smart Tag authority, Explorer Protocol v1,
 OmniBrille separation, and mutation safety remain unchanged.
 
-See [v2.8 guided-workflow design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md)
-and [v2.8 manual testing](docs/MANUAL_TESTING_v2.8.md).
+See [v2.8 guided-workflow design](docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE.md)
+and [v2.8 manual testing](docs/MANUAL_TESTING.md#manual-v2-8).
 
 ### v2.9 — Reviewed Intelligent Organization
 
@@ -569,8 +569,8 @@ authority, Explorer Protocol v1, OmniBrille separation, and the workflow-library
 JSON authority remain unchanged. No new AI, dependency, automatic watched-folder
 action, cross-root organization, or autonomous mutation is included.
 
-See [v2.9 Reviewed Intelligent Organization](docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md)
-and [v2.9 manual testing](docs/MANUAL_TESTING_v2.9.md).
+See [v2.9 Reviewed Intelligent Organization](docs/REVIEWED_INTELLIGENT_ORGANIZATION.md)
+and [v2.9 manual testing](docs/MANUAL_TESTING.md#manual-v2-9).
 
 ### v2.10 — Production Hardening & Operational Resilience
 
@@ -587,8 +587,8 @@ bounded Data & Index Health, abnormal-shutdown evidence, release provenance,
 and high-blast-radius failure tests. Schema remains 6 and product workflows,
 Explorer Protocol v1, and OmniBrille separation remain intact.
 
-See [v2.10 Production Hardening](docs/PRODUCTION_HARDENING_v2.10.md) and the
-[v2.10 master manual matrix](docs/MANUAL_TESTING_v2.10.md).
+See [v2.10 Production Hardening](docs/PRODUCTION_HARDENING.md) and the
+[v2.10 master manual matrix](docs/MANUAL_TESTING.md#manual-v2-10).
 
 ### v2.11 — Supported Runtime & Platform Readiness
 
@@ -605,8 +605,8 @@ compile, native smoke, package, installer, signing, notarization, and manual
 support claims. It adds no schema, Search, classification, organization, AI,
 graph, protocol, updater, or Linux-package feature.
 
-See [v2.11 Supported Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md)
-and the [v2.11 manual addendum](docs/MANUAL_TESTING_v2.11.md).
+See [v2.11 Supported Runtime & Platform Readiness](docs/SUPPORTED_RUNTIME_PLATFORM_READINESS.md)
+and the [v2.11 manual addendum](docs/MANUAL_TESTING.md#manual-v2-11).
 
 ### v2.12 — Trusted Relationships & Context
 
@@ -634,8 +634,8 @@ authority while retaining format-1 import. Schema 6, Explorer Protocol 1.0,
 .NET 10, optional AI, optional derived Knowledge Graph, Smart Collections, and
 the Change Plan mutation boundary remain unchanged.
 
-See [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md)
-and the [v2.12 manual addendum](docs/MANUAL_TESTING_v2.12.md).
+See [v2.12 Trusted Relationships & Context](docs/TRUSTED_RELATIONSHIPS_CONTEXT.md)
+and the [v2.12 manual addendum](docs/MANUAL_TESTING.md#manual-v2-12).
 
 ## Prerelease candidate
 
@@ -656,8 +656,8 @@ relationship changes, and corrects recent indexing throughput/ETA calculation.
 It retains .NET 10, schema 6, Protocol 1.0, existing compatibility identifiers,
 local-first behavior, and the reviewed Change Plan mutation boundary.
 
-See [v2.13.0-rc Release Notes](docs/RELEASE_NOTES_v2.13.0.md) and the
-[v2.13 manual addendum](docs/MANUAL_TESTING_v2.13.md).
+See [v2.13.0-rc Release Notes](docs/CHANGELOG.md#release-v2-13-0) and the
+[v2.13 manual addendum](docs/MANUAL_TESTING.md#manual-v2-13).
 
 ## Planned
 

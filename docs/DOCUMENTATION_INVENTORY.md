@@ -1,5 +1,9 @@
 # Documentation inventory
 
+**Archive boundary:** This record preserves historical design/audit context.
+Its old inventory and retention recommendations are not current policy.
+Use the [canonical-document policy](DOCUMENTATION_POLICY.md) for new work.
+
 **Document type:** Historical documentation audit snapshot
 
 **Status:** Frozen to its v2.4 repository basis. Use
@@ -66,23 +70,23 @@ plan. Historical release, implementation, validation, version,
 troubleshooting, user, migration, and manual-testing records remain present.
 
 The v2.2 release additionally adds
-`docs/MEDIA_INTELLIGENCE_v2.2.md` as its authoritative implementation/design
-boundary and `docs/MANUAL_TESTING_v2.2.md` as a mixed evidence tracker. It marks
+`docs/MEDIA_INTELLIGENCE.md` as its authoritative implementation/design
+boundary and `docs/MANUAL_TESTING.md#manual-v2-2` as a mixed evidence tracker. It marks
 only completed controlled Windows provider/OCR/migration checks and leaves
 interactive, transcription, and native Linux/macOS scenarios unchecked. It
-also adds `docs/RELEASE_NOTES_v2.2.0.md`. These records extend this inventory
+also adds `docs/CHANGELOG.md#release-v2-2-0`. These records extend this inventory
 without rewriting historical release records.
 
 The v2.3 release adds
-`docs/CONTENT_INTELLIGENCE_v2.3.md` as its authoritative design/implementation
-boundary, `docs/MANUAL_TESTING_v2.3.md` as its evidence-separated validation
-tracker, and `docs/RELEASE_NOTES_v2.3.0.md` as the published release summary.
+`docs/CONTENT_INTELLIGENCE.md` as its authoritative design/implementation
+boundary, `docs/MANUAL_TESTING.md#manual-v2-3` as its evidence-separated validation
+tracker, and `docs/CHANGELOG.md#release-v2-3-0` as the published release summary.
 
 The v2.4 release adds
-`docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` as the authoritative
+`docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md` as the authoritative
 rename, compatibility, threat-model, and Explorer Protocol boundary, plus
-`docs/MANUAL_TESTING_v2.4.md` as its evidence-separated checklist, and
-`docs/RELEASE_NOTES_v2.4.0.md` as its published summary. These documents do not
+`docs/MANUAL_TESTING.md#manual-v2-4` as its evidence-separated checklist, and
+`docs/CHANGELOG.md#release-v2-4-0` as its published summary. These documents do not
 claim an OmniExplorer implementation.
 
 ## Authority model
@@ -107,35 +111,35 @@ These files describe current product/project policy or the current source tree:
 - `docs/MAINTAINER_GUIDE.md`
 - `docs/INSTALLATION.md`
 - `docs/SAFETY_AND_PRIVACY.md`
-- `docs/SECURITY_v2.0.md`
+- `docs/SECURITY.md`
 - `docs/PLATFORM_COMPATIBILITY_MATRIX.md`
 - `docs/LINUX_BUILD_AND_LAUNCH.md`
 - `docs/FOSS_DEPENDENCY_POLICY.md`
-- `docs/CONTENT_INTELLIGENCE_v2.3.md`
-- `docs/MANUAL_TESTING_v2.3.md`
-- `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md`
-- `docs/MANUAL_TESTING_v2.4.md`
-- `docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md`
-- `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md`
-- `docs/MANUAL_TESTING_v2.5.md`
-- `docs/EXPLAINABLE_SMART_TAGS_v2.6.md`
-- `docs/MANUAL_TESTING_v2.6.md`
-- `docs/SCALABLE_FACETED_DISCOVERY_v2.7.md`
-- `docs/MANUAL_TESTING_v2.7.md`
-- `docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md`
-- `docs/MANUAL_TESTING_v2.8.md`
-- `docs/REVIEWED_INTELLIGENT_ORGANIZATION_v2.9.md`
-- `docs/MANUAL_TESTING_v2.9.md`
-- `docs/PRODUCTION_HARDENING_v2.10.md`
-- `docs/OPERATIONAL_RUNBOOKS_v2.10.md`
-- `docs/MANUAL_TESTING_v2.10.md`
-- `docs/RELEASE_NOTES_v2.10.0.md`
-- `docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md`
-- `docs/MANUAL_TESTING_v2.11.md`
-- `docs/RELEASE_NOTES_v2.11.0.md`
-- `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`
-- `docs/MANUAL_TESTING_v2.12.md`
-- `docs/RELEASE_NOTES_v2.12.0.md`
+- `docs/CONTENT_INTELLIGENCE.md`
+- `docs/MANUAL_TESTING.md#manual-v2-3`
+- `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md`
+- `docs/MANUAL_TESTING.md#manual-v2-4`
+- `docs/WORKFLOW_AND_INDEXING_QUALITY.md`
+- `docs/OMNIBRILLE_COMPANION_HANDOFF.md`
+- `docs/MANUAL_TESTING.md#manual-v2-5`
+- `docs/EXPLAINABLE_SMART_TAGS.md`
+- `docs/MANUAL_TESTING.md#manual-v2-6`
+- `docs/SCALABLE_FACETED_DISCOVERY.md`
+- `docs/MANUAL_TESTING.md#manual-v2-7`
+- `docs/GUIDED_WORKFLOWS_PRODUCT_COHERENCE.md`
+- `docs/MANUAL_TESTING.md#manual-v2-8`
+- `docs/REVIEWED_INTELLIGENT_ORGANIZATION.md`
+- `docs/MANUAL_TESTING.md#manual-v2-9`
+- `docs/PRODUCTION_HARDENING.md`
+- `docs/OPERATIONAL_RUNBOOKS.md`
+- `docs/MANUAL_TESTING.md#manual-v2-10`
+- `docs/CHANGELOG.md#release-v2-10-0`
+- `docs/SUPPORTED_RUNTIME_PLATFORM_READINESS.md`
+- `docs/MANUAL_TESTING.md#manual-v2-11`
+- `docs/CHANGELOG.md#release-v2-11-0`
+- `docs/TRUSTED_RELATIONSHIPS_CONTEXT.md`
+- `docs/MANUAL_TESTING.md#manual-v2-12`
+- `docs/CHANGELOG.md#release-v2-12-0`
 - `docs/CHANGELOG.md` as the cumulative historical change record
 - `docs/Architecture/README.md`
 - `docs/Architecture/OpenSorSe_System_Map.md`
@@ -158,27 +162,27 @@ These version-named documents remain current because later releases build on,
 rather than supersede, their stable subsystem boundary:
 
 - `docs/Architecture/01_Core/10_Advanced_Diagnostics.md`
-- `docs/Architecture/02_Scanner/09_v1.2_Watched_Folders_and_Incremental_Scanning.md`
-- `docs/Architecture/03_Readers/10_v1_OCR_and_Metadata.md`
+- `docs/Architecture/02_Scanner/09_Watched_Folders_and_Incremental_Scanning.md`
+- `docs/Architecture/03_Readers/10_OCR_and_Metadata.md`
 - `docs/Architecture/04_AI/11_Small_Model_Prompt_Contracts.md`
-- `docs/Architecture/05_Database/09_v1_Local_Content_Stores_and_Migrations.md`
-- `docs/Architecture/06_Search/07_v1_Semantic_Index.md`
-- `docs/Architecture/06_Search/08_v1_Tag_Provenance.md`
+- `docs/Architecture/05_Database/09_Local_Content_Stores_and_Migrations.md`
+- `docs/Architecture/06_Search/07_Semantic_Index.md`
+- `docs/Architecture/06_Search/08_Tag_Provenance.md`
 - `docs/Architecture/07-Rules/06_Restructuring_History.md`
-- `docs/Architecture/07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md`
-- `docs/Architecture/07-Rules/08_v1.3_Workflow_Profiles_and_Recipes.md`
+- `docs/Architecture/07-Rules/07_Change_Plans_and_Operation_Journal.md`
+- `docs/Architecture/07-Rules/08_Workflow_Profiles_and_Recipes.md`
 - `docs/Architecture/08_Gui/04_Results_Page.md`
 - `docs/Architecture/08_Gui/11_Catalog_Page.md`
 - `docs/Architecture/08_Gui/12_Catalog_Comparison_Page.md`
 - `docs/Architecture/08_Gui/13_Structure_History.md`
 - `docs/Architecture/08_Gui/14_Review_Changes.md`
-- `docs/Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md`
-- `docs/Architecture/00_System/08_v1.5_Platform_Architecture.md`
-- `docs/Architecture/00_System/09_v1.6_Reliability_Architecture.md`
-- `docs/Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md`
-- `docs/Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md`
-- `docs/Architecture/06_Search/10_v1.9_Relationships_Context.md`
-- `docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`
+- `docs/Architecture/10_Plugins/06_Plugin_Foundation.md`
+- `docs/Architecture/00_System/08_Platform_Architecture.md`
+- `docs/Architecture/00_System/09_Reliability_Architecture.md`
+- `docs/Architecture/00_System/10_Deep_Indexing_Architecture.md`
+- `docs/Architecture/06_Search/09_Search_Intelligence_Privacy.md`
+- `docs/Architecture/06_Search/10_Relationships_Context.md`
+- `docs/Architecture/06_Search/11_Knowledge_Graph_Stability_Design.md`
 
 The v1.4 Extension SDK, Plugin Author Guide, Manifest Reference, Local Package
 Guide, and v1.5 platform/portability addenda also remain current stable
@@ -188,13 +192,13 @@ contracts.
 
 These files accurately describe the v1.9 branch within their scope:
 
-- `docs/USER_GUIDE_v1.9.md`
-- `docs/RELATIONSHIPS_AND_COLLECTIONS_v1.9.md`
-- `docs/TROUBLESHOOTING_v1.8.md`
-- `docs/MANUAL_TESTING_v1.9.md`
-- `docs/VERSION_NOTES_v1.9.md`
-- `docs/V1.9_IMPLEMENTATION_REPORT.md`
-- `docs/V1.9_VALIDATION_REPORT.md`
+- `docs/USER_GUIDE.md#guide-v1-9`
+- `docs/RELATIONSHIPS_AND_COLLECTIONS.md`
+- `docs/TROUBLESHOOTING.md#support-v1-8`
+- `docs/MANUAL_TESTING.md#manual-v1-9`
+- `docs/CHANGELOG.md#notes-v1-9`
+- `docs/IMPLEMENTATION_HISTORY.md#implementation-v1-9`
+- `docs/VALIDATION.md#validation-v1-9`
 - `docs/Implementation_Spec/v1.9/061_Relationships_Context_and_Smart_Collections.md`
 
 The v1.9 User/Relationship guides and inherited v1.8 Troubleshooting file are
@@ -211,7 +215,7 @@ Troubleshooting, and Manual Testing documents remain version snapshots.
 The v2.0 Knowledge Graph package is the accepted design/acceptance authority
 for the unmerged implementation candidate:
 
-- `docs/Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md`
+- `docs/Architecture/06_Search/11_Knowledge_Graph_Stability_Design.md`
 - `docs/Implementation_Spec/v2.0/00_v2.0_Knowledge_Graph_Stability_Proposal.md`
 - `docs/Implementation_Spec/v2.0/062_Knowledge_Graph_Stability_Design.md`
 - `docs/Implementation_Spec/v2.0/FAILURE_MODE_ANALYSIS.md`
@@ -220,15 +224,15 @@ for the unmerged implementation candidate:
 - `docs/Implementation_Spec/v2.0/CONCURRENCY_CANCELLATION_AND_RESOURCE_MODEL.md`
 - `docs/Implementation_Spec/v2.0/GRAPH_INTEGRITY_MODEL.md`
 - `docs/Implementation_Spec/v2.0/AUTOMATED_TEST_MATRIX.md`
-- `docs/V2.0_COMPATIBILITY_MATRIX.md`
-- `docs/RELEASE_READINESS_v2.0.md`
-- `docs/MANUAL_TESTING_v2.0.md`
-- `docs/KNOWLEDGE_GRAPH_v2.0.md`
-- `docs/SECURITY_v2.0.md`
-- `docs/VERSION_NOTES_v2.0.md`
-- `docs/V2.0_IMPLEMENTATION_REPORT.md`
-- `docs/V2.0_VALIDATION_REPORT.md`
-- `docs/V2.0_RC_STABILIZATION_PLAN.md`
+- `docs/KNOWLEDGE_GRAPH_COMPATIBILITY.md`
+- `docs/RELEASE_STATUS.md#historical-v2-0-readiness`
+- `docs/MANUAL_TESTING.md#manual-v2-0`
+- `docs/KNOWLEDGE_GRAPH.md`
+- `docs/SECURITY.md`
+- `docs/CHANGELOG.md#notes-v2-0`
+- `docs/IMPLEMENTATION_HISTORY.md#implementation-v2-0`
+- `docs/VALIDATION.md#validation-v2-0`
+- `docs/MAINTAINER_GUIDE.md#historical-v2-0-stabilization`
 
 The architecture/specification describe implemented-candidate boundaries;
 source and tests remain authoritative for exact behavior. Compatibility,
@@ -244,8 +248,8 @@ newer release:
 - all older `TROUBLESHOOTING_v*.md` files;
 - all `MANUAL_TESTING_v*.md` files once their release closes;
 - all `VERSION_NOTES_v*.md` files;
-- `DATA_MODEL_v1.0.md`, `MIGRATION_v1.0.md`, and
-  `RELEASE_CHECKLIST_v1.0.md`;
+- `DATA_MODEL.md`, `MIGRATION.md`, and
+  `MAINTAINER_GUIDE.md#historical-v1-0-release-checklist`;
 - all `V1.*_IMPLEMENTATION_REPORT.md` and `V1.*_VALIDATION_REPORT.md` files;
 - numbered specifications `001` through `061`;
 - every release proposal, implementation-decision file, audit correction, and
@@ -344,7 +348,7 @@ retain their original wording.
 - Real current screenshots are not checked in. README screenshot placeholders
   were removed rather than presenting stale or generated captures. The
   privacy-safe v2.0 capture checklist remains intentionally unchecked.
-- Native v2.0 packaging is documented in `RELEASE_PACKAGING_v2.0.md`; the v1.0
+- Native v2.0 packaging is documented in `RELEASE_PACKAGING.md`; the v1.0
   package tree remains frozen historical evidence.
 - v1.7, v1.8, and v1.9 interactive manual validation remains open where each
   release checklist records it.

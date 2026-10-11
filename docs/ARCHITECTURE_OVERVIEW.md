@@ -60,7 +60,7 @@ coordinated across it and the legacy rebuildable content/semantic/thumbnail
 caches. Product version and source commit are centralized build inputs. PDF
 extraction and in-process rasterization have hard input/work/output bounds;
 native PDFium isolation remains a documented residual risk. See
-[v2.10 Production Hardening](PRODUCTION_HARDENING_v2.10.md).
+[v2.10 Production Hardening](PRODUCTION_HARDENING.md).
 
 ## v2.12 trusted-relationship boundary
 
@@ -76,7 +76,7 @@ Direct Related Files, corrections, Search/Files entry points, and Explorer
 Protocol 1.0 do not depend on the optional derived Knowledge Graph. Logical
 `.oms-state` format 2 backs up pair and authored Smart Collection authority,
 while generated edges/evidence remain rebuildable. See
-[v2.12 Trusted Relationships](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md).
+[v2.12 Trusted Relationships](TRUSTED_RELATIONSHIPS_CONTEXT.md).
 
 ## Component view
 
@@ -101,7 +101,7 @@ Model digest/dimensions, catalog updates, moves/deletions, and privacy changes
 invalidate compatibility. Completed files survive restart; missing/failed work
 retries in bounded batches. All failures preserve keyword Search. The shared
 storage owner accounts for logical vector bytes, relocates them with the catalog,
-and pauses vector work before derived-only reclamation. See [Hybrid Search](HYBRID_SEARCH_v3.md)
+and pauses vector work before derived-only reclamation. See [Hybrid Search](HYBRID_SEARCH.md)
 for the query diagram, coverage bounds and user controls.
 
 | Area | Ownership and principal entry points |
@@ -168,7 +168,7 @@ transactions across independent store instances. Duplicate analysis and Results
 query/projection use bounded allocations and cooperative cancellation.
 Processing-session history is bounded, background task progress is terminal
 safe, observer failures are isolated, and watcher initialization/disposal is
-idempotent. See [Reliability Architecture](Architecture/00_System/09_v1.6_Reliability_Architecture.md).
+idempotent. See [Reliability Architecture](Architecture/00_System/09_Reliability_Architecture.md).
 
 ## v1.7 deep-indexing boundary
 
@@ -180,7 +180,7 @@ claims, and stage outputs. Startup recovers interrupted `running` rows,
 completed compatible work is reused, content-derived values can be shared by
 hash, and quota maintenance is explicit. PostgreSQL is not a desktop runtime
 dependency; a future server adapter can implement the same contracts. See
-[Deep Indexing Architecture](Architecture/00_System/10_v1.7_Deep_Indexing_Architecture.md).
+[Deep Indexing Architecture](Architecture/00_System/10_Deep_Indexing_Architecture.md).
 
 ## v1.8 Search-intelligence and privacy boundary
 
@@ -198,7 +198,7 @@ contracts. The SQLite provider owns transactions and schema 2 privacy rules;
 the background coordinator owns cancellation, durable queued repair, and
 coverage refresh. Every such action changes application-owned index state only.
 See [Search Intelligence and Privacy
-Architecture](Architecture/06_Search/09_v1.8_Search_Intelligence_Privacy.md).
+Architecture](Architecture/06_Search/09_Search_Intelligence_Privacy.md).
 
 ## v2.1 Search and optional-AI quality boundary
 
@@ -214,7 +214,7 @@ Ollama remains optional. Installed and provider-confirmed running state are
 discovered asynchronously; failure of the secondary runtime check does not
 discard installed models. Search, result explanations/actions, and indexing
 coverage remain usable without AI. v2.1 changes no SQLite or JSON schema. See
-[v2.1 Search and AI Quality](Architecture/06_Search/12_v2.1_Search_AI_Quality.md).
+[v2.1 Search and AI Quality](Architecture/06_Search/12_Search_AI_Quality.md).
 
 ## v2.2 Media Intelligence boundary
 
@@ -232,7 +232,7 @@ optional process-isolated adapter for a user-managed whisper.cpp CLI/model;
 visual descriptions remain unavailable. Media evidence is versioned and
 content-hash shared in schema 4, while the
 existing file, job, stage, privacy, quota, recovery, and Search architecture is
-retained. See [Media Intelligence v2.2](MEDIA_INTELLIGENCE_v2.2.md).
+retained. See [Media Intelligence v2.2](MEDIA_INTELLIGENCE.md).
 
 ## v2.3 Content Intelligence boundary
 
@@ -251,7 +251,7 @@ unbounded all-pairs relationship scan and is replaced atomically with its
 owning feature record. Corrupt derived evidence is omitted and exposed as an indexing failure. Privacy
 inspection, byte reporting, per-file clear, source forget, and full index clear
 remain provider-neutral and never affect source files. See
-[Content Intelligence v2.3](CONTENT_INTELLIGENCE_v2.3.md).
+[Content Intelligence v2.3](CONTENT_INTELLIGENCE.md).
 
 ## v2.6 Smart Tag and v2.7 discovery boundary
 
@@ -267,7 +267,7 @@ hydrates only a relevance-ordered bounded identity set for the unchanged
 `HybridSearchRanker`. The same query/filter values drive SQLite facet counts and
 atomic JSON Saved View rules. Saved Views are current-index rules; Saved scans
 remain historical catalog snapshots. See
-[Scalable Faceted Discovery v2.7](SCALABLE_FACETED_DISCOVERY_v2.7.md).
+[Scalable Faceted Discovery v2.7](SCALABLE_FACETED_DISCOVERY.md).
 
 ## v2.8 guided-workflow boundary
 
@@ -289,7 +289,7 @@ Rename suggestions may receive a bounded `AiOrganizationEvidence` list from
 accepted/User-owned or Strong deterministic classification. The prompt version
 records this additive input. Unresolved Moderate, Limited, and rejected
 classifications are excluded, and the existing suggestion-to-Change-Plan
-boundary is unchanged. See [Guided Workflows v2.8](GUIDED_WORKFLOWS_PRODUCT_COHERENCE_v2.8.md).
+boundary is unchanged. See [Guided Workflows v2.8](GUIDED_WORKFLOWS_PRODUCT_COHERENCE.md).
 
 ## Inherited v1.9 relationships and current schema-8 authority
 
@@ -307,7 +307,7 @@ forgotten collection tombstones prevent unwanted regeneration. Queries are
 direct and bounded; no recursive graph traversal or O(n²) all-file comparison
 is performed. Relationship-only Search results remain below exact/literal
 matches and can be disabled per query. See [Relationships, Context and Smart
-Collections](Architecture/06_Search/10_v1.9_Relationships_Context.md).
+Collections](Architecture/06_Search/10_Relationships_Context.md).
 
 ## v2.0 Knowledge Graph boundary
 
@@ -340,8 +340,8 @@ Ordinary graph pages default to 50 and cap at 100. Stable traversal is one hop
 and 100 nodes. Search uses at most 16 existing ranked seeds and 50 graph-only
 expansions within the combined contextual cap of 100. Exact/literal ranking and
 v1.9 direct relationships keep authority. See
-[Knowledge Graph](KNOWLEDGE_GRAPH_v2.0.md) and the
-[stability design](Architecture/06_Search/11_v2.0_Knowledge_Graph_Stability_Design.md).
+[Knowledge Graph](KNOWLEDGE_GRAPH.md) and the
+[stability design](Architecture/06_Search/11_Knowledge_Graph_Stability_Design.md).
 
 ## Platform boundary
 
@@ -352,7 +352,7 @@ semantics, device/inode identity, advisory Unix permission checks, and explicit
 watcher/desktop limitations. Business logic consumes contracts rather than
 detecting an OS. Failure to verify identity, links, permissions, or a
 same-filesystem move blocks mutation. The complete design and support claim are
-in [Platform Architecture](Architecture/00_System/08_v1.5_Platform_Architecture.md)
+in [Platform Architecture](Architecture/00_System/08_Platform_Architecture.md)
 and the [Capability Matrix](PLATFORM_COMPATIBILITY_MATRIX.md).
 
 ## Watched-folder flow

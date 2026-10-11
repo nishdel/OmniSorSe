@@ -409,7 +409,7 @@ coverage is in `tests/OpenSorSe.Indexing.Sqlite.Tests/BackgroundIndexingServiceT
 `tests/OpenSorSe.Application.Tests/SavedDiscoveryViewStoreTests.cs` and the
 Search/relationship quality suites.
 
-The [hybrid Search diagram](../HYBRID_SEARCH_v3.md#how-search-works) details the
+The [hybrid Search diagram](../HYBRID_SEARCH.md#how-search-works) details the
 query path. SQLite remains authoritative for retained evidence and decisions;
 vectors are a parallel derived index, capped at sixteen provenance-bearing chunks
 per file. `VectorSearchIntegrationTests` covers independent retrieval, fusion,

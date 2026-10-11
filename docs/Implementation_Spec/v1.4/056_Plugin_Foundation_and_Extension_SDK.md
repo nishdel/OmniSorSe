@@ -67,10 +67,10 @@ before binary publication.
 
 ## Documentation
 
-- [Architecture](../../Architecture/10_Plugins/06_v1.4_Plugin_Foundation.md)
-- [SDK](../../EXTENSION_SDK_v1.4.md)
-- [Author guide](../../PLUGIN_AUTHOR_GUIDE_v1.4.md)
-- [Manifest](../../PLUGIN_MANIFEST_REFERENCE_v1.4.md)
-- [Local packages](../../LOCAL_PLUGIN_PACKAGES_v1.4.md)
-- [User guide](../../USER_GUIDE_v1.4.md)
-- [Manual testing](../../MANUAL_TESTING_v1.4.md)
+- [Architecture](../../Architecture/10_Plugins/06_Plugin_Foundation.md)
+- [SDK](../../EXTENSION_SDK.md)
+- [Author guide](../../PLUGIN_AUTHOR_GUIDE.md)
+- [Manifest](../../PLUGIN_MANIFEST_REFERENCE.md)
+- [Local packages](../../LOCAL_PLUGIN_PACKAGES.md)
+- [User guide](../../USER_GUIDE.md#guide-v1-4)
+- [Manual testing](../../MANUAL_TESTING.md#manual-v1-4)

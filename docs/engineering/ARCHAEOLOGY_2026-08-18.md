@@ -41,8 +41,8 @@ copied Git database contained a corrupt object, so it was not treated as an
 authority. A clean clone from `origin` was validated, 64 tracked modifications
 and 71 intended untracked implementation files were compared by path and
 content, and eleven unrelated or generated changes were excluded. The damaged
-copy was retained as evidence. See `docs/V2.0_IMPLEMENTATION_REPORT.md` and
-`docs/V2.0_VALIDATION_REPORT.md`.
+copy was retained as evidence. See `docs/IMPLEMENTATION_HISTORY.md#implementation-v2-0` and
+`docs/VALIDATION.md#validation-v2-0`.
 
 ## Architectural eras
 
@@ -290,8 +290,8 @@ They test general detection mechanisms, not memorization of the historical fix.
 
 ### Verified
 
-- `docs/V2.0_IMPLEMENTATION_REPORT.md` still describes an unmerged candidate
-  and 1,468 tests, while `docs/V2.0_VALIDATION_REPORT.md`, release status, and
+- `docs/IMPLEMENTATION_HISTORY.md#implementation-v2-0` still describes an unmerged candidate
+  and 1,468 tests, while `docs/VALIDATION.md#validation-v2-0`, release status, and
   history record integration and 1,486 final tests. It is useful as a historical
   snapshot but can be mistaken for current truth.
 - v1.7–v1.9 validation reports defer immutable hosted-run URLs and final
@@ -332,16 +332,16 @@ Primary historical documents:
 - `docs/RELEASE_STATUS.md`
 - `docs/Implementation_Spec/v0.9/AUDIT_CORRECTIONS.md`
 - `docs/Implementation_Spec/v0.9.1/047_Correction_Reliability_and_Usability_Pass.md`
-- `docs/V1.6_VALIDATION_REPORT.md`
-- `docs/V1.7_IMPLEMENTATION_REPORT.md`
-- `docs/V1.9_IMPLEMENTATION_REPORT.md`
-- `docs/V2.0_IMPLEMENTATION_REPORT.md`
-- `docs/V2.0_VALIDATION_REPORT.md`
-- `docs/WORKFLOW_AND_INDEXING_QUALITY_v2.5.md`
-- `docs/SCALABLE_FACETED_DISCOVERY_v2.7.md`
-- `docs/PRODUCTION_HARDENING_v2.10.md`
-- `docs/SUPPORTED_RUNTIME_PLATFORM_READINESS_v2.11.md`
-- `docs/TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md`
+- `docs/VALIDATION.md#validation-v1-6`
+- `docs/IMPLEMENTATION_HISTORY.md#implementation-v1-7`
+- `docs/IMPLEMENTATION_HISTORY.md#implementation-v1-9`
+- `docs/IMPLEMENTATION_HISTORY.md#implementation-v2-0`
+- `docs/VALIDATION.md#validation-v2-0`
+- `docs/WORKFLOW_AND_INDEXING_QUALITY.md`
+- `docs/SCALABLE_FACETED_DISCOVERY.md`
+- `docs/PRODUCTION_HARDENING.md`
+- `docs/SUPPORTED_RUNTIME_PLATFORM_READINESS.md`
+- `docs/TRUSTED_RELATIONSHIPS_CONTEXT.md`
 
 High-value executable evidence:
 

@@ -24,7 +24,7 @@ the original profile lock/configuration/history identity stays fixed. An
 unavailable active location fails startup. Recovery copies are retained and count
 as additional disk usage outside the active inventory. The main index and legacy
 JSON records with accepted/rejected tags contain durable authority; pruning must
-retain them. See [v3 recovery notes](RELEASE_NOTES_v3.0.0.md).
+retain them. See [v3 recovery notes](CHANGELOG.md#release-v3-0-0).
 
 **Document type:** Living current safety and privacy contract
 
@@ -325,7 +325,7 @@ The common store retains at most 50 sessions overall, 20 per category, 750 event
   OmniBrille through a one-time current-user handoff. Absence of the companion
   leaves the host dormant and does not affect normal Search/indexing behavior.
 
-See [v2.4 transition and protocol design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md)
+See [v2.4 transition and protocol design](OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md)
 for the complete threat model and fixed limits.
 
 ## Relationships and virtual collections

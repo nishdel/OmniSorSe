@@ -16,18 +16,18 @@ historical release records.
 
 | Fact | Current truth | Evidence in the repository |
 | --- | --- | --- |
-| Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL_v2.4.md` |
+| Product identity | The user-facing product is **OmniSorSe**. Existing `OpenSorSe` solution, assembly, namespace, profile, installer, and bundle identifiers are retained where compatibility requires them. | `README.md`; `src/OpenSorSe.Core/Platform/ApplicationPathProvider.cs`; `docs/OMNISORSE_TRANSITION_AND_EXPLORER_PROTOCOL.md` |
 | Latest stable release | **v2.4.0**. The later source line is a release candidate, not a stable/GA release. | `docs/RELEASE_STATUS.md`; `RELEASE_HISTORY.md` |
-| Current source line | **v3.0.0-rc.1** candidate, published from merged main `df3984fab5eaf94424ec6cd032e91468799d62d6`. Automatic validated local AI enrichment, learned-vector hybrid Search, editable reviewed Organize, configurable bounded storage. Release Status tracks publication evidence and subsequent documentation-only source updates. | `Directory.Build.props`; `docs/RELEASE_NOTES_v3.0.0.md`; `docs/V3_ACCEPTANCE.md` |
+| Current source line | **v3.0.0-rc.1** candidate, published from merged main `df3984fab5eaf94424ec6cd032e91468799d62d6`. Automatic validated local AI enrichment, learned-vector hybrid Search, editable reviewed Organize, configurable bounded storage. Release Status tracks publication evidence and subsequent documentation-only source updates. | `Directory.Build.props`; `docs/CHANGELOG.md#release-v3-0-0`; `docs/ACCEPTANCE_CRITERIA.md` |
 | Testing candidate and package identity | **v3.0.0-rc.1** is the published testing target. Its non-draft GitHub prerelease contains Windows and macOS packages built from merged `main` at `df3984f`. The official release and issue #53 own exact tag/source commit, build manifest, asset checksums and SBOM. Linux remains a source-build preview. | [v3 candidate release](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1); [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53); `docs/RELEASE_STATUS.md` |
-| Historical prerelease comparison | The exact-source-bound **v2.13.0-rc** Windows and macOS package set remains historical evidence, not the v3 testing target. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized. Toolchain ad-hoc signatures do not authenticate a publisher. Its own release page retains immutable source/asset identity. | [Historical v2.13 prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc); `docs/RELEASE_NOTES_v2.13.0.md` |
-| Previous prerelease baseline | The prior exact-source **v2.12.0-rc** package set remains available as historical prerelease evidence from tagged commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; it is not the current source/package line and is not stable/GA. | [v2.12 GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc); `docs/RELEASE_NOTES_v2.12.0.md` |
-| Remaining release boundary | Interactive workflow, accessibility, resize/DPI, real-library, normal-user installer, signing, notarization, and GA checks remain manual and must not be inferred from automated host/package smoke. | `.github/workflows/cross-platform-validation.yml`; `.github/workflows/release-packaging.yml`; `docs/MANUAL_TESTING_v3.0.md`; [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) |
+| Historical prerelease comparison | The exact-source-bound **v2.13.0-rc** Windows and macOS package set remains historical evidence, not the v3 testing target. Windows artifacts are unsigned; macOS artifacts are publisher-unsigned and unnotarized. Toolchain ad-hoc signatures do not authenticate a publisher. Its own release page retains immutable source/asset identity. | [Historical v2.13 prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc); `docs/CHANGELOG.md#release-v2-13-0` |
+| Previous prerelease baseline | The prior exact-source **v2.12.0-rc** package set remains available as historical prerelease evidence from tagged commit `4dd27d62fc4ecbe9916b9789c57d5e8d2336c9ac`; it is not the current source/package line and is not stable/GA. | [v2.12 GitHub prerelease](https://github.com/nishdel/OmniSorSe/releases/tag/v2.12.0-rc); `docs/CHANGELOG.md#release-v2-12-0` |
+| Remaining release boundary | Interactive workflow, accessibility, resize/DPI, real-library, normal-user installer, signing, notarization, and GA checks remain manual and must not be inferred from automated host/package smoke. | `.github/workflows/cross-platform-validation.yml`; `.github/workflows/release-packaging.yml`; `docs/MANUAL_TESTING.md#manual-v3-0`; [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) |
 | Runtime | All solution projects target **.NET 10**. `global.json` selects SDK `10.0.400` with latest-feature roll-forward. | `Directory.Build.props`; `global.json`; project files |
 | Durable Search/index schema | `deep-index.db` is **schema 8**. It contains durable indexing, Search projections, normalized Smart Tag authority, relationships, Smart Collections, privacy rules, and maintenance state behind provider-neutral contracts. | `DeepIndexingVersion.SchemaVersion` in `src/OpenSorSe.Application/Indexing/DeepIndexingModels.cs`; `src/OpenSorSe.Indexing.Sqlite/SqliteDeepIndexStore.cs` |
-| Learned semantic Search | Optional dedicated local Ollama embedding model; stable-ID, field/offset-traced chunks in disposable schema-8 vector tables. Independent eligible-catalog vector retrieval joins keyword results through reciprocal rank fusion (`k=60`) with exact-filename priority. Missing or incomplete vectors preserve keyword Search. | `VectorSearchContracts`, `VectorIndexCoordinator`, `SqliteVectorSearchStore`, `ReciprocalRankFusion`; [Hybrid Search](HYBRID_SEARCH_v3.md) |
+| Learned semantic Search | Optional dedicated local Ollama embedding model; stable-ID, field/offset-traced chunks in disposable schema-8 vector tables. Independent eligible-catalog vector retrieval joins keyword results through reciprocal rank fusion (`k=60`) with exact-filename priority. Missing or incomplete vectors preserve keyword Search. | `VectorSearchContracts`, `VectorIndexCoordinator`, `SqliteVectorSearchStore`, `ReciprocalRankFusion`; [Hybrid Search](HYBRID_SEARCH.md) |
 | Explorer boundary | Explorer Protocol is **1.0**. It is local, authenticated, source-scoped, bounded, read-only, and dormant until explicitly requested. | `ExplorerProtocolVersion` in `src/OmniSorSe.ExplorerProtocol/ExplorerProtocolContracts.cs`; `src/OpenSorSe.Application/Explorer/` |
-| OmniBrille boundary | OmniBrille is a separately installed, separately owned optional companion. OmniSorSe can explicitly discover and launch it, pass one scoped session through a current-user handoff, and then serve Protocol 1.0. OmniBrille is not implemented in this repository. | `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`; `docs/OMNIBRILLE_COMPANION_HANDOFF_v2.5.md` |
+| OmniBrille boundary | OmniBrille is a separately installed, separately owned optional companion. OmniSorSe can explicitly discover and launch it, pass one scoped session through a current-user handoff, and then serve Protocol 1.0. OmniBrille is not implemented in this repository. | `src/OpenSorSe.Application/Explorer/ExplorerCompanionLaunch.cs`; `docs/OMNIBRILLE_COMPANION_HANDOFF.md` |
 | Logical state backup | The current `.oms-state` writer uses **format 2** and accepts exact format-1 archives. Restore uses stable identities and a pre-restore recovery point; it does not guess by path or filename. Rebuildable index/graph state, the separate Knowledge Graph decision sidecar, and active mutation history are not included. | `src/OpenSorSe.Application/Resilience/StateBackupService.cs`; `tests/OpenSorSe.Indexing.Sqlite.Tests/StateBackupServiceTests.cs` |
 | Profile ownership | One process owns a profile for writing. The Desktop acquires a current-user, profile-specific lock before composing profile services and records abnormal termination through a run marker. | `src/OpenSorSe.Core/Platform/ProfileOwnership.cs`; `src/OpenSorSe.Core/Lifecycle/ApplicationRunState.cs`; `src/OpenSorSe.Desktop/App.axaml.cs` |
 | File-mutation authority | Reviewed Change Plan execution is the only supported production source-file mutation path. Journal persistence precedes mutation; rollback, restart recovery, and Undo use recorded facts plus current filesystem truth. Review Changes, Operation History Undo, and startup interruption recovery now feed the same post-operation reconciliation path. | `src/OpenSorSe.Executor/ChangePlanExecutionService.cs`; `src/OpenSorSe.Desktop/ViewModels/ChangePlanReviewViewModel.cs`; `src/OpenSorSe.Desktop/ViewModels/UndoHistoryViewModel.cs`; `src/OpenSorSe.Application/ChangePlans/ChangePlanReconciliationService.cs` |
@@ -43,8 +43,8 @@ outside application-owned storage.
 The v3 path automatically stores structurally validated AI inference in
 application-owned records, distinct from extracted facts and explicit decisions.
 The [beginner guide](HOW_OMNISORSE_WORKS.md), [Organize guide](ORGANIZE.md) and
-[storage guide](STORAGE_MANAGEMENT_v3.md) describe current controls. Migration,
-limits and downgrade boundaries are in [candidate notes](RELEASE_NOTES_v3.0.0.md).
+[storage guide](STORAGE_MANAGEMENT.md) describe current controls. Migration,
+limits and downgrade boundaries are in [candidate notes](CHANGELOG.md#release-v3-0-0).
 
 | Concept | Owns or mutates | Reads, derives, or presents | Does not own |
 | --- | --- | --- | --- |
@@ -97,7 +97,7 @@ their literal-query meaning.
 ### Verified in recorded automated evidence
 
 The following earlier-line records are historical evidence. Consult
-[v3 validation](VALIDATION_v3.0.0.md), [Release Status](RELEASE_STATUS.md) and
+[v3 validation](VALIDATION.md#validation-v3-0-0), [Release Status](RELEASE_STATUS.md) and
 [issue #53](https://github.com/nishdel/OmniSorSe/issues/53) for the testing
 candidate's exact-source checks and package identity.
 
@@ -159,10 +159,10 @@ Automated host and package-smoke evidence is not interactive UX, accessibility,
 real-world upgrade, signing, notarization, or stable-release evidence.
 
 Read [Release Status](RELEASE_STATUS.md), the
-[v3 release notes](RELEASE_NOTES_v3.0.0.md), and the
-[v3 manual checklist](MANUAL_TESTING_v3.0.md) before making a current
+[v3 release notes](CHANGELOG.md#release-v3-0-0), and the
+[v3 manual checklist](MANUAL_TESTING.md#manual-v3-0) before making a current
 readiness or release claim. The [v2.12 implementation
-record](TRUSTED_RELATIONSHIPS_CONTEXT_v2.12.md) remains authority for the
+record](TRUSTED_RELATIONSHIPS_CONTEXT.md) remains authority for the
 inherited relationship/context design.
 
 ## Where current truth belongs

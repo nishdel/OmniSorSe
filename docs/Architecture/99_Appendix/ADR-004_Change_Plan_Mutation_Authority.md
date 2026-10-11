@@ -70,4 +70,4 @@ The surviving source and history do not establish a reliable complete alternativ
 - `src/OpenSorSe.Desktop/App.axaml.cs`
 - `tests/OpenSorSe.Executor.Tests/ChangePlanSafetyTests.cs`
 - `tests/OpenSorSe.Application.Tests/ChangePlanReconciliationServiceTests.cs`
-- [Change Plan architecture](../07-Rules/07_v1.1_Change_Plans_and_Operation_Journal.md)
+- [Change Plan architecture](../07-Rules/07_Change_Plans_and_Operation_Journal.md)

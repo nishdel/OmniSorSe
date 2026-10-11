@@ -2,7 +2,7 @@
 
 ## Status and intent
 
-These contracts are designed for local instruction-following models in the approximate 2B-8B parameter range. This is a design target, not a compatibility claim. Compatibility remains unverified until the manual matrix in `docs/MANUAL_TESTING_v1.0.md` is completed with exact Ollama model IDs and retained results.
+These contracts are designed for local instruction-following models in the approximate 2B-8B parameter range. This is a design target, not a compatibility claim. Compatibility remains unverified until the manual matrix in `docs/MANUAL_TESTING.md#manual-v1-0` is completed with exact Ollama model IDs and retained results.
 
 Approved templates live in `AiPromptTemplates.cs`; exact Ollama JSON Schemas and ordered C# wire DTOs live in `AiStructuredOutputContracts.cs`. `AiPromptSnapshotTests` hashes the approved system prompts, representative final user prompts, repair prompt, and schemas. An intentional prompt or schema change requires explicit review and a snapshot update.
 

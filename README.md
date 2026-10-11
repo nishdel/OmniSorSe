@@ -74,22 +74,22 @@ its filename evidence and indexing coverage.
 
 Explore the rendered [library workflow](docs/HOW_OMNISORSE_WORKS.md#library-workflow),
 [architecture map](docs/Architecture/OpenSorSe_System_Map.md#high-level-ownership-and-communication-map)
-and [hybrid Search diagram](docs/HYBRID_SEARCH_v3.md#how-search-works).
+and [hybrid Search diagram](docs/HYBRID_SEARCH.md#how-search-works).
 These captures document the interface; human acceptance remains
-[Not run](docs/MANUAL_TESTING_v3.0.md).
+[Not run](docs/MANUAL_TESTING.md#manual-v3-0).
 
 ## How it works
 
 Read [How OmniSorSe Works](docs/HOW_OMNISORSE_WORKS.md) for the complete beginner
-guide. The testing candidate is [v3.0.0-rc.1](docs/RELEASE_NOTES_v3.0.0.md), with
-the [acceptance scope](docs/V3_ACCEPTANCE.md) and
-[manual checklist](docs/MANUAL_TESTING_v3.0.md). The
+guide. The testing candidate is [v3.0.0-rc.1](docs/CHANGELOG.md#release-v3-0-0), with
+the [acceptance scope](docs/ACCEPTANCE_CRITERIA.md) and
+[manual checklist](docs/MANUAL_TESTING.md#manual-v3-0). The
 [official v3 release page](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1)
 and [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) identify
 availability, exact tag/source commit, installer assets and checksums. A source
 version alone does not establish publication.
 
-The first v3 candidate also includes [learned-vector hybrid Search](docs/HYBRID_SEARCH_v3.md):
+The first v3 candidate also includes [learned-vector hybrid Search](docs/HYBRID_SEARCH.md):
 a dedicated local embedding model, incremental indexing, explained reciprocal
 rank fusion and separately labelled Related Files similarity. SQLite remains the
 authoritative catalog; its vector tables are disposable. v2.13 is a historical
@@ -110,8 +110,8 @@ installer is published from merged `main`.
 | Track | What it is | Start here |
 | --- | --- | --- |
 | **Current source and testing candidate: v3.0.0-rc.1** | Progressive local-AI enrichment, hybrid semantic Search, editable Organize previews and configurable safe storage. Install for testing only when the non-draft prerelease provides the matching installer from merged `main`. | [v3 candidate release](https://github.com/nishdel/OmniSorSe/releases/tag/v3.0.0-rc.1) · [Testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) · [Release Status](docs/RELEASE_STATUS.md) |
-| **Historical comparison: v2.13.0-rc** | Earlier exact-source Windows/macOS prerelease, retained as historical evidence. It is not the v3 testing target. | [Historical release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) · [Historical release notes](docs/RELEASE_NOTES_v2.13.0.md) |
-| **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) |
+| **Historical comparison: v2.13.0-rc** | Earlier exact-source Windows/macOS prerelease, retained as historical evidence. It is not the v3 testing target. | [Historical release](https://github.com/nishdel/OmniSorSe/releases/tag/v2.13.0-rc) · [Historical release notes](docs/CHANGELOG.md#release-v2-13-0) |
+| **Latest stable: v2.4.0** | The latest stable tagged and packaged OmniSorSe release for Windows x64 and macOS Intel/Apple Silicon. | [Download v2.4.0](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) · [v2.4.0 Release Notes](docs/CHANGELOG.md#release-v2-4-0) |
 
 The v2.4.0 package keeps established OpenSorSe application-data, schema,
 installer, and bundle identifiers where compatibility requires them. The
@@ -219,11 +219,11 @@ intent-based map. The shortest routes are:
 | I want to… | Read first | Then continue with… |
 | --- | --- | --- |
 | Understand the project and current state | [Current State](docs/CURRENT-STATE.md) | [Product Vision](PRODUCT_VISION.md) |
-| Install or test the v3 candidate when published | [Installation](docs/INSTALLATION.md) | [v3.0.0-rc.1 Release Notes](docs/RELEASE_NOTES_v3.0.0.md) and [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) |
-| Use the latest stable release | [v2.4.0 Release Notes](docs/RELEASE_NOTES_v2.4.0.md) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
+| Install or test the v3 candidate when published | [Installation](docs/INSTALLATION.md) | [v3.0.0-rc.1 Release Notes](docs/CHANGELOG.md#release-v3-0-0) and [testing issue #53](https://github.com/nishdel/OmniSorSe/issues/53) |
+| Use the latest stable release | [v2.4.0 Release Notes](docs/CHANGELOG.md#release-v2-4-0) | [v2.4.0 download](https://github.com/nishdel/OmniSorSe/releases/tag/v2.4.0) |
 | Build or contribute | [Developer Guide](docs/DEVELOPER_GUIDE.md) | [Contributing](CONTRIBUTING.md) and [Engineering Principles](ENGINEERING_PRINCIPLES.md) |
 | Understand the architecture | [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | [System Map](docs/Architecture/OpenSorSe_System_Map.md) and [Architecture Library](docs/Architecture/README.md) |
-| Review the current source candidate | [v3.0.0-rc.1 Release Notes](docs/RELEASE_NOTES_v3.0.0.md) | [v3 manual checklist](docs/MANUAL_TESTING_v3.0.md) |
+| Review the current source candidate | [v3.0.0-rc.1 Release Notes](docs/CHANGELOG.md#release-v3-0-0) | [v3 manual checklist](docs/MANUAL_TESTING.md#manual-v3-0) |
 | Check validation or readiness | [Release Status](docs/RELEASE_STATUS.md) | [Platform Compatibility](docs/PLATFORM_COMPATIBILITY_MATRIX.md) and versioned manual gates |
 | Research released or historical work | [Release History](RELEASE_HISTORY.md) | [Changelog](docs/CHANGELOG.md) and [historical records](docs/README.md#release-and-implementation-records) |
 

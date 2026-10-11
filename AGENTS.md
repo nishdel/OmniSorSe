@@ -24,8 +24,8 @@ When sources disagree, current source and tests own implemented behavior;
 `docs/CURRENT-STATE.md` owns volatile version/runtime/schema/protocol/current-
 boundary facts; [Release Status](docs/RELEASE_STATUS.md) owns validation,
 integration, packaging, publication, and readiness evidence; current architecture
-documents explain boundaries; ADRs record durable decisions; versioned reports
-are historical evidence. Planned work is not implementation.
+documents explain boundaries; ADRs record durable decisions; historical report sections
+are evidence scoped to their recorded version. Planned work is not implementation.
 
 ## Non-negotiable boundaries
 
@@ -67,9 +67,18 @@ evidence and source/test locations.
   lesson can be made executable.
 - Comments explain non-obvious reasons and invariants, not obvious statements.
 
+## Canonical documentation
+
+Use one living document per subject; update it for each release and add a
+version section instead of a version-suffixed sibling. Use Git history, tags,
+GitHub releases and CI artifacts for exact snapshots. Versioned files require
+an explicit [documented exception](docs/DOCUMENTATION_POLICY.md). Preserve
+historical failures, platform limits, unrun checks and evidence provenance;
+verify parity and inbound links before deleting a superseded path.
+
 ## Specialists and context
 
-The orchestrator selects specialists from [`.codex/agents/`](.codex/agents/)
+The orchestrator selects specialists from [`.codex/agents/`](.codex/agents)
 by risk. Do not invoke every specialist for every task. Give specialists a
 distilled baseline and relevant paths so they do not repeat archaeology.
 Implementation follows resolved product/architecture decisions; contradictory
@@ -147,7 +156,7 @@ policy was enforced. Use existing selected models and documented request schemas
 Record actual request/model/routing outcomes and what Codex accepted/corrected;
 a gate-only handoff is not a local-model contribution.
 
-For release preparation use the [manual-testing guide](docs/MANUAL_RELEASE_TESTING.md)
+For release preparation use the [manual-testing guide](docs/MANUAL_TESTING.md#release-testing-procedure)
 and [release index](docs/release-testing/README.md). Prepare the release issue
 before human execution, update affected definitions when behavior changes,
 and preserve prior package identities/evidence before selecting retests.

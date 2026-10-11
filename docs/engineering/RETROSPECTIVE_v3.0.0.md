@@ -10,7 +10,7 @@ Author: coordinating Codex agent. Implementation branch:
 The intended result is a complete next-major testing candidate. Implementation
 extends the existing indexing, relationship, proposal/executor and storage owners.
 Local automated and actual-model evidence is recorded in
-[Validation](../VALIDATION_v3.0.0.md). Publication remains a separate gate;
+[Validation](../VALIDATION.md#validation-v3-0-0). Publication remains a separate gate;
 human acceptance starts after publication. Status: partial until release gates.
 
 ## Assumptions and rediscovery
@@ -100,7 +100,7 @@ reset of RRF rank for every file was mathematically wrong and was rejected.
 Other claims contradicted visible enabled guards or snippet fallback. A bounded
 benchmark review incorrectly treated omitted/truncated sections as absent work;
 those claims were rejected against the full source. Request IDs and accept/reject
-decisions are retained in [Validation](../VALIDATION_v3.0.0.md). Local prose is a
+decisions are retained in [Validation](../VALIDATION.md#validation-v3-0-0). Local prose is a
 review contribution, never an automated pass or proof of correctness.
 
 The opt-in benchmark exercises production transport/store/coordinator/Search on
@@ -172,7 +172,7 @@ labeled Related suggestions passed in both reports. The successful reported uppe
 query latency was 564.9 ms; this is a small-corpus measurement, not a general limit.
 
 Reports identify `qwen3-embedding:4b` by its exact digest in
-[Validation](../VALIDATION_v3.0.0.md) and record source as
+[Validation](../VALIDATION.md#validation-v3-0-0) and record source as
 `da5b313813fe47007913c6ef7bafb8ed15bcce92-working-tree-20261007`.
 That identity describes the working-tree base and must not be cited as a final
 commit containing the implementation. Both initial failure and subsequent pass
